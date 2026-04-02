@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LNG TradeOS — Analytics</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{min-height:100%;background:#070b14;color:#c8cfe0;font-family:'Courier New',monospace;font-size:13px;}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:50px;background:#070b14;border-bottom:1px solid #151e30;position:sticky;top:0;z-index:100;}
+.nav-logo{font-size:15px;font-weight:700;letter-spacing:.06em;display:flex;align-items:center;gap:8px;}
+.tri{color:#2d7cff;}.os{color:#2d7cff;}
+.nav-links{display:flex;}
+.nl{font-size:10px;letter-spacing:.12em;color:#3d5070;cursor:pointer;padding:16px 14px;border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:'Courier New',monospace;}
+.nl:hover{color:#8a9bb5;}.nl.active{color:#c8cfe0;border-bottom-color:#2d7cff;}
+.nav-badge{font-size:9px;letter-spacing:.12em;border:1px solid #1e2d45;padding:4px 12px;color:#3d5070;}
+#dropscreen{position:fixed;inset:0;background:#070b14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:999;}
+#dropscreen.gone{display:none;}
+.dz{width:500px;max-width:90vw;height:210px;border:1px dashed #1e2d45;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:all .2s;}
+.dz:hover,.dz.over{border-color:#2d7cff;background:rgba(45,124,255,.04);}
+.dz-icon{font-size:30px;color:#1e2d45;}
+.dz-title{font-size:11px;letter-spacing:.18em;color:#8a9bb5;}
+.dz-sub{font-size:10px;color:#3d5070;text-align:center;line-height:1.9;max-width:360px;}
+.dz-btn{font-size:10px;letter-spacing:.12em;color:#2d7cff;border:1px solid #1e2d45;padding:7px 22px;cursor:pointer;background:none;font-family:'Courier New',monospace;border-radius:2px;margin-top:4px;}
+.dz-btn:hover{border-color:#2d7cff;}
+#fileInput{display:none;}
+.prog-wrap{width:500px;max-width:90vw;}
+.prog-bar{width:100%;height:2px;background:#151e30;border-radius:2px;overflow:hidden;margin-bottom:8px;}
+.prog-fill{height:100%;background:#2d7cff;width:0%;transition:width .2s ease;}
+.prog-txt{font-size:9px;color:#3d5070;letter-spacing:.08em;text-align:center;}
+.main{padding:20px 28px;max-width:1600px;margin:0 auto;}
+.section{display:none;}.section.active{display:block;}
+.sbar{font-size:9px;color:#3d5070;letter-spacing:.1em;margin-bottom:18px;padding:7px 0;border-bottom:1px solid #151e30;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.sdot{width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0;}
+.sbtn{font-size:9px;border:1px solid #1e2d45;padding:3px 11px;cursor:pointer;background:none;font-family:'Courier New',monospace;border-radius:2px;letter-spacing:.1em;}
+.sbtn:hover{border-color:#2d7cff;color:#2d7cff;}
+.sbtn.red{color:#ef4444;}.sbtn.red:hover{border-color:#ef4444;}
+.ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:#0a0f1e;border:1px solid #151e30;border-radius:3px;}
+.cl{font-size:9px;letter-spacing:.15em;color:#3d5070;white-space:nowrap;}
+.csep{width:1px;height:20px;background:#151e30;margin:0 4px;}
+select{background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-family:'Courier New',monospace;font-size:11px;padding:5px 9px;cursor:pointer;border-radius:2px;outline:none;}
+select:focus,select:hover{border-color:#2d7cff;}
+.wbtn{background:#070b14;border:1px solid #1e2d45;color:#3d5070;font-family:'Courier New',monospace;font-size:10px;padding:4px 12px;cursor:pointer;letter-spacing:.1em;border-radius:2px;transition:all .15s;}
+.wbtn.on{border-color:#2d7cff;color:#2d7cff;}
+.card{background:#0a0f1e;border:1px solid #151e30;border-radius:3px;padding:16px 18px;margin-bottom:14px;}
+.ctitle{font-size:9px;letter-spacing:.18em;color:#3d5070;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.ctitle::after{content:'';flex:1;height:1px;background:#151e30;}
+.cnote{font-size:9px;color:#3d5070;letter-spacing:.06em;margin-bottom:14px;line-height:1.7;padding:8px 12px;border-left:2px solid #1e2d45;}
+.cw{position:relative;width:100%;}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:14px;}
+.mc{background:#0a0f1e;border:1px solid #151e30;padding:12px 14px;border-radius:3px;}
+.mc-name{font-size:8px;letter-spacing:.14em;color:#3d5070;margin-bottom:3px;}
+.mc-tenor{font-size:8px;color:#1e2d45;margin-bottom:7px;}
+.mc-val{font-size:20px;color:#c8cfe0;line-height:1;margin-bottom:5px;}
+.mc-row{display:flex;align-items:center;gap:6px;}
+.mc-chg{font-size:11px;font-weight:500;}.mc-pct{font-size:10px;}
+.mc-unit{font-size:8px;color:#3d5070;margin-left:auto;}
+.pos{color:#22c55e;}.neg{color:#ef4444;}.neu{color:#5a6882;}
+.stbl{width:100%;border-collapse:collapse;font-size:11px;}
+.stbl th,.stbl td{padding:7px 11px;border:1px solid #151e30;text-align:right;}
+.stbl th{color:#3d5070;font-weight:400;font-size:9px;letter-spacing:.1em;background:#070b14;text-align:left;}
+.stbl td:first-child{text-align:left;color:#8a9bb5;}.stbl tr:hover td{background:#0c1422;}
+.ctbl{width:100%;border-collapse:collapse;font-size:10.5px;}
+.ctbl th,.ctbl td{padding:7px 11px;text-align:center;border:1px solid #151e30;}
+.ctbl th{color:#3d5070;font-weight:400;font-size:9px;letter-spacing:.08em;background:#070b14;}
+.d1{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2d7cff;flex-shrink:0;}
+.d2{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.mini-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px;}
+.mini-card{background:#0a0f1e;border:1px solid #151e30;border-radius:3px;padding:12px 14px;}
+.mini-title{font-size:9px;letter-spacing:.1em;color:#3d5070;margin-bottom:8px;}
+@media(max-width:900px){.two-col{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div id="dropscreen">
+  <div class="dz" id="dz">
+    <div class="dz-icon">&#8659;</div>
+    <div class="dz-title">DROP YOUR EOD CURVE FILES HERE</div>
+    <div class="dz-sub">Drag your entire <strong style="color:#8a9bb5;">LNG Curves</strong> folder from Finder<br>or click to select files. Works in Safari &amp; Chrome.</div>
+    <button class="dz-btn" onclick="event.stopPropagation();$('fileInput').click()">SELECT FILES</button>
+    <input type="file" id="fileInput" multiple accept=".xlsx,.xls">
+  </div>
+  <div class="prog-wrap" id="progwrap" style="display:none;">
+    <div class="prog-bar"><div class="prog-fill" id="progfill"></div></div>
+    <div class="prog-txt" id="progtxt">Parsing files...</div>
+    <div id="parselog" style="margin-top:10px;max-height:160px;overflow-y:auto;background:#0a0f1e;border:1px solid #151e30;padding:8px 12px;font-size:9px;color:#3d5070;line-height:1.8;text-align:left;"></div>
+  </div>
+</div>
+
+<nav class="nav">
+  <div class="nav-logo"><span class="tri">△</span> LNG <span class="os">TradeOS</span></div>
+  <div class="nav-links">
+    <button class="nl active" onclick="showSec('dashboard',this)">DASHBOARD</button>
+    <button class="nl" onclick="showSec('historical',this)">HISTORICAL</button>
+    <button class="nl" onclick="showSec('correlation',this)">CORRELATION</button>
+    <button class="nl" onclick="showSec('spread',this)">SPREAD</button>
+    <button class="nl" onclick="showSec('forward',this)">FORWARD CURVE</button>
+    <button class="nl" onclick="showSec('seasonal',this)">SEASONAL</button>
+  </div>
+  <div class="nav-badge">BY IBRAHIM MAR</div>
+</nav>
+
+<div class="main">
+  <div class="sbar" id="sbar" style="display:none;">
+    <span class="sdot"></span>
+    <span id="stext"></span>
+    <button class="sbtn" onclick="$('fileInput2').click()" style="margin-left:auto;">+ ADD FILES</button>
+    <button class="sbtn red" id="clearCacheBtn">&#8635; CLEAR CACHE</button>
+    <input type="file" id="fileInput2" multiple accept=".xlsx,.xls" style="display:none;">
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="sec-dashboard" class="section active">
+    <div class="mgrid" id="dash-metrics"></div>
+    <div class="two-col">
+      <div class="card">
+        <div class="ctitle">CORRELATION MATRIX — M+1 · LOG RETURNS</div>
+        <div class="cnote">Pearson r computed on daily log returns ln(Pt/Pt-1) for each index at M+1 tenor, across all observation dates. Values range from -1 (perfect inverse) to +1 (perfect co-movement). Blue = positive, red = negative, intensity = strength.</div>
+        <div id="dash-corr" style="overflow-x:auto;"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">DAY-ON-DAY CHANGES — ALL INSTRUMENTS</div>
+        <div id="dash-dod" style="overflow-x:auto;"></div>
+      </div>
+    </div>
+    <div class="mini-grid" id="dash-mini"></div>
+  </div>
+
+  <!-- HISTORICAL -->
+  <div id="sec-historical" class="section">
+    <div class="ctrl">
+      <span class="cl">SERIES 1</span>
+      <select id="h-i1" onchange="updHist()"></select>
+      <select id="h-t1" onchange="updHist()"></select>
+      <span class="d1"></span>
+      <div class="csep"></div>
+      <span class="cl">SERIES 2</span>
+      <select id="h-i2" onchange="updHist()"></select>
+      <select id="h-t2" onchange="updHist()"></select>
+      <span class="d2"></span>
+    </div>
+    <div class="card"><div class="ctitle">DAILY PRICE HISTORY — $/MMBTU</div><div class="cw" style="height:290px;"><canvas id="hChart"></canvas></div></div>
+    <div class="card"><div class="ctitle" id="stats-title">STATISTICS</div><div style="overflow-x:auto;"><table class="stbl" id="statsTable"></table></div></div>
+  </div>
+
+  <!-- CORRELATION -->
+  <div id="sec-correlation" class="section">
+    <div class="cnote" style="margin-bottom:16px;">Rolling Pearson r computed on daily log returns ln(Pt/Pt-1). Measures how synchronised the daily price movements of two instruments are over the selected window. +1 = perfect co-movement, 0 = no relationship, -1 = perfect inverse. Green bars &gt;0.7, blue 0.3–0.7, amber -0.3–0.3, red &lt;-0.3.</div>
+    <div class="ctrl">
+      <span class="cl">INDEX 1</span>
+      <select id="rc-i1" onchange="updRC2()"></select>
+      <select id="rc-t1" onchange="updRC2()"></select>
+      <span class="d1"></span>
+      <div class="csep"></div>
+      <span class="cl">INDEX 2</span>
+      <select id="rc-i2" onchange="updRC2()"></select>
+      <select id="rc-t2" onchange="updRC2()"></select>
+      <span class="d2"></span>
+    </div>
+    <div class="card">
+      <div class="ctitle">10D ROLLING CORRELATION — LOG RETURNS</div>
+      <div class="cw" style="height:190px;"><canvas id="rc10Chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ctitle">20D ROLLING CORRELATION — LOG RETURNS</div>
+      <div class="cw" style="height:190px;"><canvas id="rc20Chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ctitle">30D ROLLING CORRELATION — LOG RETURNS</div>
+      <div class="cw" style="height:190px;"><canvas id="rc30Chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ctitle" id="cmat-title">FULL CORRELATION MATRIX — LOG RETURNS</div>
+      <div class="cnote">Pearson r on log returns across all loaded observation dates for the selected tenor. Computed independently per pair using all common dates where both instruments have valid prices.</div>
+      <div style="overflow-x:auto;"><table class="ctbl" id="corrMat"></table></div>
+    </div>
+  </div>
+
+  <!-- SPREAD -->
+  <div id="sec-spread" class="section">
+    <div class="ctrl">
+      <span class="cl">INDEX 1</span>
+      <select id="sp-i1" onchange="updSpread()"></select>
+      <select id="sp-t1" onchange="updSpread()"></select>
+      <span class="d1"></span>
+      <div class="csep"></div>
+      <span class="cl">INDEX 2</span>
+      <select id="sp-i2" onchange="updSpread()"></select>
+      <select id="sp-t2" onchange="updSpread()"></select>
+      <span class="d2"></span>
+    </div>
+    <div class="card">
+      <div class="ctitle" id="sp-title">SPREAD — INDEX 1 MINUS INDEX 2</div>
+      <div class="cw" style="height:290px;"><canvas id="spChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ctitle">INDIVIDUAL PRICE SERIES</div>
+      <div class="cw" style="height:230px;"><canvas id="spLegsChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- FORWARD CURVE -->
+  <div id="sec-forward" class="section">
+    <div class="ctrl">
+      <span class="cl">INDEX</span><select id="fc-i" onchange="updFC()"></select>
+      <div class="csep"></div>
+      <span class="cl">DATE 1</span><select id="fc-d1" onchange="updFC()"></select><span class="d1"></span>
+      <div class="csep"></div>
+      <span class="cl">DATE 2</span><select id="fc-d2" onchange="updFC()"></select><span class="d2"></span>
+    </div>
+    <div class="card"><div class="ctitle" id="fc-title">FORWARD CURVE</div><div class="cw" style="height:340px;"><canvas id="fcChart"></canvas></div></div>
+    <div id="fc-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px;"></div>
+  </div>
+
+  <!-- SEASONAL -->
+  <div id="sec-seasonal" class="section">
+    <div class="ctrl">
+      <span class="cl">INDEX</span><select id="sea-i" onchange="updSea()"></select>
+      <div class="csep"></div>
+      <span class="cl">VIEW</span>
+      <select id="sea-type" onchange="updSea()">
+        <option value="fwd">Forward curve — latest snapshot by year</option>
+        <option value="hist">Historical M+1 closes</option>
+      </select>
+    </div>
+    <div class="card"><div class="ctitle" id="sea-title">SEASONAL — YEAR OVER YEAR</div><div class="cw" style="height:360px;"><canvas id="seaChart"></canvas></div></div>
+    <div class="card"><div class="ctitle">YEAR-OVER-YEAR SPREAD TABLE</div><div style="overflow-x:auto;"><table class="stbl" id="sea-tbl"></table></div></div>
+  </div>
+</div>
+
+<script>
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const SEA_COL=['#2d7cff','#22c55e','#f59e0b','#ef4444','#a78bfa','#38bdf8'];
+const CACHE_KEY='lngTradeOS_v4';
+
+// Instruments — all in $/MMBtu where applicable
+const INSTS=[
+  {k:'JKM',   label:'JKM',            unit:'$/MMBtu'},
+  {k:'TTF',   label:'TTF',            unit:'$/MMBtu'},
+  {k:'HH',    label:'HH',             unit:'$/MMBtu'},
+  {k:'NBP',   label:'NBP',            unit:'$/MMBtu'},
+  {k:'Brent', label:'Brent',          unit:'$/bbl'},
+  {k:'Dated', label:'Dated Brent',    unit:'$/bbl'},
+  {k:'Slope', label:'Slope',          unit:'%'},
+  {k:'SP_JT', label:'JKM/TTF Spread', unit:'$/MMBtu'},
+  {k:'SP_JH', label:'JKM/HH Spread',  unit:'$/MMBtu'},
+  {k:'SP_TH', label:'TTF/HH Spread',  unit:'$/MMBtu'},
+];
+const INST={};INSTS.forEach(i=>INST[i.k]=i);
+
+// Correlation tab instruments ($/MMBtu + $/bbl outright)
+const CORR_INSTS=['JKM','TTF','HH','NBP','Brent','Dated'];
+
+const COL_NAMES={
+  BRENT:['BRT SW','Brent SW'],TTF:['TTF FT','TTF'],
+  EURUSD:['EUR USD','EURUSD'],GBPUSD:['GBP USD','GBPUSD'],
+  NBP:['NBP FT','NBP'],HH:['HHUB FT','HH'],
+  DATED:['Outright Dated','Dated Brent'],JKM:['JKM'],SLOPE:['Brent JKM','Slope'],
+};
+
+const allData={};
+let sortedDates=[];
+let hChart=null,rc10=null,rc20=null,rc30=null,fcChart=null,seaChart=null;
+const miniCharts={};
+const $=id=>document.getElementById(id);
+
+// ── UTILS ─────────────────────────────────────────────────
+function getPK(v){
+  let d=null;
+  if(v instanceof Date)d=v;
+  else if(typeof v==='number'&&v>40000&&v<70000)d=new Date(Math.round((v-25569)*86400)*1000);
+  else return null;
+  const y=d.getUTCFullYear(),m=d.getUTCMonth();
+  if(y<2020||y>2040)return null;
+  return `${y}-${String(m+1).padStart(2,'0')}`;
+}
+function toNum(v){
+  if(typeof v==='number'&&isFinite(v))return v;
+  if(v instanceof Date){const s=(v.getTime()-new Date(Date.UTC(1899,11,30)).getTime())/86400000;if(s>0.3&&s<20)return+s.toFixed(6);}
+  return null;
+}
+function toStr(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function fmtDate(s){return new Date(s+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
+function pkLabel(pk){const[y,m]=pk.split('-');return MONTHS[+m-1]+'-'+String(y).slice(2);}
+function findCol(hdrs,cands){for(const c of cands){const i=hdrs.findIndex(h=>h&&String(h).trim()===c);if(i>=0)return i;}return -1;}
+function parseDateFromName(name){
+  let m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{4})/);
+  if(m)return new Date(+m[3],+m[2]-1,+m[1]);
+  m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{2})(?!\d)/);
+  if(m){const yy=+m[3];return new Date(yy>=50?1900+yy:2000+yy,+m[2]-1,+m[1]);}
+  return null;
+}
+
+// ── TENOR HELPERS ─────────────────────────────────────────
+// Seasonal: Win = Oct-Mar avg, Sum = Apr-Sep avg
+// Quarterly: Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec
+function getSeasonalPKs(){
+  const pks=allPKs();
+  const years=[...new Set(pks.map(pk=>pk.split('-')[0]))];
+  const out=[];
+  years.forEach(y=>{
+    out.push({v:'win-'+y,l:'Win-'+String(y).slice(2),months:[10,11,12,1,2,3],y:+y,type:'seasonal'});
+    out.push({v:'sum-'+y,l:'Sum-'+String(y).slice(2),months:[4,5,6,7,8,9],y:+y,type:'seasonal'});
+    out.push({v:'q1-'+y,l:'Q1-'+String(y).slice(2),months:[1,2,3],y:+y,type:'quarterly'});
+    out.push({v:'q2-'+y,l:'Q2-'+String(y).slice(2),months:[4,5,6],y:+y,type:'quarterly'});
+    out.push({v:'q3-'+y,l:'Q3-'+String(y).slice(2),months:[7,8,9],y:+y,type:'quarterly'});
+    out.push({v:'q4-'+y,l:'Q4-'+String(y).slice(2),months:[10,11,12],y:+y,type:'quarterly'});
+  });
+  return out;
+}
+
+// Get average value for seasonal/quarterly tenor from a row set
+function getAggValue(inst,tenorObj,rows){
+  const {months,y}=tenorObj;
+  const vals=[];
+  months.forEach(m=>{
+    // For winter, months 1,2,3 belong to year+1
+    const yr=(m<=3&&months.includes(12))?y+1:y;
+    const pk=`${yr}-${String(m).padStart(2,'0')}`;
+    const row=rows.find(r=>r.pk===pk);
+    if(row&&row[inst]!=null)vals.push(row[inst]);
+  });
+  if(!vals.length)return null;
+  return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
+
+// ── EXCEL PARSING ─────────────────────────────────────────
+function parseExcel(buf){
+  const wb=XLSX.read(buf,{type:'array',cellDates:true});
+  let ws=wb.Sheets['EXCEL PASTE'];
+  if(!ws){const m=wb.SheetNames.find(n=>n.replace(/\s/g,'').toUpperCase()==='EXCELPASTE');if(m)ws=wb.Sheets[m];}
+  if(!ws){for(const n of wb.SheetNames){const d=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:null,raw:false});if(d.slice(0,10).some(r=>r&&String(r[0]).trim()==='Period')){ws=wb.Sheets[n];break;}}}
+  if(!ws)return[];
+  const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+  // Find header row: either col[0]==='Period' OR row contains 'BRT SW'
+  // (Jan/Feb files have a space in col[0] instead of 'Period')
+  let hdr=-1;
+  for(let i=0;i<Math.min(data.length,15);i++){
+    const row=data[i];if(!row)continue;
+    const c0=row[0]!=null?String(row[0]).trim():'';
+    const hasBRT=row.some(v=>v!=null&&String(v).trim()==='BRT SW');
+    if(c0==='Period'||hasBRT){hdr=i;break;}
+  }
+  if(hdr===-1)return[];
+  const hdrs=data[hdr].map(h=>h?String(h).trim():'');
+  const C={};for(const[k,c]of Object.entries(COL_NAMES))C[k]=findCol(hdrs,c);
+  const rows=[];let nulls=0;
+  for(let i=hdr+6;i<data.length;i++){
+    const r=data[i];
+    if(!r||r[0]==null){if(++nulls>8)break;continue;}
+    nulls=0;
+    const pk=getPK(r[0]);if(!pk)continue;
+    const eu=(C.EURUSD>=0?toNum(r[C.EURUSD]):null)||1.15;
+    const gb=(C.GBPUSD>=0?toNum(r[C.GBPUSD]):null)||1.28;
+    const g=k=>C[k]>=0?toNum(r[C[k]]):null;
+    const ttfR=g('TTF'),nbpR=g('NBP'),jkm=g('JKM'),hh=g('HH'),brent=g('BRENT'),dated=g('DATED'),slope=g('SLOPE');
+    const ttf=ttfR!=null?+(ttfR*0.293071*eu).toFixed(4):null;
+    const nbp=nbpR!=null?+(nbpR/10*gb).toFixed(4):null;
+    rows.push({pk,JKM:jkm,TTF:ttf,HH:hh,NBP:nbp,Brent:brent,Dated:dated,Slope:slope,
+      SP_JT:(jkm!=null&&ttf!=null)?+(jkm-ttf).toFixed(4):null,
+      SP_JH:(jkm!=null&&hh!=null)?+(jkm-hh).toFixed(4):null,
+      SP_TH:(ttf!=null&&hh!=null)?+(ttf-hh).toFixed(4):null});
+  }
+  return rows;
+}
+
+// ── CACHE ─────────────────────────────────────────────────
+function saveCache(){
+  try{
+    const p={};
+    for(const[k,v]of Object.entries(allData))p[k]={date:v.date.toISOString(),rows:v.rows};
+    localStorage.setItem(CACHE_KEY,JSON.stringify(p));
+  }catch(e){console.warn('Cache save failed (storage full?):',e.message);}
+}
+function loadCache(){
+  try{
+    const raw=localStorage.getItem(CACHE_KEY);
+    if(!raw)return false;
+    const p=JSON.parse(raw);
+    for(const[k,v]of Object.entries(p))allData[k]={date:new Date(v.date),rows:v.rows};
+    sortedDates=Object.keys(allData).sort();
+    return sortedDates.length>0;
+  }catch(e){localStorage.removeItem(CACHE_KEY);return false;}
+}
+function clearCache(){
+  if(confirm('Clear cache and reload? You will need to drop your files again.')){
+    localStorage.removeItem(CACHE_KEY);
+    location.reload();
+  }
+}
+
+// ── DROP ZONE ─────────────────────────────────────────────
+function setupDrop(){
+  const dz=$('dz'),fi=$('fileInput'),fi2=$('fileInput2');
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFiles([...e.dataTransfer.files],false);});
+  dz.addEventListener('click',e=>{if(!e.target.classList.contains('dz-btn'))fi.click();});
+  fi.addEventListener('change',()=>{if(fi.files.length)handleFiles([...fi.files],false);});
+  fi2.addEventListener('change',()=>{if(fi2.files.length)handleFiles([...fi2.files],true);});
+  $('clearCacheBtn').addEventListener('click',clearCache);
+}
+
+function plog(msg,warn=false){
+  const el=$('parselog');
+  if(!el)return;
+  el.innerHTML+=`<div style="color:${warn?'#ef4444':'#3d5070'}">${msg}</div>`;
+  el.scrollTop=el.scrollHeight;
+}
+
+async function handleFiles(files,addMode){
+  const xlsxFiles=[...files].filter(f=>f.name.match(/\.xlsx?$/i));
+  if(!xlsxFiles.length){alert('No Excel (.xlsx) files found in your selection.');return;}
+
+  if(!addMode){
+    Object.keys(allData).forEach(k=>delete allData[k]);
+    $('progwrap').style.display='block';
+    $('progfill').style.width='0%';
+    $('parselog').innerHTML='';
+    plog(`Found ${xlsxFiles.length} Excel files — starting parse...`);
+  }
+
+  let done=0,added=0,skipped=0,failed=0;
+  for(const file of xlsxFiles){
+    // Check file is actually readable (not an online-only Google Drive placeholder)
+    if(file.size===0){
+      plog(`SKIP (size=0, not downloaded): ${file.name}`,true);
+      done++;skipped++;continue;
+    }
+    if(file.size<5000){
+      plog(`SKIP (too small ${file.size}B, may be placeholder): ${file.name}`,true);
+      done++;skipped++;continue;
+    }
+
+    const date=parseDateFromName(file.name);
+    if(!date){
+      plog(`SKIP (no date in name): ${file.name}`,true);
+      done++;skipped++;continue;
+    }
+    const key=toStr(date);
+    if(addMode&&allData[key]){done++;continue;}
+
+    try{
+      const buf=await file.arrayBuffer();
+      if(buf.byteLength<5000){
+        plog(`SKIP (buffer empty, file not downloaded): ${file.name}`,true);
+        done++;failed++;continue;
+      }
+      // Check Excel magic bytes PK (zip format)
+      const h=new Uint8Array(buf.slice(0,4));
+      if(!(h[0]===0x50&&h[1]===0x4B)){
+        plog(`SKIP (not a valid Excel file): ${file.name}`,true);
+        done++;failed++;continue;
+      }
+      const rows=parseExcel(buf);
+      if(rows.length>0){
+        allData[key]={date,rows};
+        added++;
+        plog(`OK: ${file.name} → ${rows.length} delivery months`);
+      }else{
+        plog(`SKIP (0 rows parsed): ${file.name}`,true);
+        skipped++;
+      }
+    }catch(e){
+      plog(`ERR: ${file.name} — ${e.message}`,true);
+      failed++;
+    }
+    done++;
+    if(!addMode){
+      $('progfill').style.width=Math.round(done/xlsxFiles.length*100)+'%';
+      $('progtxt').textContent=`${done}/${xlsxFiles.length} files — ${added} loaded · ${skipped+failed} skipped/failed`;
+    }
+  }
+
+  sortedDates=Object.keys(allData).sort();
+  saveCache();
+
+  if(!addMode){
+    const summary=`Done: ${added} dates loaded, ${skipped} skipped, ${failed} failed out of ${xlsxFiles.length} files.`;
+    plog(summary);
+    $('progtxt').textContent=summary;
+    if(!sortedDates.length){
+      plog('No valid data found. If you see many "size=0" errors, your Google Drive files are not downloaded locally. Right-click the LNG Curves folder in Finder → Make Available Offline.',true);
+      return;
+    }
+    setTimeout(()=>{$('dropscreen').classList.add('gone');initUI();},1500);
+  }else{
+    refreshAfterAdd();
+  }
+}
+
+function refreshAfterAdd(){
+  sortedDates=Object.keys(allData).sort();
+  updateStatus();
+  buildTenorSel($('h-t1'));buildTenorSel($('h-t2'));
+  buildTenorSel($('rc-t1'),true);buildTenorSel($('rc-t2'),true);
+  buildDateSel($('fc-d1'));buildDateSel($('fc-d2'),true);
+  // Spread selectors
+  buildInstSel($('sp-i1'));$('sp-i1').value='JKM';
+  buildInstSel($('sp-i2'));$('sp-i2').value='TTF';
+  buildTenorSel($('sp-t1'));
+  buildTenorSel($('sp-t2'));
+  buildDashboard();updHist();updRC2();updSpread();updFC();updSea();
+}
+
+// ── DATA HELPERS ─────────────────────────────────────────
+function rollingPK(d,t){const r=new Date(d.getFullYear(),d.getMonth()+parseInt(t),1);return `${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}`;}
+function allPKs(){const s=new Set();for(const ds of sortedDates)allData[ds].rows.forEach(r=>s.add(r.pk));return[...s].sort();}
+
+function getSeriesRolling(inst,tenor){
+  const out=[];
+  for(const ds of sortedDates){const{date,rows}=allData[ds];const pk=rollingPK(date,tenor);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}
+  return out;
+}
+function getSeriesFixed(inst,pk){
+  const out=[];
+  for(const ds of sortedDates){const{date,rows}=allData[ds];const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}
+  return out;
+}
+function getSeriesSeasonal(inst,tenorVal){
+  const seasonals=getSeasonalPKs();
+  const tObj=seasonals.find(s=>s.v===tenorVal);
+  if(!tObj)return[];
+  const out=[];
+  for(const ds of sortedDates){
+    const{date,rows}=allData[ds];
+    const val=getAggValue(inst,tObj,rows);
+    if(val!=null)out.push({date,value:val});
+  }
+  return out;
+}
+function getSeries(inst,tv){
+  if(tv.startsWith('r'))return getSeriesRolling(inst,parseInt(tv.slice(1)));
+  if(tv.startsWith('win-')||tv.startsWith('sum-')||tv.startsWith('q'))return getSeriesSeasonal(inst,tv);
+  return getSeriesFixed(inst,tv);
+}
+function tvLabel(tv){
+  if(tv.startsWith('r'))return 'M+'+tv.slice(1);
+  const seasonals=getSeasonalPKs();
+  const s=seasonals.find(x=>x.v===tv);
+  if(s)return s.l;
+  return pkLabel(tv);
+}
+function align2(s1,s2){
+  const map=new Map(s2.map(d=>[toStr(d.date),d.value]));
+  const v1=[],v2=[],dates=[];
+  for(const d of s1){const k=toStr(d.date);if(map.has(k)){v1.push(d.value);v2.push(map.get(k));dates.push(d.date);}}
+  return{v1,v2,dates};
+}
+function logRet(vals){const out=[];for(let i=1;i<vals.length;i++)out.push(vals[i]>0&&vals[i-1]>0?Math.log(vals[i]/vals[i-1]):null);return out;}
+function pearson(a,b){
+  const p=[];for(let i=0;i<Math.min(a.length,b.length);i++)if(a[i]!=null&&b[i]!=null&&isFinite(a[i])&&isFinite(b[i]))p.push([a[i],b[i]]);
+  const n=p.length;if(n<3)return NaN;
+  const ma=p.reduce((s,x)=>s+x[0],0)/n,mb=p.reduce((s,x)=>s+x[1],0)/n;
+  let num=0,da=0,db=0;for(const[x,y]of p){num+=(x-ma)*(y-mb);da+=(x-ma)**2;db+=(y-mb)**2;}
+  const den=Math.sqrt(da*db);return den===0?NaN:+(num/den).toFixed(3);
+}
+function rollingCorrArr(s1,s2,win){
+  const{v1,v2,dates}=align2(s1,s2);
+  const l1=logRet(v1),l2=logRet(v2);
+  const out=[];
+  for(let i=win-1;i<l1.length;i++){const r=pearson(l1.slice(i-win+1,i+1),l2.slice(i-win+1,i+1));if(!isNaN(r))out.push({date:dates[i+1],value:r});}
+  return out;
+}
+
+// ── CHART DEFAULTS ─────────────────────────────────────────
+const CD={responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+  plugins:{legend:{labels:{color:'#5a6882',font:{size:10,family:'Courier New'},boxWidth:12,padding:12}},
+    tooltip:{backgroundColor:'#0c1120',borderColor:'#1e2d45',borderWidth:1,titleColor:'#c8cfe0',bodyColor:'#8a9bb5',padding:10,titleFont:{family:'Courier New',size:11},bodyFont:{family:'Courier New',size:10}}},
+  scales:{x:{ticks:{color:'#3d5070',font:{size:9,family:'Courier New'},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{color:'#0f1824'}},
+    y:{ticks:{color:'#3d5070',font:{size:9,family:'Courier New'}},grid:{color:'#0f1824'}}}};
+
+function makeRCChart(canvasId,win,data,label){
+  const c=document.getElementById(canvasId);if(!c)return null;
+  const lbls=data.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+  const vals=data.map(d=>d.value);
+  const cols=vals.map(v=>v>=0.7?'#22c55e':v>=0.3?'#2d7cff':v>=-0.3?'#f59e0b':'#ef4444');
+  const latest=vals.length?vals[vals.length-1]:null;
+  return new Chart(c,{type:'bar',
+    data:{labels:lbls,datasets:[{label:`${win}D r — ${label}${latest!=null?' | Latest: '+latest.toFixed(3):''}`,data:vals,backgroundColor:cols,borderWidth:0}]},
+    options:{...CD,plugins:{...CD.plugins,legend:{labels:{color:'#5a6882',font:{size:10,family:'Courier New'},boxWidth:0,padding:0}}},
+      scales:{x:CD.scales.x,y:{min:-1,max:1,title:{display:true,text:'Pearson r',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'Courier New'}},grid:{color:'#0f1824'}}}}});
+}
+
+// ── SELECT BUILDERS ───────────────────────────────────────
+function buildInstSel(el,keys=null,withNone=false){
+  el.innerHTML=withNone?'<option value="none">— None —</option>':'';
+  const list=keys?INSTS.filter(i=>keys.includes(i.k)):INSTS;
+  list.forEach(i=>el.innerHTML+=`<option value="${i.k}">${i.label}</option>`);
+}
+function buildCorrInstSel(el){
+  el.innerHTML='';
+  CORR_INSTS.forEach(k=>el.innerHTML+=`<option value="${k}">${INST[k].label}</option>`);
+}
+function buildTenorSel(el,withSeasonal=false){
+  el.innerHTML='';
+  [{v:'r1',l:'M+1'},{v:'r2',l:'M+2'},{v:'r3',l:'M+3'},{v:'r6',l:'M+6'}].forEach(o=>el.innerHTML+=`<option value="${o.v}">${o.l}</option>`);
+  el.innerHTML+='<option disabled>── Monthly ──</option>';
+  allPKs().forEach(pk=>el.innerHTML+=`<option value="${pk}">${pkLabel(pk)}</option>`);
+  if(withSeasonal){
+    el.innerHTML+='<option disabled>── Seasonal ──</option>';
+    const seasonals=getSeasonalPKs();
+    const wins=seasonals.filter(s=>s.type==='seasonal');
+    wins.forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);
+    el.innerHTML+='<option disabled>── Quarterly ──</option>';
+    const qtrs=seasonals.filter(s=>s.type==='quarterly');
+    qtrs.forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);
+  }
+}
+function buildDateSel(el,withNone=false){
+  el.innerHTML=withNone?'<option value="none">— None —</option>':'';
+  for(const ds of[...sortedDates].reverse())el.innerHTML+=`<option value="${ds}">${fmtDate(ds)}</option>`;
+}
+function updateStatus(){
+  $('sbar').style.display='flex';
+  $('stext').textContent=`${sortedDates.length} DATES — ${fmtDate(sortedDates[0])} → ${fmtDate(sortedDates[sortedDates.length-1])}`;
+}
+
+// ── INIT ──────────────────────────────────────────────────
+function initUI(){
+  updateStatus();
+  buildInstSel($('h-i1'));buildInstSel($('h-i2'),null,true);$('h-i2').value='TTF';
+  buildCorrInstSel($('rc-i1'));buildCorrInstSel($('rc-i2'));$('rc-i2').value='TTF';
+  buildInstSel($('fc-i'));buildInstSel($('sea-i'));
+  buildTenorSel($('h-t1'));buildTenorSel($('h-t2'));
+  buildTenorSel($('rc-t1'),true);buildTenorSel($('rc-t2'),true);
+  buildDateSel($('fc-d1'));buildDateSel($('fc-d2'),true);
+  // Spread selectors
+  buildInstSel($('sp-i1'));$('sp-i1').value='JKM';
+  buildInstSel($('sp-i2'));$('sp-i2').value='TTF';
+  buildTenorSel($('sp-t1'));
+  buildTenorSel($('sp-t2'));
+  buildDashboard();updHist();updRC2();updSpread();updFC();updSea();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────
+function buildDashboard(){
+  if(sortedDates.length<2)return;
+  const ld=sortedDates[sortedDates.length-1],pd=sortedDates[sortedDates.length-2];
+  const lR=allData[ld].rows,pR=allData[pd].rows,m1pk=rollingPK(allData[ld].date,1);
+
+  // Metric cards
+  const mg=$('dash-metrics');mg.innerHTML='';
+  INSTS.forEach(inst=>{
+    const lv=lR.find(r=>r.pk===m1pk)?.[inst.k]??null,pv=pR.find(r=>r.pk===m1pk)?.[inst.k]??null;
+    const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null,pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null;
+    const cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼',dp=inst.unit==='$/bbl'?2:3;
+    mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkLabel(m1pk)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;
+  });
+
+  // DoD table — ALL instruments across forward curve
+  const keys=['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH'];
+  const pks=lR.map(r=>r.pk).slice(0,12);
+  let dod=`<table class="stbl" style="font-size:10px;"><thead><tr><th>Contract</th>`;
+  keys.forEach(k=>dod+=`<th style="white-space:nowrap;">${INST[k].label}</th>`);
+  dod+=`</tr></thead><tbody>`;
+  for(const pk of pks){
+    const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);
+    dod+=`<tr><td>${pkLabel(pk)}</td>`;
+    keys.forEach(k=>{
+      const lv=lr?.[k]??null,pv=pr?.[k]??null;
+      const d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null;
+      const dp=(k==='Brent'||k==='Dated')?2:3;
+      dod+=`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;
+    });
+    dod+=`</tr>`;
+  }
+  $('dash-dod').innerHTML=dod+`</tbody></table>`;
+
+  // Correlation matrix
+  const ck=CORR_INSTS,cs={};ck.forEach(k=>cs[k]=getSeriesFixed(k,m1pk));
+  let cm=`<table class="ctbl"><thead><tr><th></th>${ck.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
+  ck.forEach(a=>{
+    cm+=`<tr><th style="text-align:left;">${INST[a].label}</th>`;
+    ck.forEach(b=>{
+      if(a===b){cm+=`<td style="background:#151e30;color:#5a6882;">1.00</td>`;return;}
+      const{v1,v2}=align2(cs[a],cs[b]);const r=pearson(logRet(v1),logRet(v2));
+      if(isNaN(r)){cm+=`<td style="color:#1e2d45;">—</td>`;return;}
+      const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;
+      cm+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'};">${r.toFixed(2)}</td>`;
+    });
+    cm+=`</tr>`;
+  });
+  $('dash-corr').innerHTML=cm+`</tbody></table>`;
+
+  // Mini forward curves
+  const mini=$('dash-mini');mini.innerHTML='';
+  ['JKM','TTF','HH','NBP'].forEach((k,idx)=>{
+    const vals=lR.map(r=>r[k]).filter(v=>v!=null),lbls=lR.filter(r=>r[k]!=null).map(r=>pkLabel(r.pk));
+    const col=['#2d7cff','#22c55e','#f59e0b','#ef4444'][idx];
+    const div=document.createElement('div');div.className='mini-card';
+    div.innerHTML=`<div class="mini-title">${INST[k].label} — Forward Curve <span style="float:right;color:${col};">${vals[0]?vals[0].toFixed(3):''} ${INST[k].unit}</span></div><div style="position:relative;height:80px;"><canvas id="mini-${k}"></canvas></div>`;
+    mini.appendChild(div);
+    setTimeout(()=>{const ctx=document.getElementById('mini-'+k);if(!ctx)return;if(miniCharts[k])miniCharts[k].destroy();miniCharts[k]=new Chart(ctx,{type:'line',data:{labels:lbls,datasets:[{data:vals,borderColor:col,borderWidth:1.5,fill:true,backgroundColor:col+'18',pointRadius:0,tension:.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}});},0);
+  });
+}
+
+// ── HISTORICAL ─────────────────────────────────────────────
+function updHist(){
+  const i1=$('h-i1').value,t1=$('h-t1').value,i2=$('h-i2').value,t2=$('h-t2').value,has2=i2!=='none';
+  const s1=getSeries(i1,t1),s2=has2?getSeries(i2,t2):null;
+  if(!s1.length)return;
+  const u1=INST[i1].unit,u2=has2?INST[i2].unit:null,dual=has2&&u1!==u2;
+  const lbls=s1.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+  const ds=[{label:`${INST[i1].label} ${tvLabel(t1)}`,data:s1.map(d=>+d.value.toFixed(4)),borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.07)',borderWidth:1.8,pointRadius:2.5,pointHoverRadius:5,tension:.3,fill:false,yAxisID:'y'}];
+  if(has2&&s2){
+    const m2=new Map(s2.map(d=>[toStr(d.date),d.value]));
+    ds.push({label:`${INST[i2].label} ${tvLabel(t2)}`,data:s1.map(d=>{const v=m2.get(toStr(d.date));return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.07)',borderWidth:1.8,pointRadius:2.5,pointHoverRadius:5,tension:.3,fill:false,yAxisID:dual?'y1':'y'});
+  }
+  const scales={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'Courier New'}},grid:{color:'#0f1824'}}};
+  if(dual)scales.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'Courier New'}},grid:{display:false}};
+  if(hChart)hChart.destroy();
+  hChart=new Chart($('hChart').getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales}});
+  buildStats(t1);
+}
+function buildStats(tv){
+  $('stats-title').textContent='STATISTICS — '+tvLabel(tv);
+  let html=`<thead><tr><th>Instrument</th><th>Current</th><th>Mean</th><th>Std Dev</th><th>Min</th><th>Max</th><th>N</th><th>Unit</th></tr></thead><tbody>`;
+  INSTS.forEach(inst=>{
+    const s=getSeries(inst.k,tv);
+    if(!s.length){html+=`<tr><td>${inst.label}</td><td colspan="7" style="color:#3d5070;">No data</td></tr>`;return;}
+    const vals=s.map(d=>d.value),cur=vals[vals.length-1],mn=vals.reduce((a,b)=>a+b,0)/vals.length;
+    const std=Math.sqrt(vals.reduce((s,v)=>s+(v-mn)**2,0)/vals.length),dp=inst.unit==='$/bbl'?2:3;
+    html+=`<tr><td>${inst.label}</td><td style="color:#c8cfe0;">${cur.toFixed(dp)}</td><td>${mn.toFixed(dp)}</td><td>${std.toFixed(dp)}</td><td>${Math.min(...vals).toFixed(dp)}</td><td>${Math.max(...vals).toFixed(dp)}</td><td style="color:#3d5070;">${vals.length}</td><td style="color:#3d5070;font-size:9px;">${inst.unit}</td></tr>`;
+  });
+  $('statsTable').innerHTML=html+'</tbody>';
+}
+
+// ── CORRELATION TAB ────────────────────────────────────────
+function updRC2(){
+  const i1=$('rc-i1').value,t1=$('rc-t1').value,i2=$('rc-i2').value,t2=$('rc-t2').value;
+  const s1=getSeries(i1,t1),s2=getSeries(i2,t2);
+  const label=`${INST[i1].label} ${tvLabel(t1)} vs ${INST[i2].label} ${tvLabel(t2)}`;
+  if(rc10)rc10.destroy();if(rc20)rc20.destroy();if(rc30)rc30.destroy();
+  rc10=makeRCChart('rc10Chart',10,rollingCorrArr(s1,s2,10),label);
+  rc20=makeRCChart('rc20Chart',20,rollingCorrArr(s1,s2,20),label);
+  rc30=makeRCChart('rc30Chart',30,rollingCorrArr(s1,s2,30),label);
+  // Full matrix
+  buildCorrMat(t1);
+}
+function buildCorrMat(tv){
+  const keys=CORR_INSTS;
+  $('cmat-title').textContent='FULL CORRELATION MATRIX — LOG RETURNS · '+tvLabel(tv);
+  const series={};keys.forEach(k=>series[k]=getSeries(k,tv));
+  let html=`<thead><tr><th></th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
+  keys.forEach(a=>{
+    html+=`<tr><th style="text-align:left;font-size:9px;">${INST[a].label}</th>`;
+    keys.forEach(b=>{
+      if(a===b){html+=`<td style="background:#151e30;color:#5a6882;">1.00</td>`;return;}
+      const{v1,v2}=align2(series[a],series[b]);const r=pearson(logRet(v1),logRet(v2));
+      if(isNaN(r)){html+=`<td style="color:#1e2d45;">—</td>`;return;}
+      const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;
+      html+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'};">${r.toFixed(2)}</td>`;
+    });
+    html+=`</tr>`;
+  });
+  $('corrMat').innerHTML=html+'</tbody>';
+}
+
+// ── FORWARD CURVE ──────────────────────────────────────────
+function updFC(){
+  if(!sortedDates.length)return;
+  const inst=$('fc-i').value,d1=$('fc-d1').value,d2=$('fc-d2').value;
+  if(!d1||!allData[d1])return;
+  const unit=INST[inst].unit,rows1=allData[d1].rows;
+  const lbls=rows1.map(r=>pkLabel(r.pk)),v1=rows1.map(r=>r[inst]!=null?+r[inst].toFixed(4):null);
+  $('fc-title').textContent=INST[inst].label+' FORWARD CURVE — '+fmtDate(d1);
+  const ds=[{label:fmtDate(d1),data:v1,borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.08)',borderWidth:2,pointRadius:3.5,pointHoverRadius:6,tension:.3,fill:false}];
+  if(d2!=='none'&&allData[d2]){
+    const m2=new Map(allData[d2].rows.map(r=>[r.pk,r[inst]]));
+    ds.push({label:fmtDate(d2),data:rows1.map(r=>{const v=m2.get(r.pk);return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.08)',borderWidth:2,borderDash:[6,4],pointRadius:3,tension:.3,fill:false});
+  }
+  if(fcChart)fcChart.destroy();
+  fcChart=new Chart($('fcChart').getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>`  ${c.dataset.label}: ${c.parsed.y?.toFixed(3)??'N/A'} ${unit}`}}},scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:24}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'Courier New'}},grid:{color:'#0f1824'}}}}});
+  const valid=v1.filter(v=>v!=null);
+  if(valid.length){
+    const fr=valid[0],bk=valid[valid.length-1],sp=bk-fr,mn=Math.min(...valid),mx=Math.max(...valid),avg=valid.reduce((a,b)=>a+b,0)/valid.length;
+    const shape=Math.abs(sp)<0.05?'FLAT':sp>0?'CONTANGO':'BACKWARDATION',sc=shape==='CONTANGO'?'#22c55e':shape==='BACKWARDATION'?'#ef4444':'#5a6882';
+    $('fc-stats').innerHTML=`<div class="mc"><div class="mc-name">FRONT</div><div class="mc-val" style="font-size:16px;">${fr.toFixed(3)}</div></div><div class="mc"><div class="mc-name">BACK</div><div class="mc-val" style="font-size:16px;">${bk.toFixed(3)}</div></div><div class="mc"><div class="mc-name">F-B SPREAD</div><div class="mc-val ${sp>=0?'pos':'neg'}" style="font-size:16px;">${sp>=0?'+':''}${sp.toFixed(3)}</div></div><div class="mc"><div class="mc-name">SHAPE</div><div class="mc-val" style="color:${sc};font-size:13px;">${shape}</div></div><div class="mc"><div class="mc-name">MIN</div><div class="mc-val" style="font-size:16px;">${mn.toFixed(3)}</div></div><div class="mc"><div class="mc-name">MAX</div><div class="mc-val" style="font-size:16px;">${mx.toFixed(3)}</div></div><div class="mc"><div class="mc-name">AVERAGE</div><div class="mc-val" style="font-size:16px;">${avg.toFixed(3)}</div></div>`;
+  }
+}
+
+// ── SEASONAL ───────────────────────────────────────────────
+function updSea(){
+  if(!sortedDates.length)return;
+  const inst=$('sea-i').value,type=$('sea-type').value,unit=INST[inst].unit;
+  $('sea-title').textContent=INST[inst].label+' — SEASONAL · YEAR OVER YEAR ('+unit+')';
+  const yd={};
+  if(type==='fwd'){
+    const latest=sortedDates[sortedDates.length-1];
+    allData[latest].rows.forEach(r=>{const[y,m]=r.pk.split('-');if(!yd[+y])yd[+y]={};if(r[inst]!=null)yd[+y][+m-1]=r[inst];});
+  }else{
+    sortedDates.forEach(ds=>{
+      const{date,rows}=allData[ds],yr=date.getFullYear(),mo=date.getMonth(),pk=rollingPK(date,1);
+      const row=rows.find(r=>r.pk===pk);if(!row||row[inst]==null)return;
+      if(!yd[yr])yd[yr]={};if(yd[yr][mo]===undefined)yd[yr][mo]=row[inst];
+    });
+  }
+  const years=Object.keys(yd).map(Number).sort();
+  const dsets=years.map((yr,idx)=>({label:String(yr),data:MONTHS.map((_,mo)=>yd[yr][mo]!==undefined?+yd[yr][mo].toFixed(4):null),borderColor:SEA_COL[idx%SEA_COL.length],backgroundColor:'transparent',borderWidth:2,pointRadius:4,pointHoverRadius:6,tension:.3,spanGaps:false}));
+  if(seaChart)seaChart.destroy();
+  seaChart=new Chart($('seaChart').getContext('2d'),{type:'line',data:{labels:MONTHS,datasets:dsets},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>`  ${c.dataset.label}: ${c.parsed.y?.toFixed(3)??'N/A'} ${unit}`}}},scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'Courier New'}},grid:{color:'#0f1824'}}}}});
+  let tbl=`<thead><tr><th>Month</th>${years.map(y=>`<th>${y}</th>`).join('')}${years.slice(0,-1).map((y,i)=>`<th>${y}→${years[i+1]}</th>`).join('')}</tr></thead><tbody>`;
+  MONTHS.forEach((m,mo)=>{
+    tbl+=`<tr><td>${m}</td>${years.map(yr=>`<td>${yd[yr][mo]!==undefined?yd[yr][mo].toFixed(3):'—'}</td>`).join('')}`;
+    for(let i=0;i<years.length-1;i++){const a=yd[years[i]][mo],b=yd[years[i+1]][mo];tbl+=a!==undefined&&b!==undefined?`<td class="${b-a>=0?'pos':'neg'}">${b-a>=0?'+':''}${(b-a).toFixed(3)}</td>`:`<td style="color:#3d5070;">—</td>`;}
+    tbl+=`</tr>`;
+  });
+  $('sea-tbl').innerHTML=tbl+'</tbody>';
+}
+
+// ── SECTION SWITCH ──────────────────────────────────────────
+function showSec(id,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nl').forEach(b=>b.classList.remove('active'));
+  $('sec-'+id).classList.add('active');if(btn)btn.classList.add('active');
+  setTimeout(()=>[hChart,rc10,rc20,rc30,spChart,spLegsChart,fcChart,seaChart].forEach(c=>c&&c.resize()),60);
+}
+
+// ── BOOT ───────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  setupDrop();
+  $('clearCacheBtn').addEventListener('click',clearCache);
+  $('fileInput2').addEventListener('change',()=>{if($('fileInput2').files.length)handleFiles([...$('fileInput2').files],true);});
+  if(loadCache()){
+    $('dropscreen').classList.add('gone');
+    initUI();
+    $('stext').textContent=sortedDates.length+' DATES — '+fmtDate(sortedDates[0])+' → '+fmtDate(sortedDates[sortedDates.length-1])+' · from cache';
+  }
+});
+</script>
+</body>
+</html>
