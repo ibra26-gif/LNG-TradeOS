@@ -512,14 +512,14 @@ async function handleFiles(files,addMode){
 function refreshAfterAdd(){
   sortedDates=Object.keys(allData).sort();
   updateStatus();
-  buildTenorSel($('h-t1'));buildTenorSel($('h-t2'));
+  buildTenorSel($('h-t1'),true);buildTenorSel($('h-t2'),true);
   buildTenorSel($('rc-t1'),true);buildTenorSel($('rc-t2'),true);
   buildDateSel($('fc-d1'));buildDateSel($('fc-d2'),true);
   // Spread selectors
   buildInstSel($('sp-i1'));$('sp-i1').value='JKM';
   buildInstSel($('sp-i2'));$('sp-i2').value='TTF';
-  buildTenorSel($('sp-t1'));
-  buildTenorSel($('sp-t2'));
+  buildTenorSel($('sp-t1'),true);
+  buildTenorSel($('sp-t2'),true);
   buildDashboard();updHist();updRC2();updSpread();updFC();updSea();
 }
 
@@ -642,14 +642,14 @@ function initUI(){
   buildInstSel($('h-i1'));buildInstSel($('h-i2'),null,true);$('h-i2').value='TTF';
   buildCorrInstSel($('rc-i1'));buildCorrInstSel($('rc-i2'));$('rc-i2').value='TTF';
   buildInstSel($('fc-i'));buildInstSel($('sea-i'));
-  buildTenorSel($('h-t1'));buildTenorSel($('h-t2'));
+  buildTenorSel($('h-t1'),true);buildTenorSel($('h-t2'),true);
   buildTenorSel($('rc-t1'),true);buildTenorSel($('rc-t2'),true);
   buildDateSel($('fc-d1'));buildDateSel($('fc-d2'),true);
   // Spread selectors
   buildInstSel($('sp-i1'));$('sp-i1').value='JKM';
   buildInstSel($('sp-i2'));$('sp-i2').value='TTF';
-  buildTenorSel($('sp-t1'));
-  buildTenorSel($('sp-t2'));
+  buildTenorSel($('sp-t1'),true);
+  buildTenorSel($('sp-t2'),true);
   buildDashboard();updHist();updRC2();updSpread();updFC();updSea();
 }
 
