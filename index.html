@@ -71,22 +71,39 @@ select:focus,select:hover{border-color:#2d7cff;}
 .mini-card{background:#0a0f1e;border:1px solid #151e30;border-radius:3px;padding:12px 14px;}
 .mini-title{font-size:9px;letter-spacing:.1em;color:#3d5070;margin-bottom:8px;}
 @media(max-width:900px){.two-col{grid-template-columns:1fr;}}
+.spinner{width:34px;height:34px;border:2px solid #151e30;border-top-color:#2d7cff;border-radius:50%;animation:spin .9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.prog-wrap{width:500px;max-width:90vw;}
 </style>
 </head>
 <body>
 
 <div id="dropscreen">
-  <div class="dz" id="dz">
-    <div class="dz-icon">&#8659;</div>
-    <div class="dz-title">DROP YOUR EOD CURVE FILES HERE</div>
-    <div class="dz-sub">Drag your entire <strong style="color:#8a9bb5;">LNG Curves</strong> folder from Finder<br>or click to select files. Works in Safari &amp; Chrome.</div>
-    <button class="dz-btn" onclick="event.stopPropagation();$('fileInput').click()">SELECT FILES</button>
-    <input type="file" id="fileInput" multiple accept=".xlsx,.xls">
+  <!-- AUTO LOADING STATE -->
+  <div id="dz-auto" style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+    <div class="spinner" id="drive-spinner"></div>
+    <div class="dz-title" id="dz-auto-title">CONNECTING TO GOOGLE DRIVE</div>
+    <div class="prog-wrap">
+      <div class="prog-bar"><div class="prog-fill" id="progfill"></div></div>
+      <div class="prog-txt" id="progtxt">Initialising...</div>
+    </div>
+    <div id="parselog" style="max-height:160px;overflow-y:auto;background:#0a0f1e;border:1px solid #151e30;padding:8px 12px;font-size:9px;color:#3d5070;line-height:1.8;text-align:left;width:500px;max-width:90vw;display:none;"></div>
+    <button class="dz-btn" id="fallback-btn" style="display:none;" onclick="showManualDrop()">LOAD FILES MANUALLY INSTEAD</button>
   </div>
-  <div class="prog-wrap" id="progwrap" style="display:none;">
-    <div class="prog-bar"><div class="prog-fill" id="progfill"></div></div>
-    <div class="prog-txt" id="progtxt">Parsing files...</div>
-    <div id="parselog" style="margin-top:10px;max-height:160px;overflow-y:auto;background:#0a0f1e;border:1px solid #151e30;padding:8px 12px;font-size:9px;color:#3d5070;line-height:1.8;text-align:left;"></div>
+
+  <!-- MANUAL DROP FALLBACK -->
+  <div id="dz-manual" style="display:none;flex-direction:column;align-items:center;gap:16px;">
+    <div class="dz" id="dz">
+      <div class="dz-icon">&#8659;</div>
+      <div class="dz-title">DROP YOUR EOD CURVE FILES HERE</div>
+      <div class="dz-sub">Drag your entire <strong style="color:#8a9bb5;">LNG Curves</strong> folder<br>or click to select files.</div>
+      <button class="dz-btn" onclick="event.stopPropagation();$('fileInput').click()">SELECT FILES</button>
+      <input type="file" id="fileInput" multiple accept=".xlsx,.xls">
+    </div>
+    <div class="prog-wrap" id="progwrap" style="display:none;">
+      <div class="prog-bar"><div class="prog-fill" id="progfill2"></div></div>
+      <div class="prog-txt" id="progtxt2">Parsing files...</div>
+    </div>
   </div>
 </div>
 
@@ -417,9 +434,9 @@ async function handleFiles(files,addMode){
 
   if(!addMode){
     Object.keys(allData).forEach(k=>delete allData[k]);
-    $('progwrap').style.display='block';
-    $('progfill').style.width='0%';
-    $('parselog').innerHTML='';
+    const pw=$('progwrap');if(pw)pw.style.display='block';
+    const pf=$('progfill2')||$('progfill');if(pf)pf.style.width='0%';
+    const pl=$('parselog');if(pl){pl.innerHTML='';pl.style.display='block';}
     plog(`Found ${xlsxFiles.length} Excel files — starting parse...`);
   }
 
@@ -820,16 +837,111 @@ function showSec(id,btn){
   setTimeout(()=>[hChart,rc10,rc20,rc30,spChart,spLegsChart,fcChart,seaChart].forEach(c=>c&&c.resize()),60);
 }
 
+// ── GOOGLE DRIVE CONFIG ────────────────────────────────────
+const API_KEY   = 'AIzaSyAcEeqXFFvX3JIb-HHbtHSdtCSFGqDpLnw';
+const FOLDER_ID = '18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
+
+function showManualDrop(){
+  $('dz-auto').style.display='none';
+  $('dz-manual').style.display='flex';
+  setupDrop();
+}
+
+async function listDriveFiles(){
+  const all=[];
+  let pageToken=null;
+  const q=encodeURIComponent(`'${FOLDER_ID}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false`);
+  do{
+    let url=`https://www.googleapis.com/drive/v3/files?q=${q}&key=${API_KEY}&fields=files(id,name),nextPageToken&pageSize=200&orderBy=name`;
+    if(pageToken)url+='&pageToken='+encodeURIComponent(pageToken);
+    const resp=await fetch(url);
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'API error '+resp.status);}
+    const data=await resp.json();
+    if(data.files)all.push(...data.files);
+    pageToken=data.nextPageToken||null;
+  }while(pageToken);
+  return all;
+}
+
+async function loadFromDrive(){
+  try{
+    setProgress(5,'CONNECTING TO GOOGLE DRIVE','Listing curve files...');
+    const files=await listDriveFiles();
+    if(!files.length)throw new Error('No files found in Drive folder.');
+    plog(`Found ${files.length} files in Google Drive`);
+    setProgress(10,'LOADING','Downloading and parsing files...');
+    $('parselog').style.display='block';
+
+    const BATCH=5;
+    let done=0,added=0,skipped=0;
+    for(let i=0;i<files.length;i+=BATCH){
+      await Promise.all(files.slice(i,i+BATCH).map(async f=>{
+        const date=parseDateFromName(f.name);
+        if(!date){skipped++;return;}
+        const key=toStr(date);
+        if(allData[key]){done++;return;}
+        try{
+          const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${API_KEY}`);
+          if(!resp.ok){plog(`SKIP: ${f.name} (HTTP ${resp.status})`,true);skipped++;return;}
+          const buf=await resp.arrayBuffer();
+          const h=new Uint8Array(buf.slice(0,4));
+          if(!(h[0]===0x50&&h[1]===0x4B)){plog(`SKIP: ${f.name} (not Excel)`,true);skipped++;return;}
+          const rows=parseExcel(buf);
+          if(rows.length>0){allData[key]={date,rows};added++;plog(`OK: ${f.name}`);}
+          else{plog(`SKIP: ${f.name} (0 rows)`,true);skipped++;}
+        }catch(e){plog(`ERR: ${f.name} — ${e.message}`,true);skipped++;}
+        done++;
+      }));
+      const total=done+added;
+      setProgress(10+(Math.min(done,files.length)/files.length)*86,'LOADING',`${added} dates loaded · ${skipped} skipped`);
+    }
+
+    sortedDates=Object.keys(allData).sort();
+    if(!sortedDates.length)throw new Error('No valid data extracted. Check file format.');
+    saveCache();
+    setProgress(100,'READY',`${sortedDates.length} dates loaded from Google Drive`);
+    setTimeout(()=>{$('dropscreen').classList.add('gone');initUI();},600);
+
+  }catch(err){
+    plog('Drive error: '+err.message+' — switching to manual mode.',true);
+    $('parselog').style.display='block';
+    $('fallback-btn').style.display='block';
+    $('drive-spinner').style.display='none';
+    $('dz-auto-title').textContent='COULD NOT LOAD FROM DRIVE';
+    $('progtxt').textContent='Click below to load files manually.';
+    console.warn('Drive load failed:',err);
+  }
+}
+
+function setProgress(pct,title,sub){
+  $('progfill').style.width=pct+'%';
+  if(title)$('dz-auto-title').textContent=title;
+  if(sub)$('progtxt').textContent=sub;
+}
+
+function plog(msg,warn=false){
+  const el=$('parselog');
+  if(!el)return;
+  el.style.display='block';
+  el.innerHTML+=`<div style="color:${warn?'#ef4444':'#3d5070'}">${msg}</div>`;
+  el.scrollTop=el.scrollHeight;
+}
+
 // ── BOOT ───────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded',()=>{
-  setupDrop();
   $('clearCacheBtn').addEventListener('click',clearCache);
   $('fileInput2').addEventListener('change',()=>{if($('fileInput2').files.length)handleFiles([...$('fileInput2').files],true);});
+
+  // Try cache first — instant load
   if(loadCache()){
     $('dropscreen').classList.add('gone');
     initUI();
-    $('stext').textContent=sortedDates.length+' DATES — '+fmtDate(sortedDates[0])+' → '+fmtDate(sortedDates[sortedDates.length-1])+' · from cache';
+    $('stext').textContent=sortedDates.length+' DATES — '+fmtDate(sortedDates[0])+' → '+fmtDate(sortedDates[sortedDates.length-1])+' · cached';
+    return;
   }
+
+  // No cache — load from Google Drive automatically
+  loadFromDrive();
 });
 </script>
 </body>
