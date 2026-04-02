@@ -125,6 +125,7 @@ select:focus,select:hover{border-color:#2d7cff;}
     <span class="sdot"></span>
     <span id="stext"></span>
     <button class="sbtn" onclick="$('fileInput2').click()" style="margin-left:auto;">+ ADD FILES</button>
+    <button class="sbtn" onclick="exportToExcel()" style="color:#22c55e;">&#8595; EXPORT XLSX</button>
     <button class="sbtn red" id="clearCacheBtn">&#8635; CLEAR CACHE</button>
     <input type="file" id="fileInput2" multiple accept=".xlsx,.xls" style="display:none;">
   </div>
@@ -829,12 +830,76 @@ function updSea(){
   $('sea-tbl').innerHTML=tbl+'</tbody>';
 }
 
+// ── EXCEL EXPORT ───────────────────────────────────────────
+function exportToExcel(){
+  if(!sortedDates.length){alert('No data loaded.');return;}
+
+  // Build workbook
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1: Historical prices — all instruments M+1
+  const instKeys=INSTS.map(i=>i.k);
+  const headers=['Date',...instKeys.map(k=>INST[k].label+' M+1 ('+INST[k].unit+')')];
+  const rows=[headers];
+  sortedDates.forEach(ds=>{
+    const{date,rows:drows}=allData[ds];
+    const m1pk=rollingPK(date,1);
+    const row=[date.toLocaleDateString('en-GB')];
+    instKeys.forEach(k=>{
+      const r=drows.find(r=>r.pk===m1pk);
+      row.push(r&&r[k]!=null?r[k]:'');
+    });
+    rows.push(row);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Historical M+1');
+
+  // Sheet 2: Latest forward curve
+  const latest=sortedDates[sortedDates.length-1];
+  const lRows=allData[latest].rows;
+  const fcHeaders=['Contract',...instKeys.map(k=>INST[k].label+' ('+INST[k].unit+')')];
+  const fcRows=[fcHeaders];
+  lRows.forEach(r=>{
+    const row=[pkLabel(r.pk)];
+    instKeys.forEach(k=>row.push(r[k]!=null?r[k]:''));
+    fcRows.push(row);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fcRows),'Forward Curve '+new Date(latest+'T12:00:00').toLocaleDateString('en-GB'));
+
+  // Sheet 3: Correlation matrix M+1
+  const ck=CORR_INSTS;
+  const series={};ck.forEach(k=>series[k]=getSeries(k,'r1'));
+  const corrHeader=['',...ck.map(k=>INST[k].label)];
+  const corrRows=[corrHeader];
+  ck.forEach(a=>{
+    const row=[INST[a].label];
+    ck.forEach(b=>{
+      if(a===b){row.push(1);return;}
+      const{v1,v2}=align2(series[a],series[b]);
+      const r=pearson(logRet(v1),logRet(v2));
+      row.push(isNaN(r)?'':r);
+    });
+    corrRows.push(row);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(corrRows),'Correlation M+1');
+
+  // Download
+  const today=new Date().toLocaleDateString('en-GB').replace(/\//g,'.');
+  XLSX.writeFile(wb,'LNG_TradeOS_Export_'+today+'.xlsx');
+}
+
 // ── SECTION SWITCH ──────────────────────────────────────────
 function showSec(id,btn){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nl').forEach(b=>b.classList.remove('active'));
   $('sec-'+id).classList.add('active');if(btn)btn.classList.add('active');
-  setTimeout(()=>[hChart,rc10,rc20,rc30,spChart,spLegsChart,fcChart,seaChart].forEach(c=>c&&c.resize()),60);
+  setTimeout(()=>{
+    [hChart,rc10,rc20,rc30,spChart,spLegsChart,fcChart,seaChart].forEach(c=>c&&c.resize());
+    if(id==='spread')updSpread();
+    if(id==='correlation')updRC2();
+    if(id==='historical')updHist();
+    if(id==='forward')updFC();
+    if(id==='seasonal')updSea();
+  },60);
 }
 
 // ── GOOGLE DRIVE CONFIG ────────────────────────────────────
