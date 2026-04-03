@@ -246,7 +246,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--text
       <div class="dz" id="dz">
         <div class="dz-icon">&#8659;</div>
         <div class="dz-title">DROP YOUR EOD CURVE FILES HERE</div>
-        <div class="dz-sub">Drag your entire <strong style="color:#8a9bb5;">LNG Curves</strong> folder<br>or click to select files.</div>
+        <div class="dz-sub">Drag your entire <strong style="color:#8a9bb5;">LNG Curves</strong> folder<br>or click to select files.<br><br>Files are cached locally — drop once, loads instantly next time.</div>
         <button class="dz-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">SELECT FILES</button>
         <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
       </div>
@@ -254,6 +254,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--text
         <div class="prog-bar"><div class="prog-fill" id="progfill2"></div></div>
         <div class="prog-txt" id="progtxt2">Parsing files...</div>
       </div>
+      <div id="parselog2"></div>
     </div>
   </div>
 
@@ -869,24 +870,41 @@ async function loadFromDrive(){
     const files=await listDriveFiles();
     if(!files.length)throw new Error('No files found in Drive folder.');
     plog(`Found ${files.length} files in Google Drive`);
-    setProgress(10,'LOADING','Downloading and parsing files...');$('parselog').style.display='block';
-    const BATCH=5;let done=0,added=0,skipped=0;
+    setProgress(10,'LOADING','Downloading and parsing files...');
+    $('parselog').style.display='block';
+    const BATCH=3;let done=0,added=0,skipped=0;
     for(let i=0;i<files.length;i+=BATCH){
       await Promise.all(files.slice(i,i+BATCH).map(async f=>{
-        const date=parseDateFromName(f.name);if(!date){skipped++;return;}
-        const key=toStr(date);if(allData[key]){done++;return;}
-        try{const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${API_KEY}`);if(!resp.ok){plog(`SKIP: ${f.name} (HTTP ${resp.status})`,true);skipped++;return;}const buf=await resp.arrayBuffer();const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){plog(`SKIP: ${f.name} (not Excel)`,true);skipped++;return;}const rows=parseExcel(buf);if(rows.length>0){allData[key]={date,rows};added++;plog(`OK: ${f.name}`);}else{plog(`SKIP: ${f.name} (0 rows)`,true);skipped++;}}catch(e){plog(`ERR: ${f.name} — ${e.message}`,true);skipped++;}
+        const date=parseDateFromName(f.name);
+        if(!date){skipped++;return;}
+        const key=toStr(date);
+        if(allData[key]){done++;return;}
+        try{
+          // Use direct download URL — bypasses CORS restrictions
+          const dlUrl=`https://drive.google.com/uc?export=download&id=${f.id}`;
+          const resp=await fetch(dlUrl,{mode:'cors'});
+          if(!resp.ok){plog(`SKIP: ${f.name} (HTTP ${resp.status})`,true);skipped++;return;}
+          const buf=await resp.arrayBuffer();
+          if(buf.byteLength<5000){plog(`SKIP: ${f.name} (empty)`,true);skipped++;return;}
+          const h=new Uint8Array(buf.slice(0,4));
+          if(!(h[0]===0x50&&h[1]===0x4B)){plog(`SKIP: ${f.name} (not Excel)`,true);skipped++;return;}
+          const rows=parseExcel(buf);
+          if(rows.length>0){allData[key]={date,rows};added++;plog(`OK: ${f.name}`);}
+          else{plog(`SKIP: ${f.name} (0 rows parsed)`,true);skipped++;}
+        }catch(e){plog(`ERR: ${f.name} — ${e.message}`,true);skipped++;}
         done++;
       }));
       setProgress(10+(Math.min(done,files.length)/files.length)*86,'LOADING',`${added} dates loaded · ${skipped} skipped`);
     }
     sortedDates=Object.keys(allData).sort();
     if(!sortedDates.length)throw new Error('No valid data extracted.');
-    saveCache();setProgress(100,'READY',`${sortedDates.length} dates loaded from Google Drive`);
+    saveCache();
+    setProgress(100,'READY',`${sortedDates.length} dates loaded from Google Drive`);
     setTimeout(()=>{showAnalyticsUI();initUI();},600);
   }catch(err){
-    plog('Drive error: '+err.message+' — switching to manual mode.',true);
-    $('fallback-btn').style.display='block';$('drive-spinner').style.display='none';
+    plog('Drive error: '+err.message,true);
+    $('fallback-btn').style.display='block';
+    $('drive-spinner').style.display='none';
     $('dz-auto-title').textContent='COULD NOT LOAD FROM DRIVE';
     $('progtxt').textContent='Click below to load files manually.';
   }
@@ -896,10 +914,14 @@ async function loadFromDrive(){
 window.addEventListener('DOMContentLoaded',()=>{
   $('clearCacheBtn').addEventListener('click',clearCache);
   $('fileInput2').addEventListener('change',()=>{if($('fileInput2').files.length)handleFiles([...$('fileInput2').files],true);});
-  if(loadCache()){showAnalyticsUI();initUI();$('stext').textContent=sortedDates.length+' DATES — '+fmtDate(sortedDates[0])+' → '+fmtDate(sortedDates[sortedDates.length-1])+' · cached';return;}
-  // Only attempt Drive load when user navigates to Financial section
+  setupDrop();
+  if(loadCache()){
+    showAnalyticsUI();initUI();
+    $('stext').textContent=sortedDates.length+' DATES — '+fmtDate(sortedDates[0])+' → '+fmtDate(sortedDates[sortedDates.length-1])+' · cached';
+    return;
+  }
+  // Auto-load from Drive when Financial section is opened
   document.getElementById('tab-financial').addEventListener('click',()=>{if(!finDataLoaded)loadFromDrive();},{once:true});
-  // Also trigger if user clicks a financial card from home
   document.querySelectorAll('.mod-card[onclick*="financial"]').forEach(el=>{el.addEventListener('click',()=>{if(!finDataLoaded)loadFromDrive();},{once:true});});
 });
 </script>
