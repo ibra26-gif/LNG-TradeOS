@@ -880,9 +880,7 @@ async function loadFromDrive(){
         const key=toStr(date);
         if(allData[key]){done++;return;}
         try{
-          // Use direct download URL — bypasses CORS restrictions
-          const dlUrl=`https://drive.google.com/uc?export=download&id=${f.id}`;
-          const resp=await fetch(dlUrl,{mode:'cors'});
+          const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${API_KEY}`);
           if(!resp.ok){plog(`SKIP: ${f.name} (HTTP ${resp.status})`,true);skipped++;return;}
           const buf=await resp.arrayBuffer();
           if(buf.byteLength<5000){plog(`SKIP: ${f.name} (empty)`,true);skipped++;return;}
