@@ -149,11 +149,13 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     <div class="logo-text">LNG <span class="ac">TradeOS<span class="tm">™</span></span></div>
   </div>
   <div class="nav-tabs">
-    <div class="nav-tab active" id="tab-home" onclick="shellNav('home')">HOME</div>
-    <div class="nav-tab" id="tab-physical" onclick="shellNav('physical')">PHYSICAL TRADING</div>
-    <div class="nav-tab" id="tab-financial" onclick="shellNav('financial')">FINANCIAL TRADING</div>
-    <div class="nav-tab" id="tab-analytics" onclick="shellNav('analytics')">ANALYTICS</div>
-    <div class="nav-tab" id="tab-disclaimer" onclick="shellNav('disclaimer')">DISCLAIMER</div>
+    <div class="nav-tab active" id="tab-home"       onclick="shellNav('home')">HOME</div>
+    <div class="nav-tab"        id="tab-physical"   onclick="shellNav('physical')">PHYSICAL TRADING</div>
+    <div class="nav-tab"        id="tab-financial"  onclick="shellNav('financial')">FINANCIAL TRADING</div>
+    <div class="nav-tab"        id="tab-gasanalytics" onclick="shellNav('gasanalytics')">GAS & LNG ANALYTICS</div>
+    <div class="nav-tab"        id="tab-portfolio"  onclick="shellNav('portfolio')">PORTFOLIO VALUATION</div>
+    <div class="nav-tab"        id="tab-toolbox"    onclick="shellNav('toolbox')">LNG TOOLBOX</div>
+    <div class="nav-tab"        id="tab-disclaimer" onclick="shellNav('disclaimer')">DISCLAIMER</div>
   </div>
   <div class="byline">BY IBRAHIM MAR</div>
 </nav>
@@ -165,24 +167,25 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     <div class="hero-sub">Integrated LNG Trading &amp; Analytics Platform</div>
     <span class="badge">v1.2</span>
   </div>
+
+  <!-- 1. Physical Trading -->
   <div class="mod-group">
     <div class="group-hdr">
       <div class="group-icon">▣</div>
-      <div><div class="group-ttl">LNG PHYSICAL TRADING TOOLS</div><div class="group-sub">Voyage economics, regasification, deal structuring and cargo pricing</div></div>
+      <div><div class="group-ttl">PHYSICAL TRADING</div><div class="group-sub">Voyage economics, cargo pricing and European regasification</div></div>
     </div>
-    <div class="cards-grid">
-      <div class="mod-card" onclick="shellNav('physical','freight')"><span class="card-num">01</span><div class="card-ttl">Freight Rate Calculator</div><div class="card-desc">Voyage cost estimation across global LNG shipping routes with dynamic vessel economics</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','regas')"><span class="card-num">02</span><div class="card-ttl">European Regas Model</div><div class="card-desc">European regasification terminal pricing, netback analysis and slot valuation</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','deal')"><span class="card-num">03</span><div class="card-ttl">Deal Economics</div><div class="card-desc">Full-cycle deal economics, optimization and floating storage economics</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','cargo')"><span class="card-num">04</span><div class="card-ttl">Cargo Pricing</div><div class="card-desc">US FOB, India pricing, net forward netback, global FOB and inter-month spread structures</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','pnl')"><span class="card-num">05</span><div class="card-ttl">P&amp;L Spreadsheet</div><div class="card-desc">Trade-level P&amp;L tracking with mark-to-market and realized P&amp;L calculations</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','intrinsic')"><span class="card-num">06</span><div class="card-ttl">Intrinsic &amp; Extrinsic Values</div><div class="card-desc">Option value decomposition with intrinsic and time value analysis</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+    <div class="cards-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="mod-card" onclick="shellNav('physical','freight')"><span class="card-num">01</span><div class="card-ttl">Freight Rate Calculator</div><div class="card-desc">Voyage cost estimation across global LNG shipping routes with dynamic vessel economics and BLNG curves</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','cargo')"><span class="card-num">02</span><div class="card-ttl">Cargo Pricing</div><div class="card-desc">USGC/WAF/Oman arb, DES pricing, FOB netback matrix, India pricing and historical basis tracking</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','regas')"><span class="card-num">03</span><div class="card-ttl">EU Regas Model</div><div class="card-desc">European regasification terminal pricing, netback analysis and slot valuation</div><span class="s-tag tag-phy">PHYSICAL</span></div>
     </div>
   </div>
+
+  <!-- 2. Financial Trading -->
   <div class="mod-group">
     <div class="group-hdr">
       <div class="group-icon">◆</div>
-      <div><div class="group-ttl">LNG FINANCIAL TRADING TOOLS</div><div class="group-sub">Pricing dashboard, forward curves, historical analysis, spreads, correlations and seasonality</div></div>
+      <div><div class="group-ttl">FINANCIAL TRADING</div><div class="group-sub">Pricing dashboard, forward curves, historical analysis, spreads, correlations and seasonality</div></div>
     </div>
     <div class="cards-grid">
       <div class="mod-card" onclick="shellNav('financial','dashboard')"><span class="card-num">01</span><div class="card-ttl">Dashboard</div><div class="card-desc">Global Gas Snapshot, live index prices, correlation matrix and DoD changes</div><span class="s-tag tag-fin">FINANCIAL</span></div>
@@ -193,6 +196,47 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       <div class="mod-card" onclick="shellNav('financial','seasonal')"><span class="card-num">06</span><div class="card-ttl">Seasonal Analysis</div><div class="card-desc">Year-over-year seasonal profiles and monthly spread table</div><span class="s-tag tag-fin">FINANCIAL</span></div>
     </div>
   </div>
+
+  <!-- 3. Gas & LNG Analytics -->
+  <div class="mod-group">
+    <div class="group-hdr">
+      <div class="group-icon">⬡</div>
+      <div><div class="group-ttl">GAS &amp; LNG ANALYTICS</div><div class="group-sub">Supply &amp; demand, market signposts and European gas metrics</div></div>
+    </div>
+    <div class="cards-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="mod-card dim"><span class="card-num">01</span><div class="card-ttl">S&amp;D Balance</div><div class="card-desc">Global LNG supply and demand balance, liquefaction capacity and demand forecasts</div><span class="s-tag tag-na">COMING SOON</span></div>
+      <div class="mod-card dim"><span class="card-num">02</span><div class="card-ttl">Signposts</div><div class="card-desc">Key market indicators, price triggers and directional signals for LNG trading decisions</div><span class="s-tag tag-na">COMING SOON</span></div>
+      <div class="mod-card dim"><span class="card-num">03</span><div class="card-ttl">EU Metrics</div><div class="card-desc">European gas storage, send-out, terminal utilisation, pipeline flows and European gas balance</div><span class="s-tag tag-na">COMING SOON</span></div>
+    </div>
+  </div>
+
+  <!-- 4. Portfolio Valuation -->
+  <div class="mod-group">
+    <div class="group-hdr">
+      <div class="group-icon">◈</div>
+      <div><div class="group-ttl">LNG PORTFOLIO VALUATION</div><div class="group-sub">Extrinsic &amp; optionality valuation across single deals, strips and portfolios</div></div>
+    </div>
+    <div class="cards-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="mod-card dim"><span class="card-num">01</span><div class="card-ttl">Single Deal Valuation</div><div class="card-desc">Full extrinsic and optionality valuation for individual LNG cargo contracts</div><span class="s-tag tag-na">COMING SOON</span></div>
+      <div class="mod-card dim"><span class="card-num">02</span><div class="card-ttl">Strip Valuation</div><div class="card-desc">Multi-cargo strip optionality decomposition with intrinsic and time value analysis</div><span class="s-tag tag-na">COMING SOON</span></div>
+      <div class="mod-card dim"><span class="card-num">03</span><div class="card-ttl">Portfolio Valuation</div><div class="card-desc">Aggregated portfolio P&amp;L, exposure summary and blended optionality across all positions</div><span class="s-tag tag-na">COMING SOON</span></div>
+    </div>
+  </div>
+
+  <!-- 5. LNG Toolbox -->
+  <div class="mod-group">
+    <div class="group-hdr">
+      <div class="group-icon">⚙</div>
+      <div><div class="group-ttl">LNG TOOLBOX</div><div class="group-sub">Reference tools, converters and market databases</div></div>
+    </div>
+    <div class="cards-grid">
+      <div class="mod-card" onclick="shellNav('toolbox','converter')"><span class="card-num">01</span><div class="card-ttl">Natural Gas Converter</div><div class="card-desc">Unit conversion across mmBtu, MWh, MCM, bcm, mt, mmbtu/d and all standard gas units</div><span class="s-tag" style="background:rgba(38,198,218,.12);color:#26c6da">TOOLBOX</span></div>
+      <div class="mod-card dim"><span class="card-num">02</span><div class="card-ttl">Gas Specifications</div><div class="card-desc">LNG and natural gas quality specifications by origin, terminal and contract grade</div><span class="s-tag tag-na">COMING SOON</span></div>
+      <div class="mod-card" onclick="shellNav('toolbox','portcosts')"><span class="card-num">03</span><div class="card-ttl">Port Cost Database</div><div class="card-desc">Loading and discharge port costs for all major global LNG terminals</div><span class="s-tag" style="background:rgba(38,198,218,.12);color:#26c6da">TOOLBOX</span></div>
+      <div class="mod-card dim"><span class="card-num">04</span><div class="card-ttl">Paper Book</div><div class="card-desc">Financial derivatives position tracking, hedge book management and mark-to-market</div><span class="s-tag tag-na">COMING SOON</span></div>
+    </div>
+  </div>
+
   <div class="sh-footer">
     <div class="ft"><span class="dot"></span>LNG TRADEOS™ v1.2 — PERSONAL TRADING ANALYTICS</div>
     <div class="ft">© 2026 IBRAHIM MAR — LNG TRADEOS™ — ALL RIGHTS RESERVED</div>
@@ -204,11 +248,8 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
   <div class="sh-subnav">
     <button class="sh-stab active" id="ptab-overview" onclick="phTab('overview')">OVERVIEW</button>
     <button class="sh-stab" id="ptab-freight" onclick="phTab('freight')">FREIGHT CALCULATOR</button>
-    <button class="sh-stab" id="ptab-regas" onclick="phTab('regas')">REGAS MODEL</button>
-    <button class="sh-stab" id="ptab-deal" onclick="phTab('deal')">DEAL ECONOMICS</button>
     <button class="sh-stab" id="ptab-cargo" onclick="phTab('cargo')">CARGO PRICING</button>
-    <button class="sh-stab" id="ptab-pnl" onclick="phTab('pnl')">P&amp;L SPREADSHEET</button>
-    <button class="sh-stab" id="ptab-intrinsic" onclick="phTab('intrinsic')">INTRINSIC VALUES</button>
+    <button class="sh-stab" id="ptab-regas" onclick="phTab('regas')">EU REGAS MODEL</button>
   </div>
   <div id="ph-content"></div>
 </section>
@@ -301,9 +342,37 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
   </div>
 </section>
 
-<!-- ANALYTICS -->
-<section class="s-sec" id="section-analytics">
-  <div class="ph-page"><div class="ph-lbl">ANALYTICS</div><div class="ph-ttl">PORTFOLIO ANALYTICS — <span style="color:var(--b)">COMING SOON</span></div><div class="ph-sub">Cross-module KPI dashboard, portfolio exposure and blended P&L view</div><div class="ph-box">⬡ MODULE IN DEVELOPMENT — BUILD v2.0</div></div>
+<!-- ANALYTICS (removed — replaced by Gas & LNG Analytics and Portfolio Valuation) -->
+
+<!-- GAS & LNG ANALYTICS -->
+<section class="s-sec" id="section-gasanalytics">
+  <div class="sh-subnav">
+    <button class="sh-stab active" id="gatab-sd"        onclick="gaTab('sd')">S&amp;D BALANCE</button>
+    <button class="sh-stab"        id="gatab-signposts"  onclick="gaTab('signposts')">SIGNPOSTS</button>
+    <button class="sh-stab"        id="gatab-eumetrics"  onclick="gaTab('eumetrics')">EU METRICS</button>
+  </div>
+  <div id="ga-content"></div>
+</section>
+
+<!-- PORTFOLIO VALUATION -->
+<section class="s-sec" id="section-portfolio">
+  <div class="sh-subnav">
+    <button class="sh-stab active" id="pvtab-single"    onclick="pvTab('single')">SINGLE DEAL</button>
+    <button class="sh-stab"        id="pvtab-strips"    onclick="pvTab('strips')">STRIPS VALUATION</button>
+    <button class="sh-stab"        id="pvtab-portfolio" onclick="pvTab('portfolio')">PORTFOLIO</button>
+  </div>
+  <div id="pv-content"></div>
+</section>
+
+<!-- LNG TOOLBOX -->
+<section class="s-sec" id="section-toolbox">
+  <div class="sh-subnav">
+    <button class="sh-stab active" id="tbtab-converter"  onclick="tbTab('converter')">GAS CONVERTER</button>
+    <button class="sh-stab"        id="tbtab-gasspec"    onclick="tbTab('gasspec')">GAS SPECIFICATIONS</button>
+    <button class="sh-stab"        id="tbtab-portcosts"  onclick="tbTab('portcosts')">PORT COST DATABASE</button>
+    <button class="sh-stab"        id="tbtab-paperbook"  onclick="tbTab('paperbook')">PAPER BOOK</button>
+  </div>
+  <div id="tb-content"></div>
 </section>
 
 <!-- DISCLAIMER -->
@@ -362,6 +431,9 @@ function phTab(tab){
   } else if(tab==='freight'){
     c.innerHTML='<div id="freight-wrap"></div>';
     initFreight();
+  } else if(tab==='cargo'){
+    c.innerHTML='<div id="cargo-wrap"></div>';
+    initCargo();
   } else {
     c.innerHTML=`<div class="ph-page"><div class="ph-lbl">PHYSICAL TRADING</div><div class="ph-ttl">${PH_T[tab]}</div><div class="ph-sub">${PH_D[tab]||''}</div><div class="ph-box">⬡ MODULE IN DEVELOPMENT — BUILD v2.0</div></div>`;
   }
@@ -778,6 +850,445 @@ function exportMatrixCSV(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:S
 function exportMatrixXLS(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);const dd=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);const rows=[['Origin',...ML]];fd.forEach(sp=>dd.forEach(dp=>rows.push([`${sp.name} → ${dp.name}`,...ML.map((_,i)=>{const v=F.matrix[sp.id]&&F.matrix[sp.id][dp.id]&&F.matrix[sp.id][dp.id][i];return v?+v.freight.toFixed(4):'-';})])));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Freight Matrix');XLSX.writeFile(wb,`freight_matrix_${new Date().toISOString().slice(0,10)}.xlsx`);}
 
 function showPortMgr(){const d=allD();const modal=document.createElement('div');modal.id='port-mgr-modal';modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px';modal.innerHTML=`<div style="background:#0a0f1e;border:1px solid #1e3a5f;width:100%;max-width:720px;max-height:85vh;overflow-y:auto;padding:20px"><div style="display:flex;justify-content:space-between;margin-bottom:14px"><span style="color:#4fc3f7;letter-spacing:2px;font-size:12px">PORT MANAGER</span><button class="f-btn sm" onclick="document.getElementById('port-mgr-modal').remove()">CLOSE</button></div><div class="f-sec">SUPPLY PORTS</div><table class="f-tbl"><thead><tr><th>NAME</th><th>CURVE</th><th class="tr">LOAD COST ($)</th></tr></thead><tbody>${SUPPLY.map(p=>`<tr><td>${p.name}</td><td>${p.curve}</td><td class="tr">${p.loadCost.toLocaleString()}</td></tr>`).join('')}</tbody></table><div class="f-sec" style="margin-top:16px">DISCHARGE PORTS (${d.length})</div><table class="f-tbl"><thead><tr><th>NAME</th><th>REGION</th><th class="tr">DISCH COST ($)</th><th>ETS</th></tr></thead><tbody>${d.map(p=>`<tr><td>${p.name}</td><td>${p.region}</td><td class="tr">${p.dischCost.toLocaleString()}</td><td>${p.euEts?'<span class="f-badge-ets">YES</span>':'NO'}</td></tr>`).join('')}</tbody></table></div>`;document.body.appendChild(modal);}
+
+// ══════════════════════════════════════════
+// CARGO PRICING MODULE
+// ══════════════════════════════════════════
+const CP_SEED_PRICES={
+  HH: [2.90,2.90,3.03,3.28,3.35,3.33,3.39,3.71,4.55,5.02,4.48,3.53,3.23,3.20,3.33,3.53,3.59,3.57,3.65,3.92,4.64,5.10,4.43,3.55],
+  TTF:[16.857,16.857,16.876,16.878,16.870,16.868,16.868,16.939,17.022,16.983,16.865,16.080,14.030,13.094,12.866,12.824,12.834,12.743,12.657,12.699,12.926,12.773,12.581,11.813],
+  JKM:[18.157,18.157,18.126,18.303,18.145,17.868,17.318,17.289,17.622,17.358,17.215,16.030,14.380,13.419,13.341,13.299,13.384,13.243,13.257,13.199,13.551,13.523,13.306,12.213]
+};
+const CP_SEED_PHYS={
+  nwe:Array(24).fill(-0.40),iberia:Array(24).fill(-0.35),uk:Array(24).fill(-0.80),
+  jktc:[0.05,0.05,0.05,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10]
+};
+const CP_SEED_FR={
+  sabine_rotterdam:[0.942,0.942,0.935,0.935,0.922,0.989,1.022,0.989,0.869,0.804,0.751,0.738,0.738,0.758,0.771,0.748,0.622,0.622,0.622,0.622,0.622,0.624,0.697,0.674],
+  sabine_tokyo:    [3.078,3.078,2.810,2.565,2.520,2.743,2.854,2.743,2.408,2.119,2.029,1.962,1.985,2.074,2.029,1.608,1.608,1.608,1.608,1.608,1.608,1.608,1.900,1.821],
+  sabine_rovigo:   [1.140,1.140,1.132,1.132,1.116,1.195,1.235,1.195,1.052,0.976,0.913,0.897,0.897,0.921,0.937,0.909,0.759,0.759,0.759,0.759,0.759,0.762,0.849,0.820],
+  sabine_huelva:   [0.891,0.891,0.884,0.884,0.872,0.934,0.965,0.934,0.822,0.763,0.713,0.701,0.701,0.719,0.732,0.710,0.593,0.593,0.593,0.593,0.593,0.596,0.664,0.642],
+  angola_gate:     [0.884,0.884,0.877,0.877,0.864,0.930,0.963,0.930,0.811,0.747,0.694,0.680,0.680,0.700,0.714,0.690,0.565,0.565,0.565,0.565,0.565,0.568,0.640,0.617],
+  angola_tokyo:    [1.820,1.820,1.660,1.512,1.486,1.620,1.686,1.620,1.419,1.245,1.191,1.151,1.164,1.218,1.191,0.939,0.939,0.939,0.939,0.939,0.939,0.939,1.115,1.068],
+  angola_dahej:    [1.164,1.164,1.061,0.967,0.949,1.035,1.078,1.035,0.907,0.795,0.761,0.735,0.744,0.778,0.761,0.601,0.601,0.601,0.601,0.601,0.601,0.601,0.714,0.683],
+  nigeria_gate:   [1.046,1.046,1.040,1.040,1.029,1.087,1.117,1.087,0.982,0.925,0.878,0.866,0.866,0.884,0.896,0.875,0.764,0.764,0.764,0.764,0.764,0.767,0.831,0.810],
+  nigeria_tokyo:  [2.236,2.236,2.062,1.903,1.874,2.018,2.091,2.018,1.801,1.613,1.555,1.511,1.526,1.584,1.555,1.282,1.282,1.282,1.282,1.282,1.282,1.282,1.472,1.421],
+  nigeria_dahej:  [1.571,1.571,1.456,1.350,1.330,1.427,1.475,1.427,1.282,1.157,1.118,1.089,1.099,1.138,1.118,0.938,0.938,0.938,0.938,0.938,0.938,0.938,1.065,1.031],
+  oman_gate:       [1.991,1.991,1.832,1.686,1.660,1.792,1.858,1.792,1.594,1.421,1.368,1.329,1.342,1.395,1.368,1.119,1.119,1.119,1.119,1.119,1.119,1.119,1.293,1.242],
+  oman_tokyo:      [1.084,1.084,1.004,0.885,0.869,0.909,0.949,1.028,1.084,0.885,0.805,0.765,0.725,0.741,0.765,0.781,0.608,0.648,0.648,0.648,0.608,0.608,0.675,0.648],
+  oman_dahej:      [0.180,0.180,0.169,0.153,0.151,0.156,0.162,0.172,0.180,0.153,0.142,0.137,0.132,0.134,0.137,0.139,0.118,0.124,0.124,0.124,0.118,0.118,0.128,0.123]
+};
+const CP_PHYS_FIXED={
+  klaipeda:[-0.32,-0.32,-0.32,-0.32,-0.32,-0.32,-0.32,-0.32,-0.33,-0.33,-0.33,-0.33,-0.33,-0.33,-0.33,-0.33,-0.34,-0.34,-0.34,-0.34,-0.34,-0.34,-0.34,-0.34],
+  inkoo:   [-0.36,-0.36,-0.36,-0.36,-0.36,-0.35,-0.35,-0.35,-0.36,-0.37,-0.37,-0.38,-0.38,-0.37,-0.37,-0.37,-0.39,-0.39,-0.39,-0.39,-0.39,-0.38,-0.38,-0.38],
+  rev:     [-0.29,-0.29,-0.29,-0.29,-0.29,-0.28,-0.28,-0.28,-0.30,-0.31,-0.31,-0.32,-0.32,-0.31,-0.31,-0.32,-0.33,-0.33,-0.33,-0.33,-0.33,-0.33,-0.32,-0.33],
+  krk:     [-0.22,-0.22,-0.22,-0.22,-0.22,-0.21,-0.20,-0.21,-0.23,-0.24,-0.25,-0.25,-0.25,-0.25,-0.25,-0.25,-0.27,-0.27,-0.27,-0.27,-0.27,-0.27,-0.26,-0.26],
+  ain:     [-0.20,-0.20,-0.21,-0.21,-0.21,-0.19,-0.18,-0.19,-0.23,-0.25,-0.27,-0.28,-0.28,-0.27,-0.27,-0.27,-0.32,-0.32,-0.32,-0.32,-0.32,-0.32,-0.30,-0.30],
+  ali:     [-0.27,-0.27,-0.27,-0.27,-0.28,-0.26,-0.26,-0.26,-0.29,-0.30,-0.31,-0.32,-0.32,-0.31,-0.31,-0.32,-0.34,-0.34,-0.34,-0.34,-0.34,-0.34,-0.33,-0.33]
+};
+
+const CP_TABS=['PHYS DIFFERENTIALS','ARB DASHBOARD','USGC ARB','WAF ARB','OMAN ARB','INDIA PRICING','FOB NETBACK','HIST BASIS'];
+
+let CP={
+  fp:null,phys:null,freight:null,liqFee:null,histSnaps:null,
+  tab:0,selMonth:1,indexMode:'TTF',histSnapDate:new Date().toISOString().slice(0,10)
+};
+
+function cpGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
+function cpSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+function fv(v,d=3){return v!=null&&!isNaN(v)?v.toFixed(d):'-';}
+function posCol(v){return v>0?'#4caf50':v<0?'#f44336':'#c8d6e5';}
+
+function cpDerived(){
+  const{fp,phys,freight,liqFee}=CP;
+  const phyItaly=ML.map((_,i)=>phys.nwe[i]+(freight.sabine_rovigo[i]-freight.sabine_rotterdam[i]));
+  const phyMei=ML.map((_,i)=>freight.angola_dahej[i]-freight.angola_tokyo[i]);
+  const des={
+    nwe:ML.map((_,i)=>fp.TTF[i]+phys.nwe[i]),
+    iberia:ML.map((_,i)=>fp.TTF[i]+phys.iberia[i]),
+    uk:ML.map((_,i)=>fp.TTF[i]+phys.uk[i]),
+    italy:ML.map((_,i)=>fp.TTF[i]+phyItaly[i]),
+    klaipeda:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.klaipeda[i]),
+    inkoo:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.inkoo[i]),
+    rev:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.rev[i]),
+    krk:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.krk[i]),
+    ain:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.ain[i]),
+    ali:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.ali[i]),
+    mei:ML.map((_,i)=>fp.JKM[i]+phyMei[i]),
+    jktc:ML.map((_,i)=>fp.JKM[i]+phys.jktc[i])
+  };
+  const usgcFob=ML.map((_,i)=>1.15*fp.HH[i]+liqFee[i]);
+  const profEur=ML.map((_,i)=>des.nwe[i]-freight.sabine_rotterdam[i]-usgcFob[i]);
+  const profAsia=ML.map((_,i)=>des.jktc[i]-freight.sabine_tokyo[i]-usgcFob[i]);
+  const jkmTtf=ML.map((_,i)=>fp.JKM[i]-fp.TTF[i]);
+  const frDiff=ML.map((_,i)=>freight.sabine_rotterdam[i]-freight.sabine_tokyo[i]);
+  return{des,usgcFob,profEur,profAsia,jkmTtf,frDiff,phyItaly,phyMei};
+}
+
+function cpNetback(desPrice,fr,i,usgcFob){
+  if(CP.indexMode==='TTF') return desPrice-fr-CP.fp.TTF[i];
+  if(CP.indexMode==='JKM') return desPrice-fr-CP.fp.JKM[i];
+  return desPrice-fr-usgcFob[i];
+}
+
+function cpLineChart(series,labels,height=100){
+  const W=500,H=height,PL=36,PR=8,PT=8,PB=20;
+  const all=series.flatMap(s=>s.data.filter(x=>x!=null));
+  if(!all.length)return'';
+  const mn=Math.min(...all),mx=Math.max(...all),rng=mx-mn||1;
+  const xS=i=>PL+(W-PL-PR)/(labels.length-1||1)*i;
+  const yS=v=>H-PB-((v-mn)/rng)*(H-PT-PB);
+  const mkPath=d=>{const segs=[];let cur=[];d.forEach((v,i)=>{if(v!=null)cur.push(`${xS(i).toFixed(1)},${yS(v).toFixed(1)}`);else if(cur.length){segs.push(cur);cur=[];}});if(cur.length)segs.push(cur);return segs.map(s=>'M'+s.join('L')).join(' ');};
+  const zero=mn<0&&mx>0;
+  const ticks=labels.filter((_,i)=>i%4===0||i===0);
+  const gridLines=[mn,mn+rng/2,mx].map(v=>`<line x1="${PL}" x2="${W-PR}" y1="${yS(v).toFixed(1)}" y2="${yS(v).toFixed(1)}" stroke="#1e3a5f" stroke-width="0.5"/><text x="${PL-3}" y="${(yS(v)+4).toFixed(1)}" fill="#546e7a" font-size="7" text-anchor="end">${v.toFixed(2)}</text>`).join('');
+  const tickMarks=ticks.map(l=>`<text x="${xS(labels.indexOf(l)).toFixed(1)}" y="${H-PB+12}" fill="#546e7a" font-size="7" text-anchor="middle">${l}</text>`).join('');
+  const zeroLine=zero?`<line x1="${PL}" x2="${W-PR}" y1="${yS(0).toFixed(1)}" y2="${yS(0).toFixed(1)}" stroke="#1e3a5f" stroke-width="1" stroke-dasharray="3,3"/>`:'';
+  const paths=series.map(s=>`<path d="${mkPath(s.data)}" fill="none" stroke="${s.color}" stroke-width="1.5" stroke-linejoin="round"/>`).join('');
+  const legend=series.map((s,i)=>`<rect x="${PL+i*110}" y="${H-PB+15}" width="7" height="3" fill="${s.color}"/><text x="${PL+i*110+10}" y="${H-PB+19}" fill="${s.color}" font-size="7">${s.label}</text>`).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block" font-family="'IBM Plex Mono',monospace">${gridLines}${zeroLine}${tickMarks}${paths}${legend}</svg>`;
+}
+
+function initCargo(){
+  CP.fp=cpGet('cp_fp',JSON.parse(JSON.stringify(CP_SEED_PRICES)));
+  CP.phys=cpGet('cp_phys',JSON.parse(JSON.stringify(CP_SEED_PHYS)));
+  CP.freight=cpGet('cp_freight',JSON.parse(JSON.stringify(CP_SEED_FR)));
+  CP.liqFee=cpGet('cp_liqfee',Array(24).fill(0));
+  CP.histSnaps=cpGet('cp_hist_snaps',[]);
+  CP.tab=0;CP.selMonth=1;CP.indexMode='TTF';
+  renderCargo();
+}
+
+function renderCargo(){
+  const wrap=document.getElementById('cargo-wrap');if(!wrap)return;
+  wrap.innerHTML=`
+    <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">CARGO PRICING MODEL</span>
+      <span style="flex:1"></span>
+      <span style="color:#546e7a;font-size:9px;letter-spacing:1px">INDEX: </span>
+      ${['TTF','JKM','HH'].map(m=>`<button class="f-btn sm${CP.indexMode===m?' on':''}" onclick="CP.indexMode='${m}';renderCargoTab()">${m}</button>`).join('')}
+    </div>
+    <div class="f-subnav">${CP_TABS.map((t,i)=>`<button class="f-tab${CP.tab===i?' active':''}" onclick="cpTab(${i})">${t}</button>`).join('')}</div>
+    <div class="f-body" id="cp-body"></div>`;
+  renderCargoTab();
+}
+
+function cpTab(i){CP.tab=i;document.querySelectorAll('#cargo-wrap .f-tab').forEach((t,j)=>t.classList.toggle('active',j===i));renderCargoTab();}
+
+function renderCargoTab(){
+  const b=document.getElementById('cp-body');if(!b)return;
+  const d=cpDerived();
+  if(CP.tab===0) b.innerHTML=cpPhysDiff(d);
+  else if(CP.tab===1) b.innerHTML=cpArbDash(d);
+  else if(CP.tab===2) b.innerHTML=cpUSGCArb(d);
+  else if(CP.tab===3) b.innerHTML=cpWAFArb(d);
+  else if(CP.tab===4) b.innerHTML=cpOmanArb(d);
+  else if(CP.tab===5) b.innerHTML=cpIndia(d);
+  else if(CP.tab===6) b.innerHTML=cpFOBNetback(d);
+  else if(CP.tab===7) b.innerHTML=cpHistBasis(d);
+}
+
+function cpMonthSel(){return`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:14px">${ML.map((m,i)=>`<button class="f-btn sm${CP.selMonth===i?' on':''}" onclick="CP.selMonth=${i};renderCargoTab()">${m}</button>`).join('')}</div>`;}
+function cpIdxBtns(){return`<div style="margin-bottom:12px"><span style="color:#546e7a;font-size:10px">Expression: </span>${['TTF','JKM','HH'].map(m=>`<button class="f-btn sm${CP.indexMode===m?' on':''}" style="margin-right:4px" onclick="CP.indexMode='${m}';renderCargoTab()">${m}</button>`).join('')}</div>`;}
+
+function cpPhysDiff(d){
+  const rows=[
+    {k:'nwe',   label:'DES NWE',     hub:'TTF', method:'Manual input',  data:d.des.nwe.map((_,i)=>CP.phys.nwe[i]),   editable:true,  physKey:'nwe'},
+    {k:'iberia',label:'Iberia (TVB)',hub:'PVB', method:'Manual input',  data:CP.phys.iberia,   editable:true,  physKey:'iberia'},
+    {k:'uk',    label:'UK Terminals',hub:'NBP', method:'Manual input',  data:CP.phys.uk,       editable:true,  physKey:'uk'},
+    {k:'italy', label:'DES Italy',   hub:'TTF', method:'Fr diff (USGC Rovigo−Gate)+NWE', data:d.phyItaly, editable:false},
+    {k:'klaipeda',label:'Klaipeda', hub:'TTF', method:'Freight diff',  data:CP_PHYS_FIXED.klaipeda, editable:false},
+    {k:'inkoo', label:'Inkoo',       hub:'TTF', method:'Freight diff',  data:CP_PHYS_FIXED.inkoo,    editable:false},
+    {k:'rev',   label:'Revithoussa', hub:'TTF', method:'Freight diff',  data:CP_PHYS_FIXED.rev,      editable:false},
+    {k:'krk',   label:'KRK',         hub:'TTF', method:'Freight diff',  data:CP_PHYS_FIXED.krk,      editable:false},
+    {k:'ain',   label:'Ain Sukhna',  hub:'TTF', method:'Freight diff',  data:CP_PHYS_FIXED.ain,      editable:false},
+    {k:'ali',   label:'Aliaga',      hub:'TTF', method:'Freight diff',  data:CP_PHYS_FIXED.ali,      editable:false},
+    {k:'mei',   label:'DES MEI',     hub:'JKM', method:'Fr diff (Angola Dahej−Tokyo)', data:d.phyMei, editable:false},
+    {k:'jktc',  label:'JKTC',        hub:'JKM', method:'Manual input',  data:CP.phys.jktc,     editable:true,  physKey:'jktc'},
+  ];
+  const desPrices=[['DES NWE','TTF',d.des.nwe],['DES Iberia','PVB',d.des.iberia],['DES UK','NBP',d.des.uk],['DES Italy','TTF',d.des.italy],['DES Klaipeda','TTF',d.des.klaipeda],['DES Inkoo','TTF',d.des.inkoo],['DES Revithoussa','TTF',d.des.rev],['DES KRK','TTF',d.des.krk],['DES Ain Sukhna','TTF',d.des.ain],['DES Aliaga','TTF',d.des.ali],['DES MEI','JKM',d.des.mei],['DES JKTC','JKM',d.des.jktc]];
+  return`
+    <div class="f-sec">PHYSICAL PRICE DIFFERENTIALS — DES vs INDEX ($/Mmbtu) · Blue = manual editable</div>
+    <div style="overflow-x:auto;margin-bottom:20px">
+      <table class="f-tbl">
+        <thead><tr><th style="min-width:130px">TERMINAL</th><th style="min-width:45px">HUB</th><th style="min-width:140px;color:#546e7a;font-size:9px">METHOD</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map(row=>`<tr>
+          <td style="color:${row.editable?'#4fc3f7':'#c8d6e5'};font-size:10px">${row.label}</td>
+          <td style="color:#546e7a;font-size:10px">${row.hub}</td>
+          <td style="color:#546e7a;font-size:9px">${row.method}</td>
+          ${row.data.map((v,i)=>row.editable
+            ?`<td style="padding:2px 3px"><input class="f-inp" style="width:55px;text-align:right;color:#4fc3f7" type="number" step="0.01" value="${v}" onchange="cpSetPhys('${row.physKey}',${i},this.value)"></td>`
+            :`<td class="tr" style="color:${v>0?'#4caf50':v<0?'#ff9800':'#c8d6e5'}">${fv(v,3)}</td>`).join('')}
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div class="f-sec">DES ABSOLUTE PRICES (Index + Physical Differential) — $/Mmbtu</div>
+    <div style="overflow-x:auto">
+      <table class="f-tbl">
+        <thead><tr><th style="min-width:130px">DES PRICE</th><th style="min-width:45px">HUB</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead>
+        <tbody>${desPrices.map(([l,h,arr])=>`<tr><td style="font-size:10px">${l}</td><td style="color:#546e7a;font-size:10px">${h}</td>${arr.map(v=>`<td class="tr" style="color:#26c6da">${fv(v)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+function cpArbDash(d){
+  const profDiff=ML.map((_,i)=>d.profAsia[i]-d.profEur[i]);
+  const m=CP.selMonth;
+  return`
+    <div class="f-sec">ARB DASHBOARD — USGC SWING CARGO DIRECTION</div>
+    ${cpMonthSel()}
+    <div class="f-grid f-g2" style="margin-bottom:14px">
+      <div class="f-card">
+        <div style="color:#546e7a;font-size:9px;letter-spacing:1px;margin-bottom:10px">FRONT MONTH: ${ML[m]}</div>
+        <div class="f-grid f-g2" style="gap:8px;margin-bottom:10px">
+          ${[['TO EUROPE',d.profEur[m],'#26c6da'],['TO ASIA',d.profAsia[m],'#ab47bc']].map(([l,v,c])=>`
+            <div style="background:#0a0f1e;border:1px solid ${v>0?c:'#1e3a5f'};padding:10px">
+              <div style="color:#546e7a;font-size:9px">${l}</div>
+              <div style="color:${v>0?c:'#f44336'};font-size:18px;font-weight:700;margin-top:4px">${v>=0?'+':''}${fv(v,3)}</div>
+              <div style="color:#546e7a;font-size:9px;margin-top:4px">$/Mmbtu</div>
+            </div>`).join('')}
+        </div>
+        <div style="padding:6px 10px;background:#0a0f1e;border:1px solid ${profDiff[m]>0?'#ab47bc':'#26c6da'}">
+          <span style="color:#546e7a;font-size:9px">ARB POINTING → </span>
+          <span style="color:${profDiff[m]>0?'#ab47bc':'#26c6da'};font-weight:700;font-size:11px">
+            ${profDiff[m]>0?'ASIA':'EUROPE'} (${profDiff[m]>=0?'+':''}${fv(profDiff[m],3)} $/Mmbtu advantage)
+          </span>
+        </div>
+      </div>
+      <div class="f-card">
+        <div style="color:#546e7a;font-size:9px;letter-spacing:1px;margin-bottom:8px">BREAKEVEN CHECK — JKM/TTF vs FREIGHT DIFF</div>
+        <div style="color:#546e7a;font-size:9px;margin-bottom:8px">Asia open when JKM/TTF spread &gt; |Freight diff Gate/Tokyo|</div>
+        ${ML.slice(1,8).map((mo,idx)=>{const i=idx+1;const open=d.jkmTtf[i]>Math.abs(d.frDiff[i]);return`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:10px">
+            <span style="color:#546e7a;min-width:46px">${mo}</span>
+            <span style="min-width:70px">Spd: <span style="color:#ffeb3b">${fv(d.jkmTtf[i],3)}</span></span>
+            <span style="min-width:70px">FrΔ: <span style="color:#ff9800">${fv(d.frDiff[i],3)}</span></span>
+            <span style="color:${open?'#4caf50':'#f44336'};font-weight:700">${open?'ASIA OPEN':'EUR OPEN'}</span>
+          </div>`;}).join('')}
+      </div>
+    </div>
+    <div class="f-card" style="margin-bottom:14px">
+      <div style="color:#546e7a;font-size:9px;letter-spacing:1px;margin-bottom:8px">FORWARD PROFIT STRIP — USGC EUROPE vs ASIA ($/Mmbtu)</div>
+      ${cpLineChart([{label:'Profit to Europe',color:'#26c6da',data:d.profEur},{label:'Profit to Asia',color:'#ab47bc',data:d.profAsia},{label:'Diff (Asia−Eur)',color:'#ffeb3b',data:profDiff}],ML,120)}
+    </div>
+    <div style="overflow-x:auto">
+      <table class="f-tbl">
+        <thead><tr><th>MONTH</th><th class="tr">PROF EUR</th><th class="tr">PROF ASIA</th><th class="tr">DIFF</th><th class="tr">JKM/TTF</th><th class="tr">FR DIFF</th><th>POINTING</th></tr></thead>
+        <tbody>${ML.map((mo,i)=>{const p=profDiff[i]>0?'ASIA':'EUROPE';return`<tr${i===m?' class="f-tbl hi-row"':''}>
+          <td>${mo}</td>
+          <td class="tr" style="color:${posCol(d.profEur[i])}">${fv(d.profEur[i])}</td>
+          <td class="tr" style="color:${posCol(d.profAsia[i])}">${fv(d.profAsia[i])}</td>
+          <td class="tr" style="color:${posCol(profDiff[i])}">${profDiff[i]>=0?'+':''}${fv(profDiff[i])}</td>
+          <td class="tr" style="color:#ffeb3b">${fv(d.jkmTtf[i])}</td>
+          <td class="tr" style="color:#ff9800">${fv(d.frDiff[i])}</td>
+          <td style="color:${p==='ASIA'?'#ab47bc':'#26c6da'};font-weight:700;font-size:9px">${p}</td>
+        </tr>`;}).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+function cpUSGCArb(d){
+  const{fp,freight,liqFee}=CP;
+  return`
+    <div class="f-sec">USGC ARB — SABINE PASS · FOB Cost = 115%×HH + Liquefaction Fee</div>
+    <div class="f-grid f-g2" style="margin-bottom:12px">
+      <div><span class="f-lbl">LIQUEFACTION FEE ($/Mmbtu) — FLAT ACROSS STRIP</span>
+        <input class="f-inp" type="number" step="0.01" value="${liqFee[0]}" onchange="cpSetLiqFee(this.value)">
+      </div>
+      <div style="padding-top:18px;color:#546e7a;font-size:10px">USGC FOB Cost ${ML[1]}: <span style="color:#4fc3f7">${fv(d.usgcFob[1],4)} $/Mmbtu</span></div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="f-tbl">
+        <thead><tr><th style="min-width:140px">ITEM</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${[['HH ($/Mmbtu)',fp.HH,'#c8d6e5'],['115% HH',ML.map((_,i)=>1.15*fp.HH[i]),'#546e7a'],['FOB Cost',d.usgcFob,'#ff9800'],['TTF',fp.TTF,'#26c6da'],['JKM',fp.JKM,'#ab47bc'],['DES NWE',d.des.nwe,'#26c6da'],['DES JKTC',d.des.jktc,'#ab47bc'],['Freight→Gate',freight.sabine_rotterdam,'#546e7a'],['Freight→Tokyo',freight.sabine_tokyo,'#546e7a']].map(([l,arr,c])=>`
+            <tr><td style="color:#546e7a;font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v,3)}</td>`).join('')}</tr>`).join('')}
+          <tr style="border-top:1px solid #4fc3f7">
+            <td style="color:#4fc3f7;font-weight:700">► Profit to Europe</td>
+            ${d.profEur.map((v,i)=>`<td class="tr" style="color:${posCol(v)};font-weight:${i===CP.selMonth?700:400}">${v>=0?'+':''}${fv(v)}</td>`).join('')}
+          </tr>
+          <tr>
+            <td style="color:#4fc3f7;font-weight:700">► Profit to Asia</td>
+            ${d.profAsia.map((v,i)=>`<td class="tr" style="color:${posCol(v)};font-weight:${i===CP.selMonth?700:400}">${v>=0?'+':''}${fv(v)}</td>`).join('')}
+          </tr>
+          <tr>
+            <td style="color:#ffeb3b;font-size:9px">Arb Pointing</td>
+            ${ML.map((_,i)=>{const p=d.profAsia[i]>d.profEur[i]?'ASIA':'EUROPE';return`<td class="tr" style="color:${p==='ASIA'?'#ab47bc':'#26c6da'};font-size:9px">${p}</td>`;}).join('')}
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function cpWAFArb(d){
+  const orgs=[
+    {label:'Angola',  frGate:CP.freight.angola_gate,  frTokyo:CP.freight.angola_tokyo,  frDahej:CP.freight.angola_dahej},
+    {label:'Nigeria', frGate:CP.freight.nigeria_gate, frTokyo:CP.freight.nigeria_tokyo, frDahej:CP.freight.nigeria_dahej}
+  ];
+  return`
+    <div class="f-sec">WAF ARB — ANGOLA & NIGERIA · Pure FOB Netback</div>
+    ${cpIdxBtns()}
+    ${orgs.map(orig=>{
+      const nbEur=ML.map((_,i)=>d.des.nwe[i]-orig.frGate[i]);
+      const nbAsia=ML.map((_,i)=>d.des.jktc[i]-orig.frTokyo[i]);
+      const nbMEI=ML.map((_,i)=>d.des.mei[i]-orig.frDahej[i]);
+      const diff=ML.map((_,i)=>nbAsia[i]-nbEur[i]);
+      const exEur=ML.map((_,i)=>cpNetback(d.des.nwe[i],orig.frGate[i],i,d.usgcFob));
+      const exAsia=ML.map((_,i)=>cpNetback(d.des.jktc[i],orig.frTokyo[i],i,d.usgcFob));
+      return`<div style="margin-bottom:20px">
+        <div style="color:#4fc3f7;font-size:10px;letter-spacing:2px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #1e3a5f">${orig.label.toUpperCase()}</div>
+        <div style="overflow-x:auto"><table class="f-tbl">
+          <thead><tr><th style="min-width:160px">ITEM</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${[['Freight → Gate',orig.frGate,'#546e7a'],['Freight → Tokyo',orig.frTokyo,'#546e7a'],['Freight → Dahej',orig.frDahej,'#546e7a'],['DES NWE',d.des.nwe,'#26c6da'],['DES JKTC',d.des.jktc,'#ab47bc'],['DES MEI',d.des.mei,'#ff9800']].map(([l,arr,c])=>`<tr><td style="color:#546e7a;font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v)}</td>`).join('')}</tr>`).join('')}
+            <tr style="border-top:1px solid #26c6da"><td style="color:#26c6da;font-weight:700">► Netback Europe</td>${nbEur.map(v=>`<td class="tr" style="color:#26c6da">${fv(v)}</td>`).join('')}</tr>
+            <tr><td style="color:#ab47bc;font-weight:700">► Netback Asia</td>${nbAsia.map(v=>`<td class="tr" style="color:#ab47bc">${fv(v)}</td>`).join('')}</tr>
+            <tr><td style="color:#ff9800;font-weight:700">► Netback MEI</td>${nbMEI.map(v=>`<td class="tr" style="color:#ff9800">${fv(v)}</td>`).join('')}</tr>
+            <tr style="border-top:1px solid #1e3a5f"><td style="color:#ffeb3b;font-size:9px">Diff (Asia−Eur)</td>${diff.map(v=>`<td class="tr" style="color:${posCol(v)}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
+            <tr><td style="color:#ffeb3b;font-size:9px">Arb Pointing</td>${diff.map(v=>`<td class="tr" style="color:${v>0?'#ab47bc':'#26c6da'};font-size:9px">${v>0?'ASIA':'EUROPE'}</td>`).join('')}</tr>
+            <tr style="border-top:1px solid #1e3a5f"><td style="color:#546e7a;font-size:9px">Expr. (${CP.indexMode}) Europe</td>${exEur.map(v=>`<td class="tr" style="color:${posCol(v)}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
+            <tr><td style="color:#546e7a;font-size:9px">Expr. (${CP.indexMode}) Asia</td>${exAsia.map(v=>`<td class="tr" style="color:${posCol(v)}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
+          </tbody>
+        </table></div>
+      </div>`;
+    }).join('')}`;
+}
+
+function cpOmanArb(d){
+  const fr=CP.freight;
+  const nbEur=ML.map((_,i)=>d.des.nwe[i]-fr.oman_gate[i]);
+  const nbAsia=ML.map((_,i)=>d.des.jktc[i]-fr.oman_tokyo[i]);
+  const nbMEI=ML.map((_,i)=>d.des.mei[i]-fr.oman_dahej[i]);
+  const diff=ML.map((_,i)=>nbAsia[i]-nbEur[i]);
+  const m=CP.selMonth;
+  return`
+    <div class="f-sec">OMAN ARB — FOB NETBACK · Pure netback, no supply cost</div>
+    ${cpIdxBtns()}
+    <div class="f-gauto" style="margin-bottom:14px">
+      ${[['NETBACK EUROPE',nbEur[m],'#26c6da'],['NETBACK ASIA',nbAsia[m],'#ab47bc'],['NETBACK MEI',nbMEI[m],'#ff9800']].map(([l,v,c])=>`
+        <div class="f-card"><div style="color:#546e7a;font-size:9px">${l} (${ML[m]})</div><div style="color:${c};font-size:16px;font-weight:700;margin-top:4px">${fv(v,4)}</div><div style="color:#546e7a;font-size:9px">$/Mmbtu</div></div>`).join('')}
+    </div>
+    <div class="f-card" style="margin-bottom:14px">
+      ${cpLineChart([{label:'Netback Europe',color:'#26c6da',data:nbEur},{label:'Netback Asia',color:'#ab47bc',data:nbAsia},{label:'Netback MEI',color:'#ff9800',data:nbMEI}],ML,110)}
+    </div>
+    ${cpMonthSel()}
+    <div style="overflow-x:auto">
+      <table class="f-tbl">
+        <thead><tr><th style="min-width:160px">ITEM</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${[['Freight → Gate',fr.oman_gate,'#546e7a'],['Freight → Tokyo',fr.oman_tokyo,'#546e7a'],['Freight → Dahej',fr.oman_dahej,'#546e7a'],['► Netback Europe',nbEur,'#26c6da'],['► Netback Asia',nbAsia,'#ab47bc'],['► Netback MEI',nbMEI,'#ff9800']].map(([l,arr,c])=>`<tr><td style="color:${c};font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v)}</td>`).join('')}</tr>`).join('')}
+          <tr style="border-top:1px solid #1e3a5f"><td style="color:#ffeb3b;font-size:9px">Diff (Asia−Eur)</td>${diff.map(v=>`<td class="tr" style="color:${posCol(v)}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
+          <tr><td style="color:#ffeb3b;font-size:9px">Arb Pointing</td>${diff.map(v=>`<td class="tr" style="color:${v>0?'#ab47bc':'#26c6da'};font-size:9px">${v>0?'ASIA':'EUROPE'}</td>`).join('')}</tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function cpIndia(d){
+  const orgs=[
+    {label:'Angola', frDahej:CP.freight.angola_dahej,  frTokyo:CP.freight.angola_tokyo},
+    {label:'Nigeria',frDahej:CP.freight.nigeria_dahej, frTokyo:CP.freight.nigeria_tokyo},
+    {label:'Oman',   frDahej:CP.freight.oman_dahej,    frTokyo:CP.freight.oman_tokyo}
+  ];
+  return`
+    <div class="f-sec">INDIA PRICING — DES India = JKM + Freight Differential (Dahej vs Tokyo)</div>
+    ${orgs.map(orig=>{
+      const indiaDiff=ML.map((_,i)=>orig.frDahej[i]-orig.frTokyo[i]);
+      const desIndia=ML.map((_,i)=>CP.fp.JKM[i]+indiaDiff[i]);
+      const exHH=ML.map((_,i)=>desIndia[i]-orig.frDahej[i]-d.usgcFob[i]);
+      const exTTF=ML.map((_,i)=>desIndia[i]-orig.frDahej[i]-CP.fp.TTF[i]);
+      const exJKM=ML.map((_,i)=>indiaDiff[i]);
+      return`<div style="margin-bottom:20px">
+        <div style="color:#4fc3f7;font-size:10px;letter-spacing:2px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #1e3a5f">${orig.label.toUpperCase()} → DAHEJ</div>
+        <div style="overflow-x:auto"><table class="f-tbl">
+          <thead><tr><th style="min-width:160px">ITEM</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${[['JKM ($/Mmbtu)',CP.fp.JKM,'#ab47bc'],['India Diff',indiaDiff,'#ff9800'],['DES India',desIndia,'#26c6da'],['Freight → Dahej',orig.frDahej,'#546e7a']].map(([l,arr,c])=>`<tr><td style="color:#546e7a;font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v)}</td>`).join('')}</tr>`).join('')}
+            <tr style="border-top:1px solid #26c6da"><td style="color:#26c6da;font-weight:700">► DES Offer India</td>${desIndia.map(v=>`<td class="tr" style="color:#26c6da;font-weight:700">${fv(v)}</td>`).join('')}</tr>
+            <tr style="border-top:1px solid #1e3a5f"><td style="color:#546e7a;font-size:9px">HH Equiv</td>${exHH.map(v=>`<td class="tr" style="color:${posCol(v)}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
+            <tr><td style="color:#546e7a;font-size:9px">TTF Equiv</td>${exTTF.map(v=>`<td class="tr" style="color:${posCol(v)}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
+            <tr><td style="color:#546e7a;font-size:9px">JKM Equiv</td>${exJKM.map(v=>`<td class="tr" style="color:${posCol(v)}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
+          </tbody>
+        </table></div>
+      </div>`;
+    }).join('')}`;
+}
+
+function cpFOBNetback(d){
+  const orgs=[
+    {label:'Sabine Pass (USGC)',frGate:CP.freight.sabine_rotterdam,frTokyo:CP.freight.sabine_tokyo,frDahej:null},
+    {label:'Angola',            frGate:CP.freight.angola_gate,      frTokyo:CP.freight.angola_tokyo,  frDahej:CP.freight.angola_dahej},
+    {label:'Nigeria',           frGate:CP.freight.nigeria_gate,     frTokyo:CP.freight.nigeria_tokyo, frDahej:CP.freight.nigeria_dahej},
+    {label:'Oman',              frGate:CP.freight.oman_gate,        frTokyo:CP.freight.oman_tokyo,    frDahej:CP.freight.oman_dahej}
+  ];
+  const dests=[{label:'Gate Rotterdam',des:d.des.nwe,frKey:'frGate'},{label:'JKTC',des:d.des.jktc,frKey:'frTokyo'},{label:'DES MEI',des:d.des.mei,frKey:'frDahej'}];
+  return`
+    <div class="f-sec">FOB NETBACK MATRIX — ALL ORIGINS × DESTINATIONS</div>
+    ${cpIdxBtns()}
+    ${orgs.map(orig=>`
+      <div style="margin-bottom:16px">
+        <div style="color:#4fc3f7;font-size:10px;letter-spacing:1px;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid #1e3a5f">${orig.label}</div>
+        <div style="overflow-x:auto"><table class="f-tbl">
+          <thead><tr><th style="min-width:160px">DESTINATION</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead>
+          <tbody>${dests.map(dest=>{
+            const frArr=orig[dest.frKey];if(!frArr)return'';
+            const nb=ML.map((_,i)=>cpNetback(dest.des[i],frArr[i],i,d.usgcFob));
+            const best=nb.reduce((bi,v,i)=>v!=null&&(nb[bi]==null||v>nb[bi])?i:bi,0);
+            return`<tr><td style="font-size:10px">${dest.label}</td>${nb.map((v,i)=>`<td class="tr" style="color:${posCol(v)};font-weight:${i===best?700:400}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>`;
+          }).join('')}</tbody>
+        </table></div>
+      </div>`).join('')}`;
+}
+
+function cpHistBasis(d){
+  const snaps=CP.histSnaps;
+  const m=CP.selMonth;
+  return`
+    <div class="f-sec">HISTORICAL BASIS — JKM/TTF SPREAD vs FREIGHT DIFFERENTIAL</div>
+    <div class="f-grid f-g2" style="margin-bottom:12px;align-items:flex-end">
+      <div>
+        <span class="f-lbl">CONTRACT MONTH</span>
+        <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${CP.selMonth===i?' selected':''}>${mo}</option>`).join('')}</select>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <div><span class="f-lbl">SNAPSHOT DATE</span><input class="f-inp" type="date" value="${CP.histSnapDate}" onchange="CP.histSnapDate=this.value"></div>
+        <button class="f-btn on" onclick="cpSaveHistSnap()">SAVE</button>
+      </div>
+    </div>
+    <div class="f-grid f-g2" style="gap:8px;margin-bottom:14px">
+      <div class="f-card"><div style="color:#546e7a;font-size:9px;margin-bottom:4px">JKM/TTF SPREAD — ${ML[m]}</div><div style="color:#ffeb3b;font-size:18px;font-weight:700">${fv(d.jkmTtf[m],4)}</div></div>
+      <div class="f-card"><div style="color:#546e7a;font-size:9px;margin-bottom:4px">FREIGHT DIFF (GATE−TOKYO) — ${ML[m]}</div><div style="color:#ff9800;font-size:18px;font-weight:700">${fv(d.frDiff[m],4)}</div></div>
+    </div>
+    <div style="color:#546e7a;font-size:10px;margin-bottom:12px">
+      Arb open to Asia when JKM/TTF &gt; |Freight diff| — Currently:
+      <span style="color:${d.jkmTtf[m]>Math.abs(d.frDiff[m])?'#4caf50':'#f44336'};font-weight:700">
+        ${d.jkmTtf[m]>Math.abs(d.frDiff[m])?'ASIA OPEN':'EUROPE OPEN'}
+      </span>
+    </div>
+    <div class="f-card" style="margin-bottom:14px">
+      <div style="color:#546e7a;font-size:9px;letter-spacing:1px;margin-bottom:8px">FORWARD STRIP — SPREAD vs FREIGHT DIFF</div>
+      ${cpLineChart([{label:'JKM/TTF Spread',color:'#ffeb3b',data:d.jkmTtf},{label:'Fr Diff Gate/Tokyo',color:'#ff9800',data:d.frDiff},{label:'Net (Spd+FrΔ)',color:'#4caf50',data:ML.map((_,i)=>d.jkmTtf[i]+d.frDiff[i])}],ML,120)}
+    </div>
+    ${snaps.length?`
+      <div class="f-card" style="margin-bottom:14px">
+        <div style="color:#546e7a;font-size:9px;letter-spacing:1px;margin-bottom:8px">JKM/TTF SPREAD — ${ML[m]} · Historical evolution</div>
+        ${cpLineChart([{label:'JKM/TTF Spread',color:'#ffeb3b',data:snaps.map(s=>s.spread[m]||null)}],snaps.map(s=>s.date.slice(5)),90)}
+      </div>
+      <div class="f-sec">SNAPSHOT HISTORY</div>
+      <table class="f-tbl"><thead><tr><th>DATE</th><th class="tr">JKM/TTF (${ML[m]})</th><th class="tr">FR DIFF (${ML[m]})</th></tr></thead>
+      <tbody>${snaps.map(s=>`<tr><td>${s.date}</td><td class="tr" style="color:#ffeb3b">${fv(s.spread[m],4)}</td><td class="tr" style="color:#ff9800">${fv(s.frDiff[m],4)}</td></tr>`).join('')}</tbody></table>`
+    :'<div style="color:#546e7a;padding:20px;text-align:center">No snapshots yet. Save daily snapshots to build your historical basis database.</div>'}`;
+}
+
+// ── CARGO ACTIONS ──
+function cpSetPhys(k,i,v){CP.phys[k][i]=+v;cpSet('cp_phys',CP.phys);renderCargoTab();}
+function cpSetLiqFee(v){CP.liqFee=Array(24).fill(+v);cpSet('cp_liqfee',CP.liqFee);renderCargoTab();}
+function cpSaveHistSnap(){
+  const d=cpDerived();
+  const snap={date:CP.histSnapDate,frDiff:[...d.frDiff],spread:[...d.jkmTtf]};
+  const updated=[snap,...CP.histSnaps.filter(s=>s.date!==CP.histSnapDate)].slice(0,90);
+  CP.histSnaps=updated;cpSet('cp_hist_snaps',updated);renderCargoTab();
+}
 
 // ══════════════════════════════════════════
 // ANALYTICS ENGINE
