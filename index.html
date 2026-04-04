@@ -1,10 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LNG TradeOS™</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -141,7 +139,28 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 .ft{font-size:9px;color:var(--td);letter-spacing:.09em}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--gr);display:inline-block;margin-right:5px}
 </style>
-</head>
+<style id="claude-agent-animation-styles">
+      @keyframes claude-pulse {
+        0% {
+          box-shadow: 
+            inset 0 0 10px rgba(217, 119, 87, 0.5),
+            inset 0 0 20px rgba(217, 119, 87, 0.3),
+            inset 0 0 30px rgba(217, 119, 87, 0.1);
+        }
+        50% {
+          box-shadow: 
+            inset 0 0 15px rgba(217, 119, 87, 0.7),
+            inset 0 0 25px rgba(217, 119, 87, 0.5),
+            inset 0 0 35px rgba(217, 119, 87, 0.2);
+        }
+        100% {
+          box-shadow: 
+            inset 0 0 10px rgba(217, 119, 87, 0.5),
+            inset 0 0 20px rgba(217, 119, 87, 0.3),
+            inset 0 0 30px rgba(217, 119, 87, 0.1);
+        }
+      }
+    </style></head>
 <body>
 <nav class="topnav">
   <div class="logo" onclick="shellNav('home')">
@@ -149,13 +168,13 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     <div class="logo-text">LNG <span class="ac">TradeOS<span class="tm">™</span></span></div>
   </div>
   <div class="nav-tabs">
-    <div class="nav-tab active" id="tab-home"       onclick="shellNav('home')">HOME</div>
-    <div class="nav-tab"        id="tab-physical"   onclick="shellNav('physical')">PHYSICAL TRADING</div>
-    <div class="nav-tab"        id="tab-financial"  onclick="shellNav('financial')">FINANCIAL TRADING</div>
-    <div class="nav-tab"        id="tab-gasanalytics" onclick="shellNav('gasanalytics')">GAS & LNG ANALYTICS</div>
-    <div class="nav-tab"        id="tab-portfolio"  onclick="shellNav('portfolio')">PORTFOLIO VALUATION</div>
-    <div class="nav-tab"        id="tab-toolbox"    onclick="shellNav('toolbox')">LNG TOOLBOX</div>
-    <div class="nav-tab"        id="tab-disclaimer" onclick="shellNav('disclaimer')">DISCLAIMER</div>
+    <div class="nav-tab active" id="tab-home" onclick="shellNav('home')">HOME</div>
+    <div class="nav-tab" id="tab-physical" onclick="shellNav('physical')">PHYSICAL TRADING</div>
+    <div class="nav-tab" id="tab-financial" onclick="shellNav('financial')">FINANCIAL TRADING</div>
+    <div class="nav-tab" id="tab-gasanalytics" onclick="shellNav('gasanalytics')">GAS &amp; LNG ANALYTICS</div>
+    <div class="nav-tab" id="tab-portfolio" onclick="shellNav('portfolio')">PORTFOLIO VALUATION</div>
+    <div class="nav-tab" id="tab-toolbox" onclick="shellNav('toolbox')">LNG TOOLBOX</div>
+    <div class="nav-tab" id="tab-disclaimer" onclick="shellNav('disclaimer')">DISCLAIMER</div>
   </div>
   <div class="byline">BY IBRAHIM MAR</div>
 </nav>
@@ -273,7 +292,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         <div class="dz-title">DROP YOUR EOD CURVE FILES HERE</div>
         <div class="dz-sub">Drag your LNG Curves folder or click to select.<br>Cached locally after first load.</div>
         <button class="dz-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">SELECT FILES</button>
-        <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
+        <input type="file" id="fileInput" multiple="" accept=".xlsx,.xls" style="display:none">
       </div>
       <div class="prog-wrap" id="progwrap" style="display:none">
         <div class="prog-bar"><div class="prog-fill" id="progfill2"></div></div>
@@ -295,7 +314,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       <button class="sbtn" onclick="document.getElementById('fileInput2').click()" style="margin-left:auto">+ ADD FILES</button>
       <button class="sbtn" onclick="exportToExcel()" style="color:#22c55e">↓ EXPORT XLSX</button>
       <button class="sbtn red" id="clearCacheBtn">↺ CLEAR CACHE</button>
-      <input type="file" id="fileInput2" multiple accept=".xlsx,.xls" style="display:none">
+      <input type="file" id="fileInput2" multiple="" accept=".xlsx,.xls" style="display:none">
     </div>
     <div class="amin">
       <div id="sec-dashboard" class="asec active">
@@ -347,9 +366,9 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 <!-- GAS & LNG ANALYTICS -->
 <section class="s-sec" id="section-gasanalytics">
   <div class="sh-subnav">
-    <button class="sh-stab active" id="gatab-sd"        onclick="gaTab('sd')">S&amp;D BALANCE</button>
-    <button class="sh-stab"        id="gatab-signposts"  onclick="gaTab('signposts')">SIGNPOSTS</button>
-    <button class="sh-stab"        id="gatab-eumetrics"  onclick="gaTab('eumetrics')">EU METRICS</button>
+    <button class="sh-stab active" id="gatab-sd" onclick="gaTab('sd')">S&amp;D BALANCE</button>
+    <button class="sh-stab" id="gatab-signposts" onclick="gaTab('signposts')">SIGNPOSTS</button>
+    <button class="sh-stab" id="gatab-eumetrics" onclick="gaTab('eumetrics')">EU METRICS</button>
   </div>
   <div id="ga-content"></div>
 </section>
@@ -357,9 +376,9 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 <!-- PORTFOLIO VALUATION -->
 <section class="s-sec" id="section-portfolio">
   <div class="sh-subnav">
-    <button class="sh-stab active" id="pvtab-single"    onclick="pvTab('single')">SINGLE DEAL</button>
-    <button class="sh-stab"        id="pvtab-strips"    onclick="pvTab('strips')">STRIPS VALUATION</button>
-    <button class="sh-stab"        id="pvtab-portfolio" onclick="pvTab('portfolio')">PORTFOLIO</button>
+    <button class="sh-stab active" id="pvtab-single" onclick="pvTab('single')">SINGLE DEAL</button>
+    <button class="sh-stab" id="pvtab-strips" onclick="pvTab('strips')">STRIPS VALUATION</button>
+    <button class="sh-stab" id="pvtab-portfolio" onclick="pvTab('portfolio')">PORTFOLIO</button>
   </div>
   <div id="pv-content"></div>
 </section>
@@ -367,10 +386,10 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 <!-- LNG TOOLBOX -->
 <section class="s-sec" id="section-toolbox">
   <div class="sh-subnav">
-    <button class="sh-stab active" id="tbtab-converter"  onclick="tbTab('converter')">GAS CONVERTER</button>
-    <button class="sh-stab"        id="tbtab-gasspec"    onclick="tbTab('gasspec')">GAS SPECIFICATIONS</button>
-    <button class="sh-stab"        id="tbtab-portcosts"  onclick="tbTab('portcosts')">PORT COST DATABASE</button>
-    <button class="sh-stab"        id="tbtab-paperbook"  onclick="tbTab('paperbook')">PAPER BOOK</button>
+    <button class="sh-stab active" id="tbtab-converter" onclick="tbTab('converter')">GAS CONVERTER</button>
+    <button class="sh-stab" id="tbtab-gasspec" onclick="tbTab('gasspec')">GAS SPECIFICATIONS</button>
+    <button class="sh-stab" id="tbtab-portcosts" onclick="tbTab('portcosts')">PORT COST DATABASE</button>
+    <button class="sh-stab" id="tbtab-paperbook" onclick="tbTab('paperbook')">PAPER BOOK</button>
   </div>
   <div id="tb-content"></div>
 </section>
@@ -1809,5 +1828,6 @@ async function incrementalDriveSync(){
   }
 }
 </script>
-</body>
-</html>
+
+
+<div id="claude-agent-glow-border" style="position: fixed; inset: 0px; pointer-events: none; z-index: 2147483646; opacity: 1; transition: opacity 0.3s ease-in-out; animation: 2s ease-in-out 0s infinite normal none running claude-pulse; box-shadow: rgba(217, 119, 87, 0.5) 0px 0px 10px inset, rgba(217, 119, 87, 0.3) 0px 0px 20px inset, rgba(217, 119, 87, 0.1) 0px 0px 30px inset;"></div></body></html>
