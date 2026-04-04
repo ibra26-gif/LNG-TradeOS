@@ -1476,10 +1476,70 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(cc)cc.addEventListener('click',clearCache);
   if(fi2)fi2.addEventListener('change',()=>{if(fi2.files.length)handleFiles([...fi2.files],true);});
   setupDrop();
-  if(lCache()){showAnalyticsUI();initUI();const st=$('stext');if(st)st.textContent=sDates.length+' DATES — '+fmtD(sDates[0])+' → '+fmtD(sDates[sDates.length-1])+' · cached';return;}
+
+  if(lCache()){
+    // Loaded from cache — show UI immediately
+    showAnalyticsUI();initUI();
+    const st=$('stext');
+    if(st)st.textContent=sDates.length+' DATES — '+fmtD(sDates[0])+' → '+fmtD(sDates[sDates.length-1])+' · cached';
+    // Then silently check Drive for NEW files not yet in cache
+    incrementalDriveSync();
+    return;
+  }
   const tf=$('tab-financial');
   if(tf)tf.addEventListener('click',()=>{if(!finLoaded)lDrive();},{once:true});
 });
+
+// ── INCREMENTAL SYNC — only downloads dates not already in cache ──
+async function incrementalDriveSync(){
+  try{
+    const files=await lFiles();
+    if(!files.length)return;
+    const newFiles=files.filter(f=>{
+      const date=pDFN(f.name);
+      if(!date)return false;
+      return!aD[toStr(date)]; // only files not already cached
+    });
+    if(!newFiles.length){
+      // All files already cached — update status to show it's up to date
+      const st=$('stext');
+      if(st)st.textContent=sDates.length+' DATES — '+fmtD(sDates[0])+' → '+fmtD(sDates[sDates.length-1])+' · up to date ✓';
+      return;
+    }
+    // New files found — show update notification
+    const st=$('stext');
+    if(st)st.textContent=sDates.length+' DATES (cached) · '+newFiles.length+' new file'+( newFiles.length>1?'s':'')+' found — syncing...';
+    // Download and parse only new files
+    let added=0;
+    const BATCH=3;
+    for(let i=0;i<newFiles.length;i+=BATCH){
+      await Promise.all(newFiles.slice(i,i+BATCH).map(async f=>{
+        const date=pDFN(f.name);if(!date)return;
+        const key=toStr(date);
+        try{
+          const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${AK}`);
+          if(!resp.ok)return;
+          const buf=await resp.arrayBuffer();
+          if(buf.byteLength<5000)return;
+          const h=new Uint8Array(buf.slice(0,4));
+          if(!(h[0]===0x50&&h[1]===0x4B))return;
+          const rows=pExcel(buf);
+          if(rows.length>0){aD[key]={date,rows};added++;}
+        }catch(e){}
+      }));
+    }
+    if(added>0){
+      sDates=Object.keys(aD).sort();
+      sCache();
+      // Refresh UI with new data
+      initUI();
+      const st2=$('stext');
+      if(st2)st2.textContent=sDates.length+' DATES — '+fmtD(sDates[0])+' → '+fmtD(sDates[sDates.length-1])+' · +'+added+' new ✓';
+    }
+  }catch(e){
+    console.warn('Incremental sync failed silently:',e);
+  }
+}
 </script>
 </body>
 </html>
