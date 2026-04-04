@@ -586,118 +586,13 @@ function initFreight(){
   renderFreight();
 }
 
-// ── AUTO-SYNC FREIGHT SNAPSHOTS FROM GOOGLE DRIVE ──
-async function syncFreightSnapshotsFromDrive(){
-  try{
-    // List PNG/image files in the freight snapshots folder
-    const q=encodeURIComponent(`'${FREIGHT_FOLDER_ID}' in parents and (mimeType contains 'image') and trashed=false`);
-    const url=`https://www.googleapis.com/drive/v3/files?q=${q}&key=${AK}&fields=files(id,name,mimeType)&pageSize=100&orderBy=name`;
-    const resp=await fetch(url);
-    if(!resp.ok)return;
-    const data=await resp.json();
-    const files=data.files||[];
-    if(!files.length)return;
-
-    // Filter to files not already cached as snapshots
-    const newFiles=files.filter(f=>{
-      const date=parseDateFromName(f.name);
-      if(!date)return false;
-      const key=toStr(date);
-      return!F.snaps.find(s=>s.date===key);
-    });
-    if(!newFiles.length)return;
-
-    // Update status in header
-    F.driveSnapsStatus=`Syncing ${newFiles.length} new snapshot${newFiles.length>1?'s':''}...`;
-    updateFreightHeader();
-
-    let added=0;
-    for(const file of newFiles){
-      try{
-        const date=parseDateFromName(file.name);if(!date)continue;
-        const key=toStr(date);
-
-        // Download the image
-        const imgResp=await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&key=${AK}`);
-        if(!imgResp.ok)continue;
-        const buf=await imgResp.arrayBuffer();
-        const base64=btoa(String.fromCharCode(...new Uint8Array(buf)));
-        const mimeType=file.mimeType||'image/png';
-
-        // Send to Claude AI to extract BLNG values
-        const aiResp=await fetch('https://api.anthropic.com/v1/messages',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            model:'claude-sonnet-4-20250514',
-            max_tokens:1000,
-            messages:[{
-              role:'user',
-              content:[
-                {type:'image',source:{type:'base64',media_type:mimeType,data:base64}},
-                {type:'text',text:`Extract LNG freight forward curve values from this table image.
-
-Return ONLY a valid JSON object, no explanation:
-{"BLNG1":[values...],"BLNG2":[values...],"BLNG3":[values...]}
-
-Rules:
-- Values are $/day (e.g. 83000). "83 000" = 83000.
-- Use null for missing months.
-- All arrays same length (number of forward months in table).
-- Ignore CURMON row — start from first forward month.
-- Ignore Pos% and Repo% columns entirely.`}
-              ]
-            }]
-          })
-        });
-
-        if(!aiResp.ok)continue;
-        const aiData=await aiResp.json();
-        const text=aiData.content?.find(c=>c.type==='text')?.text||'';
-        const match=text.match(/\{[\s\S]*\}/);
-        if(!match)continue;
-        const parsed=JSON.parse(match[0]);
-        if(!parsed.BLNG1||!parsed.BLNG2||!parsed.BLNG3)continue;
-
-        const apply=arr=>Array(24).fill(null).map((_,i)=>arr[i]!=null?+arr[i]:null);
-        const snap={
-          date:key,
-          label:`OB FFA ${key}`,
-          blng:{BLNG1:apply(parsed.BLNG1),BLNG2:apply(parsed.BLNG2),BLNG3:apply(parsed.BLNG3)}
-        };
-        F.snaps=[snap,...F.snaps.filter(s=>s.date!==key)];
-        added++;
-      }catch(e){console.warn('Failed to process freight snapshot:',e);}
-    }
-
-    if(added>0){
-      F.snaps.sort((a,b)=>b.date.localeCompare(a.date));
-      fs('f_snaps',F.snaps);
-      F.driveSnapsStatus=`+${added} snapshot${added>1?'s':''} synced ✓`;
-    }else{
-      F.driveSnapsStatus='';
-    }
-    updateFreightHeader();
-    // Refresh tab if on freight curves tab
-    if(F.tab===0)renderFTab();
-
-  }catch(e){
-    console.warn('Freight Drive sync failed:',e);
-    F.driveSnapsStatus='';
-  }
-}
-
-function updateFreightHeader(){
-  const statusEl=document.getElementById('freight-drive-status');
-  if(statusEl)statusEl.textContent=F.driveSnapsStatus||'';
-}
+function renderFreight(){
   const wrap=document.getElementById('freight-wrap');
   if(!wrap)return;
   const stale=F.matrixTs&&F.blngTs&&F.blngTs>F.matrixTs;
   wrap.innerHTML=`
     <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">FREIGHT RATE CALCULATOR</span>
-      <span id="freight-drive-status" style="font-size:9px;color:#4caf50;margin-left:8px">${F.driveSnapsStatus||''}</span>
       <span style="flex:1"></span>
       ${stale?'<span style="color:#ff9800;font-size:10px">MATRIX STALE</span>':''}
       <button class="f-btn sm" onclick="showPortMgr()">PORT MGR</button>
@@ -720,92 +615,48 @@ function renderFTab(){
 
 // ── TAB 0: FREIGHT CURVES ──
 function renderFreightCurves(){
-  // Single combined table: Period | BLNG1 | Pos% | Repo% | BLNG2 | Pos% | Repo% | BLNG3 | Pos% | Repo%
-  const combinedRows=ML.map((m,i)=>`<tr>
-    <td style="color:#8a9bb5;white-space:nowrap;min-width:56px">${m}</td>
-    ${['BLNG1','BLNG2','BLNG3'].map(c=>`
-      <td style="padding:2px 3px">
-        <input class="f-inp" style="width:78px;text-align:right;color:${BC[c]}" type="number"
-          data-blng="${c}" data-i="${i}"
-          value="${F.blng[c][i]!=null?F.blng[c][i]:''}"
-          onchange="blngChange(this)"/>
-      </td>
-      <td style="padding:2px 3px">
-        <input class="f-inp" style="width:52px;text-align:right;color:#4fc3f7" type="number" step="0.1"
-          data-prtype="pos" data-curve="${c}" data-i="${i}"
-          value="${F.posArr[c][i]||0}"
-          onchange="prChange(this)"/>
-      </td>
-      <td style="padding:2px 3px">
-        <input class="f-inp" style="width:52px;text-align:right;color:#ffb74d" type="number" step="0.1"
-          data-prtype="repo" data-curve="${c}" data-i="${i}"
-          value="${F.repoArr[c][i]||0}"
-          onchange="prChange(this)"/>
-      </td>`).join('')}
+  const curveRows=ML.map((m,i)=>`<tr>
+    <td>${m}</td>
+    ${['BLNG1','BLNG2','BLNG3'].map(c=>`<td style="padding:2px 4px"><input class="f-inp" style="width:85px;text-align:right" type="number" data-blng="${c}" data-i="${i}" value="${F.blng[c][i]!=null?F.blng[c][i]:''}" onchange="blngChange(this)"/></td>`).join('')}
   </tr>`).join('');
 
-  // Snapshot LOAD buttons inline (most recent first, max 3 shown)
-  const snapBtns=F.snaps.slice(0,3).map(s=>
-    `<button class="f-btn sm" data-snapdate="${s.date}" onclick="loadSnapBtn(this)" title="${s.label}">↺ ${s.label}</button>`
-  ).join('');
+  const prRows=ML.map((m,i)=>`<tr>
+    <td>${m}</td>
+    ${['BLNG1','BLNG2','BLNG3'].map(c=>`
+      <td style="padding:2px 3px"><input class="f-inp" style="width:55px;text-align:right" type="number" step="0.1" data-prtype="pos" data-curve="${c}" data-i="${i}" value="${F.posArr[c][i]||0}" onchange="prChange(this)"/></td>
+      <td style="padding:2px 3px"><input class="f-inp" style="width:55px;text-align:right" type="number" step="0.1" data-prtype="repo" data-curve="${c}" data-i="${i}" value="${F.repoArr[c][i]||0}" onchange="prChange(this)"/></td>`).join('')}
+  </tr>`).join('');
+
+  const snaps=F.snaps.length?`<div style="margin-top:14px"><div class="f-sec">HISTORICAL SNAPSHOTS</div>${F.snaps.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;background:#0d1526;padding:6px 10px;margin-bottom:4px;border:1px solid #1e3a5f"><span>${s.label}</span><button class="f-btn sm" data-snapdate="${s.date}" onclick="loadSnapBtn(this)">LOAD</button></div>`).join('')}</div>`:'';
 
   return`
     <div class="f-sec" style="font-size:12px;letter-spacing:3px;margin-bottom:14px">FORWARD FREIGHT CURVES</div>
     ${miniSVG(F.blng)}
-    <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-      <div style="display:flex;flex-direction:column;gap:3px">
-        <span class="f-lbl">SNAPSHOT DATE</span>
-        <input class="f-inp" style="width:150px" type="date" value="${F.snapDate}" onchange="F.snapDate=this.value">
+    <div class="f-grid f-g2" style="margin-bottom:12px">
+      <div><span class="f-lbl">SNAPSHOT DATE</span><input class="f-inp" type="date" value="${F.snapDate}" onchange="F.snapDate=this.value"></div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button class="f-btn" onclick="saveSnap()">SAVE SNAPSHOT</button>
+        <button class="f-btn" onclick="document.getElementById('blng-csv').click()">UPLOAD CSV</button>
+        <input type="file" id="blng-csv" accept=".csv,.txt" style="display:none" onchange="parseBLNGcsv(this)">
       </div>
-      <button class="f-btn" onclick="saveSnap()">SAVE SNAPSHOT</button>
-      <button class="f-btn" onclick="document.getElementById('blng-csv').click()">UPLOAD CSV</button>
-      <input type="file" id="blng-csv" accept=".csv,.txt" style="display:none" onchange="parseBLNGcsv(this)">
-      <button class="f-btn" onclick="document.getElementById('snap-upload').click()">LOAD SNAPSHOT</button>
-      <input type="file" id="snap-upload" accept=".json" style="display:none" onchange="loadSnapFile(this)">
-      <button class="f-btn" onclick="exportSnapFile()" title="Export current snapshot to file">EXPORT SNAPSHOT</button>
-      <button class="f-btn" style="border-color:#ab47bc;color:#ab47bc" onclick="document.getElementById('png-upload').click()" title="Upload PNG screenshot of BLNG curve table — AI will extract values">⬡ UPLOAD PNG</button>
-      <input type="file" id="png-upload" accept=".png,.jpg,.jpeg" style="display:none" onchange="parsePNGCurve(this)">
-      <span id="png-status" style="font-size:9px;color:#546e7a"></span>
     </div>
-    <div class="f-sec" style="margin-top:14px">HISTORICAL SNAPSHOTS</div>
-    ${F.snaps.length
-      ? F.snaps.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;background:#0d1526;padding:6px 10px;margin-bottom:4px;border:1px solid #1e3a5f">
-          <span style="font-size:10px;color:#8a9bb5">${s.label}</span>
-          <div style="display:flex;gap:6px">
-            <button class="f-btn sm" data-snapdate="${s.date}" onclick="loadSnapBtn(this)">LOAD</button>
-            <button class="f-btn sm" onclick="exportSnapFileByDate('${s.date}')" title="Export to file">↓</button>
-          </div>
-        </div>`).join('')
-      : `<div style="color:#546e7a;font-size:10px;padding:10px 0">No snapshots saved yet.</div>`}
-  </div>`;
-    <div style="overflow-x:auto">
+    <div class="f-sec">BLNG CURVE INPUT ($/day)</div>
+    <div style="overflow-x:auto;margin-bottom:20px">
       <table class="f-tbl">
-        <thead>
-          <tr>
-            <th rowspan="2" style="vertical-align:bottom">PERIOD</th>
-            ${['BLNG1 — PACIFIC','BLNG2 — ATLANTIC','BLNG3 X-BASIN'].map((l,ci)=>`<th colspan="3" style="text-align:center;color:${BC[['BLNG1','BLNG2','BLNG3'][ci]]};border-bottom:1px solid ${BC[['BLNG1','BLNG2','BLNG3'][ci]]}33">${l}</th>`).join('')}
-          </tr>
-          <tr>
-            ${['BLNG1','BLNG2','BLNG3'].map(c=>`
-              <th style="text-align:right;color:${BC[c]};font-size:9px">$/day</th>
-              <th style="text-align:right;color:#4fc3f7;font-size:9px">Pos%</th>
-              <th style="text-align:right;color:#ffb74d;font-size:9px">Repo%</th>`).join('')}
-          </tr>
-        </thead>
-        <tbody>${combinedRows}</tbody>
+        <thead><tr><th>PERIOD</th>${['BLNG1','BLNG2','BLNG3'].map(c=>`<th style="text-align:right;color:${BC[c]}">${c}</th>`).join('')}</tr></thead>
+        <tbody>${curveRows}</tbody>
       </table>
     </div>
-    <div class="f-sec" style="margin-top:18px">HISTORICAL SNAPSHOTS</div>
-    ${F.snaps.length
-      ? F.snaps.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;background:#0d1526;padding:6px 10px;margin-bottom:4px;border:1px solid #1e3a5f">
-          <span style="font-size:10px;color:#8a9bb5">${s.label}</span>
-          <div style="display:flex;gap:6px">
-            <button class="f-btn sm" data-snapdate="${s.date}" onclick="loadSnapBtn(this)">LOAD</button>
-            <button class="f-btn sm" onclick="exportSnapFileByDate('${s.date}')" title="Export to JSON file">↓ EXPORT</button>
-          </div>
-        </div>`).join('')
-      : `<div style="color:#546e7a;font-size:10px;padding:10px 0">No snapshots saved yet.</div>`
-    }`;
+    <div class="f-sec">POSITIONING &amp; REPOSITIONING (% OF TC RATE PER MONTH)</div>
+    <div style="overflow-x:auto">
+      <table class="f-tbl">
+        <thead><tr><th>PERIOD</th>${['BLNG1','BLNG2','BLNG3'].map(c=>`<th style="text-align:right;color:${BC[c]}" colspan="2">${c} Pos% / Repo%</th>`).join('')}</tr>
+        <tr><th></th>${['BLNG1','BLNG2','BLNG3'].map(c=>`<th style="text-align:right;font-size:9px;color:#4fc3f7">POS%</th><th style="text-align:right;font-size:9px;color:#ffb74d">REPO%</th>`).join('')}</tr>
+        </thead>
+        <tbody>${prRows}</tbody>
+      </table>
+    </div>
+    ${snaps}`;
 }
 
 // ── TAB 1: SHIP PARAMS ──
@@ -995,124 +846,7 @@ function svBreakdownData(){
 function exportSingleCSV(){const d=svBreakdownData();if(!d)return;const csv=[`# ${d.title}`,d.header.join(','),...d.rows.map(r=>[r[0],r[1].toFixed(0),r[2].toFixed(4),r[3].toFixed(2)].join(','))].join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`freight_${F.svOrig}_${F.svDisch}_${ML[F.svMi]}.csv`;a.click();F.showExportMenu=false;renderFTab();}
 function exportSingleXLS(){const d=svBreakdownData();if(!d)return;const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([[d.title],[''],[d.header],...d.rows.map(r=>[r[0],+r[1].toFixed(0),+r[2].toFixed(4),+r[3].toFixed(2)])]);XLSX.utils.book_append_sheet(wb,ws,'Freight Breakdown');XLSX.writeFile(wb,`freight_${F.svOrig}_${F.svDisch}_${ML[F.svMi]}.xlsx`);F.showExportMenu=false;renderFTab();}
 
-async function parsePNGCurve(el){
-  const file=el.files[0];if(!file)return;
-  const status=document.getElementById('png-status');
-  if(status)status.textContent='⬡ Reading image...';
-
-  // Convert image to base64
-  const base64=await new Promise((res,rej)=>{
-    const r=new FileReader();
-    r.onload=()=>res(r.result.split(',')[1]);
-    r.onerror=rej;
-    r.readAsDataURL(file);
-  });
-
-  if(status)status.textContent='⬡ Extracting values with AI...';
-
-  try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
-        messages:[{
-          role:'user',
-          content:[
-            {type:'image',source:{type:'base64',media_type:file.type||'image/png',data:base64}},
-            {type:'text',text:`This image shows a table of LNG freight forward curves (BLNG1, BLNG2, BLNG3) with monthly values in $/day and optional Pos% and Repo% columns.
-
-Extract ALL the numeric $/day values for BLNG1, BLNG2, and BLNG3 for each delivery month shown.
-
-Return ONLY a valid JSON object in this exact format, no explanation, no markdown:
-{
-  "date": "YYYY-MM-DD or empty string if not visible",
-  "BLNG1": [value1, value2, ...],
-  "BLNG2": [value1, value2, ...],
-  "BLNG3": [value1, value2, ...]
-}
-
-Rules:
-- Values are in $/day (e.g. 83000, 80000). If shown as "83 000" write 83000.
-- Use null for any month where a value is missing or not shown.
-- The arrays must all be the same length, matching the number of months in the table.
-- Ignore the CURMON row if present — start from the first forward month (e.g. May-26).
-- Ignore Pos% and Repo% columns entirely.`}
-          ]
-        }]
-      })
-    });
-
-    const data=await resp.json();
-    const text=data.content?.find(c=>c.type==='text')?.text||'';
-    // Extract JSON from response
-    const match=text.match(/\{[\s\S]*\}/);
-    if(!match)throw new Error('No JSON found in response');
-    const parsed=JSON.parse(match[0]);
-
-    // Validate
-    if(!parsed.BLNG1||!parsed.BLNG2||!parsed.BLNG3){
-      throw new Error('Missing BLNG curves in response');
-    }
-
-    // Apply to F.blng — pad or trim to 24 months
-    const apply=(arr)=>Array(24).fill(null).map((_,i)=>arr[i]!=null?+arr[i]:null);
-    const newBlng={
-      BLNG1:apply(parsed.BLNG1),
-      BLNG2:apply(parsed.BLNG2),
-      BLNG3:apply(parsed.BLNG3)
-    };
-    fSaveBlng(newBlng);
-
-    // If date detected, set snapshot date
-    if(parsed.date&&parsed.date.length===10) F.snapDate=parsed.date;
-
-    if(status)status.textContent=`✓ Extracted ${parsed.BLNG1.filter(v=>v!=null).length} months`;
-    setTimeout(()=>{if(status)status.textContent='';},4000);
-    renderFTab();
-
-  }catch(err){
-    console.error('PNG parse error:',err);
-    if(status)status.textContent='✗ Could not extract values — check image quality';
-    setTimeout(()=>{if(status)status.textContent='';},5000);
-  }
-  el.value='';
-}
-  const file=el.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=e=>{
-    try{
-      const snap=JSON.parse(e.target.result);
-      if(!snap.blng||!snap.date){alert('Invalid snapshot file.');return;}
-      // Add to snaps list if not already there
-      const exists=F.snaps.find(s=>s.date===snap.date);
-      if(!exists){
-        F.snaps=[snap,...F.snaps];
-        fs('f_snaps',F.snaps);
-      }
-      // Load the curves
-      fSaveBlng(JSON.parse(JSON.stringify(snap.blng)));
-      renderFTab();
-      alert('Snapshot loaded: '+snap.label);
-    }catch(err){alert('Could not read snapshot file.');}
-  };
-  r.readAsText(file);el.value='';
-}
-
-function exportSnapFile(){
-  const snap={date:F.snapDate,label:`OB FFA ${F.snapDate}`,blng:JSON.parse(JSON.stringify(F.blng))};
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(snap,null,2)],{type:'application/json'}));
-  a.download=`freight_snapshot_${F.snapDate}.json`;a.click();
-}
-
-function exportSnapFileByDate(date){
-  const snap=F.snaps.find(s=>s.date===date);if(!snap)return;
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(snap,null,2)],{type:'application/json'}));
-  a.download=`freight_snapshot_${date}.json`;a.click();
-}if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);const dd=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);const rows=[['Origin',...ML]];fd.forEach(sp=>dd.forEach(dp=>rows.push([`${sp.name} → ${dp.name}`,...ML.map((_,i)=>F.matrix[sp.id]&&F.matrix[sp.id][dp.id]&&F.matrix[sp.id][dp.id][i]?F.matrix[sp.id][dp.id][i].freight.toFixed(4):'-')])));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));a.download=`freight_matrix_${new Date().toISOString().slice(0,10)}.csv`;a.click();}
+function exportMatrixCSV(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);const dd=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);const rows=[['Origin',...ML]];fd.forEach(sp=>dd.forEach(dp=>rows.push([`${sp.name} → ${dp.name}`,...ML.map((_,i)=>F.matrix[sp.id]&&F.matrix[sp.id][dp.id]&&F.matrix[sp.id][dp.id][i]?F.matrix[sp.id][dp.id][i].freight.toFixed(4):'-')])));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));a.download=`freight_matrix_${new Date().toISOString().slice(0,10)}.csv`;a.click();}
 function exportMatrixXLS(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);const dd=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);const rows=[['Origin',...ML]];fd.forEach(sp=>dd.forEach(dp=>rows.push([`${sp.name} → ${dp.name}`,...ML.map((_,i)=>{const v=F.matrix[sp.id]&&F.matrix[sp.id][dp.id]&&F.matrix[sp.id][dp.id][i];return v?+v.freight.toFixed(4):'-';})])));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Freight Matrix');XLSX.writeFile(wb,`freight_matrix_${new Date().toISOString().slice(0,10)}.xlsx`);}
 
 function showPortMgr(){const d=allD();const modal=document.createElement('div');modal.id='port-mgr-modal';modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px';modal.innerHTML=`<div style="background:#0a0f1e;border:1px solid #1e3a5f;width:100%;max-width:720px;max-height:85vh;overflow-y:auto;padding:20px"><div style="display:flex;justify-content:space-between;margin-bottom:14px"><span style="color:#4fc3f7;letter-spacing:2px;font-size:12px">PORT MANAGER</span><button class="f-btn sm" onclick="document.getElementById('port-mgr-modal').remove()">CLOSE</button></div><div class="f-sec">SUPPLY PORTS</div><table class="f-tbl"><thead><tr><th>NAME</th><th>CURVE</th><th class="tr">LOAD COST ($)</th></tr></thead><tbody>${SUPPLY.map(p=>`<tr><td>${p.name}</td><td>${p.curve}</td><td class="tr">${p.loadCost.toLocaleString()}</td></tr>`).join('')}</tbody></table><div class="f-sec" style="margin-top:16px">DISCHARGE PORTS (${d.length})</div><table class="f-tbl"><thead><tr><th>NAME</th><th>REGION</th><th class="tr">DISCH COST ($)</th><th>ETS</th></tr></thead><tbody>${d.map(p=>`<tr><td>${p.name}</td><td>${p.region}</td><td class="tr">${p.dischCost.toLocaleString()}</td><td>${p.euEts?'<span class="f-badge-ets">YES</span>':'NO'}</td></tr>`).join('')}</tbody></table></div>`;document.body.appendChild(modal);}
@@ -1731,9 +1465,7 @@ function exportToExcel(){if(!sDates.length){alert('No data.');return;}const wb=X
 function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$('sec-'+id);if(s)s.classList.add('active');if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,rc10,rc20,rc30,spChart,spLegsChart,fcChart,seaChart,gasChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')updRC2();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard')buildGasSnapshot();},60);}
 function showAnalyticsUI(){const fd=$('fin-dropzone'),fa=$('fin-analytics');if(fd)fd.style.display='none';if(fa)fa.style.display='block';finLoaded=true;}
 
-const AK='AIzaSyAcEeqXFFvX3JIb-HHbtHSdtCSFGqDpLnw';
-const FID='18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
-const FREIGHT_FOLDER_ID='1PLeK-f1tXTADjETKPvOzQ-9aAyhO2GSb';
+const AK='AIzaSyAcEeqXFFvX3JIb-HHbtHSdtCSFGqDpLnw',FID='18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
 function showManualDrop(){const da=$('dz-auto'),dm=$('dz-manual');if(da)da.style.display='none';if(dm)dm.style.display='flex';setupDrop();}
 function setP(pct,title,sub){const pf=$('progfill'),pt=$('progtxt'),dt=$('dz-auto-title');if(pf)pf.style.width=pct+'%';if(title&&dt)dt.textContent=title;if(sub&&pt)pt.textContent=sub;}
 async function lFiles(){const all=[];let pt=null;const q=encodeURIComponent(`'${FID}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false`);do{let url=`https://www.googleapis.com/drive/v3/files?q=${q}&key=${AK}&fields=files(id,name),nextPageToken&pageSize=200&orderBy=name`;if(pt)url+='&pageToken='+encodeURIComponent(pt);const r=await fetch(url);if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'API error');}const d=await r.json();if(d.files)all.push(...d.files);pt=d.nextPageToken||null;}while(pt);return all;}
@@ -1744,70 +1476,10 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(cc)cc.addEventListener('click',clearCache);
   if(fi2)fi2.addEventListener('change',()=>{if(fi2.files.length)handleFiles([...fi2.files],true);});
   setupDrop();
-
-  if(lCache()){
-    // Loaded from cache — show UI immediately
-    showAnalyticsUI();initUI();
-    const st=$('stext');
-    if(st)st.textContent=sDates.length+' DATES — '+fmtD(sDates[0])+' → '+fmtD(sDates[sDates.length-1])+' · cached';
-    // Then silently check Drive for NEW files not yet in cache
-    incrementalDriveSync();
-    return;
-  }
+  if(lCache()){showAnalyticsUI();initUI();const st=$('stext');if(st)st.textContent=sDates.length+' DATES — '+fmtD(sDates[0])+' → '+fmtD(sDates[sDates.length-1])+' · cached';return;}
   const tf=$('tab-financial');
   if(tf)tf.addEventListener('click',()=>{if(!finLoaded)lDrive();},{once:true});
 });
-
-// ── INCREMENTAL SYNC — only downloads dates not already in cache ──
-async function incrementalDriveSync(){
-  try{
-    const files=await lFiles();
-    if(!files.length)return;
-    const newFiles=files.filter(f=>{
-      const date=pDFN(f.name);
-      if(!date)return false;
-      return!aD[toStr(date)]; // only files not already cached
-    });
-    if(!newFiles.length){
-      // All files already cached — update status to show it's up to date
-      const st=$('stext');
-      if(st)st.textContent=sDates.length+' DATES — '+fmtD(sDates[0])+' → '+fmtD(sDates[sDates.length-1])+' · up to date ✓';
-      return;
-    }
-    // New files found — show update notification
-    const st=$('stext');
-    if(st)st.textContent=sDates.length+' DATES (cached) · '+newFiles.length+' new file'+( newFiles.length>1?'s':'')+' found — syncing...';
-    // Download and parse only new files
-    let added=0;
-    const BATCH=3;
-    for(let i=0;i<newFiles.length;i+=BATCH){
-      await Promise.all(newFiles.slice(i,i+BATCH).map(async f=>{
-        const date=pDFN(f.name);if(!date)return;
-        const key=toStr(date);
-        try{
-          const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${AK}`);
-          if(!resp.ok)return;
-          const buf=await resp.arrayBuffer();
-          if(buf.byteLength<5000)return;
-          const h=new Uint8Array(buf.slice(0,4));
-          if(!(h[0]===0x50&&h[1]===0x4B))return;
-          const rows=pExcel(buf);
-          if(rows.length>0){aD[key]={date,rows};added++;}
-        }catch(e){}
-      }));
-    }
-    if(added>0){
-      sDates=Object.keys(aD).sort();
-      sCache();
-      // Refresh UI with new data
-      initUI();
-      const st2=$('stext');
-      if(st2)st2.textContent=sDates.length+' DATES — '+fmtD(sDates[0])+' → '+fmtD(sDates[sDates.length-1])+' · +'+added+' new ✓';
-    }
-  }catch(e){
-    console.warn('Incremental sync failed silently:',e);
-  }
-}
 </script>
 </body>
 </html>
