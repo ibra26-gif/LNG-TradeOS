@@ -8,175 +8,163 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0b0d16;--bg-card:#0f1221;--bg-card-h:#131729;--border:rgba(77,158,245,0.1);--border-h:rgba(77,158,245,0.28);--blue:#4d9ef5;--blue-dim:rgba(77,158,245,0.13);--text:#dde4f0;--text-dim:#6b7a99;--text-hi:#f0f4ff;--green:#34d399;--red:#f87171;}
-body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px}
-::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:rgba(77,158,245,0.2)}
-
-/* ── SHELL NAV ── */
-.topnav{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:52px;border-bottom:1px solid var(--border);background:rgba(11,13,22,0.97);position:sticky;top:0;z-index:200;backdrop-filter:blur(8px)}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0d16;--bg2:#0f1221;--bg3:#131729;--bl:rgba(77,158,245,0.1);--blh:rgba(77,158,245,0.28);--b:#4d9ef5;--bd:rgba(77,158,245,0.13);--tx:#dde4f0;--td:#6b7a99;--th:#f0f4ff;--gr:#34d399;--rd:#f87171}
+body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);min-height:100vh;font-size:13px}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:rgba(77,158,245,.2)}
+.topnav{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:52px;border-bottom:1px solid var(--bl);background:rgba(11,13,22,.97);position:sticky;top:0;z-index:200;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .logo{display:flex;align-items:center;gap:10px;cursor:pointer}
-.logo-tri{width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:16px solid var(--blue)}
-.logo-text{font-size:15px;font-weight:500;letter-spacing:.05em;color:var(--text-hi)}
-.logo-text .ac{color:var(--blue)}.logo-text .tm{font-size:10px;vertical-align:super;color:var(--blue)}
+.logo-tri{width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:16px solid var(--b)}
+.logo-text{font-size:15px;font-weight:500;letter-spacing:.05em;color:var(--th)}
+.logo-text .ac{color:var(--b)}.logo-text .tm{font-size:10px;vertical-align:super;color:var(--b)}
 .nav-tabs{display:flex;height:100%}
-.nav-tab{display:flex;align-items:center;padding:0 20px;height:100%;font-size:10px;letter-spacing:.13em;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap}
-.nav-tab:hover{color:var(--text)}.nav-tab.active{color:var(--text-hi);border-bottom-color:var(--blue)}
-.byline{font-size:10px;letter-spacing:.15em;color:var(--text-dim);border:1px solid var(--border);padding:4px 12px}
-
-/* ── SHELL SECTIONS ── */
+.nav-tab{display:flex;align-items:center;padding:0 20px;height:100%;font-size:10px;letter-spacing:.13em;color:var(--td);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap}
+.nav-tab:hover{color:var(--tx)}.nav-tab.active{color:var(--th);border-bottom-color:var(--b)}
+.byline{font-size:10px;letter-spacing:.15em;color:var(--td);border:1px solid var(--bl);padding:4px 12px}
 .s-sec{display:none}.s-sec.active{display:block}
-
-/* ── HERO ── */
-.hero{text-align:center;padding:72px 32px 56px;border-bottom:1px solid var(--border)}
-.hero-title{font-size:50px;font-weight:300;letter-spacing:.06em;color:var(--text-hi);margin-bottom:14px}
-.hero-title .ac{color:var(--blue);font-weight:600}.hero-title .tm{font-size:22px;vertical-align:super;color:var(--blue)}
-.hero-sub{font-size:12px;color:var(--text-dim);margin-bottom:22px;letter-spacing:.06em}
-.badge{display:inline-block;border:1px solid var(--border);padding:4px 16px;font-size:10px;color:var(--text-dim);letter-spacing:.12em}
-
-/* ── MODULE GROUPS ── */
-.mod-group{padding:44px 28px;border-bottom:1px solid var(--border)}
+.hero{text-align:center;padding:72px 32px 56px;border-bottom:1px solid var(--bl)}
+.hero-title{font-size:50px;font-weight:300;letter-spacing:.06em;color:var(--th);margin-bottom:14px}
+.hero-title .ac{color:var(--b);font-weight:600}.hero-title .tm{font-size:22px;vertical-align:super;color:var(--b)}
+.hero-sub{font-size:12px;color:var(--td);margin-bottom:22px;letter-spacing:.06em}
+.badge{display:inline-block;border:1px solid var(--bl);padding:4px 16px;font-size:10px;color:var(--td);letter-spacing:.12em}
+.mod-group{padding:44px 28px;border-bottom:1px solid var(--bl)}
 .group-hdr{display:flex;align-items:center;gap:14px;margin-bottom:28px}
-.group-icon{width:38px;height:38px;background:var(--blue-dim);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--blue)}
-.group-ttl{font-size:13px;letter-spacing:.12em;color:var(--text-hi);font-weight:500}
-.group-sub{font-size:10px;color:var(--text-dim);letter-spacing:.04em;margin-top:3px}
+.group-icon{width:38px;height:38px;background:var(--bd);border:1px solid var(--bl);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--b)}
+.group-ttl{font-size:13px;letter-spacing:.12em;color:var(--th);font-weight:500}
+.group-sub{font-size:10px;color:var(--td);letter-spacing:.04em;margin-top:3px}
 .cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.mod-card{background:var(--bg-card);border:1px solid var(--border);padding:22px;cursor:pointer;position:relative;transition:border-color .2s,background .2s}
-.mod-card:hover{border-color:var(--border-h);background:var(--bg-card-h)}
-.mod-card.dim{opacity:.45;cursor:default}.mod-card.dim:hover{border-color:var(--border);background:var(--bg-card)}
-.card-num{position:absolute;top:14px;right:16px;font-size:9px;color:var(--text-dim);letter-spacing:.1em}
-.card-ttl{font-size:12px;font-weight:500;color:var(--text-hi);letter-spacing:.05em;margin-bottom:8px}
-.card-desc{font-size:10px;color:var(--text-dim);line-height:1.65;margin-bottom:14px}
+.mod-card{background:var(--bg2);border:1px solid var(--bl);padding:22px;cursor:pointer;position:relative;transition:border-color .2s,background .2s}
+.mod-card:hover{border-color:var(--blh);background:var(--bg3)}
+.mod-card.dim{opacity:.45;cursor:default}.mod-card.dim:hover{border-color:var(--bl);background:var(--bg2)}
+.card-num{position:absolute;top:14px;right:16px;font-size:9px;color:var(--td);letter-spacing:.1em}
+.card-ttl{font-size:12px;font-weight:500;color:var(--th);letter-spacing:.05em;margin-bottom:8px}
+.card-desc{font-size:10px;color:var(--td);line-height:1.65;margin-bottom:14px}
 .s-tag{display:inline-block;font-size:9px;letter-spacing:.15em;padding:3px 10px;font-weight:600}
-.tag-phy{background:var(--blue-dim);color:var(--blue)}.tag-fin{background:rgba(52,211,153,.12);color:var(--green)}.tag-na{background:rgba(107,122,153,.12);color:var(--text-dim)}
-
-/* ── SHELL SUB NAV ── */
-.sh-subnav{display:flex;border-bottom:1px solid var(--border);padding:0 28px;overflow-x:auto;background:var(--bg)}
-.sh-stab{padding:15px 16px;font-size:10px;letter-spacing:.1em;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s}
-.sh-stab:hover{color:var(--text)}.sh-stab.active{color:var(--blue);border-bottom-color:var(--blue)}
-
-/* ── PLACEHOLDER ── */
+.tag-phy{background:var(--bd);color:var(--b)}.tag-fin{background:rgba(52,211,153,.12);color:var(--gr)}.tag-na{background:rgba(107,122,153,.12);color:var(--td)}
+.sh-subnav{display:flex;border-bottom:1px solid var(--bl);padding:0 28px;overflow-x:auto;background:var(--bg)}
+.sh-stab{padding:15px 16px;font-size:10px;letter-spacing:.1em;color:var(--td);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit}
+.sh-stab:hover{color:var(--tx)}.sh-stab.active{color:var(--b);border-bottom-color:var(--b)}
 .ph-page{padding:80px 32px;text-align:center}
-.ph-lbl{font-size:10px;letter-spacing:.15em;color:var(--blue);margin-bottom:14px}
-.ph-ttl{font-size:17px;color:var(--text-hi);letter-spacing:.1em;margin-bottom:10px}
-.ph-ttl .ac{color:var(--blue)}
-.ph-sub{font-size:11px;color:var(--text-dim);max-width:520px;margin:0 auto 36px;line-height:1.7}
-.ph-box{display:inline-block;padding:20px 36px;background:var(--bg-card);border:1px solid var(--border);font-size:10px;letter-spacing:.1em;color:var(--text-dim)}
-
-/* ── DISCLAIMER ── */
-.disc-wrap{max-width:820px;margin:0 auto;padding:56px 32px}
-.disc-wrap h2{font-size:14px;letter-spacing:.12em;color:var(--text-hi);margin-bottom:6px;font-weight:600}
-.disc-h3{font-size:11px;letter-spacing:.1em;color:var(--blue);margin:22px 0 8px;font-weight:500}
-.disc-p{font-size:11px;color:var(--text-dim);line-height:1.9;margin-bottom:10px}
-.disc-div{border:none;border-top:1px solid var(--border);margin:22px 0}
-.disc-copy{font-size:10px;color:var(--blue);letter-spacing:.05em;margin-top:32px;padding-top:20px;border-top:1px solid var(--border)}
-
-/* ── FOOTER ── */
-.sh-footer{padding:18px 28px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.ft{font-size:9px;color:var(--text-dim);letter-spacing:.09em}
-.dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px}
-
-/* ════════════════════════════════════════════
-   ANALYTICS ENGINE — from LNG TradeOS Analytics
-   ════════════════════════════════════════════ */
-#fin-analytics{background:#070b14;color:#c8cfe0;min-height:calc(100vh - 52px);}
-#fin-analytics,.analytics-main,#fin-analytics select,#fin-analytics button,.ctrl,.cl,.ctitle,.cnote,.stbl,.ctbl,.mc,.mini-card,.acard{font-family:'Courier New',monospace!important}
-#fin-analytics .section{display:none}
-#fin-analytics .section.active{display:block}
-
-.anav{display:flex;background:#070b14;border-bottom:1px solid #151e30;padding:0 28px;overflow-x:auto;}
-.anl{font-size:10px;letter-spacing:.12em;color:#3d5070;cursor:pointer;padding:15px 14px;border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:'Courier New',monospace;white-space:nowrap}
+.ph-lbl{font-size:10px;letter-spacing:.15em;color:var(--b);margin-bottom:14px}
+.ph-ttl{font-size:17px;color:var(--th);letter-spacing:.1em;margin-bottom:10px}
+.ph-sub{font-size:11px;color:var(--td);max-width:520px;margin:0 auto 36px;line-height:1.7}
+.ph-box{display:inline-block;padding:20px 36px;background:var(--bg2);border:1px solid var(--bl);font-size:10px;letter-spacing:.1em;color:var(--td)}
+/* FREIGHT */
+#freight-wrap{background:#0a0f1e;color:#c8d6e5;min-height:calc(100vh - 105px);font-family:'IBM Plex Mono',monospace}
+.f-subnav{display:flex;background:#070b14;border-bottom:1px solid #1e3a5f;overflow-x:auto}
+.f-tab{padding:10px 16px;cursor:pointer;font-size:10px;letter-spacing:1px;color:#546e7a;background:none;border:none;border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;transition:all .2s}
+.f-tab:hover{color:#8a9bb5}.f-tab.active{color:#4fc3f7;border-bottom-color:#4fc3f7}
+.f-body{padding:20px}
+.f-sec{color:#4fc3f7;font-size:10px;letter-spacing:2px;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid #1e3a5f}
+.f-lbl{color:#78909c;font-size:10px;letter-spacing:1px;margin-bottom:3px;display:block}
+.f-inp{background:#0d1526;border:1px solid #1e3a5f;color:#c8d6e5;padding:5px 8px;font-size:11px;font-family:inherit;width:100%}
+.f-inp:focus{outline:1px solid #4fc3f7}
+.f-sel{background:#0d1526;border:1px solid #1e3a5f;color:#c8d6e5;padding:5px 8px;font-size:11px;font-family:inherit;width:100%}
+.f-btn{background:transparent;border:1px solid #1565c0;color:#4fc3f7;padding:6px 14px;cursor:pointer;font-size:10px;letter-spacing:1px;font-family:inherit;transition:all .2s}
+.f-btn:hover{background:#1565c0;color:#fff}.f-btn.on{background:#1565c0;color:#fff}
+.f-btn.sm{padding:4px 10px;font-size:9px}
+.f-btn.grn{border-color:#22c55e;color:#22c55e}.f-btn.grn:hover{background:#22c55e;color:#000}
+.f-card{background:#0d1526;border:1px solid #1e3a5f;padding:10px;margin-bottom:10px}
+.f-grid{display:grid;gap:10px}
+.f-g2{grid-template-columns:1fr 1fr}.f-g3{grid-template-columns:1fr 1fr 1fr}
+.f-gauto{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.f-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.f-tbl th{color:#546e7a;padding:5px 8px;border-bottom:1px solid #1e3a5f;text-align:left;font-size:10px;letter-spacing:1px;white-space:nowrap;font-weight:400}
+.f-tbl td{padding:5px 8px;border-bottom:1px solid #0f1f35;color:#c8d6e5;white-space:nowrap}
+.f-tbl .tr{text-align:right}.f-tbl tr:hover td{background:#0c1422}
+.f-tbl .hi{color:#4fc3f7}.f-tbl .hi-row td{color:#4fc3f7;font-weight:700}
+.f-ok{background:#0d2f0d;border:1px solid #4caf50;color:#4caf50;padding:8px 12px;margin-bottom:12px;font-size:11px}
+.f-warn{background:#2d1f00;border:1px solid #ff9800;color:#ff9800;padding:8px 12px;margin-bottom:12px;font-size:11px}
+.f-badge-ets{background:#0d2f0d;color:#4caf50;padding:1px 5px;font-size:9px;border-radius:2px}
+/* ANALYTICS */
+#fin-analytics{background:#070b14;color:#c8cfe0;min-height:calc(100vh - 52px)}
+.anav{display:flex;background:#070b14;border-bottom:1px solid #151e30;padding:0 28px;overflow-x:auto}
+.anl{font-size:10px;letter-spacing:.12em;color:#3d5070;cursor:pointer;padding:15px 14px;border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;white-space:nowrap}
 .anl:hover{color:#8a9bb5}.anl.active{color:#c8cfe0;border-bottom-color:#2d7cff}
-
-.sbar{font-size:9px;color:#3d5070;letter-spacing:.1em;padding:7px 28px;border-bottom:1px solid #151e30;background:#070b14;display:none;align-items:center;gap:10px;flex-wrap:wrap;}
-.sdot{width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0;}
-.sbtn{font-size:9px;border:1px solid #1e2d45;padding:3px 11px;cursor:pointer;background:none;font-family:'Courier New',monospace;border-radius:2px;letter-spacing:.1em;color:#3d5070}
+.sbar{font-size:9px;color:#3d5070;letter-spacing:.1em;padding:7px 28px;border-bottom:1px solid #151e30;background:#070b14;display:none;align-items:center;gap:10px;flex-wrap:wrap}
+.sdot{width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0}
+.sbtn{font-size:9px;border:1px solid #1e2d45;padding:3px 11px;cursor:pointer;background:none;font-family:inherit;border-radius:2px;letter-spacing:.1em;color:#3d5070}
 .sbtn:hover{border-color:#2d7cff;color:#2d7cff}.sbtn.red{color:#ef4444}.sbtn.red:hover{border-color:#ef4444}
-
-.analytics-main{padding:20px 28px;max-width:1600px;margin:0 auto;}
-.ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:#0a0f1e;border:1px solid #151e30;border-radius:3px;}
-.cl{font-size:9px;letter-spacing:.15em;color:#3d5070;white-space:nowrap;}
-.csep{width:1px;height:20px;background:#151e30;margin:0 4px;}
-#fin-analytics select{background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-family:'Courier New',monospace!important;font-size:11px;padding:5px 9px;cursor:pointer;border-radius:2px;outline:none;}
-#fin-analytics select:focus,#fin-analytics select:hover{border-color:#2d7cff;}
-
-.acard{background:#0a0f1e;border:1px solid #151e30;border-radius:3px;padding:16px 18px;margin-bottom:14px;}
-.ctitle{font-size:9px;letter-spacing:.18em;color:#3d5070;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
-.ctitle::after{content:'';flex:1;height:1px;background:#151e30;}
-.cnote{font-size:9px;color:#3d5070;letter-spacing:.06em;margin-bottom:14px;line-height:1.7;padding:8px 12px;border-left:2px solid #1e2d45;}
-.cw{position:relative;width:100%;}
-
-.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:14px;}
-.mc{background:#0a0f1e;border:1px solid #151e30;padding:12px 14px;border-radius:3px;}
-.mc-name{font-size:8px;letter-spacing:.14em;color:#3d5070;margin-bottom:3px;}
-.mc-tenor{font-size:8px;color:#1e2d45;margin-bottom:7px;}
-.mc-val{font-size:20px;color:#c8cfe0;line-height:1;margin-bottom:5px;}
-.mc-row{display:flex;align-items:center;gap:6px;}
-.mc-chg{font-size:11px;font-weight:500;}.mc-pct{font-size:10px;}
-.mc-unit{font-size:8px;color:#3d5070;margin-left:auto;}
-.pos{color:#22c55e;}.neg{color:#ef4444;}.neu{color:#5a6882;}
-
-.stbl{width:100%;border-collapse:collapse;font-size:11px;}
-.stbl th,.stbl td{padding:7px 11px;border:1px solid #151e30;text-align:right;}
-.stbl th{color:#3d5070;font-weight:400;font-size:9px;letter-spacing:.1em;background:#070b14;text-align:left;}
-.stbl td:first-child{text-align:left;color:#8a9bb5;}.stbl tr:hover td{background:#0c1422;}
-.ctbl{width:100%;border-collapse:collapse;font-size:10.5px;}
-.ctbl th,.ctbl td{padding:7px 11px;text-align:center;border:1px solid #151e30;}
-.ctbl th{color:#3d5070;font-weight:400;font-size:9px;letter-spacing:.08em;background:#070b14;}
-
-.d1{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2d7cff;flex-shrink:0;}
-.d2{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;}
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
-.mini-grid-a{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px;}
-.mini-card{background:#0a0f1e;border:1px solid #151e30;border-radius:3px;padding:12px 14px;}
-.mini-title{font-size:9px;letter-spacing:.1em;color:#3d5070;margin-bottom:8px;}
-@media(max-width:900px){.two-col{grid-template-columns:1fr;}}
-.spinner{width:34px;height:34px;border:2px solid #151e30;border-top-color:#2d7cff;border-radius:50%;animation:spin .9s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-
-/* Drop zone */
-#fin-dropzone{min-height:calc(100vh - 52px);background:#070b14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
-.dz{width:500px;max-width:90vw;height:210px;border:1px dashed #1e2d45;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:all .2s;}
-.dz:hover,.dz.over{border-color:#2d7cff;background:rgba(45,124,255,.04);}
-.dz-icon{font-size:30px;color:#1e2d45;}
-.dz-title{font-size:11px;letter-spacing:.18em;color:#8a9bb5;font-family:'Courier New',monospace;}
-.dz-sub{font-size:10px;color:#3d5070;text-align:center;line-height:1.9;max-width:360px;font-family:'Courier New',monospace;}
-.dz-btn{font-size:10px;letter-spacing:.12em;color:#2d7cff;border:1px solid #1e2d45;padding:7px 22px;cursor:pointer;background:none;font-family:'Courier New',monospace;border-radius:2px;margin-top:4px;}
-.dz-btn:hover{border-color:#2d7cff;}
-.prog-wrap{width:500px;max-width:90vw;}
-.prog-bar{width:100%;height:2px;background:#151e30;border-radius:2px;overflow:hidden;margin-bottom:8px;}
-.prog-fill{height:100%;background:#2d7cff;width:0%;transition:width .2s ease;}
-.prog-txt{font-size:9px;color:#3d5070;letter-spacing:.08em;text-align:center;font-family:'Courier New',monospace;}
-#dz-auto-title{font-size:11px;letter-spacing:.18em;color:#8a9bb5;font-family:'Courier New',monospace;}
-#parselog{max-height:160px;overflow-y:auto;background:#0a0f1e;border:1px solid #151e30;padding:8px 12px;font-size:9px;color:#3d5070;line-height:1.8;width:500px;max-width:90vw;display:none;font-family:'Courier New',monospace;}
+.amin{padding:20px 28px;max-width:1600px;margin:0 auto}
+.ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:#0a0f1e;border:1px solid #151e30}
+.cl{font-size:9px;letter-spacing:.15em;color:#3d5070;white-space:nowrap}
+.csep{width:1px;height:20px;background:#151e30;margin:0 4px}
+#fin-analytics select{background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-family:inherit;font-size:11px;padding:5px 9px;cursor:pointer;outline:none}
+#fin-analytics select:hover{border-color:#2d7cff}
+.acard{background:#0a0f1e;border:1px solid #151e30;padding:16px 18px;margin-bottom:14px}
+.ctitle{font-size:9px;letter-spacing:.18em;color:#3d5070;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.ctitle::after{content:'';flex:1;height:1px;background:#151e30}
+.cnote{font-size:9px;color:#3d5070;margin-bottom:14px;line-height:1.7;padding:8px 12px;border-left:2px solid #1e2d45}
+.cw{position:relative;width:100%}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:14px}
+.mc{background:#0a0f1e;border:1px solid #151e30;padding:12px 14px}
+.mc-name{font-size:8px;letter-spacing:.14em;color:#3d5070;margin-bottom:3px}
+.mc-tenor{font-size:8px;color:#1e2d45;margin-bottom:7px}
+.mc-val{font-size:20px;color:#c8cfe0;line-height:1;margin-bottom:5px}
+.mc-row{display:flex;align-items:center;gap:6px}
+.mc-chg{font-size:11px;font-weight:500}.mc-pct{font-size:10px}
+.mc-unit{font-size:8px;color:#3d5070;margin-left:auto}
+.pos{color:#22c55e}.neg{color:#ef4444}.neu{color:#5a6882}
+.stbl{width:100%;border-collapse:collapse;font-size:11px}
+.stbl th,.stbl td{padding:7px 11px;border:1px solid #151e30;text-align:right}
+.stbl th{color:#3d5070;font-weight:400;font-size:9px;letter-spacing:.1em;background:#070b14;text-align:left}
+.stbl td:first-child{text-align:left;color:#8a9bb5}.stbl tr:hover td{background:#0c1422}
+.ctbl{width:100%;border-collapse:collapse;font-size:10.5px}
+.ctbl th,.ctbl td{padding:7px 11px;text-align:center;border:1px solid #151e30}
+.ctbl th{color:#3d5070;font-weight:400;font-size:9px;letter-spacing:.08em;background:#070b14}
+.d1{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2d7cff;flex-shrink:0}
+.d2{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}}
+.spinner{width:34px;height:34px;border:2px solid #151e30;border-top-color:#2d7cff;border-radius:50%;animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#fin-dropzone{min-height:calc(100vh - 52px);background:#070b14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+.dz{width:500px;max-width:90vw;height:210px;border:1px dashed #1e2d45;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:all .2s}
+.dz:hover,.dz.over{border-color:#2d7cff;background:rgba(45,124,255,.04)}
+.dz-icon{font-size:30px;color:#1e2d45}
+.dz-title{font-size:11px;letter-spacing:.18em;color:#8a9bb5;font-family:inherit}
+.dz-sub{font-size:10px;color:#3d5070;text-align:center;line-height:1.9;max-width:360px;font-family:inherit}
+.dz-btn{font-size:10px;letter-spacing:.12em;color:#2d7cff;border:1px solid #1e2d45;padding:7px 22px;cursor:pointer;background:none;font-family:inherit;margin-top:4px}
+.prog-wrap{width:500px;max-width:90vw}
+.prog-bar{width:100%;height:2px;background:#151e30;overflow:hidden;margin-bottom:8px}
+.prog-fill{height:100%;background:#2d7cff;width:0%;transition:width .2s}
+.prog-txt{font-size:9px;color:#3d5070;letter-spacing:.08em;text-align:center;font-family:inherit}
+#parselog{max-height:160px;overflow-y:auto;background:#0a0f1e;border:1px solid #151e30;padding:8px 12px;font-size:9px;color:#3d5070;line-height:1.8;width:500px;max-width:90vw;display:none;font-family:inherit}
+#fin-analytics .asec{display:none}#fin-analytics .asec.active{display:block}
+.disc-wrap{max-width:820px;margin:0 auto;padding:56px 32px}
+.disc-wrap h2{font-size:14px;letter-spacing:.12em;color:var(--th);margin-bottom:6px;font-weight:600}
+.disc-h3{font-size:11px;letter-spacing:.1em;color:var(--b);margin:22px 0 8px;font-weight:500}
+.disc-p{font-size:11px;color:var(--td);line-height:1.9;margin-bottom:10px}
+.disc-div{border:none;border-top:1px solid var(--bl);margin:22px 0}
+.disc-copy{font-size:10px;color:var(--b);margin-top:32px;padding-top:20px;border-top:1px solid var(--bl)}
+.sh-footer{padding:18px 28px;border-top:1px solid var(--bl);display:flex;justify-content:space-between}
+.ft{font-size:9px;color:var(--td);letter-spacing:.09em}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--gr);display:inline-block;margin-right:5px}
 </style>
 </head>
 <body>
-
-<!-- ════ TOP NAV ════ -->
 <nav class="topnav">
   <div class="logo" onclick="shellNav('home')">
     <div class="logo-tri"></div>
     <div class="logo-text">LNG <span class="ac">TradeOS<span class="tm">™</span></span></div>
   </div>
   <div class="nav-tabs">
-    <div class="nav-tab active" id="tab-home"       onclick="shellNav('home')">HOME</div>
-    <div class="nav-tab"        id="tab-physical"   onclick="shellNav('physical')">PHYSICAL TRADING</div>
-    <div class="nav-tab"        id="tab-financial"  onclick="shellNav('financial')">FINANCIAL TRADING</div>
-    <div class="nav-tab"        id="tab-analytics"  onclick="shellNav('analytics')">ANALYTICS</div>
-    <div class="nav-tab"        id="tab-disclaimer" onclick="shellNav('disclaimer')">DISCLAIMER</div>
+    <div class="nav-tab active" id="tab-home" onclick="shellNav('home')">HOME</div>
+    <div class="nav-tab" id="tab-physical" onclick="shellNav('physical')">PHYSICAL TRADING</div>
+    <div class="nav-tab" id="tab-financial" onclick="shellNav('financial')">FINANCIAL TRADING</div>
+    <div class="nav-tab" id="tab-analytics" onclick="shellNav('analytics')">ANALYTICS</div>
+    <div class="nav-tab" id="tab-disclaimer" onclick="shellNav('disclaimer')">DISCLAIMER</div>
   </div>
   <div class="byline">BY IBRAHIM MAR</div>
 </nav>
 
-<!-- ════ HOME ════ -->
+<!-- HOME -->
 <section class="s-sec active" id="section-home">
   <div class="hero">
     <div class="hero-title">LNG <span class="ac">TradeOS<span class="tm">™</span></span></div>
     <div class="hero-sub">Integrated LNG Trading &amp; Analytics Platform</div>
-    <span class="badge">v1.0</span>
+    <span class="badge">v1.2</span>
   </div>
-
   <div class="mod-group">
     <div class="group-hdr">
       <div class="group-icon">▣</div>
@@ -185,83 +173,74 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--text
     <div class="cards-grid">
       <div class="mod-card" onclick="shellNav('physical','freight')"><span class="card-num">01</span><div class="card-ttl">Freight Rate Calculator</div><div class="card-desc">Voyage cost estimation across global LNG shipping routes with dynamic vessel economics</div><span class="s-tag tag-phy">PHYSICAL</span></div>
       <div class="mod-card" onclick="shellNav('physical','regas')"><span class="card-num">02</span><div class="card-ttl">European Regas Model</div><div class="card-desc">European regasification terminal pricing, netback analysis and slot valuation</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','deal')"><span class="card-num">03</span><div class="card-ttl">Deal Economics</div><div class="card-desc">Full-cycle deal economics calculation, optimization and floating storage economics</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','deal')"><span class="card-num">03</span><div class="card-ttl">Deal Economics</div><div class="card-desc">Full-cycle deal economics, optimization and floating storage economics</div><span class="s-tag tag-phy">PHYSICAL</span></div>
       <div class="mod-card" onclick="shellNav('physical','cargo')"><span class="card-num">04</span><div class="card-ttl">Cargo Pricing</div><div class="card-desc">US FOB, India pricing, net forward netback, global FOB and inter-month spread structures</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','pnl')"><span class="card-num">05</span><div class="card-ttl">P&amp;L Spreadsheet</div><div class="card-desc">Trade-level profit &amp; loss tracking with mark-to-market and realized P&amp;L calculations</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','intrinsic')"><span class="card-num">06</span><div class="card-ttl">Intrinsic &amp; Extrinsic Values</div><div class="card-desc">Option value decomposition for LNG contracts with intrinsic and time value analysis</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','pnl')"><span class="card-num">05</span><div class="card-ttl">P&amp;L Spreadsheet</div><div class="card-desc">Trade-level P&amp;L tracking with mark-to-market and realized P&amp;L calculations</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','intrinsic')"><span class="card-num">06</span><div class="card-ttl">Intrinsic &amp; Extrinsic Values</div><div class="card-desc">Option value decomposition with intrinsic and time value analysis</div><span class="s-tag tag-phy">PHYSICAL</span></div>
     </div>
   </div>
-
   <div class="mod-group">
     <div class="group-hdr">
       <div class="group-icon">◆</div>
       <div><div class="group-ttl">LNG FINANCIAL TRADING TOOLS</div><div class="group-sub">Pricing dashboard, forward curves, historical analysis, spreads, correlations and seasonality</div></div>
     </div>
     <div class="cards-grid">
-      <div class="mod-card" onclick="shellNav('financial','dashboard')"><span class="card-num">01</span><div class="card-ttl">Dashboard</div><div class="card-desc">Live LNG index prices across global benchmarks with correlation matrix and DoD changes</div><span class="s-tag tag-fin">FINANCIAL</span></div>
-      <div class="mod-card" onclick="shellNav('financial','historical')"><span class="card-num">02</span><div class="card-ttl">Historical Prices</div><div class="card-desc">Historical price time-series across all LNG indices with dual-axis charting and statistics</div><span class="s-tag tag-fin">FINANCIAL</span></div>
-      <div class="mod-card" onclick="shellNav('financial','correlation')"><span class="card-num">03</span><div class="card-ttl">Correlation</div><div class="card-desc">Rolling Pearson correlation on log returns — 10D, 20D, 30D windows and full matrix</div><span class="s-tag tag-fin">FINANCIAL</span></div>
-      <div class="mod-card" onclick="shellNav('financial','spread')"><span class="card-num">04</span><div class="card-ttl">Spread Analysis</div><div class="card-desc">Inter-index spread analytics with individual leg charts and configurable tenor selection</div><span class="s-tag tag-fin">FINANCIAL</span></div>
-      <div class="mod-card" onclick="shellNav('financial','forward')"><span class="card-num">05</span><div class="card-ttl">Forward Curve</div><div class="card-desc">Full forward curve visualisation with two-date comparison and curve shape analytics</div><span class="s-tag tag-fin">FINANCIAL</span></div>
-      <div class="mod-card" onclick="shellNav('financial','seasonal')"><span class="card-num">06</span><div class="card-ttl">Seasonal Analysis</div><div class="card-desc">Year-over-year seasonal price profiles and monthly spread table across all indices</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','dashboard')"><span class="card-num">01</span><div class="card-ttl">Dashboard</div><div class="card-desc">Global Gas Snapshot, live index prices, correlation matrix and DoD changes</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','historical')"><span class="card-num">02</span><div class="card-ttl">Historical Prices</div><div class="card-desc">Historical time-series with dual-axis charting and statistics across all indices</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','correlation')"><span class="card-num">03</span><div class="card-ttl">Correlation</div><div class="card-desc">Rolling Pearson r — 10D, 20D, 30D windows and full matrix</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','spread')"><span class="card-num">04</span><div class="card-ttl">Spread Analysis</div><div class="card-desc">Inter-index spread analytics with individual leg charts and tenor selection</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','forward')"><span class="card-num">05</span><div class="card-ttl">Forward Curve</div><div class="card-desc">Full forward curve with two-date comparison and curve shape analytics</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','seasonal')"><span class="card-num">06</span><div class="card-ttl">Seasonal Analysis</div><div class="card-desc">Year-over-year seasonal profiles and monthly spread table</div><span class="s-tag tag-fin">FINANCIAL</span></div>
     </div>
   </div>
-
   <div class="sh-footer">
-    <div class="ft"><span class="dot"></span>LNG TRADEOS™ v1.0 — PERSONAL TRADING ANALYTICS</div>
+    <div class="ft"><span class="dot"></span>LNG TRADEOS™ v1.2 — PERSONAL TRADING ANALYTICS</div>
     <div class="ft">© 2026 IBRAHIM MAR — LNG TRADEOS™ — ALL RIGHTS RESERVED</div>
   </div>
 </section>
 
-<!-- ════ PHYSICAL TRADING ════ -->
+<!-- PHYSICAL -->
 <section class="s-sec" id="section-physical">
   <div class="sh-subnav">
-    <div class="sh-stab active" id="ptab-overview"  onclick="phTab('overview')">OVERVIEW</div>
-    <div class="sh-stab"        id="ptab-freight"   onclick="phTab('freight')">FREIGHT CALCULATOR</div>
-    <div class="sh-stab"        id="ptab-regas"     onclick="phTab('regas')">REGAS MODEL</div>
-    <div class="sh-stab"        id="ptab-deal"      onclick="phTab('deal')">DEAL ECONOMICS</div>
-    <div class="sh-stab"        id="ptab-cargo"     onclick="phTab('cargo')">CARGO PRICING</div>
-    <div class="sh-stab"        id="ptab-pnl"       onclick="phTab('pnl')">P&amp;L SPREADSHEET</div>
-    <div class="sh-stab"        id="ptab-intrinsic" onclick="phTab('intrinsic')">INTRINSIC VALUES</div>
+    <button class="sh-stab active" id="ptab-overview" onclick="phTab('overview')">OVERVIEW</button>
+    <button class="sh-stab" id="ptab-freight" onclick="phTab('freight')">FREIGHT CALCULATOR</button>
+    <button class="sh-stab" id="ptab-regas" onclick="phTab('regas')">REGAS MODEL</button>
+    <button class="sh-stab" id="ptab-deal" onclick="phTab('deal')">DEAL ECONOMICS</button>
+    <button class="sh-stab" id="ptab-cargo" onclick="phTab('cargo')">CARGO PRICING</button>
+    <button class="sh-stab" id="ptab-pnl" onclick="phTab('pnl')">P&amp;L SPREADSHEET</button>
+    <button class="sh-stab" id="ptab-intrinsic" onclick="phTab('intrinsic')">INTRINSIC VALUES</button>
   </div>
   <div id="ph-content"></div>
 </section>
 
-<!-- ════ FINANCIAL TRADING ════ -->
+<!-- FINANCIAL -->
 <section class="s-sec" id="section-financial">
-
-  <!-- DATA LOADING SCREEN -->
   <div id="fin-dropzone">
-    <div id="dz-auto" style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+    <div id="dz-auto" style="display:flex;flex-direction:column;align-items:center;gap:16px">
       <div class="spinner" id="drive-spinner"></div>
-      <div id="dz-auto-title">CONNECTING TO GOOGLE DRIVE</div>
+      <div class="dz-title" id="dz-auto-title">CONNECTING TO GOOGLE DRIVE</div>
       <div class="prog-wrap">
         <div class="prog-bar"><div class="prog-fill" id="progfill"></div></div>
         <div class="prog-txt" id="progtxt">Initialising...</div>
       </div>
       <div id="parselog"></div>
-      <button class="dz-btn" id="fallback-btn" style="display:none;" onclick="showManualDrop()">LOAD FILES MANUALLY INSTEAD</button>
+      <button class="dz-btn" id="fallback-btn" style="display:none" onclick="showManualDrop()">LOAD FILES MANUALLY INSTEAD</button>
     </div>
-    <div id="dz-manual" style="display:none;flex-direction:column;align-items:center;gap:16px;">
+    <div id="dz-manual" style="display:none;flex-direction:column;align-items:center;gap:16px">
       <div class="dz" id="dz">
-        <div class="dz-icon">&#8659;</div>
+        <div class="dz-icon">⬇</div>
         <div class="dz-title">DROP YOUR EOD CURVE FILES HERE</div>
-        <div class="dz-sub">Drag your entire <strong style="color:#8a9bb5;">LNG Curves</strong> folder<br>or click to select files.<br><br>Files are cached locally — drop once, loads instantly next time.</div>
+        <div class="dz-sub">Drag your LNG Curves folder or click to select.<br>Cached locally after first load.</div>
         <button class="dz-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">SELECT FILES</button>
         <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
       </div>
-      <div class="prog-wrap" id="progwrap" style="display:none;">
+      <div class="prog-wrap" id="progwrap" style="display:none">
         <div class="prog-bar"><div class="prog-fill" id="progfill2"></div></div>
-        <div class="prog-txt" id="progtxt2">Parsing files...</div>
+        <div class="prog-txt" id="progtxt2">Parsing...</div>
       </div>
-      <div id="parselog2"></div>
     </div>
   </div>
-
-  <!-- ANALYTICS UI (hidden until data loaded) -->
-  <div id="fin-analytics" style="display:none;">
-
-    <!-- Analytics Sub-Nav -->
+  <div id="fin-analytics" style="display:none">
     <div class="anav">
       <button class="anl active" onclick="showSec('dashboard',this)">DASHBOARD</button>
       <button class="anl" onclick="showSec('historical',this)">HISTORICAL</button>
@@ -270,657 +249,668 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--text
       <button class="anl" onclick="showSec('forward',this)">FORWARD CURVE</button>
       <button class="anl" onclick="showSec('seasonal',this)">SEASONAL</button>
     </div>
-
-    <!-- Status Bar -->
     <div class="sbar" id="sbar">
       <span class="sdot"></span><span id="stext"></span>
-      <button class="sbtn" onclick="document.getElementById('fileInput2').click()" style="margin-left:auto;">+ ADD FILES</button>
-      <button class="sbtn" onclick="exportToExcel()" style="color:#22c55e;">&#8595; EXPORT XLSX</button>
-      <button class="sbtn red" id="clearCacheBtn">&#8635; CLEAR CACHE</button>
-      <input type="file" id="fileInput2" multiple accept=".xlsx,.xls" style="display:none;">
+      <button class="sbtn" onclick="document.getElementById('fileInput2').click()" style="margin-left:auto">+ ADD FILES</button>
+      <button class="sbtn" onclick="exportToExcel()" style="color:#22c55e">↓ EXPORT XLSX</button>
+      <button class="sbtn red" id="clearCacheBtn">↺ CLEAR CACHE</button>
+      <input type="file" id="fileInput2" multiple accept=".xlsx,.xls" style="display:none">
     </div>
-
-    <div class="analytics-main">
-
-      <!-- DASHBOARD -->
-      <div id="sec-dashboard" class="section active">
+    <div class="amin">
+      <div id="sec-dashboard" class="asec active">
         <div class="mgrid" id="dash-metrics"></div>
+        <!-- Global Gas Snapshot -->
+        <div class="acard" style="margin-bottom:14px">
+          <div class="ctitle">GLOBAL GAS SNAPSHOT — M+1 DAILY PRICES · $/MMBTU</div>
+          <div class="cw" style="height:300px"><canvas id="gas-snapshot-chart"></canvas></div>
+        </div>
         <div class="two-col">
-          <div class="acard">
-            <div class="ctitle">CORRELATION MATRIX — M+1 · LOG RETURNS</div>
-            <div class="cnote">Pearson r on daily log returns ln(Pt/Pt-1) for each index at M+1 tenor. Blue = positive, red = negative, intensity = strength.</div>
-            <div id="dash-corr" style="overflow-x:auto;"></div>
-          </div>
-          <div class="acard">
-            <div class="ctitle">DAY-ON-DAY CHANGES — ALL INSTRUMENTS</div>
-            <div id="dash-dod" style="overflow-x:auto;"></div>
-          </div>
-        </div>
-        <div class="mini-grid-a" id="dash-mini"></div>
-      </div>
-
-      <!-- HISTORICAL -->
-      <div id="sec-historical" class="section">
-        <div class="ctrl">
-          <span class="cl">SERIES 1</span>
-          <select id="h-i1" onchange="updHist()"></select>
-          <select id="h-t1" onchange="updHist()"></select>
-          <span class="d1"></span>
-          <div class="csep"></div>
-          <span class="cl">SERIES 2</span>
-          <select id="h-i2" onchange="updHist()"></select>
-          <select id="h-t2" onchange="updHist()"></select>
-          <span class="d2"></span>
-        </div>
-        <div class="acard"><div class="ctitle">DAILY PRICE HISTORY — $/MMBTU</div><div class="cw" style="height:290px;"><canvas id="hChart"></canvas></div></div>
-        <div class="acard"><div class="ctitle" id="stats-title">STATISTICS</div><div style="overflow-x:auto;"><table class="stbl" id="statsTable"></table></div></div>
-      </div>
-
-      <!-- CORRELATION -->
-      <div id="sec-correlation" class="section">
-        <div class="cnote" style="margin-bottom:16px;">Rolling Pearson r on daily log returns. +1 = perfect co-movement, 0 = none, -1 = perfect inverse. Green &gt;0.7, blue 0.3–0.7, amber -0.3–0.3, red &lt;-0.3.</div>
-        <div class="ctrl">
-          <span class="cl">INDEX 1</span>
-          <select id="rc-i1" onchange="updRC2()"></select>
-          <select id="rc-t1" onchange="updRC2()"></select>
-          <span class="d1"></span>
-          <div class="csep"></div>
-          <span class="cl">INDEX 2</span>
-          <select id="rc-i2" onchange="updRC2()"></select>
-          <select id="rc-t2" onchange="updRC2()"></select>
-          <span class="d2"></span>
-        </div>
-        <div class="acard"><div class="ctitle">10D ROLLING CORRELATION</div><div class="cw" style="height:190px;"><canvas id="rc10Chart"></canvas></div></div>
-        <div class="acard"><div class="ctitle">20D ROLLING CORRELATION</div><div class="cw" style="height:190px;"><canvas id="rc20Chart"></canvas></div></div>
-        <div class="acard"><div class="ctitle">30D ROLLING CORRELATION</div><div class="cw" style="height:190px;"><canvas id="rc30Chart"></canvas></div></div>
-        <div class="acard">
-          <div class="ctitle" id="cmat-title">FULL CORRELATION MATRIX — LOG RETURNS</div>
-          <div class="cnote">Pearson r on log returns across all loaded dates for the selected tenor.</div>
-          <div style="overflow-x:auto;"><table class="ctbl" id="corrMat"></table></div>
+          <div class="acard"><div class="ctitle">CORRELATION MATRIX — M+1 · LOG RETURNS</div><div class="cnote">Pearson r on daily log returns. Blue = positive, red = negative.</div><div id="dash-corr" style="overflow-x:auto"></div></div>
+          <div class="acard"><div class="ctitle">DAY-ON-DAY CHANGES — ALL INSTRUMENTS</div><div id="dash-dod" style="overflow-x:auto"></div></div>
         </div>
       </div>
-
-      <!-- SPREAD -->
-      <div id="sec-spread" class="section">
-        <div class="ctrl">
-          <span class="cl">INDEX 1</span>
-          <select id="sp-i1" onchange="updSpread()"></select>
-          <select id="sp-t1" onchange="updSpread()"></select>
-          <span class="d1"></span>
-          <div class="csep"></div>
-          <span class="cl">INDEX 2</span>
-          <select id="sp-i2" onchange="updSpread()"></select>
-          <select id="sp-t2" onchange="updSpread()"></select>
-          <span class="d2"></span>
-        </div>
-        <div class="acard"><div class="ctitle" id="sp-title">SPREAD — INDEX 1 MINUS INDEX 2</div><div class="cw" style="height:290px;"><canvas id="spChart"></canvas></div></div>
-        <div class="acard"><div class="ctitle">INDIVIDUAL PRICE SERIES</div><div class="cw" style="height:230px;"><canvas id="spLegsChart"></canvas></div></div>
+      <div id="sec-historical" class="asec">
+        <div class="ctrl"><span class="cl">SERIES 1</span><select id="h-i1" onchange="updHist()"></select><select id="h-t1" onchange="updHist()"></select><span class="d1"></span><div class="csep"></div><span class="cl">SERIES 2</span><select id="h-i2" onchange="updHist()"></select><select id="h-t2" onchange="updHist()"></select><span class="d2"></span></div>
+        <div class="acard"><div class="ctitle">DAILY PRICE HISTORY — $/MMBTU</div><div class="cw" style="height:290px"><canvas id="hChart"></canvas></div></div>
+        <div class="acard"><div class="ctitle" id="stats-title">STATISTICS</div><div style="overflow-x:auto"><table class="stbl" id="statsTable"></table></div></div>
       </div>
-
-      <!-- FORWARD CURVE -->
-      <div id="sec-forward" class="section">
-        <div class="ctrl">
-          <span class="cl">INDEX</span><select id="fc-i" onchange="updFC()"></select>
-          <div class="csep"></div>
-          <span class="cl">DATE 1</span><select id="fc-d1" onchange="updFC()"></select><span class="d1"></span>
-          <div class="csep"></div>
-          <span class="cl">DATE 2</span><select id="fc-d2" onchange="updFC()"></select><span class="d2"></span>
-        </div>
-        <div class="acard"><div class="ctitle" id="fc-title">FORWARD CURVE</div><div class="cw" style="height:340px;"><canvas id="fcChart"></canvas></div></div>
-        <div id="fc-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px;"></div>
+      <div id="sec-correlation" class="asec">
+        <div class="cnote" style="margin-bottom:16px">Rolling Pearson r on log returns. Green &gt;0.7, blue 0.3–0.7, amber -0.3–0.3, red &lt;-0.3.</div>
+        <div class="ctrl"><span class="cl">INDEX 1</span><select id="rc-i1" onchange="updRC2()"></select><select id="rc-t1" onchange="updRC2()"></select><span class="d1"></span><div class="csep"></div><span class="cl">INDEX 2</span><select id="rc-i2" onchange="updRC2()"></select><select id="rc-t2" onchange="updRC2()"></select><span class="d2"></span></div>
+        <div class="acard"><div class="ctitle">10D ROLLING CORRELATION</div><div class="cw" style="height:190px"><canvas id="rc10Chart"></canvas></div></div>
+        <div class="acard"><div class="ctitle">20D ROLLING CORRELATION</div><div class="cw" style="height:190px"><canvas id="rc20Chart"></canvas></div></div>
+        <div class="acard"><div class="ctitle">30D ROLLING CORRELATION</div><div class="cw" style="height:190px"><canvas id="rc30Chart"></canvas></div></div>
+        <div class="acard"><div class="ctitle" id="cmat-title">FULL CORRELATION MATRIX</div><div class="cnote">Pearson r on log returns across all loaded dates.</div><div style="overflow-x:auto"><table class="ctbl" id="corrMat"></table></div></div>
       </div>
-
-      <!-- SEASONAL -->
-      <div id="sec-seasonal" class="section">
-        <div class="ctrl">
-          <span class="cl">INDEX</span><select id="sea-i" onchange="updSea()"></select>
-          <div class="csep"></div>
-          <span class="cl">VIEW</span>
-          <select id="sea-type" onchange="updSea()">
-            <option value="fwd">Forward curve — latest snapshot by year</option>
-            <option value="hist">Historical M+1 closes</option>
-          </select>
-        </div>
-        <div class="acard"><div class="ctitle" id="sea-title">SEASONAL — YEAR OVER YEAR</div><div class="cw" style="height:360px;"><canvas id="seaChart"></canvas></div></div>
-        <div class="acard"><div class="ctitle">YEAR-OVER-YEAR SPREAD TABLE</div><div style="overflow-x:auto;"><table class="stbl" id="sea-tbl"></table></div></div>
+      <div id="sec-spread" class="asec">
+        <div class="ctrl"><span class="cl">INDEX 1</span><select id="sp-i1" onchange="updSpread()"></select><select id="sp-t1" onchange="updSpread()"></select><span class="d1"></span><div class="csep"></div><span class="cl">INDEX 2</span><select id="sp-i2" onchange="updSpread()"></select><select id="sp-t2" onchange="updSpread()"></select><span class="d2"></span></div>
+        <div class="acard"><div class="ctitle" id="sp-title">SPREAD</div><div class="cw" style="height:290px"><canvas id="spChart"></canvas></div></div>
+        <div class="acard"><div class="ctitle">INDIVIDUAL PRICE SERIES</div><div class="cw" style="height:230px"><canvas id="spLegsChart"></canvas></div></div>
       </div>
-
-    </div><!-- /analytics-main -->
-  </div><!-- /fin-analytics -->
-</section>
-
-<!-- ════ ANALYTICS (PORTFOLIO) ════ -->
-<section class="s-sec" id="section-analytics">
-  <div class="ph-page">
-    <div class="ph-lbl">ANALYTICS</div>
-    <div class="ph-ttl">PORTFOLIO ANALYTICS — <span class="ac">COMING SOON</span></div>
-    <div class="ph-sub">Cross-module KPI dashboard, portfolio exposure summary and blended P&amp;L view</div>
-    <div class="ph-box">⬡ &nbsp; MODULE IN DEVELOPMENT — BUILD v2.0</div>
+      <div id="sec-forward" class="asec">
+        <div class="ctrl"><span class="cl">INDEX</span><select id="fc-i" onchange="updFC()"></select><div class="csep"></div><span class="cl">DATE 1</span><select id="fc-d1" onchange="updFC()"></select><span class="d1"></span><div class="csep"></div><span class="cl">DATE 2</span><select id="fc-d2" onchange="updFC()"></select><span class="d2"></span></div>
+        <div class="acard"><div class="ctitle" id="fc-title">FORWARD CURVE</div><div class="cw" style="height:340px"><canvas id="fcChart"></canvas></div></div>
+        <div id="fc-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px"></div>
+      </div>
+      <div id="sec-seasonal" class="asec">
+        <div class="ctrl"><span class="cl">INDEX</span><select id="sea-i" onchange="updSea()"></select><div class="csep"></div><span class="cl">VIEW</span><select id="sea-type" onchange="updSea()"><option value="fwd">Forward curve snapshot by year</option><option value="hist">Historical M+1 closes</option></select></div>
+        <div class="acard"><div class="ctitle" id="sea-title">SEASONAL — YEAR OVER YEAR</div><div class="cw" style="height:360px"><canvas id="seaChart"></canvas></div></div>
+        <div class="acard"><div class="ctitle">YEAR-OVER-YEAR SPREAD TABLE</div><div style="overflow-x:auto"><table class="stbl" id="sea-tbl"></table></div></div>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- ════ DISCLAIMER ════ -->
+<!-- ANALYTICS -->
+<section class="s-sec" id="section-analytics">
+  <div class="ph-page"><div class="ph-lbl">ANALYTICS</div><div class="ph-ttl">PORTFOLIO ANALYTICS — <span style="color:var(--b)">COMING SOON</span></div><div class="ph-sub">Cross-module KPI dashboard, portfolio exposure and blended P&L view</div><div class="ph-box">⬡ MODULE IN DEVELOPMENT — BUILD v2.0</div></div>
+</section>
+
+<!-- DISCLAIMER -->
 <section class="s-sec" id="section-disclaimer">
   <div class="disc-wrap">
-    <h2>DISCLAIMER — LNG TradeOS™</h2>
-    <hr class="disc-div">
+    <h2>DISCLAIMER — LNG TradeOS™</h2><hr class="disc-div">
     <div class="disc-h3">TRADEMARK &amp; INTELLECTUAL PROPERTY</div>
-    <p class="disc-p">LNG TradeOS™ is a trademark of Ibrahim Mar. The name, logo, platform architecture, and all associated visual and functional elements are the exclusive intellectual property of their creator. Unauthorized reproduction, redistribution, or commercial use of the name LNG TradeOS, in whole or in part, is strictly prohibited without prior written consent.</p>
-    <p class="disc-p">The designation ™ is asserted on the mark LNG TradeOS pending formal trademark registration. All rights are reserved under applicable intellectual property laws.</p>
-    <p class="disc-p">Third-party trademarks, commodity names, and index designations referenced within this platform — including but not limited to JKM, TTF, Henry Hub, and NBP — remain the property of their respective owners and are used solely for informational purposes.</p>
+    <p class="disc-p">LNG TradeOS™ is a trademark of Ibrahim Mar. The name, logo, platform architecture, and all associated visual and functional elements are the exclusive intellectual property of their creator. Unauthorized reproduction, redistribution, or commercial use of the name LNG TradeOS is strictly prohibited without prior written consent. Third-party index names including JKM, TTF, Henry Hub, and NBP remain the property of their respective owners.</p>
     <div class="disc-h3">NO FINANCIAL OR TRADING ADVICE</div>
-    <p class="disc-p">The tools, models, calculations, and analytics provided by LNG TradeOS are for informational and educational purposes only. Nothing on this platform constitutes financial advice, investment advice, or a recommendation to buy, sell, or trade any commodity, financial instrument, or derivative. All outputs — including freight estimates, deal economics, cargo pricing, and P&amp;L calculations — are indicative only and should not be relied upon as the sole basis for any commercial decision.</p>
+    <p class="disc-p">All tools, models, calculations, and analytics are for informational and educational purposes only. Nothing constitutes financial advice or a recommendation to buy, sell, or trade any commodity or financial instrument. All outputs are indicative only.</p>
     <div class="disc-h3">ACCURACY &amp; LIMITATION OF LIABILITY</div>
-    <p class="disc-p">While every effort is made to ensure the accuracy of models and data, LNG TradeOS makes no warranties, express or implied, regarding the completeness, reliability, or fitness for purpose of any information provided. Market conditions, freight rates, and pricing data are inherently volatile. Users are solely responsible for independently verifying outputs and for any decisions made on the basis of information obtained through this platform.</p>
-    <p class="disc-p">To the fullest extent permitted by applicable law, Ibrahim Mar and LNG TradeOS shall not be liable for any direct, indirect, incidental, or consequential loss or damage arising from use of, or reliance upon, this platform.</p>
+    <p class="disc-p">LNG TradeOS makes no warranties regarding completeness or reliability of any information provided. To the fullest extent permitted by law, Ibrahim Mar and LNG TradeOS shall not be liable for any loss or damage arising from use of this platform.</p>
     <div class="disc-h3">CONFIDENTIALITY</div>
-    <p class="disc-p">This platform and its underlying methodologies, formulas, and model structures constitute confidential and proprietary information. Access is granted solely for the personal or professional use of authorised users. Any reverse engineering, replication, or disclosure of platform methodologies to third parties without written authorisation is prohibited.</p>
+    <p class="disc-p">This platform and its underlying methodologies constitute confidential and proprietary information. Any reverse engineering, replication, or disclosure to third parties without written authorisation is prohibited.</p>
     <div class="disc-copy">© 2026 Ibrahim Mar — LNG TradeOS™. All rights reserved.</div>
   </div>
 </section>
 
 <script>
-// ══════════════════════════════════════════════
-//  SHELL NAVIGATION
-// ══════════════════════════════════════════════
-const PH_TITLES={freight:'FREIGHT RATE CALCULATOR',regas:'EUROPEAN REGAS MODEL',deal:'DEAL ECONOMICS',cargo:'CARGO PRICING',pnl:'P&L SPREADSHEET',intrinsic:'INTRINSIC & EXTRINSIC VALUES'};
-const PH_DESCS={freight:'Voyage cost estimation across global LNG shipping routes with dynamic vessel economics',regas:'European regasification terminal pricing, netback analysis and slot valuation',deal:'Full-cycle deal economics calculation, optimization and floating storage economics',cargo:'US FOB, India pricing, net forward netback, global FOB and inter-month spread structures',pnl:'Trade-level profit & loss tracking with mark-to-market and realized P&L calculations',intrinsic:'Option value decomposition for LNG contracts with intrinsic and time value analysis'};
+// ══════════════════════════════════════════
+// DYNAMIC MONTH LABELS — auto-rolls from M+1
+// ══════════════════════════════════════════
+const ML=(function(){
+  const now=new Date();
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let m=now.getMonth()+1,y=now.getFullYear(); // M+1 = next month
+  if(m>11){m=0;y++;}
+  const out=[];
+  for(let i=0;i<24;i++){out.push(`${MO[m]}-${String(y).slice(2)}`);m++;if(m>11){m=0;y++;}}
+  return out;
+})();
 
-let curSection='home', curPh='overview', finDataLoaded=false;
+// ══════════════════════════════════════════
+// SHELL
+// ══════════════════════════════════════════
+const PH_T={freight:'FREIGHT RATE CALCULATOR',regas:'EUROPEAN REGAS MODEL',deal:'DEAL ECONOMICS',cargo:'CARGO PRICING',pnl:'P&L SPREADSHEET',intrinsic:'INTRINSIC & EXTRINSIC VALUES'};
+const PH_D={regas:'European regasification terminal pricing, netback analysis and slot valuation',deal:'Full-cycle deal economics calculation and floating storage economics',cargo:'US FOB, India pricing, net forward netback, global FOB and inter-month spread structures',pnl:'Trade-level P&L tracking with mark-to-market and realized P&L calculations',intrinsic:'Option value decomposition for LNG contracts'};
+let finLoaded=false;
 
-function shellNav(sec, sub){
+function shellNav(sec,sub){
   document.querySelectorAll('.s-sec').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('section-'+sec).classList.add('active');
   document.getElementById('tab-'+sec).classList.add('active');
-  curSection=sec;
-  if(sec==='physical') phTab(sub||curPh);
-  if(sec==='financial' && finDataLoaded && sub) showSec(sub);
+  if(sec==='physical') phTab(sub||'overview');
+  if(sec==='financial'&&finLoaded&&sub) showSec(sub);
   window.scrollTo(0,0);
 }
 
 function phTab(tab){
   document.querySelectorAll('[id^="ptab-"]').forEach(t=>t.classList.remove('active'));
-  const el=document.getElementById('ptab-'+tab);
-  if(el) el.classList.add('active');
-  curPh=tab;
+  const el=document.getElementById('ptab-'+tab);if(el)el.classList.add('active');
   const c=document.getElementById('ph-content');
   if(tab==='overview'){
-    c.innerHTML=`<div style="padding:40px 28px"><div class="cards-grid">${phCards()}</div></div>`;
+    c.innerHTML=`<div style="padding:40px 28px"><div class="cards-grid">${Object.entries(PH_T).map(([k,v],i)=>`<div class="mod-card" onclick="phTab('${k}')"><span class="card-num">0${i+1}</span><div class="card-ttl">${v}</div><div class="card-desc">${PH_D[k]||'Click to open module'}</div><span class="s-tag tag-phy">PHYSICAL</span></div>`).join('')}</div></div>`;
+  } else if(tab==='freight'){
+    c.innerHTML='<div id="freight-wrap"></div>';
+    initFreight();
   } else {
-    c.innerHTML=`<div class="ph-page"><div class="ph-lbl">PHYSICAL TRADING</div><div class="ph-ttl">${PH_TITLES[tab]}</div><div class="ph-sub">${PH_DESCS[tab]}</div><div class="ph-box">⬡ &nbsp; MODULE IN DEVELOPMENT — BUILD v2.0</div></div>`;
+    c.innerHTML=`<div class="ph-page"><div class="ph-lbl">PHYSICAL TRADING</div><div class="ph-ttl">${PH_T[tab]}</div><div class="ph-sub">${PH_D[tab]||''}</div><div class="ph-box">⬡ MODULE IN DEVELOPMENT — BUILD v2.0</div></div>`;
   }
 }
 
-function phCards(){
-  return Object.entries(PH_TITLES).map(([k,v],i)=>`
-    <div class="mod-card" onclick="phTab('${k}')">
-      <span class="card-num">0${i+1}</span>
-      <div class="card-ttl">${v}</div>
-      <div class="card-desc">${PH_DESCS[k]}</div>
-      <span class="s-tag tag-phy">PHYSICAL</span>
-    </div>`).join('');
-}
+// ══════════════════════════════════════════
+// FREIGHT DATA
+// ══════════════════════════════════════════
+const BC={BLNG1:'#4fc3f7',BLNG2:'#81c784',BLNG3:'#ffb74d'};
+const IB={
+  BLNG1:[83000,80000,68000,55000,53000,55000,63000,73000,80000,55000,45000,40000,35000,37000,40000,42000,42000,null,null,null,null,null,null,null],
+  BLNG2:[80000,70000,68000,66000,68000,70000,77000,83000,77000,60000,48000,39000,37000,37000,40000,42000,45000,58000,75000,85000,95000,null,null,null],
+  BLNG3:[95000,90000,85000,73000,62000,60000,70000,75000,70000,55000,42000,38000,35000,36000,38000,38000,null,null,null,null,null,null,null,null]
+};
 
-function showAnalyticsUI(){
-  document.getElementById('fin-dropzone').style.display='none';
-  document.getElementById('fin-analytics').style.display='block';
-  finDataLoaded=true;
-}
-
-// ══════════════════════════════════════════════
-//  ANALYTICS ENGINE
-// ══════════════════════════════════════════════
-const MONTHS_A=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const SEA_COL=['#2d7cff','#22c55e','#f59e0b','#ef4444','#a78bfa','#38bdf8'];
-const CACHE_KEY='lngTradeOS_v4';
-
-const INSTS=[
-  {k:'JKM',label:'JKM',unit:'$/MMBtu'},{k:'TTF',label:'TTF',unit:'$/MMBtu'},
-  {k:'HH',label:'HH',unit:'$/MMBtu'},{k:'NBP',label:'NBP',unit:'$/MMBtu'},
-  {k:'Brent',label:'Brent',unit:'$/bbl'},{k:'Dated',label:'Dated Brent',unit:'$/bbl'},
-  {k:'Slope',label:'Slope',unit:'%'},{k:'SP_JT',label:'JKM/TTF Spread',unit:'$/MMBtu'},
-  {k:'SP_JH',label:'JKM/HH Spread',unit:'$/MMBtu'},{k:'SP_TH',label:'TTF/HH Spread',unit:'$/MMBtu'},
+const SUPPLY=[
+  {id:'sabine',    name:'Sabine Pass',            curve:'BLNG2',loadCost:216342},
+  {id:'trinidad',  name:'Trinidad & Tobago',       curve:'BLNG2',loadCost:66416},
+  {id:'nigeria',   name:'Nigeria (Bonny LNG)',     curve:'BLNG2',loadCost:1019874},
+  {id:'angola',    name:'Angola',                  curve:'BLNG2',loadCost:5025},
+  {id:'qatar',     name:'Qatar (Ras Laffan)',      curve:'BLNG1',loadCost:200000},
+  {id:'australia_b',name:'Australia (Barrow Is.)', curve:'BLNG1',loadCost:150868},
+  {id:'indonesia', name:'Indonesia (Bontang)',     curve:'BLNG1',loadCost:90113},
+  {id:'australia_g',name:'Australia (Gladstone)',  curve:'BLNG1',loadCost:202788},
+  {id:'oman',      name:'Oman',                   curve:'BLNG1',loadCost:126637}
 ];
-const INST={};INSTS.forEach(i=>INST[i.k]=i);
-const CORR_INSTS=['JKM','TTF','HH','NBP','Brent','Dated'];
-const COL_NAMES={BRENT:['BRT SW','Brent SW'],TTF:['TTF FT','TTF'],EURUSD:['EUR USD','EURUSD'],GBPUSD:['GBP USD','GBPUSD'],NBP:['NBP FT','NBP'],HH:['HHUB FT','HH'],DATED:['Outright Dated','Dated Brent'],JKM:['JKM'],SLOPE:['Brent JKM','Slope']};
 
-const allData={};
-let sortedDates=[];
-let hChart=null,rc10=null,rc20=null,rc30=null,fcChart=null,seaChart=null,spChart=null,spLegsChart=null;
-const miniCharts={};
+const BASE_D=[
+  {id:'rotterdam', name:'Gate Rotterdam',  euEts:true, dischCost:126694,region:'Europe'},
+  {id:'southhook', name:'South Hook',      euEts:true, dischCost:203171,region:'Europe'},
+  {id:'huelva',    name:'Huelva',          euEts:true, dischCost:165817,region:'Europe'},
+  {id:'zeebrugge', name:'Zeebrugge',       euEts:true, dischCost:146025,region:'Europe'},
+  {id:'swinoujscie',name:'Świnoujście',    euEts:true, dischCost:375000,region:'Europe'},
+  {id:'inkoo',     name:'Inkoo',           euEts:true, dischCost:10000, region:'Europe'},
+  {id:'klaipeda',  name:'Klaipeda',        euEts:true, dischCost:255000,region:'Europe'},
+  {id:'revithoussa',name:'Revithoussa',    euEts:true, dischCost:104500,region:'Europe'},
+  {id:'panigaglia',name:'Panigaglia LNG',  euEts:true, dischCost:133200,region:'Europe'},
+  {id:'livorno',   name:'Livorno',         euEts:true, dischCost:133200,region:'Europe'},
+  {id:'rovigo',    name:'Rovigo',          euEts:true, dischCost:266658,region:'Europe'},
+  {id:'piombino',  name:'Piombino FSRU',   euEts:true, dischCost:105000,region:'Europe'},
+  {id:'ravenna',   name:'Ravenna FSRU',    euEts:true, dischCost:140000,region:'Europe'},
+  {id:'krk',       name:'Krk',             euEts:true, dischCost:242000,region:'Europe'},
+  // Med — Aliaga corrected: Turkey is further east than Italian ports from Atlantic origins
+  {id:'aliaga',    name:'Aliaga',          euEts:false,dischCost:290000,region:'Med'},
+  {id:'ainsukhna', name:'Ain Sukhna',      euEts:false,dischCost:115715,region:'Med'},
+  {id:'jebelali',  name:'Jebel Ali',       euEts:false,dischCost:63027, region:'Middle East'},
+  {id:'dahej',     name:'Dahej',           euEts:false,dischCost:53264, region:'Asia'},
+  {id:'portqasim', name:'Port Qasim',      euEts:false,dischCost:504000,region:'Asia'},
+  {id:'tianjin',   name:'Tianjin',         euEts:false,dischCost:200262,region:'Asia'},
+  {id:'tokyo',     name:'Tokyo Bay',       euEts:false,dischCost:81400, region:'Asia'},
+  {id:'gwangyang', name:'Gwangyang',       euEts:false,dischCost:93400, region:'Asia'},
+  {id:'singapore', name:'Singapore',       euEts:false,dischCost:53794, region:'Asia'},
+  {id:'maptaphut', name:'Map ta Phut',     euEts:false,dischCost:103000,region:'Asia'},
+  {id:'guanabara', name:'Guanabara',       euEts:false,dischCost:135240,region:'Americas'},
+  {id:'quintero',  name:'Quintero',        euEts:false,dischCost:358634,region:'Americas'},
+  {id:'manzanillo',name:'Manzanillo',      euEts:false,dischCost:248440,region:'Americas'},
+  {id:'bahiablanca',name:'Bahia Blanca',   euEts:false,dischCost:345241,region:'Americas'}
+];
+
+// Aliaga NM CORRECTED for Atlantic origins (Turkey is further east through Med than Italian/Greek ports)
+const NM={
+  angola:{bahiablanca:4414,guanabara:3377,quintero:6348,manzanillo:7545,zeebrugge:4948,rotterdam:5008,huelva:3935,southhook:4737,jebelali:6734,ainsukhna:5950,dahej:6451,portqasim:6305,tianjin:9894,tokyo:9997,gwangyang:9562,singapore:7270,maptaphut:7951,panigaglia:3770,livorno:3760,rovigo:4340,piombino:3670,revithoussa:4600,inkoo:5800,klaipeda:5600,swinoujscie:5400,aliaga:5350,krk:4550,ravenna:4500},
+  australia_b:{bahiablanca:8888,guanabara:8333,quintero:8939,manzanillo:8821,zeebrugge:13900,rotterdam:13950,huelva:13300,southhook:13750,jebelali:4640,ainsukhna:6082,dahej:3744,portqasim:4043,tianjin:3845,tokyo:3788,gwangyang:3497,singapore:1712,maptaphut:2350,panigaglia:10510,livorno:10500,rovigo:11080,piombino:10410,revithoussa:9700,inkoo:10900,klaipeda:10700,swinoujscie:10500,aliaga:9300,krk:9750,ravenna:9700},
+  nigeria:{bahiablanca:4643,guanabara:3414,quintero:6653,manzanillo:10055,zeebrugge:4372,rotterdam:4432,huelva:3359,southhook:4161,jebelali:7553,ainsukhna:5374,dahej:7246,portqasim:7100,tianjin:10689,tokyo:10792,gwangyang:10357,singapore:8065,maptaphut:8746,panigaglia:3060,livorno:3050,rovigo:3630,piombino:2950,revithoussa:4600,inkoo:5800,klaipeda:5600,swinoujscie:5400,aliaga:5250,krk:4550,ravenna:4500},
+  indonesia:{bahiablanca:9901,guanabara:9347,quintero:9654,manzanillo:8109,zeebrugge:13200,rotterdam:13250,huelva:12600,southhook:13100,jebelali:4741,ainsukhna:6234,dahej:3823,portqasim:4129,tianjin:2625,tokyo:2587,gwangyang:2277,singapore:1206,maptaphut:1726,panigaglia:11490,livorno:11480,rovigo:12050,piombino:11380,revithoussa:9200,inkoo:10400,klaipeda:10200,swinoujscie:10000,aliaga:8800,krk:9250,ravenna:9200},
+  qatar:{bahiablanca:9054,guanabara:8499,quintero:10933,manzanillo:12452,zeebrugge:11480,rotterdam:11550,huelva:10800,southhook:11300,jebelali:197,ainsukhna:3027,dahej:1280,portqasim:903,tianjin:6458,tokyo:6576,gwangyang:6125,singapore:3674,maptaphut:4422,panigaglia:9910,livorno:9900,rovigo:10480,piombino:9810,revithoussa:5600,inkoo:6800,klaipeda:6600,swinoujscie:6400,aliaga:5200,krk:5650,ravenna:5600},
+  australia_g:{bahiablanca:7522,guanabara:8763,quintero:6750,manzanillo:8581,zeebrugge:13337,rotterdam:13366,huelva:12324,southhook:13126,jebelali:7005,ainsukhna:8448,dahej:6087,portqasim:6391,tianjin:4466,tokyo:3778,gwangyang:3963,singapore:3545,maptaphut:4133,panigaglia:11950,livorno:11940,rovigo:12520,piombino:11850,revithoussa:10500,inkoo:11700,klaipeda:11500,swinoujscie:11300,aliaga:10100,krk:10550,ravenna:10500},
+  sabine:{bahiablanca:6733,guanabara:5365,quintero:4153,manzanillo:3292,zeebrugge:4969,rotterdam:5030,huelva:4670,southhook:4623,jebelali:9653,ainsukhna:6767,dahej:9740,portqasim:9541,tianjin:10375,tokyo:16300,gwangyang:9747,singapore:11789,maptaphut:13886,panigaglia:5350,livorno:5340,rovigo:5970,piombino:5240,revithoussa:5800,inkoo:6100,klaipeda:5900,swinoujscie:5700,aliaga:6450,krk:5750,ravenna:5700},
+  trinidad:{bahiablanca:4543,guanabara:3175,quintero:6943,manzanillo:2914,zeebrugge:3984,rotterdam:4044,huelva:3383,southhook:3682,jebelali:10456,ainsukhna:5438,dahej:10173,portqasim:10027,tianjin:10012,tokyo:13800,gwangyang:9385,singapore:10944,maptaphut:11625,panigaglia:4450,livorno:4440,rovigo:5070,piombino:4340,revithoussa:5100,inkoo:5400,klaipeda:5200,swinoujscie:5000,aliaga:5750,krk:5050,ravenna:5000},
+  oman:{bahiablanca:8450,guanabara:7949,quintero:9676,manzanillo:12022,zeebrugge:9857,rotterdam:9887,huelva:9176,southhook:9964,jebelali:348,ainsukhna:2497,dahej:738,portqasim:456,tianjin:5890,tokyo:6018,gwangyang:5557,singapore:3011,maptaphut:3712,panigaglia:10071,livorno:10049,rovigo:10852,piombino:10019,revithoussa:5900,inkoo:7100,klaipeda:6900,swinoujscie:6700,aliaga:5500,krk:5950,ravenna:5900}
+};
+
+const DEF_P={shipSize:174000,energyFactor:22.88,loadFactor:0.985,bogRate:0.0015,speedLaden:19.5,speedBallast:19.5,hfoLaden:90,hfoBallast:85,hfoPrice:550,lsmgoLaden:0,lsmgoBallast:0,lsmgoDischarge:8,pilotFuel:1,lsmgoPrice:750,cooldownDays:0.25,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,loadTimeDays:0.25,bufferDays:2,dischargeDays:0.25,heelVolume:3000,heelCost:0,co2Mgo:3.206,co2Hfo:3.114,etsCoverage:1.0,euaPrice:80.206,eurUsd:1.09,loadDate:''};
+
+// ── FREIGHT STATE ──
+let F={
+  blng:null,params:null,snaps:null,matrix:null,matrixTs:null,blngTs:null,extraD:null,
+  posArr:null,repoArr:null,
+  tab:2, // default to Freight Details
+  detailMode:null,showExportMenu:false,
+  svOrig:'sabine',svDisch:'rotterdam',svMi:0,svLoadDate:new Date().toISOString().slice(0,10),
+  diffOrig:'sabine',diffBase:'rotterdam',diffSel:['tokyo','singapore'],
+  histOrig:'sabine',histDisch:'rotterdam',histMi:0,
+  fOrig:'all',fRegion:'all',
+  snapDate:new Date().toISOString().slice(0,10)
+};
+
+function fg(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
+function fs(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+
+function fSaveBlng(b){F.blng=b;const ts=new Date().toISOString();fs('f_blng',b);localStorage.setItem('f_blng_ts',ts);F.blngTs=ts;}
+function fSaveParams(p){F.params=p;fs('f_params',p);}
+function fSavePR(){fs('f_posArr',F.posArr);fs('f_repoArr',F.repoArr);}
+function allD(){return[...BASE_D,...F.extraD];}
+
+function calcF(orig,disch,mi){
+  const sp=SUPPLY.find(x=>x.id===orig),dp=allD().find(x=>x.id===disch);
+  if(!sp||!dp)return null;
+  const nm=NM[orig]?.[disch];if(!nm)return null;
+  const curve=sp.curve,rate=F.blng[curve]?.[mi];if(!rate)return null;
+  const posPct=(F.posArr[curve][mi]||0)/100;
+  const repoPct=(F.repoArr[curve][mi]||0)/100;
+  const p=F.params;
+  const voyDays=nm/(p.speedLaden*24);
+  const cool=p.cooldownEnabled?p.cooldownDays:0,gas=p.gasUpEnabled?p.gasUpDays:0;
+  const totalDays=cool+gas+p.loadTimeDays+p.bufferDays+voyDays+p.dischargeDays;
+  const loaded=p.shipSize*p.energyFactor*p.loadFactor,estDisch=loaded*(1-p.bogRate*totalDays);
+  const hire=rate*totalDays,pos=rate*posPct*totalDays,repo=rate*repoPct*totalDays;
+  const hfo=(p.hfoLaden+p.hfoBallast)*voyDays*p.hfoPrice;
+  const lsmgo=(p.lsmgoLaden+p.lsmgoBallast)*voyDays*p.lsmgoPrice+(p.lsmgoDischarge*p.dischargeDays+p.pilotFuel)*p.lsmgoPrice;
+  const port=sp.loadCost+dp.dischCost,heel=p.heelVolume*p.heelCost;
+  let ets=0;
+  if(dp.euEts){const co2=(p.hfoLaden+p.hfoBallast)*voyDays*p.co2Hfo+(p.lsmgoLaden+p.lsmgoBallast)*voyDays*p.co2Mgo;ets=co2*p.etsCoverage*p.euaPrice*p.eurUsd;}
+  const total=hire+pos+repo+hfo+lsmgo+port+heel+ets;
+  return{freight:total/estDisch,total,hire,pos,repo,hfo,lsmgo,port,heel,ets,totalDays,voyDays,estDisch,loaded,rate,nm};
+}
+
+function fCol(v){if(v==null)return'#546e7a';if(v<0.5)return'#4caf50';if(v<1.0)return'#81c784';if(v<1.5)return'#ffeb3b';if(v<2.0)return'#ff9800';return'#f44336';}
+
+function miniSVG(blng){
+  const W=500,H=120,PL=38,PR=8,PT=8,PB=22;
+  const all=['BLNG1','BLNG2','BLNG3'].flatMap(c=>blng[c].filter(x=>x!=null));
+  if(!all.length)return'';
+  const mn=Math.min(...all),mx=Math.max(...all);
+  const xS=i=>PL+(W-PL-PR)/23*i,yS=v=>H-PB-((v-mn)/(mx-mn||1))*(H-PT-PB);
+  const mkP=d=>{const segs=[];let cur=[];d.forEach((v,i)=>{if(v!=null)cur.push(`${xS(i).toFixed(1)},${yS(v).toFixed(1)}`);else if(cur.length){segs.push(cur);cur=[];}});if(cur.length)segs.push(cur);return segs.map(s=>'M'+s.join('L')).join(' ');};
+  const grid=[mn,mn+(mx-mn)/2,mx].map(v=>`<line x1="${PL}" x2="${W-PR}" y1="${yS(v).toFixed(1)}" y2="${yS(v).toFixed(1)}" stroke="#1e3a5f" stroke-width="0.5"/><text x="${PL-3}" y="${(yS(v)+4).toFixed(1)}" fill="#546e7a" font-size="8" text-anchor="end">${(v/1000).toFixed(0)}k</text>`).join('');
+  const ticks=[0,4,8,12,16,20,23].map(i=>`<text x="${xS(i).toFixed(1)}" y="${H-PB+13}" fill="#546e7a" font-size="8" text-anchor="middle">${ML[i]?ML[i].slice(0,6):''}</text>`).join('');
+  const lines=['BLNG1','BLNG2','BLNG3'].map(c=>`<path d="${mkP(blng[c])}" fill="none" stroke="${BC[c]}" stroke-width="1.5" stroke-linejoin="round"/>`).join('');
+  const legend=['BLNG1','BLNG2','BLNG3'].map((c,i)=>`<rect x="${PL+i*70}" y="${H-PB+16}" width="8" height="3" fill="${BC[c]}"/><text x="${PL+i*70+11}" y="${H-PB+20}" fill="${BC[c]}" font-size="8">${c}</text>`).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block" font-family="'IBM Plex Mono',monospace">${grid}${ticks}${lines}${legend}</svg>`;
+}
+
+// ── TABS ──
+const FTABS=['FREIGHT CURVES','SHIP PARAMS','FREIGHT DETAILS','FREIGHT MATRIX','DIFFERENTIALS'];
+
+function initFreight(){
+  F.blng=fg('f_blng',JSON.parse(JSON.stringify(IB)));
+  F.params={...DEF_P,...fg('f_params',{})};
+  F.snaps=fg('f_snaps',[{date:'2026-04-02',label:'OB FFA 02/04/2026',blng:JSON.parse(JSON.stringify(IB))}]);
+  F.matrix=fg('f_matrix',null);
+  F.matrixTs=localStorage.getItem('f_matrix_ts')||null;
+  F.blngTs=localStorage.getItem('f_blng_ts')||null;
+  F.extraD=fg('f_extraD',[]);
+  const z24=()=>Array(24).fill(0);
+  F.posArr=fg('f_posArr',{BLNG1:z24(),BLNG2:z24(),BLNG3:z24()});
+  F.repoArr=fg('f_repoArr',{BLNG1:z24(),BLNG2:z24(),BLNG3:z24()});
+  F.tab=2; // open on Freight Details
+  F.detailMode=null;
+  renderFreight();
+}
+
+function renderFreight(){
+  const wrap=document.getElementById('freight-wrap');
+  if(!wrap)return;
+  const stale=F.matrixTs&&F.blngTs&&F.blngTs>F.matrixTs;
+  wrap.innerHTML=`
+    <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">FREIGHT RATE CALCULATOR</span>
+      <span style="flex:1"></span>
+      ${stale?'<span style="color:#ff9800;font-size:10px">MATRIX STALE</span>':''}
+      <button class="f-btn sm" onclick="showPortMgr()">PORT MGR</button>
+    </div>
+    <div class="f-subnav">${FTABS.map((t,i)=>`<button class="f-tab${F.tab===i?' active':''}" onclick="fTab(${i})">${t}</button>`).join('')}</div>
+    <div class="f-body" id="f-body"></div>`;
+  renderFTab();
+}
+
+function fTab(i){F.tab=i;F.detailMode=null;F.showExportMenu=false;document.querySelectorAll('.f-tab').forEach((t,j)=>t.classList.toggle('active',j===i));renderFTab();}
+
+function renderFTab(){
+  const b=document.getElementById('f-body');if(!b)return;
+  if(F.tab===0)b.innerHTML=renderFreightCurves();
+  else if(F.tab===1)b.innerHTML=renderParams();
+  else if(F.tab===2)b.innerHTML=renderDetails();
+  else if(F.tab===3)b.innerHTML=renderMatrix();
+  else if(F.tab===4)b.innerHTML=renderDiff();
+}
+
+// ── TAB 0: FREIGHT CURVES ──
+function renderFreightCurves(){
+  const curveRows=ML.map((m,i)=>`<tr>
+    <td>${m}</td>
+    ${['BLNG1','BLNG2','BLNG3'].map(c=>`<td style="padding:2px 4px"><input class="f-inp" style="width:85px;text-align:right" type="number" data-blng="${c}" data-i="${i}" value="${F.blng[c][i]!=null?F.blng[c][i]:''}" onchange="blngChange(this)"/></td>`).join('')}
+  </tr>`).join('');
+
+  const prRows=ML.map((m,i)=>`<tr>
+    <td>${m}</td>
+    ${['BLNG1','BLNG2','BLNG3'].map(c=>`
+      <td style="padding:2px 3px"><input class="f-inp" style="width:55px;text-align:right" type="number" step="0.1" data-prtype="pos" data-curve="${c}" data-i="${i}" value="${F.posArr[c][i]||0}" onchange="prChange(this)"/></td>
+      <td style="padding:2px 3px"><input class="f-inp" style="width:55px;text-align:right" type="number" step="0.1" data-prtype="repo" data-curve="${c}" data-i="${i}" value="${F.repoArr[c][i]||0}" onchange="prChange(this)"/></td>`).join('')}
+  </tr>`).join('');
+
+  const snaps=F.snaps.length?`<div style="margin-top:14px"><div class="f-sec">HISTORICAL SNAPSHOTS</div>${F.snaps.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;background:#0d1526;padding:6px 10px;margin-bottom:4px;border:1px solid #1e3a5f"><span>${s.label}</span><button class="f-btn sm" data-snapdate="${s.date}" onclick="loadSnapBtn(this)">LOAD</button></div>`).join('')}</div>`:'';
+
+  return`
+    <div class="f-sec" style="font-size:12px;letter-spacing:3px;margin-bottom:14px">FORWARD FREIGHT CURVES</div>
+    ${miniSVG(F.blng)}
+    <div class="f-grid f-g2" style="margin-bottom:12px">
+      <div><span class="f-lbl">SNAPSHOT DATE</span><input class="f-inp" type="date" value="${F.snapDate}" onchange="F.snapDate=this.value"></div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button class="f-btn" onclick="saveSnap()">SAVE SNAPSHOT</button>
+        <button class="f-btn" onclick="document.getElementById('blng-csv').click()">UPLOAD CSV</button>
+        <input type="file" id="blng-csv" accept=".csv,.txt" style="display:none" onchange="parseBLNGcsv(this)">
+      </div>
+    </div>
+    <div class="f-sec">BLNG CURVE INPUT ($/day)</div>
+    <div style="overflow-x:auto;margin-bottom:20px">
+      <table class="f-tbl">
+        <thead><tr><th>PERIOD</th>${['BLNG1','BLNG2','BLNG3'].map(c=>`<th style="text-align:right;color:${BC[c]}">${c}</th>`).join('')}</tr></thead>
+        <tbody>${curveRows}</tbody>
+      </table>
+    </div>
+    <div class="f-sec">POSITIONING &amp; REPOSITIONING (% OF TC RATE PER MONTH)</div>
+    <div style="overflow-x:auto">
+      <table class="f-tbl">
+        <thead><tr><th>PERIOD</th>${['BLNG1','BLNG2','BLNG3'].map(c=>`<th style="text-align:right;color:${BC[c]}" colspan="2">${c} Pos% / Repo%</th>`).join('')}</tr>
+        <tr><th></th>${['BLNG1','BLNG2','BLNG3'].map(c=>`<th style="text-align:right;font-size:9px;color:#4fc3f7">POS%</th><th style="text-align:right;font-size:9px;color:#ffb74d">REPO%</th>`).join('')}</tr>
+        </thead>
+        <tbody>${prRows}</tbody>
+      </table>
+    </div>
+    ${snaps}`;
+}
+
+// ── TAB 1: SHIP PARAMS ──
+function renderParams(){
+  const secs=[
+    {t:'VESSEL',f:[{k:'shipSize',l:'Ship Size (cbm)',s:1000},{k:'energyFactor',l:'Energy Factor (Mmbtu/m³)',s:0.01},{k:'loadFactor',l:'Load Factor',s:0.001},{k:'bogRate',l:'BOG Rate (%/day)',s:0.0001},{k:'speedLaden',l:'Speed Laden (kn)',s:0.5},{k:'speedBallast',l:'Speed Ballast (kn)',s:0.5}]},
+    {t:'FUEL CONSUMPTION (t/day)',f:[{k:'hfoLaden',l:'HFO Laden',s:1},{k:'hfoBallast',l:'HFO Ballast',s:1},{k:'lsmgoLaden',l:'LSMGO Laden',s:0.5},{k:'lsmgoBallast',l:'LSMGO Ballast',s:0.5},{k:'lsmgoDischarge',l:'LSMGO Discharge',s:0.5},{k:'pilotFuel',l:'Pilot Fuel (t/voy)',s:0.5}]},
+    {t:'FUEL PRICES',f:[{k:'hfoPrice',l:'HFO ($/t)',s:10},{k:'lsmgoPrice',l:'LSMGO ($/t)',s:10}]},
+    {t:'VOYAGE TIMES (days)',f:[{k:'cooldownDays',l:'Cooldown',s:0.05},{k:'loadTimeDays',l:'Load Time',s:0.05},{k:'bufferDays',l:'Buffer',s:0.5},{k:'dischargeDays',l:'Discharge',s:0.05}]},
+    {t:'HEEL',f:[{k:'heelVolume',l:'Volume (m³)',s:100},{k:'heelCost',l:'Cost ($/m³)',s:0.5}]},
+    {t:'EU ETS',f:[{k:'co2Mgo',l:'CO₂/t LSMGO',s:0.01},{k:'co2Hfo',l:'CO₂/t HFO',s:0.01},{k:'etsCoverage',l:'Coverage (0-1)',s:0.05},{k:'euaPrice',l:'EUA ($/t)',s:1},{k:'eurUsd',l:'EUR/USD',s:0.01}]}
+  ];
+  // Find Voyage Times section and inject Load Date
+  const secHtml=secs.map(sec=>{
+    let fields=sec.f.map(f=>`<div><span class="f-lbl">${f.l}</span><input class="f-inp" type="number" step="${f.s}" value="${F.params[f.k]}" onchange="pChange('${f.k}',parseFloat(this.value)||0)"></div>`).join('');
+    if(sec.t==='VOYAGE TIMES (days)'){
+      fields+=`<div><span class="f-lbl">LOAD DATE (dd/mm/yyyy)</span><input class="f-inp" type="text" placeholder="dd/mm/yyyy" value="${F.params.loadDate||''}" onchange="pChange('loadDate',this.value)" maxlength="10"></div>`;
+    }
+    return`<div style="margin-bottom:14px"><div class="f-sec">${sec.t}</div><div class="f-gauto">${fields}</div></div>`;
+  }).join('');
+  return`
+    <div class="f-sec">SHIP PARAMETERS — 174K TFDE</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="f-btn${F.params.cooldownEnabled?' on':''}" onclick="pChange('cooldownEnabled',!F.params.cooldownEnabled);renderFTab()">COOLDOWN ${F.params.cooldownEnabled?'ON':'OFF'}</button>
+      <button class="f-btn${F.params.gasUpEnabled?' on':''}" onclick="pChange('gasUpEnabled',!F.params.gasUpEnabled);renderFTab()">GAS UP ${F.params.gasUpEnabled?'ON':'OFF'}</button>
+    </div>
+    ${secHtml}`;
+}
+
+// ── TAB 2: FREIGHT DETAILS ──
+function renderDetails(){
+  if(!F.detailMode) return`
+    <div class="f-sec">SELECT MODE</div>
+    <div class="f-gauto">
+      ${[['SINGLE VOYAGE','Quick pricing — one route, one date','single'],['UPDATE MATRIX','Recompute all routes × 24 months','matrix'],['HISTORICAL RATES','Freight evolution across snapshots','hist'],['DIFFERENTIALS','Cross-port spread comparison','diff']].map(([t,d,m])=>`
+        <div class="f-card" style="cursor:pointer" onclick="fDetailMode('${m}')">
+          <div style="color:#4fc3f7;font-size:11px;letter-spacing:1px;margin-bottom:4px">${t}</div>
+          <div style="color:#546e7a;font-size:10px">${d}</div>
+        </div>`).join('')}
+    </div>`;
+
+  if(F.detailMode==='matrix_done') return`
+    <button class="f-btn" style="margin-bottom:14px" onclick="F.detailMode=null;renderFTab()">← BACK</button>
+    <div class="f-ok">✓ Matrix computed — ${new Date().toLocaleString('en-GB')}</div>
+    <button class="f-btn on" onclick="fTab(3)">GO TO FREIGHT MATRIX →</button>`;
+
+  if(F.detailMode==='single'){
+    const r=calcF(F.svOrig,F.svDisch,F.svMi);
+    let dischDate='-';
+    if(r&&F.svLoadDate){const d=new Date(F.svLoadDate);d.setDate(d.getDate()+Math.round(r.totalDays));dischDate=d.toISOString().slice(0,10);}
+    const exportMenuHtml=F.showExportMenu?`
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="f-btn sm grn" onclick="exportSingleCSV()">CSV</button>
+        <button class="f-btn sm grn" onclick="exportSingleXLS()">EXCEL</button>
+        <button class="f-btn sm" onclick="F.showExportMenu=false;renderFTab()">✕</button>
+      </div>`:'';
+    return`
+      <button class="f-btn" style="margin-bottom:14px" onclick="F.detailMode=null;renderFTab()">← BACK</button>
+      <div class="f-sec">SINGLE VOYAGE PRICING</div>
+      <div class="f-grid f-g2" style="margin-bottom:12px">
+        <div><span class="f-lbl">ORIGIN</span><select class="f-sel" onchange="F.svOrig=this.value;renderFTab()">${SUPPLY.map(p=>`<option value="${p.id}"${F.svOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
+        <div><span class="f-lbl">DISCHARGE</span><select class="f-sel" onchange="F.svDisch=this.value;renderFTab()">${allD().map(p=>`<option value="${p.id}"${F.svDisch===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
+        <div><span class="f-lbl">LOAD MONTH</span><select class="f-sel" onchange="F.svMi=+this.value;renderFTab()">${ML.map((m,i)=>`<option value="${i}"${F.svMi===i?' selected':''}>${m}</option>`).join('')}</select></div>
+        <div><span class="f-lbl">LOAD DATE</span><input class="f-inp" type="date" value="${F.svLoadDate}" onchange="F.svLoadDate=this.value;renderFTab()"></div>
+      </div>
+      ${r?`
+        <div class="f-gauto" style="margin-bottom:14px">
+          ${[['FREIGHT RATE',r.freight.toFixed(4)+' $/Mmbtu'],['TOTAL COST','$'+(r.total/1000).toFixed(0)+'k'],['TC RATE',r.rate.toLocaleString()+' $/day'],['LOAD DATE',F.svLoadDate||'-'],['DISCH DATE',dischDate],['TRANSIT DAYS',r.totalDays.toFixed(2)+' d'],['VOYAGE DAYS',r.voyDays.toFixed(2)+' d'],['DISTANCE',r.nm.toLocaleString()+' NM']].map(([l,v])=>`<div class="f-card"><div style="color:#546e7a;font-size:10px;margin-bottom:4px">${l}</div><div style="color:#e0f7fa;font-weight:700;font-size:13px">${v}</div></div>`).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div class="f-sec" style="margin:0;border:none;padding:0">COST BREAKDOWN</div>
+          <button class="f-btn grn" onclick="F.showExportMenu=!F.showExportMenu;renderFTab()">EXPORT</button>
+        </div>
+        ${exportMenuHtml}
+        <table class="f-tbl" style="margin-bottom:14px">
+          <thead><tr><th>COMPONENT</th><th class="tr">USD</th><th class="tr">$/Mmbtu</th><th class="tr">%</th></tr></thead>
+          <tbody>
+            ${[['Hire',r.hire],['Positioning',r.pos],['Repositioning',r.repo],['HFO Bunkers',r.hfo],['LSMGO Bunkers',r.lsmgo],['Port Costs',r.port],['Heel',r.heel],['EU ETS',r.ets]].map(([l,v])=>`<tr><td>${l}</td><td class="tr">$${v.toLocaleString(undefined,{maximumFractionDigits:0})}</td><td class="tr">${(v/r.estDisch).toFixed(4)}</td><td class="tr" style="color:#546e7a">${(v/r.total*100).toFixed(1)}%</td></tr>`).join('')}
+            <tr class="hi-row"><td>TOTAL</td><td class="tr">$${r.total.toLocaleString(undefined,{maximumFractionDigits:0})}</td><td class="tr">${r.freight.toFixed(4)}</td><td class="tr">100%</td></tr>
+          </tbody>
+        </table>
+        <div class="f-sec">24-MONTH STRIP — ${SUPPLY.find(p=>p.id===F.svOrig)?.name} → ${allD().find(p=>p.id===F.svDisch)?.name}</div>
+        <div style="overflow-x:auto">
+          <table class="f-tbl">
+            <thead><tr><th>MONTH</th><th class="tr">RATE ($/day)</th><th class="tr">FREIGHT ($/Mmbtu)</th><th class="tr">VOYAGE DAYS</th></tr></thead>
+            <tbody>${ML.map((m,i)=>{const res=calcF(F.svOrig,F.svDisch,i);return`<tr${i===F.svMi?' class="hi-row"':''}><td>${m}</td><td class="tr">${res&&res.rate?res.rate.toLocaleString():'-'}</td><td class="tr" style="color:${res?fCol(res.freight):'#546e7a'}">${res?res.freight.toFixed(4):'-'}</td><td class="tr" style="color:#546e7a">${res?res.voyDays.toFixed(1)+' d':'-'}</td></tr>`;}).join('')}</tbody>
+          </table>
+        </div>`
+      :'<div style="color:#f44336;margin-top:12px">No rate available for this route/month combination.</div>'}`;
+  }
+
+  if(F.detailMode==='hist'){
+    const rows=F.snaps.map(s=>{
+      const savedBlng=F.blng; // temporarily use snap blng
+      const origBlng=F.blng;
+      F.blng=s.blng;
+      const res=calcF(F.histOrig,F.histDisch,F.histMi);
+      F.blng=origBlng;
+      return res?`<tr><td>${s.date}</td><td>${s.label}</td><td class="tr" style="color:${fCol(res.freight)}">${res.freight.toFixed(4)}</td><td class="tr" style="color:#546e7a">${res.rate.toLocaleString()}</td></tr>`:null;
+    }).filter(Boolean).join('');
+    return`
+      <button class="f-btn" style="margin-bottom:14px" onclick="F.detailMode=null;renderFTab()">← BACK</button>
+      <div class="f-sec">HISTORICAL FREIGHT RATES</div>
+      <div class="f-grid f-g3" style="margin-bottom:12px">
+        <div><span class="f-lbl">ORIGIN</span><select class="f-sel" onchange="F.histOrig=this.value;renderFTab()">${SUPPLY.map(p=>`<option value="${p.id}"${F.histOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
+        <div><span class="f-lbl">DISCHARGE</span><select class="f-sel" onchange="F.histDisch=this.value;renderFTab()">${allD().map(p=>`<option value="${p.id}"${F.histDisch===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
+        <div><span class="f-lbl">MONTH</span><select class="f-sel" onchange="F.histMi=+this.value;renderFTab()">${ML.map((m,i)=>`<option value="${i}"${F.histMi===i?' selected':''}>${m}</option>`).join('')}</select></div>
+      </div>
+      <table class="f-tbl"><thead><tr><th>DATE</th><th>SNAPSHOT</th><th class="tr">FREIGHT ($/Mmbtu)</th><th class="tr">TC RATE ($/day)</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="4" style="color:#546e7a">No snapshots saved yet — save snapshots in the Freight Curves tab.</td></tr>'}</tbody></table>`;
+  }
+  return'';
+}
+
+// ── TAB 3: MATRIX ──
+function renderMatrix(){
+  const stale=F.matrixTs&&F.blngTs&&F.blngTs>F.matrixTs;
+  const regions=[...new Set(allD().map(p=>p.region))];
+  const filtO=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);
+  const filtD=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);
+  let rows='';
+  if(F.matrix){
+    filtO.forEach(sp=>{
+      rows+=`<div style="margin-bottom:20px"><div style="color:#4fc3f7;font-size:10px;letter-spacing:2px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #1e3a5f">${sp.name.toUpperCase()} — ${sp.curve}</div><div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:130px">DISCHARGE</th>${ML.map(m=>`<th class="tr" style="min-width:50px">${m}</th>`).join('')}</tr></thead><tbody>`;
+      filtD.forEach(dp=>{
+        const row=F.matrix[sp.id]&&F.matrix[sp.id][dp.id];
+        rows+=`<tr><td style="font-size:10px">${dp.name}${dp.euEts?` <span class="f-badge-ets">ETS</span>`:''}</td>${ML.map((_,i)=>{const v=row&&row[i]?row[i].freight:null;return`<td class="tr" style="color:${fCol(v)}">${v?v.toFixed(3):'-'}</td>`;}).join('')}</tr>`;
+      });
+      rows+='</tbody></table></div></div>';
+    });
+  }
+  return`
+    ${stale?'<div class="f-warn">Curves or Pos/Repo updated — click REFRESH to recompute matrix.</div>':''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
+      <div style="flex:1;min-width:120px"><span class="f-lbl">ORIGIN</span><select class="f-sel" onchange="F.fOrig=this.value;renderFTab()"><option value="all">ALL ORIGINS</option>${SUPPLY.map(p=>`<option value="${p.id}"${F.fOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
+      <div style="flex:1;min-width:120px"><span class="f-lbl">REGION</span><select class="f-sel" onchange="F.fRegion=this.value;renderFTab()"><option value="all">ALL REGIONS</option>${regions.map(r=>`<option value="${r}"${F.fRegion===r?' selected':''}>${r}</option>`).join('')}</select></div>
+      <button class="f-btn on" onclick="computeMatrix()">REFRESH</button>
+      ${F.matrix?'<button class="f-btn" onclick="exportMatrixCSV()">EXPORT CSV</button><button class="f-btn" onclick="exportMatrixXLS()">EXPORT EXCEL</button>':''}
+    </div>
+    ${F.matrixTs?`<div style="color:#546e7a;font-size:10px;margin-bottom:10px">Last computed: ${new Date(F.matrixTs).toLocaleString('en-GB')}</div>`:''}
+    ${!F.matrix?'<div style="color:#546e7a">No matrix yet — click REFRESH.</div>':rows}`;
+}
+
+// ── TAB 4: DIFF ──
+function renderDiff(){
+  const base=ML.map((_,i)=>{const r=calcF(F.diffOrig,F.diffBase,i);return r?r.freight:null;});
+  const selD=allD().filter(p=>F.diffSel.includes(p.id));
+  const baseName=allD().find(p=>p.id===F.diffBase)?.name||F.diffBase;
+  const portBtns=allD().filter(p=>p.id!==F.diffBase).map(p=>`<button class="f-btn sm${F.diffSel.includes(p.id)?' on':''}" onclick="toggleDiff('${p.id}')">${p.name}</button>`).join(' ');
+  let tableRows='';
+  if(selD.length){
+    tableRows=`<tr class="hi-row"><td>BASE: ${baseName}</td>${base.map((v,i)=>`<td class="tr">${v?v.toFixed(3):'-'}</td>`).join('')}</tr>`;
+    selD.forEach(dp=>{
+      const sf=ML.map((_,i)=>{const r=calcF(F.diffOrig,dp.id,i);return r?r.freight:null;});
+      tableRows+=`<tr><td>${dp.name}</td>${sf.map((v,i)=>{const d=v!=null&&base[i]!=null?v-base[i]:null;return`<td class="tr" style="color:${d==null?'#546e7a':d>0?'#f44336':d<0?'#4caf50':'#c8d6e5'}">${d!=null?(d>0?'+':'')+d.toFixed(3):'-'}</td>`;}).join('')}</tr>`;
+    });
+  }
+  return`
+    <div class="f-sec">FREIGHT RATE DIFFERENTIALS</div>
+    <div class="f-grid f-g2" style="margin-bottom:12px">
+      <div><span class="f-lbl">BASE ORIGIN</span><select class="f-sel" onchange="F.diffOrig=this.value;renderFTab()">${SUPPLY.map(p=>`<option value="${p.id}"${F.diffOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
+      <div><span class="f-lbl">BASE DISCHARGE</span><select class="f-sel" onchange="F.diffBase=this.value;F.diffSel=F.diffSel.filter(x=>x!==this.value);renderFTab()">${allD().map(p=>`<option value="${p.id}"${F.diffBase===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
+    </div>
+    <div style="margin-bottom:12px"><span class="f-lbl">COMPARISON PORTS</span><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">${portBtns}</div></div>
+    ${selD.length?`<div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:130px">DISCHARGE</th>${ML.map(m=>`<th class="tr" style="min-width:50px">${m}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table><div style="margin-top:6px;color:#546e7a;font-size:10px">Red = more expensive · Green = cheaper than base</div></div>`:''}`;
+}
+
+// ── FREIGHT ACTIONS ──
+function blngChange(el){const c=el.dataset.blng,i=+el.dataset.i;F.blng[c][i]=el.value===''?null:+el.value;fSaveBlng(F.blng);}
+function prChange(el){const type=el.dataset.prtype,c=el.dataset.curve,i=+el.dataset.i,v=parseFloat(el.value)||0;if(type==='pos')F.posArr[c][i]=v;else F.repoArr[c][i]=v;fSavePR();}
+function pChange(k,v){F.params[k]=v;fSaveParams(F.params);}
+function saveSnap(){const d=F.snapDate,s=[{date:d,label:`OB FFA ${d}`,blng:JSON.parse(JSON.stringify(F.blng))},...F.snaps.filter(x=>x.date!==d)];F.snaps=s;fs('f_snaps',s);alert('Snapshot saved: '+d);}
+function loadSnapBtn(el){const date=el.dataset.snapdate;const s=F.snaps.find(x=>x.date===date);if(s){fSaveBlng(JSON.parse(JSON.stringify(s.blng)));renderFTab();}}
+function parseBLNGcsv(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const lines=e.target.result.split('\n').map(l=>l.split(/[,\t]/));const h=lines[0]||[];let b1=-1,b2=-1,b3=-1;h.forEach((x,i)=>{const t=x.trim().toUpperCase();if(t.includes('BLNG1'))b1=i;if(t.includes('BLNG2'))b2=i;if(t.includes('BLNG3'))b3=i;});const nb=JSON.parse(JSON.stringify(IB));lines.slice(1).forEach((row,ri)=>{if(ri>=24)return;const pv=ci=>{const v=parseFloat((row[ci]||'').replace(/[^0-9.]/g,''));return isNaN(v)?null:v;};if(b1>=0)nb.BLNG1[ri]=pv(b1);if(b2>=0)nb.BLNG2[ri]=pv(b2);if(b3>=0)nb.BLNG3[ri]=pv(b3);});fSaveBlng(nb);renderFTab();alert('Curves loaded.');};r.readAsText(f);el.value='';}
+function fDetailMode(m){if(m==='matrix'){computeMatrix();F.detailMode='matrix_done';}else if(m==='diff'){fTab(4);return;}else F.detailMode=m;renderFTab();}
+function computeMatrix(){const m={};SUPPLY.forEach(sp=>{m[sp.id]={};allD().forEach(dp=>{m[sp.id][dp.id]=ML.map((_,i)=>calcF(sp.id,dp.id,i));});});F.matrix=m;const ts=new Date().toISOString();F.matrixTs=ts;fs('f_matrix',m);localStorage.setItem('f_matrix_ts',ts);renderFTab();}
+function toggleDiff(id){F.diffSel=F.diffSel.includes(id)?F.diffSel.filter(x=>x!==id):[...F.diffSel,id];renderFTab();}
+
+function svBreakdownData(){
+  const r=calcF(F.svOrig,F.svDisch,F.svMi);if(!r)return null;
+  const sp=SUPPLY.find(p=>p.id===F.svOrig),dp=allD().find(p=>p.id===F.svDisch);
+  const header=['Component','USD','$/Mmbtu','%'];
+  const rows=[['Hire',r.hire,r.hire/r.estDisch,r.hire/r.total*100],['Positioning',r.pos,r.pos/r.estDisch,r.pos/r.total*100],['Repositioning',r.repo,r.repo/r.estDisch,r.repo/r.total*100],['HFO Bunkers',r.hfo,r.hfo/r.estDisch,r.hfo/r.total*100],['LSMGO Bunkers',r.lsmgo,r.lsmgo/r.estDisch,r.lsmgo/r.total*100],['Port Costs',r.port,r.port/r.estDisch,r.port/r.total*100],['Heel',r.heel,r.heel/r.estDisch,r.heel/r.total*100],['EU ETS',r.ets,r.ets/r.estDisch,r.ets/r.total*100],['TOTAL',r.total,r.freight,100]];
+  const title=`${sp?.name||F.svOrig} → ${dp?.name||F.svDisch} | ${ML[F.svMi]} | ${F.svLoadDate}`;
+  return{title,header,rows,freight:r.freight,total:r.total};
+}
+function exportSingleCSV(){const d=svBreakdownData();if(!d)return;const csv=[`# ${d.title}`,d.header.join(','),...d.rows.map(r=>[r[0],r[1].toFixed(0),r[2].toFixed(4),r[3].toFixed(2)].join(','))].join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`freight_${F.svOrig}_${F.svDisch}_${ML[F.svMi]}.csv`;a.click();F.showExportMenu=false;renderFTab();}
+function exportSingleXLS(){const d=svBreakdownData();if(!d)return;const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([[d.title],[''],[d.header],...d.rows.map(r=>[r[0],+r[1].toFixed(0),+r[2].toFixed(4),+r[3].toFixed(2)])]);XLSX.utils.book_append_sheet(wb,ws,'Freight Breakdown');XLSX.writeFile(wb,`freight_${F.svOrig}_${F.svDisch}_${ML[F.svMi]}.xlsx`);F.showExportMenu=false;renderFTab();}
+
+function exportMatrixCSV(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);const dd=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);const rows=[['Origin',...ML]];fd.forEach(sp=>dd.forEach(dp=>rows.push([`${sp.name} → ${dp.name}`,...ML.map((_,i)=>F.matrix[sp.id]&&F.matrix[sp.id][dp.id]&&F.matrix[sp.id][dp.id][i]?F.matrix[sp.id][dp.id][i].freight.toFixed(4):'-')])));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));a.download=`freight_matrix_${new Date().toISOString().slice(0,10)}.csv`;a.click();}
+function exportMatrixXLS(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);const dd=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);const rows=[['Origin',...ML]];fd.forEach(sp=>dd.forEach(dp=>rows.push([`${sp.name} → ${dp.name}`,...ML.map((_,i)=>{const v=F.matrix[sp.id]&&F.matrix[sp.id][dp.id]&&F.matrix[sp.id][dp.id][i];return v?+v.freight.toFixed(4):'-';})])));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Freight Matrix');XLSX.writeFile(wb,`freight_matrix_${new Date().toISOString().slice(0,10)}.xlsx`);}
+
+function showPortMgr(){const d=allD();const modal=document.createElement('div');modal.id='port-mgr-modal';modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px';modal.innerHTML=`<div style="background:#0a0f1e;border:1px solid #1e3a5f;width:100%;max-width:720px;max-height:85vh;overflow-y:auto;padding:20px"><div style="display:flex;justify-content:space-between;margin-bottom:14px"><span style="color:#4fc3f7;letter-spacing:2px;font-size:12px">PORT MANAGER</span><button class="f-btn sm" onclick="document.getElementById('port-mgr-modal').remove()">CLOSE</button></div><div class="f-sec">SUPPLY PORTS</div><table class="f-tbl"><thead><tr><th>NAME</th><th>CURVE</th><th class="tr">LOAD COST ($)</th></tr></thead><tbody>${SUPPLY.map(p=>`<tr><td>${p.name}</td><td>${p.curve}</td><td class="tr">${p.loadCost.toLocaleString()}</td></tr>`).join('')}</tbody></table><div class="f-sec" style="margin-top:16px">DISCHARGE PORTS (${d.length})</div><table class="f-tbl"><thead><tr><th>NAME</th><th>REGION</th><th class="tr">DISCH COST ($)</th><th>ETS</th></tr></thead><tbody>${d.map(p=>`<tr><td>${p.name}</td><td>${p.region}</td><td class="tr">${p.dischCost.toLocaleString()}</td><td>${p.euEts?'<span class="f-badge-ets">YES</span>':'NO'}</td></tr>`).join('')}</tbody></table></div>`;document.body.appendChild(modal);}
+
+// ══════════════════════════════════════════
+// ANALYTICS ENGINE
+// ══════════════════════════════════════════
+const MA=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const SC=['#2d7cff','#22c55e','#f59e0b','#ef4444','#a78bfa','#38bdf8'];
+const CK='lngTradeOS_v4';
+const INSTS=[{k:'JKM',label:'JKM',unit:'$/MMBtu'},{k:'TTF',label:'TTF',unit:'$/MMBtu'},{k:'HH',label:'HH',unit:'$/MMBtu'},{k:'NBP',label:'NBP',unit:'$/MMBtu'},{k:'Brent',label:'Brent',unit:'$/bbl'},{k:'Dated',label:'Dated Brent',unit:'$/bbl'},{k:'Slope',label:'Slope',unit:'%'},{k:'SP_JT',label:'JKM/TTF Spread',unit:'$/MMBtu'},{k:'SP_JH',label:'JKM/HH Spread',unit:'$/MMBtu'},{k:'SP_TH',label:'TTF/HH Spread',unit:'$/MMBtu'}];
+const INST={};INSTS.forEach(i=>INST[i.k]=i);
+const CI=['JKM','TTF','HH','NBP','Brent','Dated'];
+const CN={BRENT:['BRT SW','Brent SW'],TTF:['TTF FT','TTF'],EURUSD:['EUR USD','EURUSD'],GBPUSD:['GBP USD','GBPUSD'],NBP:['NBP FT','NBP'],HH:['HHUB FT','HH'],DATED:['Outright Dated','Dated Brent'],JKM:['JKM'],SLOPE:['Brent JKM','Slope']};
+const aD={};let sDates=[];
+let hChart=null,rc10=null,rc20=null,rc30=null,fcChart=null,seaChart=null,spChart=null,spLegsChart=null,gasChart=null;
 const $=id=>document.getElementById(id);
 
-// ── UTILS ──
-function getPK(v){
-  let d=null;
-  if(v instanceof Date)d=v;
-  else if(typeof v==='number'&&v>40000&&v<70000)d=new Date(Math.round((v-25569)*86400)*1000);
-  else return null;
-  const y=d.getUTCFullYear(),m=d.getUTCMonth();
-  if(y<2020||y>2040)return null;
-  return`${y}-${String(m+1).padStart(2,'0')}`;
-}
+function getPK(v){let d=null;if(v instanceof Date)d=v;else if(typeof v==='number'&&v>40000&&v<70000)d=new Date(Math.round((v-25569)*86400)*1000);else return null;const y=d.getUTCFullYear(),m=d.getUTCMonth();if(y<2020||y>2040)return null;return`${y}-${String(m+1).padStart(2,'0')}`;}
 function toNum(v){if(typeof v==='number'&&isFinite(v))return v;if(v instanceof Date){const s=(v.getTime()-new Date(Date.UTC(1899,11,30)).getTime())/86400000;if(s>0.3&&s<20)return+s.toFixed(6);}return null;}
 function toStr(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
-function fmtDate(s){return new Date(s+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
-function pkLabel(pk){const[y,m]=pk.split('-');return MONTHS_A[+m-1]+'-'+String(y).slice(2);}
-function findCol(hdrs,cands){for(const c of cands){const i=hdrs.findIndex(h=>h&&String(h).trim()===c);if(i>=0)return i;}return-1;}
-function parseDateFromName(name){
-  let m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{4})/);
-  if(m)return new Date(+m[3],+m[2]-1,+m[1]);
-  m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{2})(?!\d)/);
-  if(m){const yy=+m[3];return new Date(yy>=50?1900+yy:2000+yy,+m[2]-1,+m[1]);}
-  return null;
-}
+function fmtD(s){return new Date(s+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
+function pkL(pk){const[y,m]=pk.split('-');return MA[+m-1]+'-'+String(y).slice(2);}
+function fCol2(hdrs,cands){for(const c of cands){const i=hdrs.findIndex(h=>h&&String(h).trim()===c);if(i>=0)return i;}return-1;}
+function pDFN(name){let m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{4})/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{2})(?!\d)/);if(m){const yy=+m[3];return new Date(yy>=50?1900+yy:2000+yy,+m[2]-1,+m[1]);}return null;}
+function gSeaP(){const pks=aPKs();const years=[...new Set(pks.map(pk=>pk.split('-')[0]))];const out=[];years.forEach(y=>{out.push({v:'win-'+y,l:'Win-'+String(y).slice(2),months:[10,11,12,1,2,3],y:+y,type:'seasonal'});out.push({v:'sum-'+y,l:'Sum-'+String(y).slice(2),months:[4,5,6,7,8,9],y:+y,type:'seasonal'});['q1','q2','q3','q4'].forEach((q,qi)=>{const mths=[[1,2,3],[4,5,6],[7,8,9],[10,11,12]][qi];out.push({v:`${q}-${y}`,l:`${q.toUpperCase()}-${String(y).slice(2)}`,months:mths,y:+y,type:'quarterly'});});});return out;}
+function gAgg(inst,t,rows){const vals=[];t.months.forEach(m=>{const yr=(m<=3&&t.months.includes(12))?t.y+1:t.y;const pk=`${yr}-${String(m).padStart(2,'0')}`;const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)vals.push(row[inst]);});if(!vals.length)return null;return vals.reduce((a,b)=>a+b,0)/vals.length;}
+function pExcel(buf){const wb=XLSX.read(buf,{type:'array',cellDates:true});let ws=wb.Sheets['EXCEL PASTE'];if(!ws){const m=wb.SheetNames.find(n=>n.replace(/\s/g,'').toUpperCase()==='EXCELPASTE');if(m)ws=wb.Sheets[m];}if(!ws){for(const n of wb.SheetNames){const d=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:null,raw:false});if(d.slice(0,10).some(r=>r&&String(r[0]).trim()==='Period')){ws=wb.Sheets[n];break;}}}if(!ws)return[];const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});let hdr=-1;for(let i=0;i<Math.min(data.length,15);i++){const row=data[i];if(!row)continue;const c0=row[0]!=null?String(row[0]).trim():'';if(c0==='Period'||row.some(v=>v!=null&&String(v).trim()==='BRT SW')){hdr=i;break;}}if(hdr===-1)return[];const hdrs=data[hdr].map(h=>h?String(h).trim():'');const C={};for(const[k,c]of Object.entries(CN))C[k]=fCol2(hdrs,c);const rows=[];let nulls=0;for(let i=hdr+6;i<data.length;i++){const r=data[i];if(!r||r[0]==null){if(++nulls>8)break;continue;}nulls=0;const pk=getPK(r[0]);if(!pk)continue;const eu=(C.EURUSD>=0?toNum(r[C.EURUSD]):null)||1.15,gb=(C.GBPUSD>=0?toNum(r[C.GBPUSD]):null)||1.28,g=k=>C[k]>=0?toNum(r[C[k]]):null;const ttfR=g('TTF'),nbpR=g('NBP'),jkm=g('JKM'),hh=g('HH'),brent=g('BRENT'),dated=g('DATED'),slope=g('SLOPE');const ttf=ttfR!=null?+(ttfR*0.293071*eu).toFixed(4):null,nbp=nbpR!=null?+(nbpR/10*gb).toFixed(4):null;rows.push({pk,JKM:jkm,TTF:ttf,HH:hh,NBP:nbp,Brent:brent,Dated:dated,Slope:slope,SP_JT:(jkm!=null&&ttf!=null)?+(jkm-ttf).toFixed(4):null,SP_JH:(jkm!=null&&hh!=null)?+(jkm-hh).toFixed(4):null,SP_TH:(ttf!=null&&hh!=null)?+(ttf-hh).toFixed(4):null});}return rows;}
+function sCache(){try{const p={};for(const[k,v]of Object.entries(aD))p[k]={date:v.date.toISOString(),rows:v.rows};localStorage.setItem(CK,JSON.stringify(p));}catch(e){}}
+function lCache(){try{const raw=localStorage.getItem(CK);if(!raw)return false;const p=JSON.parse(raw);for(const[k,v]of Object.entries(p))aD[k]={date:new Date(v.date),rows:v.rows};sDates=Object.keys(aD).sort();return sDates.length>0;}catch(e){localStorage.removeItem(CK);return false;}}
+function clearCache(){if(confirm('Clear cache and reload?')){localStorage.removeItem(CK);location.reload();}}
+function setupDrop(){const dz=$('dz'),fi=$('fileInput');if(!dz||!fi)return;dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFiles([...e.dataTransfer.files],false);});dz.addEventListener('click',e=>{if(!e.target.classList.contains('dz-btn'))fi.click();});fi.addEventListener('change',()=>{if(fi.files.length)handleFiles([...fi.files],false);});}
+function plog(msg,warn=false){const el=$('parselog');if(!el)return;el.style.display='block';el.innerHTML+=`<div style="color:${warn?'#ef4444':'#3d5070'}">${msg}</div>`;el.scrollTop=el.scrollHeight;}
+async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.match(/\.xlsx?$/i));if(!xl.length){alert('No Excel files found.');return;}if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of xl){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}try{const buf=await file.arrayBuffer();if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$('progfill');if(pf)pf.style.width=Math.round(done/xl.length*100)+'%';const pt=$('progtxt2');if(pt)pt.textContent=`${done}/${xl.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();},1000);}else{rAdd();}}
+function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($('h-t1'),true);bTS($('h-t2'),true);bTS($('rc-t1'),true);bTS($('rc-t2'),true);bDS($('fc-d1'));bDS($('fc-d2'),true);bIS($('sp-i1'));$('sp-i1').value='JKM';bIS($('sp-i2'));$('sp-i2').value='TTF';bTS($('sp-t1'),true);bTS($('sp-t2'),true);buildDash();updHist();updRC2();updSpread();updFC();updSea();}
+function rPK(d,t){const r=new Date(d.getFullYear(),d.getMonth()+parseInt(t),1);return`${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}`;}
+function aPKs(){const s=new Set();for(const ds of sDates)aD[ds].rows.forEach(r=>s.add(r.pk));return[...s].sort();}
+function gSR(inst,t){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const pk=rPK(date,t);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
+function gSF(inst,pk){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
+function gSS(inst,tv){const sea=gSeaP();const tObj=sea.find(s=>s.v===tv);if(!tObj)return[];const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const val=gAgg(inst,tObj,rows);if(val!=null)out.push({date,value:val});}return out;}
+function gS(inst,tv){if(tv.startsWith('r'))return gSR(inst,parseInt(tv.slice(1)));if(tv.startsWith('win-')||tv.startsWith('sum-')||tv.startsWith('q'))return gSS(inst,tv);return gSF(inst,tv);}
+function tvL(tv){if(tv.startsWith('r'))return'M+'+tv.slice(1);const s=gSeaP().find(x=>x.v===tv);if(s)return s.l;return pkL(tv);}
+function al2(s1,s2){const map=new Map(s2.map(d=>[toStr(d.date),d.value]));const v1=[],v2=[],dates=[];for(const d of s1){const k=toStr(d.date);if(map.has(k)){v1.push(d.value);v2.push(map.get(k));dates.push(d.date);}}return{v1,v2,dates};}
+function lRet(vals){const out=[];for(let i=1;i<vals.length;i++)out.push(vals[i]>0&&vals[i-1]>0?Math.log(vals[i]/vals[i-1]):null);return out;}
+function pear(a,b){const p=[];for(let i=0;i<Math.min(a.length,b.length);i++)if(a[i]!=null&&b[i]!=null&&isFinite(a[i])&&isFinite(b[i]))p.push([a[i],b[i]]);const n=p.length;if(n<3)return NaN;const ma=p.reduce((s,x)=>s+x[0],0)/n,mb=p.reduce((s,x)=>s+x[1],0)/n;let num=0,da=0,db=0;for(const[x,y]of p){num+=(x-ma)*(y-mb);da+=(x-ma)**2;db+=(y-mb)**2;}const den=Math.sqrt(da*db);return den===0?NaN:+(num/den).toFixed(3);}
+function rCorr(s1,s2,win){const{v1,v2,dates}=al2(s1,s2);const l1=lRet(v1),l2=lRet(v2);const out=[];for(let i=win-1;i<l1.length;i++){const r=pear(l1.slice(i-win+1,i+1),l2.slice(i-win+1,i+1));if(!isNaN(r))out.push({date:dates[i+1],value:r});}return out;}
 
-// ── TENOR HELPERS ──
-function getSeasonalPKs(){
-  const pks=allPKs();
-  const years=[...new Set(pks.map(pk=>pk.split('-')[0]))];
-  const out=[];
-  years.forEach(y=>{
-    out.push({v:'win-'+y,l:'Win-'+String(y).slice(2),months:[10,11,12,1,2,3],y:+y,type:'seasonal'});
-    out.push({v:'sum-'+y,l:'Sum-'+String(y).slice(2),months:[4,5,6,7,8,9],y:+y,type:'seasonal'});
-    ['q1','q2','q3','q4'].forEach((q,qi)=>{
-      const mths=[[1,2,3],[4,5,6],[7,8,9],[10,11,12]][qi];
-      out.push({v:`${q}-${y}`,l:`${q.toUpperCase()}-${String(y).slice(2)}`,months:mths,y:+y,type:'quarterly'});
-    });
-  });
-  return out;
-}
-function getAggValue(inst,tenorObj,rows){
-  const{months,y}=tenorObj;
-  const vals=[];
-  months.forEach(m=>{const yr=(m<=3&&months.includes(12))?y+1:y;const pk=`${yr}-${String(m).padStart(2,'0')}`;const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)vals.push(row[inst]);});
-  if(!vals.length)return null;
-  return vals.reduce((a,b)=>a+b,0)/vals.length;
-}
-
-// ── EXCEL PARSING ──
-function parseExcel(buf){
-  const wb=XLSX.read(buf,{type:'array',cellDates:true});
-  let ws=wb.Sheets['EXCEL PASTE'];
-  if(!ws){const m=wb.SheetNames.find(n=>n.replace(/\s/g,'').toUpperCase()==='EXCELPASTE');if(m)ws=wb.Sheets[m];}
-  if(!ws){for(const n of wb.SheetNames){const d=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:null,raw:false});if(d.slice(0,10).some(r=>r&&String(r[0]).trim()==='Period')){ws=wb.Sheets[n];break;}}}
-  if(!ws)return[];
-  const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
-  let hdr=-1;
-  for(let i=0;i<Math.min(data.length,15);i++){const row=data[i];if(!row)continue;const c0=row[0]!=null?String(row[0]).trim():'';const hasBRT=row.some(v=>v!=null&&String(v).trim()==='BRT SW');if(c0==='Period'||hasBRT){hdr=i;break;}}
-  if(hdr===-1)return[];
-  const hdrs=data[hdr].map(h=>h?String(h).trim():'');
-  const C={};for(const[k,c]of Object.entries(COL_NAMES))C[k]=findCol(hdrs,c);
-  const rows=[];let nulls=0;
-  for(let i=hdr+6;i<data.length;i++){
-    const r=data[i];if(!r||r[0]==null){if(++nulls>8)break;continue;}nulls=0;
-    const pk=getPK(r[0]);if(!pk)continue;
-    const eu=(C.EURUSD>=0?toNum(r[C.EURUSD]):null)||1.15;
-    const gb=(C.GBPUSD>=0?toNum(r[C.GBPUSD]):null)||1.28;
-    const g=k=>C[k]>=0?toNum(r[C[k]]):null;
-    const ttfR=g('TTF'),nbpR=g('NBP'),jkm=g('JKM'),hh=g('HH'),brent=g('BRENT'),dated=g('DATED'),slope=g('SLOPE');
-    const ttf=ttfR!=null?+(ttfR*0.293071*eu).toFixed(4):null;
-    const nbp=nbpR!=null?+(nbpR/10*gb).toFixed(4):null;
-    rows.push({pk,JKM:jkm,TTF:ttf,HH:hh,NBP:nbp,Brent:brent,Dated:dated,Slope:slope,
-      SP_JT:(jkm!=null&&ttf!=null)?+(jkm-ttf).toFixed(4):null,
-      SP_JH:(jkm!=null&&hh!=null)?+(jkm-hh).toFixed(4):null,
-      SP_TH:(ttf!=null&&hh!=null)?+(ttf-hh).toFixed(4):null});
-  }
-  return rows;
-}
-
-// ── CACHE ──
-function saveCache(){try{const p={};for(const[k,v]of Object.entries(allData))p[k]={date:v.date.toISOString(),rows:v.rows};localStorage.setItem(CACHE_KEY,JSON.stringify(p));}catch(e){console.warn('Cache save failed:',e.message);}}
-function loadCache(){
-  try{const raw=localStorage.getItem(CACHE_KEY);if(!raw)return false;const p=JSON.parse(raw);for(const[k,v]of Object.entries(p))allData[k]={date:new Date(v.date),rows:v.rows};sortedDates=Object.keys(allData).sort();return sortedDates.length>0;}
-  catch(e){localStorage.removeItem(CACHE_KEY);return false;}
-}
-function clearCache(){if(confirm('Clear cache and reload? You will need to drop your files again.')){localStorage.removeItem(CACHE_KEY);location.reload();}}
-
-// ── DROP ZONE ──
-function setupDrop(){
-  const dz=$('dz'),fi=$('fileInput'),fi2=$('fileInput2');
-  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
-  dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
-  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFiles([...e.dataTransfer.files],false);});
-  dz.addEventListener('click',e=>{if(!e.target.classList.contains('dz-btn'))fi.click();});
-  fi.addEventListener('change',()=>{if(fi.files.length)handleFiles([...fi.files],false);});
-  fi2.addEventListener('change',()=>{if(fi2.files.length)handleFiles([...fi2.files],true);});
-}
-
-function plog(msg,warn=false){
-  const el=$('parselog');if(!el)return;
-  el.style.display='block';
-  el.innerHTML+=`<div style="color:${warn?'#ef4444':'#3d5070'}">${msg}</div>`;
-  el.scrollTop=el.scrollHeight;
-}
-
-async function handleFiles(files,addMode){
-  const xlsxFiles=[...files].filter(f=>f.name.match(/\.xlsx?$/i));
-  if(!xlsxFiles.length){alert('No Excel (.xlsx) files found.');return;}
-  if(!addMode){Object.keys(allData).forEach(k=>delete allData[k]);const pw=$('progwrap');if(pw)pw.style.display='block';plog(`Found ${xlsxFiles.length} Excel files — starting parse...`);}
-  let done=0,added=0,skipped=0,failed=0;
-  for(const file of xlsxFiles){
-    if(file.size===0){plog(`SKIP (size=0): ${file.name}`,true);done++;skipped++;continue;}
-    if(file.size<5000){plog(`SKIP (too small): ${file.name}`,true);done++;skipped++;continue;}
-    const date=parseDateFromName(file.name);
-    if(!date){plog(`SKIP (no date): ${file.name}`,true);done++;skipped++;continue;}
-    const key=toStr(date);
-    if(addMode&&allData[key]){done++;continue;}
-    try{
-      const buf=await file.arrayBuffer();
-      if(buf.byteLength<5000){plog(`SKIP (empty buffer): ${file.name}`,true);done++;failed++;continue;}
-      const h=new Uint8Array(buf.slice(0,4));
-      if(!(h[0]===0x50&&h[1]===0x4B)){plog(`SKIP (not Excel): ${file.name}`,true);done++;failed++;continue;}
-      const rows=parseExcel(buf);
-      if(rows.length>0){allData[key]={date,rows};added++;plog(`OK: ${file.name} → ${rows.length} months`);}
-      else{plog(`SKIP (0 rows): ${file.name}`,true);skipped++;}
-    }catch(e){plog(`ERR: ${file.name} — ${e.message}`,true);failed++;}
-    done++;
-    if(!addMode){$('progfill').style.width=Math.round(done/xlsxFiles.length*100)+'%';$('progtxt').textContent=`${done}/${xlsxFiles.length} — ${added} loaded · ${skipped+failed} skipped`;}
-  }
-  sortedDates=Object.keys(allData).sort();saveCache();
-  if(!addMode){
-    const s=`Done: ${added} dates, ${skipped} skipped, ${failed} failed.`;
-    plog(s);$('progtxt').textContent=s;
-    if(!sortedDates.length){plog('No valid data. Ensure files are not Drive placeholders.',true);return;}
-    setTimeout(()=>{showAnalyticsUI();initUI();},1200);
-  }else{refreshAfterAdd();}
-}
-
-function refreshAfterAdd(){sortedDates=Object.keys(allData).sort();updateStatus();buildTenorSel($('h-t1'),true);buildTenorSel($('h-t2'),true);buildTenorSel($('rc-t1'),true);buildTenorSel($('rc-t2'),true);buildDateSel($('fc-d1'));buildDateSel($('fc-d2'),true);buildInstSel($('sp-i1'));$('sp-i1').value='JKM';buildInstSel($('sp-i2'));$('sp-i2').value='TTF';buildTenorSel($('sp-t1'),true);buildTenorSel($('sp-t2'),true);buildDashboard();updHist();updRC2();updSpread();updFC();updSea();}
-
-// ── DATA HELPERS ──
-function rollingPK(d,t){const r=new Date(d.getFullYear(),d.getMonth()+parseInt(t),1);return`${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}`;}
-function allPKs(){const s=new Set();for(const ds of sortedDates)allData[ds].rows.forEach(r=>s.add(r.pk));return[...s].sort();}
-function getSeriesRolling(inst,tenor){const out=[];for(const ds of sortedDates){const{date,rows}=allData[ds];const pk=rollingPK(date,tenor);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
-function getSeriesFixed(inst,pk){const out=[];for(const ds of sortedDates){const{date,rows}=allData[ds];const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
-function getSeriesSeasonal(inst,tenorVal){const seasonals=getSeasonalPKs();const tObj=seasonals.find(s=>s.v===tenorVal);if(!tObj)return[];const out=[];for(const ds of sortedDates){const{date,rows}=allData[ds];const val=getAggValue(inst,tObj,rows);if(val!=null)out.push({date,value:val});}return out;}
-function getSeries(inst,tv){if(tv.startsWith('r'))return getSeriesRolling(inst,parseInt(tv.slice(1)));if(tv.startsWith('win-')||tv.startsWith('sum-')||tv.startsWith('q'))return getSeriesSeasonal(inst,tv);return getSeriesFixed(inst,tv);}
-function tvLabel(tv){if(tv.startsWith('r'))return'M+'+tv.slice(1);const s=getSeasonalPKs().find(x=>x.v===tv);if(s)return s.l;return pkLabel(tv);}
-function align2(s1,s2){const map=new Map(s2.map(d=>[toStr(d.date),d.value]));const v1=[],v2=[],dates=[];for(const d of s1){const k=toStr(d.date);if(map.has(k)){v1.push(d.value);v2.push(map.get(k));dates.push(d.date);}}return{v1,v2,dates};}
-function logRet(vals){const out=[];for(let i=1;i<vals.length;i++)out.push(vals[i]>0&&vals[i-1]>0?Math.log(vals[i]/vals[i-1]):null);return out;}
-function pearson(a,b){const p=[];for(let i=0;i<Math.min(a.length,b.length);i++)if(a[i]!=null&&b[i]!=null&&isFinite(a[i])&&isFinite(b[i]))p.push([a[i],b[i]]);const n=p.length;if(n<3)return NaN;const ma=p.reduce((s,x)=>s+x[0],0)/n,mb=p.reduce((s,x)=>s+x[1],0)/n;let num=0,da=0,db=0;for(const[x,y]of p){num+=(x-ma)*(y-mb);da+=(x-ma)**2;db+=(y-mb)**2;}const den=Math.sqrt(da*db);return den===0?NaN:+(num/den).toFixed(3);}
-function rollingCorrArr(s1,s2,win){const{v1,v2,dates}=align2(s1,s2);const l1=logRet(v1),l2=logRet(v2);const out=[];for(let i=win-1;i<l1.length;i++){const r=pearson(l1.slice(i-win+1,i+1),l2.slice(i-win+1,i+1));if(!isNaN(r))out.push({date:dates[i+1],value:r});}return out;}
-
-// ── CHART DEFAULTS ──
 const CD={responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-  plugins:{legend:{labels:{color:'#5a6882',font:{size:10,family:'Courier New'},boxWidth:12,padding:12}},
-    tooltip:{backgroundColor:'#0c1120',borderColor:'#1e2d45',borderWidth:1,titleColor:'#c8cfe0',bodyColor:'#8a9bb5',padding:10,titleFont:{family:'Courier New',size:11},bodyFont:{family:'Courier New',size:10}}},
-  scales:{x:{ticks:{color:'#3d5070',font:{size:9,family:'Courier New'},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{color:'#0f1824'}},
-    y:{ticks:{color:'#3d5070',font:{size:9,family:'Courier New'}},grid:{color:'#0f1824'}}}};
+  plugins:{legend:{labels:{color:'#5a6882',font:{size:10,family:'IBM Plex Mono'},boxWidth:12,padding:12}},
+    tooltip:{backgroundColor:'#0c1120',borderColor:'#1e2d45',borderWidth:1,titleColor:'#c8cfe0',bodyColor:'#8a9bb5',padding:10,titleFont:{family:'IBM Plex Mono',size:11},bodyFont:{family:'IBM Plex Mono',size:10}}},
+  scales:{x:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{color:'#0f1824'}},
+    y:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}};
 
-function makeRCChart(canvasId,win,data,label){
-  const c=document.getElementById(canvasId);if(!c)return null;
-  const lbls=data.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
-  const vals=data.map(d=>d.value);
-  const cols=vals.map(v=>v>=0.7?'#22c55e':v>=0.3?'#2d7cff':v>=-0.3?'#f59e0b':'#ef4444');
-  const latest=vals.length?vals[vals.length-1]:null;
-  return new Chart(c,{type:'bar',data:{labels:lbls,datasets:[{label:`${win}D r — ${label}${latest!=null?' | Latest: '+latest.toFixed(3):''}`,data:vals,backgroundColor:cols,borderWidth:0}]},
-    options:{...CD,plugins:{...CD.plugins,legend:{labels:{color:'#5a6882',font:{size:10,family:'Courier New'},boxWidth:0,padding:0}}},
-      scales:{x:CD.scales.x,y:{min:-1,max:1,title:{display:true,text:'Pearson r',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'Courier New'}},grid:{color:'#0f1824'}}}}});
-}
+function mkRC(cid,win,data,lbl){const c=document.getElementById(cid);if(!c)return null;const lbls=data.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),vals=data.map(d=>d.value),cols=vals.map(v=>v>=0.7?'#22c55e':v>=0.3?'#2d7cff':v>=-0.3?'#f59e0b':'#ef4444'),lat=vals.length?vals[vals.length-1]:null;return new Chart(c,{type:'bar',data:{labels:lbls,datasets:[{label:`${win}D r — ${lbl}${lat!=null?' | '+lat.toFixed(3):''}`,data:vals,backgroundColor:cols,borderWidth:0}]},options:{...CD,plugins:{...CD.plugins,legend:{labels:{color:'#5a6882',font:{size:10,family:'IBM Plex Mono'},boxWidth:0,padding:0}}},scales:{x:CD.scales.x,y:{min:-1,max:1,title:{display:true,text:'Pearson r',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});}
 
-// ── SELECT BUILDERS ──
-function buildInstSel(el,keys=null,withNone=false){el.innerHTML=withNone?'<option value="none">— None —</option>':'';const list=keys?INSTS.filter(i=>keys.includes(i.k)):INSTS;list.forEach(i=>el.innerHTML+=`<option value="${i.k}">${i.label}</option>`);}
-function buildCorrInstSel(el){el.innerHTML='';CORR_INSTS.forEach(k=>el.innerHTML+=`<option value="${k}">${INST[k].label}</option>`);}
-function buildTenorSel(el,withSeasonal=false){
-  el.innerHTML='';
-  [{v:'r1',l:'M+1'},{v:'r2',l:'M+2'},{v:'r3',l:'M+3'},{v:'r6',l:'M+6'}].forEach(o=>el.innerHTML+=`<option value="${o.v}">${o.l}</option>`);
-  el.innerHTML+='<option disabled>── Monthly ──</option>';
-  allPKs().forEach(pk=>el.innerHTML+=`<option value="${pk}">${pkLabel(pk)}</option>`);
-  if(withSeasonal){
-    el.innerHTML+='<option disabled>── Seasonal ──</option>';
-    getSeasonalPKs().filter(s=>s.type==='seasonal').forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);
-    el.innerHTML+='<option disabled>── Quarterly ──</option>';
-    getSeasonalPKs().filter(s=>s.type==='quarterly').forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);
-  }
-}
-function buildDateSel(el,withNone=false){el.innerHTML=withNone?'<option value="none">— None —</option>':'';for(const ds of[...sortedDates].reverse())el.innerHTML+=`<option value="${ds}">${fmtDate(ds)}</option>`;}
-function updateStatus(){$('sbar').style.display='flex';$('stext').textContent=`${sortedDates.length} DATES — ${fmtDate(sortedDates[0])} → ${fmtDate(sortedDates[sortedDates.length-1])}`;}
+function bIS(el,keys=null,wN=false){el.innerHTML=wN?'<option value="none">— None —</option>':'';const list=keys?INSTS.filter(i=>keys.includes(i.k)):INSTS;list.forEach(i=>el.innerHTML+=`<option value="${i.k}">${i.label}</option>`);}
+function bCS(el){el.innerHTML='';CI.forEach(k=>el.innerHTML+=`<option value="${k}">${INST[k].label}</option>`);}
+function bTS(el,wS=false){el.innerHTML='';[{v:'r1',l:'M+1'},{v:'r2',l:'M+2'},{v:'r3',l:'M+3'},{v:'r6',l:'M+6'}].forEach(o=>el.innerHTML+=`<option value="${o.v}">${o.l}</option>`);el.innerHTML+='<option disabled>── Monthly ──</option>';aPKs().forEach(pk=>el.innerHTML+=`<option value="${pk}">${pkL(pk)}</option>`);if(wS){el.innerHTML+='<option disabled>── Seasonal ──</option>';gSeaP().filter(s=>s.type==='seasonal').forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);el.innerHTML+='<option disabled>── Quarterly ──</option>';gSeaP().filter(s=>s.type==='quarterly').forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);}}
+function bDS(el,wN=false){el.innerHTML=wN?'<option value="none">— None —</option>':'';for(const ds of[...sDates].reverse())el.innerHTML+=`<option value="${ds}">${fmtD(ds)}</option>`;}
+function updStatus(){$('sbar').style.display='flex';$('stext').textContent=`${sDates.length} DATES — ${fmtD(sDates[0])} → ${fmtD(sDates[sDates.length-1])}`;}
 
-// ── INIT ──
-function initUI(){
-  updateStatus();
-  buildInstSel($('h-i1'));buildInstSel($('h-i2'),null,true);$('h-i2').value='TTF';
-  buildCorrInstSel($('rc-i1'));buildCorrInstSel($('rc-i2'));$('rc-i2').value='TTF';
-  buildInstSel($('fc-i'));buildInstSel($('sea-i'));
-  buildTenorSel($('h-t1'),true);buildTenorSel($('h-t2'),true);
-  buildTenorSel($('rc-t1'),true);buildTenorSel($('rc-t2'),true);
-  buildDateSel($('fc-d1'));buildDateSel($('fc-d2'),true);
-  buildInstSel($('sp-i1'));$('sp-i1').value='JKM';
-  buildInstSel($('sp-i2'));$('sp-i2').value='TTF';
-  buildTenorSel($('sp-t1'),true);buildTenorSel($('sp-t2'),true);
-  buildDashboard();updHist();updRC2();updSpread();updFC();updSea();
-}
+function initUI(){updStatus();bIS($('h-i1'));bIS($('h-i2'),null,true);$('h-i2').value='TTF';bCS($('rc-i1'));bCS($('rc-i2'));$('rc-i2').value='TTF';bIS($('fc-i'));bIS($('sea-i'));bTS($('h-t1'),true);bTS($('h-t2'),true);bTS($('rc-t1'),true);bTS($('rc-t2'),true);bDS($('fc-d1'));bDS($('fc-d2'),true);bIS($('sp-i1'));$('sp-i1').value='JKM';bIS($('sp-i2'));$('sp-i2').value='TTF';bTS($('sp-t1'),true);bTS($('sp-t2'),true);buildDash();updHist();updRC2();updSpread();updFC();updSea();}
 
 // ── DASHBOARD ──
-function buildDashboard(){
-  if(sortedDates.length<2)return;
-  const ld=sortedDates[sortedDates.length-1],pd=sortedDates[sortedDates.length-2];
-  const lR=allData[ld].rows,pR=allData[pd].rows,m1pk=rollingPK(allData[ld].date,1);
-  const mg=$('dash-metrics');mg.innerHTML='';
-  INSTS.forEach(inst=>{
-    const lv=lR.find(r=>r.pk===m1pk)?.[inst.k]??null,pv=pR.find(r=>r.pk===m1pk)?.[inst.k]??null;
-    const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null,pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null;
-    const cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼',dp=inst.unit==='$/bbl'?2:3;
-    mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkLabel(m1pk)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;
-  });
-  const keys=['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH'];
-  const pks=lR.map(r=>r.pk).slice(0,12);
-  let dod=`<table class="stbl" style="font-size:10px;"><thead><tr><th>Contract</th>`;
-  keys.forEach(k=>dod+=`<th>${INST[k].label}</th>`);dod+=`</tr></thead><tbody>`;
-  for(const pk of pks){const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);dod+=`<tr><td>${pkLabel(pk)}</td>`;keys.forEach(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null;const d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null;const dp=(k==='Brent'||k==='Dated')?2:3;dod+=`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;});dod+=`</tr>`;}
-  $('dash-dod').innerHTML=dod+`</tbody></table>`;
-  const ck=CORR_INSTS,cs={};ck.forEach(k=>cs[k]=getSeriesFixed(k,m1pk));
-  let cm=`<table class="ctbl"><thead><tr><th></th>${ck.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
-  ck.forEach(a=>{cm+=`<tr><th style="text-align:left;">${INST[a].label}</th>`;ck.forEach(b=>{if(a===b){cm+=`<td style="background:#151e30;color:#5a6882;">1.00</td>`;return;}const{v1,v2}=align2(cs[a],cs[b]);const r=pearson(logRet(v1),logRet(v2));if(isNaN(r)){cm+=`<td style="color:#1e2d45;">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;cm+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'};">${r.toFixed(2)}</td>`;});cm+=`</tr>`;});
-  $('dash-corr').innerHTML=cm+`</tbody></table>`;
-  const mini=$('dash-mini');mini.innerHTML='';
-  ['JKM','TTF','HH','NBP'].forEach((k,idx)=>{const vals=lR.map(r=>r[k]).filter(v=>v!=null),lbls=lR.filter(r=>r[k]!=null).map(r=>pkLabel(r.pk));const col=['#2d7cff','#22c55e','#f59e0b','#ef4444'][idx];const div=document.createElement('div');div.className='mini-card';div.innerHTML=`<div class="mini-title">${INST[k].label} — Forward Curve <span style="float:right;color:${col};">${vals[0]?vals[0].toFixed(3):''} ${INST[k].unit}</span></div><div style="position:relative;height:80px;"><canvas id="mini-${k}"></canvas></div>`;mini.appendChild(div);setTimeout(()=>{const ctx=document.getElementById('mini-'+k);if(!ctx)return;if(miniCharts[k])miniCharts[k].destroy();miniCharts[k]=new Chart(ctx,{type:'line',data:{labels:lbls,datasets:[{data:vals,borderColor:col,borderWidth:1.5,fill:true,backgroundColor:col+'18',pointRadius:0,tension:.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}});},0);});
+function buildDash(){
+  if(sDates.length<2)return;
+  const ld=sDates[sDates.length-1],pd=sDates[sDates.length-2],lR=aD[ld].rows,pR=aD[pd].rows,m1=rPK(aD[ld].date,1);
+
+  // Metric cards
+  const mg=$('dash-metrics');if(!mg)return;mg.innerHTML='';
+  INSTS.forEach(inst=>{const lv=lR.find(r=>r.pk===m1)?.[inst.k]??null,pv=pR.find(r=>r.pk===m1)?.[inst.k]??null,chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null,pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null,cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼',dp=inst.unit==='$/bbl'?2:3;mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;});
+
+  // Global Gas Snapshot
+  buildGasSnapshot();
+
+  // Correlation matrix
+  const ck=CI,cs={};ck.forEach(k=>cs[k]=gSF(k,m1));let cm=`<table class="ctbl"><thead><tr><th></th>${ck.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
+  ck.forEach(a=>{cm+=`<tr><th style="text-align:left">${INST[a].label}</th>`;ck.forEach(b=>{if(a===b){cm+=`<td style="background:#151e30;color:#5a6882">1.00</td>`;return;}const{v1,v2}=al2(cs[a],cs[b]),r=pear(lRet(v1),lRet(v2));if(isNaN(r)){cm+=`<td style="color:#1e2d45">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;cm+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'}">${r.toFixed(2)}</td>`;});cm+=`</tr>`;});
+  const dc=$('dash-corr');if(dc)dc.innerHTML=cm+'</tbody></table>';
+
+  // DoD table
+  const keys=['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH'],pks=lR.map(r=>r.pk).slice(0,12);
+  let dod=`<table class="stbl" style="font-size:10px"><thead><tr><th>Contract</th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
+  for(const pk of pks){const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);dod+=`<tr><td>${pkL(pk)}</td>${keys.map(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null,d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null,dp=(k==='Brent'||k==='Dated')?2:3;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;}).join('')}</tr>`;}
+  const dd=$('dash-dod');if(dd)dd.innerHTML=dod+'</tbody></table>';
 }
 
-// ── HISTORICAL ──
-function updHist(){
-  const i1=$('h-i1').value,t1=$('h-t1').value,i2=$('h-i2').value,t2=$('h-t2').value,has2=i2!=='none';
-  const s1=getSeries(i1,t1),s2=has2?getSeries(i2,t2):null;if(!s1.length)return;
-  const u1=INST[i1].unit,u2=has2?INST[i2].unit:null,dual=has2&&u1!==u2;
-  const lbls=s1.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
-  const ds=[{label:`${INST[i1].label} ${tvLabel(t1)}`,data:s1.map(d=>+d.value.toFixed(4)),borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.07)',borderWidth:1.8,pointRadius:2.5,pointHoverRadius:5,tension:.3,fill:false,yAxisID:'y'}];
-  if(has2&&s2){const m2=new Map(s2.map(d=>[toStr(d.date),d.value]));ds.push({label:`${INST[i2].label} ${tvLabel(t2)}`,data:s1.map(d=>{const v=m2.get(toStr(d.date));return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:dual?'y1':'y'});}
-  const scales={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'Courier New'}},grid:{color:'#0f1824'}}};
-  if(dual)scales.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'Courier New'}},grid:{display:false}};
-  if(hChart)hChart.destroy();
-  hChart=new Chart($('hChart').getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales}});
-  buildStats(t1);
-}
-function buildStats(tv){
-  $('stats-title').textContent='STATISTICS — '+tvLabel(tv);
-  let html=`<thead><tr><th>Instrument</th><th>Current</th><th>Mean</th><th>Std Dev</th><th>Min</th><th>Max</th><th>N</th><th>Unit</th></tr></thead><tbody>`;
-  INSTS.forEach(inst=>{const s=getSeries(inst.k,tv);if(!s.length){html+=`<tr><td>${inst.label}</td><td colspan="7" style="color:#3d5070;">No data</td></tr>`;return;}const vals=s.map(d=>d.value),cur=vals[vals.length-1],mn=vals.reduce((a,b)=>a+b,0)/vals.length;const std=Math.sqrt(vals.reduce((s,v)=>s+(v-mn)**2,0)/vals.length),dp=inst.unit==='$/bbl'?2:3;html+=`<tr><td>${inst.label}</td><td style="color:#c8cfe0;">${cur.toFixed(dp)}</td><td>${mn.toFixed(dp)}</td><td>${std.toFixed(dp)}</td><td>${Math.min(...vals).toFixed(dp)}</td><td>${Math.max(...vals).toFixed(dp)}</td><td style="color:#3d5070;">${vals.length}</td><td style="color:#3d5070;font-size:9px;">${inst.unit}</td></tr>`;});
-  $('statsTable').innerHTML=html+'</tbody>';
-}
-
-// ── CORRELATION ──
-function updRC2(){
-  const i1=$('rc-i1').value,t1=$('rc-t1').value,i2=$('rc-i2').value,t2=$('rc-t2').value;
-  const s1=getSeries(i1,t1),s2=getSeries(i2,t2);
-  const label=`${INST[i1].label} ${tvLabel(t1)} vs ${INST[i2].label} ${tvLabel(t2)}`;
-  if(rc10)rc10.destroy();if(rc20)rc20.destroy();if(rc30)rc30.destroy();
-  rc10=makeRCChart('rc10Chart',10,rollingCorrArr(s1,s2,10),label);
-  rc20=makeRCChart('rc20Chart',20,rollingCorrArr(s1,s2,20),label);
-  rc30=makeRCChart('rc30Chart',30,rollingCorrArr(s1,s2,30),label);
-  buildCorrMat(t1);
-}
-function buildCorrMat(tv){
-  const keys=CORR_INSTS;$('cmat-title').textContent='FULL CORRELATION MATRIX — LOG RETURNS · '+tvLabel(tv);
-  const series={};keys.forEach(k=>series[k]=getSeries(k,tv));
-  let html=`<thead><tr><th></th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
-  keys.forEach(a=>{html+=`<tr><th style="text-align:left;font-size:9px;">${INST[a].label}</th>`;keys.forEach(b=>{if(a===b){html+=`<td style="background:#151e30;color:#5a6882;">1.00</td>`;return;}const{v1,v2}=align2(series[a],series[b]);const r=pearson(logRet(v1),logRet(v2));if(isNaN(r)){html+=`<td style="color:#1e2d45;">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;html+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'};">${r.toFixed(2)}</td>`;});html+=`</tr>`;});
-  $('corrMat').innerHTML=html+'</tbody>';
+// ── GLOBAL GAS SNAPSHOT ──
+function buildGasSnapshot(){
+  const canvas=$('gas-snapshot-chart');if(!canvas||!sDates.length)return;
+  const lbls=sDates.map(ds=>aD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+  const serDefs=[
+    {label:'TTF',color:'#4fc3f7',fn:row=>row.TTF},
+    {label:'JKM',color:'#81c784',fn:row=>row.JKM},
+    {label:'NBP',color:'#ffb74d',fn:row=>row.NBP},
+    {label:'115% HH',color:'#f48fb1',fn:row=>row.HH!=null?+(row.HH*1.15).toFixed(4):null},
+    {label:'14% Oil',color:'#ef5350',fn:row=>row.Brent!=null?+(row.Brent*0.14).toFixed(4):null},
+    {label:'11% Oil',color:'#ce93d8',fn:row=>row.Brent!=null?+(row.Brent*0.11).toFixed(4):null},
+  ];
+  const datasets=serDefs.map(s=>({
+    label:s.label,
+    data:sDates.map(ds=>{const{date,rows}=aD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?s.fn(row):null;}),
+    borderColor:s.color,backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true
+  }));
+  if(gasChart)gasChart.destroy();
+  gasChart=new Chart(canvas,{type:'line',data:{labels:lbls,datasets},options:{...CD,
+    plugins:{...CD.plugins,legend:{labels:{...CD.plugins.legend.labels,boxWidth:20,padding:16}}},
+    scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:20}},
+      y:{title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});
 }
 
-// ── FORWARD CURVE ──
-function updFC(){
-  if(!sortedDates.length)return;
-  const inst=$('fc-i').value,d1=$('fc-d1').value,d2=$('fc-d2').value;
-  if(!d1||!allData[d1])return;
-  const unit=INST[inst].unit,rows1=allData[d1].rows;
-  const lbls=rows1.map(r=>pkLabel(r.pk)),v1=rows1.map(r=>r[inst]!=null?+r[inst].toFixed(4):null);
-  $('fc-title').textContent=INST[inst].label+' FORWARD CURVE — '+fmtDate(d1);
-  const ds=[{label:fmtDate(d1),data:v1,borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.08)',borderWidth:2,pointRadius:3.5,pointHoverRadius:6,tension:.3,fill:false}];
-  if(d2!=='none'&&allData[d2]){const m2=new Map(allData[d2].rows.map(r=>[r.pk,r[inst]]));ds.push({label:fmtDate(d2),data:rows1.map(r=>{const v=m2.get(r.pk);return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.08)',borderWidth:2,borderDash:[6,4],pointRadius:3,tension:.3,fill:false});}
-  if(fcChart)fcChart.destroy();
-  fcChart=new Chart($('fcChart').getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>`  ${c.dataset.label}: ${c.parsed.y?.toFixed(3)??'N/A'} ${unit}`}}},scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:24}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'Courier New'}},grid:{color:'#0f1824'}}}}});
-  const valid=v1.filter(v=>v!=null);
-  if(valid.length){const fr=valid[0],bk=valid[valid.length-1],sp=bk-fr,mn=Math.min(...valid),mx=Math.max(...valid),avg=valid.reduce((a,b)=>a+b,0)/valid.length;const shape=Math.abs(sp)<0.05?'FLAT':sp>0?'CONTANGO':'BACKWARDATION',sc=shape==='CONTANGO'?'#22c55e':shape==='BACKWARDATION'?'#ef4444':'#5a6882';$('fc-stats').innerHTML=`<div class="mc"><div class="mc-name">FRONT</div><div class="mc-val" style="font-size:16px;">${fr.toFixed(3)}</div></div><div class="mc"><div class="mc-name">BACK</div><div class="mc-val" style="font-size:16px;">${bk.toFixed(3)}</div></div><div class="mc"><div class="mc-name">F-B SPREAD</div><div class="mc-val ${sp>=0?'pos':'neg'}" style="font-size:16px;">${sp>=0?'+':''}${sp.toFixed(3)}</div></div><div class="mc"><div class="mc-name">SHAPE</div><div class="mc-val" style="color:${sc};font-size:13px;">${shape}</div></div><div class="mc"><div class="mc-name">MIN</div><div class="mc-val" style="font-size:16px;">${mn.toFixed(3)}</div></div><div class="mc"><div class="mc-name">MAX</div><div class="mc-val" style="font-size:16px;">${mx.toFixed(3)}</div></div><div class="mc"><div class="mc-name">AVERAGE</div><div class="mc-val" style="font-size:16px;">${avg.toFixed(3)}</div></div>`;}
-}
+function updHist(){const i1=$('h-i1').value,t1=$('h-t1').value,i2=$('h-i2').value,t2=$('h-t2').value,has2=i2!=='none',s1=gS(i1,t1),s2=has2?gS(i2,t2):null;if(!s1.length)return;const u1=INST[i1].unit,u2=has2?INST[i2].unit:null,dual=has2&&u1!==u2,lbls=s1.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),ds=[{label:`${INST[i1].label} ${tvL(t1)}`,data:s1.map(d=>+d.value.toFixed(4)),borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:'y'}];if(has2&&s2){const m2=new Map(s2.map(d=>[toStr(d.date),d.value]));ds.push({label:`${INST[i2].label} ${tvL(t2)}`,data:s1.map(d=>{const v=m2.get(toStr(d.date));return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:dual?'y1':'y'});}const scales={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};if(dual)scales.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};if(hChart)hChart.destroy();const hc=$('hChart');if(hc)hChart=new Chart(hc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales}});bStats(t1);}
+function bStats(tv){const st=$('stats-title');if(st)st.textContent='STATISTICS — '+tvL(tv);let html=`<thead><tr><th>Instrument</th><th>Current</th><th>Mean</th><th>Std Dev</th><th>Min</th><th>Max</th><th>N</th><th>Unit</th></tr></thead><tbody>`;INSTS.forEach(inst=>{const s=gS(inst.k,tv);if(!s.length){html+=`<tr><td>${inst.label}</td><td colspan="7" style="color:#3d5070">No data</td></tr>`;return;}const vals=s.map(d=>d.value),cur=vals[vals.length-1],mn=vals.reduce((a,b)=>a+b,0)/vals.length,std=Math.sqrt(vals.reduce((s,v)=>s+(v-mn)**2,0)/vals.length),dp=inst.unit==='$/bbl'?2:3;html+=`<tr><td>${inst.label}</td><td style="color:#c8cfe0">${cur.toFixed(dp)}</td><td>${mn.toFixed(dp)}</td><td>${std.toFixed(dp)}</td><td>${Math.min(...vals).toFixed(dp)}</td><td>${Math.max(...vals).toFixed(dp)}</td><td style="color:#3d5070">${vals.length}</td><td style="color:#3d5070;font-size:9px">${inst.unit}</td></tr>`;});const st2=$('statsTable');if(st2)st2.innerHTML=html+'</tbody>';}
+function updRC2(){const i1=$('rc-i1').value,t1=$('rc-t1').value,i2=$('rc-i2').value,t2=$('rc-t2').value,s1=gS(i1,t1),s2=gS(i2,t2),lbl=`${INST[i1].label} ${tvL(t1)} vs ${INST[i2].label} ${tvL(t2)}`;if(rc10)rc10.destroy();if(rc20)rc20.destroy();if(rc30)rc30.destroy();rc10=mkRC('rc10Chart',10,rCorr(s1,s2,10),lbl);rc20=mkRC('rc20Chart',20,rCorr(s1,s2,20),lbl);rc30=mkRC('rc30Chart',30,rCorr(s1,s2,30),lbl);bCM(t1);}
+function bCM(tv){const keys=CI,cm_el=$('cmat-title');if(cm_el)cm_el.textContent='FULL CORRELATION MATRIX — LOG RETURNS · '+tvL(tv);const ser={};keys.forEach(k=>ser[k]=gS(k,tv));let html=`<thead><tr><th></th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;keys.forEach(a=>{html+=`<tr><th style="text-align:left;font-size:9px">${INST[a].label}</th>`;keys.forEach(b=>{if(a===b){html+=`<td style="background:#151e30;color:#5a6882">1.00</td>`;return;}const{v1,v2}=al2(ser[a],ser[b]),r=pear(lRet(v1),lRet(v2));if(isNaN(r)){html+=`<td style="color:#1e2d45">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;html+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'}">${r.toFixed(2)}</td>`;});html+=`</tr>`;});const cm=$('corrMat');if(cm)cm.innerHTML=html+'</tbody>';}
+function updFC(){if(!sDates.length)return;const inst=$('fc-i').value,d1=$('fc-d1').value,d2=$('fc-d2').value;if(!d1||!aD[d1])return;const unit=INST[inst].unit,rows1=aD[d1].rows,lbls=rows1.map(r=>pkL(r.pk)),v1=rows1.map(r=>r[inst]!=null?+r[inst].toFixed(4):null),fct=$('fc-title');if(fct)fct.textContent=INST[inst].label+' FORWARD CURVE — '+fmtD(d1);const ds=[{label:fmtD(d1),data:v1,borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.08)',borderWidth:2,pointRadius:3.5,pointHoverRadius:6,tension:.3,fill:false}];if(d2!=='none'&&aD[d2]){const m2=new Map(aD[d2].rows.map(r=>[r.pk,r[inst]]));ds.push({label:fmtD(d2),data:rows1.map(r=>{const v=m2.get(r.pk);return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.08)',borderWidth:2,borderDash:[6,4],pointRadius:3,tension:.3,fill:false});}if(fcChart)fcChart.destroy();const fcc=$('fcChart');if(fcc)fcChart=new Chart(fcc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>`  ${c.dataset.label}: ${c.parsed.y?.toFixed(3)??'N/A'} ${unit}`}}},scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:24}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});const valid=v1.filter(v=>v!=null);if(valid.length){const fr=valid[0],bk=valid[valid.length-1],sp=bk-fr,mn=Math.min(...valid),mx=Math.max(...valid),avg=valid.reduce((a,b)=>a+b,0)/valid.length,shape=Math.abs(sp)<0.05?'FLAT':sp>0?'CONTANGO':'BACKWARDATION',sc=shape==='CONTANGO'?'#22c55e':shape==='BACKWARDATION'?'#ef4444':'#5a6882',fcs=$('fc-stats');if(fcs)fcs.innerHTML=`<div class="mc"><div class="mc-name">FRONT</div><div class="mc-val" style="font-size:16px">${fr.toFixed(3)}</div></div><div class="mc"><div class="mc-name">BACK</div><div class="mc-val" style="font-size:16px">${bk.toFixed(3)}</div></div><div class="mc"><div class="mc-name">F-B SPREAD</div><div class="mc-val ${sp>=0?'pos':'neg'}" style="font-size:16px">${sp>=0?'+':''}${sp.toFixed(3)}</div></div><div class="mc"><div class="mc-name">SHAPE</div><div class="mc-val" style="color:${sc};font-size:13px">${shape}</div></div><div class="mc"><div class="mc-name">MIN</div><div class="mc-val" style="font-size:16px">${mn.toFixed(3)}</div></div><div class="mc"><div class="mc-name">MAX</div><div class="mc-val" style="font-size:16px">${mx.toFixed(3)}</div></div><div class="mc"><div class="mc-name">AVERAGE</div><div class="mc-val" style="font-size:16px">${avg.toFixed(3)}</div></div>`;}}
+function updSea(){if(!sDates.length)return;const inst=$('sea-i').value,type=$('sea-type').value,unit=INST[inst].unit,st=$('sea-title');if(st)st.textContent=INST[inst].label+' — SEASONAL · YEAR OVER YEAR ('+unit+')';const yd={};if(type==='fwd'){const lat=sDates[sDates.length-1];aD[lat].rows.forEach(r=>{const[y,m]=r.pk.split('-');if(!yd[+y])yd[+y]={};if(r[inst]!=null)yd[+y][+m-1]=r[inst];});}else{sDates.forEach(ds=>{const{date,rows}=aD[ds],yr=date.getFullYear(),mo=date.getMonth(),pk=rPK(date,1),row=rows.find(r=>r.pk===pk);if(!row||row[inst]==null)return;if(!yd[yr])yd[yr]={};if(yd[yr][mo]===undefined)yd[yr][mo]=row[inst];});}const years=Object.keys(yd).map(Number).sort(),dsets=years.map((yr,idx)=>({label:String(yr),data:MA.map((_,mo)=>yd[yr][mo]!==undefined?+yd[yr][mo].toFixed(4):null),borderColor:SC[idx%SC.length],backgroundColor:'transparent',borderWidth:2,pointRadius:4,pointHoverRadius:6,tension:.3,spanGaps:false}));if(seaChart)seaChart.destroy();const sc=$('seaChart');if(sc)seaChart=new Chart(sc.getContext('2d'),{type:'line',data:{labels:MA,datasets:dsets},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>`  ${c.dataset.label}: ${c.parsed.y?.toFixed(3)??'N/A'} ${unit}`}}},scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});let tbl=`<thead><tr><th>Month</th>${years.map(y=>`<th>${y}</th>`).join('')}${years.slice(0,-1).map((y,i)=>`<th>${y}→${years[i+1]}</th>`).join('')}</tr></thead><tbody>`;MA.forEach((m,mo)=>{tbl+=`<tr><td>${m}</td>${years.map(yr=>`<td>${yd[yr][mo]!==undefined?yd[yr][mo].toFixed(3):'—'}</td>`).join('')}`;for(let i=0;i<years.length-1;i++){const a=yd[years[i]][mo],b=yd[years[i+1]][mo];tbl+=a!==undefined&&b!==undefined?`<td class="${b-a>=0?'pos':'neg'}">${b-a>=0?'+':''}${(b-a).toFixed(3)}</td>`:`<td style="color:#3d5070">—</td>`;}tbl+=`</tr>`;});const st2=$('sea-tbl');if(st2)st2.innerHTML=tbl+'</tbody>';}
+function updSpread(){const i1=$('sp-i1').value,t1=$('sp-t1').value,i2=$('sp-i2').value,t2=$('sp-t2').value;if(!i1||!i2||!t1||!t2)return;const s1=gS(i1,t1),s2=gS(i2,t2);if(!s1.length||!s2.length)return;const u1=INST[i1].unit,u2=INST[i2].unit,lbl1=INST[i1].label+' '+tvL(t1),lbl2=INST[i2].label+' '+tvL(t2),sU=(u1===u2)?u1:'mixed units',m2=new Map(s2.map(d=>[toStr(d.date),d.value])),aligned=[];s1.forEach(d=>{const v2=m2.get(toStr(d.date));if(v2!=null)aligned.push({date:d.date,v1:d.value,v2,spread:+(d.value-v2).toFixed(4)});});if(!aligned.length)return;const lbls=aligned.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),spreads=aligned.map(d=>d.spread),spt=$('sp-title');if(spt)spt.textContent=lbl1+' MINUS '+lbl2+' ('+sU+')';if(spChart)spChart.destroy();const sp=$('spChart');if(sp)spChart=new Chart(sp.getContext('2d'),{type:'bar',data:{labels:lbls,datasets:[{label:'Spread ('+sU+')',data:spreads,backgroundColor:spreads.map(v=>v>=0?'rgba(45,124,255,0.7)':'rgba(239,68,68,0.7)'),borderWidth:0,borderRadius:1}]},options:{...CD,plugins:{...CD.plugins,legend:{display:false},tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>'  Spread: '+(c.parsed.y>=0?'+':'')+c.parsed.y.toFixed(3)+' '+sU,afterLabel:c=>{const d=aligned[c.dataIndex];return['  '+lbl1+': '+d.v1.toFixed(3)+' '+u1,'  '+lbl2+': '+d.v2.toFixed(3)+' '+u2];}}}},scales:{x:CD.scales.x,y:{title:{display:true,text:sU,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},callback:v=>(v>=0?'+':'')+v.toFixed(2)},grid:{color:'#0f1824'}}}}});const dualL=u1!==u2,sL={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#2d7cff',font:{size:9}},ticks:{color:'#2d7cff',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};if(dualL)sL.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};if(spLegsChart)spLegsChart.destroy();const slc=$('spLegsChart');if(slc)spLegsChart=new Chart(slc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:[{label:lbl1,data:aligned.map(d=>+d.v1.toFixed(4)),borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.07)',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:'y'},{label:lbl2,data:aligned.map(d=>+d.v2.toFixed(4)),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.07)',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:dualL?'y1':'y'}]},options:{...CD,scales:sL}});}
+function exportToExcel(){if(!sDates.length){alert('No data.');return;}const wb=XLSX.utils.book_new(),ik=INSTS.map(i=>i.k),headers=['Date',...ik.map(k=>INST[k].label+' M+1')],rows=[headers];sDates.forEach(ds=>{const{date,rows:dr}=aD[ds],m1=rPK(date,1),row=[date.toLocaleDateString('en-GB')];ik.forEach(k=>{const r=dr.find(r=>r.pk===m1);row.push(r&&r[k]!=null?r[k]:'');});rows.push(row);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Historical M+1');XLSX.writeFile(wb,'LNG_TradeOS_'+new Date().toLocaleDateString('en-GB').replace(/\//g,'.')+'.xlsx');}
+function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$('sec-'+id);if(s)s.classList.add('active');if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,rc10,rc20,rc30,spChart,spLegsChart,fcChart,seaChart,gasChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')updRC2();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard')buildGasSnapshot();},60);}
+function showAnalyticsUI(){const fd=$('fin-dropzone'),fa=$('fin-analytics');if(fd)fd.style.display='none';if(fa)fa.style.display='block';finLoaded=true;}
 
-// ── SEASONAL ──
-function updSea(){
-  if(!sortedDates.length)return;
-  const inst=$('sea-i').value,type=$('sea-type').value,unit=INST[inst].unit;
-  $('sea-title').textContent=INST[inst].label+' — SEASONAL · YEAR OVER YEAR ('+unit+')';
-  const yd={};
-  if(type==='fwd'){const latest=sortedDates[sortedDates.length-1];allData[latest].rows.forEach(r=>{const[y,m]=r.pk.split('-');if(!yd[+y])yd[+y]={};if(r[inst]!=null)yd[+y][+m-1]=r[inst];});}
-  else{sortedDates.forEach(ds=>{const{date,rows}=allData[ds],yr=date.getFullYear(),mo=date.getMonth(),pk=rollingPK(date,1);const row=rows.find(r=>r.pk===pk);if(!row||row[inst]==null)return;if(!yd[yr])yd[yr]={};if(yd[yr][mo]===undefined)yd[yr][mo]=row[inst];});}
-  const years=Object.keys(yd).map(Number).sort();
-  const dsets=years.map((yr,idx)=>({label:String(yr),data:MONTHS_A.map((_,mo)=>yd[yr][mo]!==undefined?+yd[yr][mo].toFixed(4):null),borderColor:SEA_COL[idx%SEA_COL.length],backgroundColor:'transparent',borderWidth:2,pointRadius:4,pointHoverRadius:6,tension:.3,spanGaps:false}));
-  if(seaChart)seaChart.destroy();
-  seaChart=new Chart($('seaChart').getContext('2d'),{type:'line',data:{labels:MONTHS_A,datasets:dsets},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>`  ${c.dataset.label}: ${c.parsed.y?.toFixed(3)??'N/A'} ${unit}`}}},scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'Courier New'}},grid:{color:'#0f1824'}}}}});
-  let tbl=`<thead><tr><th>Month</th>${years.map(y=>`<th>${y}</th>`).join('')}${years.slice(0,-1).map((y,i)=>`<th>${y}→${years[i+1]}</th>`).join('')}</tr></thead><tbody>`;
-  MONTHS_A.forEach((m,mo)=>{tbl+=`<tr><td>${m}</td>${years.map(yr=>`<td>${yd[yr][mo]!==undefined?yd[yr][mo].toFixed(3):'—'}</td>`).join('')}`;for(let i=0;i<years.length-1;i++){const a=yd[years[i]][mo],b=yd[years[i+1]][mo];tbl+=a!==undefined&&b!==undefined?`<td class="${b-a>=0?'pos':'neg'}">${b-a>=0?'+':''}${(b-a).toFixed(3)}</td>`:`<td style="color:#3d5070;">—</td>`;}tbl+=`</tr>`;});
-  $('sea-tbl').innerHTML=tbl+'</tbody>';
-}
+const AK='AIzaSyAcEeqXFFvX3JIb-HHbtHSdtCSFGqDpLnw',FID='18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
+function showManualDrop(){const da=$('dz-auto'),dm=$('dz-manual');if(da)da.style.display='none';if(dm)dm.style.display='flex';setupDrop();}
+function setP(pct,title,sub){const pf=$('progfill'),pt=$('progtxt'),dt=$('dz-auto-title');if(pf)pf.style.width=pct+'%';if(title&&dt)dt.textContent=title;if(sub&&pt)pt.textContent=sub;}
+async function lFiles(){const all=[];let pt=null;const q=encodeURIComponent(`'${FID}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false`);do{let url=`https://www.googleapis.com/drive/v3/files?q=${q}&key=${AK}&fields=files(id,name),nextPageToken&pageSize=200&orderBy=name`;if(pt)url+='&pageToken='+encodeURIComponent(pt);const r=await fetch(url);if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'API error');}const d=await r.json();if(d.files)all.push(...d.files);pt=d.nextPageToken||null;}while(pt);return all;}
+async function lDrive(){try{setP(5,'CONNECTING TO GOOGLE DRIVE','Listing files...');const files=await lFiles();if(!files.length)throw new Error('No files found.');plog(`Found ${files.length} files`);setP(10,'LOADING','Downloading...');$('parselog').style.display='block';const B=3;let done=0,added=0,sk=0;for(let i=0;i<files.length;i+=B){await Promise.all(files.slice(i,i+B).map(async f=>{const date=pDFN(f.name);if(!date){sk++;return;}const key=toStr(date);if(aD[key]){done++;return;}try{const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${AK}`);if(!resp.ok){sk++;return;}const buf=await resp.arrayBuffer();if(buf.byteLength<5000){sk++;return;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){sk++;return;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;plog(`OK: ${f.name}`);}else sk++;}catch(e){sk++;}done++;}));setP(10+(Math.min(done,files.length)/files.length)*86,'LOADING',`${added} loaded · ${sk} skipped`);}sDates=Object.keys(aD).sort();if(!sDates.length)throw new Error('No valid data.');sCache();setP(100,'READY',`${sDates.length} dates loaded`);setTimeout(()=>{showAnalyticsUI();initUI();},600);}catch(e){plog('Drive error: '+e.message,true);const fb=$('fallback-btn'),ds=$('drive-spinner'),dt=$('dz-auto-title'),pt=$('progtxt');if(fb)fb.style.display='block';if(ds)ds.style.display='none';if(dt)dt.textContent='COULD NOT LOAD FROM DRIVE';if(pt)pt.textContent='Click below to load manually.';}}
 
-// ── SPREAD ──
-function updSpread(){
-  const i1=$('sp-i1').value,t1=$('sp-t1').value,i2=$('sp-i2').value,t2=$('sp-t2').value;
-  if(!i1||!i2||!t1||!t2)return;
-  const s1=getSeries(i1,t1),s2=getSeries(i2,t2);if(!s1.length||!s2.length)return;
-  const u1=INST[i1].unit,u2=INST[i2].unit,label1=INST[i1].label+' '+tvLabel(t1),label2=INST[i2].label+' '+tvLabel(t2),sUnit=(u1===u2)?u1:'mixed units';
-  const map2=new Map(s2.map(d=>[toStr(d.date),d.value]));
-  const aligned=[];s1.forEach(d=>{const v2=map2.get(toStr(d.date));if(v2!=null)aligned.push({date:d.date,v1:d.value,v2,spread:+(d.value-v2).toFixed(4)});});
-  if(!aligned.length)return;
-  const lbls=aligned.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
-  const spreads=aligned.map(d=>d.spread);
-  $('sp-title').textContent=label1+' MINUS '+label2+' ('+sUnit+')';
-  if(spChart)spChart.destroy();
-  spChart=new Chart($('spChart').getContext('2d'),{type:'bar',data:{labels:lbls,datasets:[{label:'Spread ('+sUnit+')',data:spreads,backgroundColor:spreads.map(v=>v>=0?'rgba(45,124,255,0.7)':'rgba(239,68,68,0.7)'),borderWidth:0,borderRadius:1}]},options:{...CD,plugins:{...CD.plugins,legend:{display:false},tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>'  Spread: '+(c.parsed.y>=0?'+':'')+c.parsed.y.toFixed(3)+' '+sUnit,afterLabel:c=>{const d=aligned[c.dataIndex];return['  '+label1+': '+d.v1.toFixed(3)+' '+u1,'  '+label2+': '+d.v2.toFixed(3)+' '+u2];}}}},scales:{x:CD.scales.x,y:{title:{display:true,text:sUnit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'Courier New'},callback:v=>(v>=0?'+':'')+v.toFixed(2)},grid:{color:'#0f1824'}}}}});
-  const dualLegs=u1!==u2;
-  const scalesLegs={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#2d7cff',font:{size:9}},ticks:{color:'#2d7cff',font:{size:9,family:'Courier New'}},grid:{color:'#0f1824'}}};
-  if(dualLegs)scalesLegs.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'Courier New'}},grid:{display:false}};
-  if(spLegsChart)spLegsChart.destroy();
-  spLegsChart=new Chart($('spLegsChart').getContext('2d'),{type:'line',data:{labels:lbls,datasets:[{label:label1,data:aligned.map(d=>+d.v1.toFixed(4)),borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.07)',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:'y'},{label:label2,data:aligned.map(d=>+d.v2.toFixed(4)),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.07)',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:dualLegs?'y1':'y'}]},options:{...CD,scales:scalesLegs}});
-}
-
-// ── EXPORT ──
-function exportToExcel(){
-  if(!sortedDates.length){alert('No data loaded.');return;}
-  const wb=XLSX.utils.book_new();
-  const instKeys=INSTS.map(i=>i.k);
-  const headers=['Date',...instKeys.map(k=>INST[k].label+' M+1 ('+INST[k].unit+')')];
-  const rows=[headers];
-  sortedDates.forEach(ds=>{const{date,rows:drows}=allData[ds];const m1pk=rollingPK(date,1);const row=[date.toLocaleDateString('en-GB')];instKeys.forEach(k=>{const r=drows.find(r=>r.pk===m1pk);row.push(r&&r[k]!=null?r[k]:'');});rows.push(row);});
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Historical M+1');
-  const latest=sortedDates[sortedDates.length-1],lRows=allData[latest].rows;
-  const fcHeaders=['Contract',...instKeys.map(k=>INST[k].label+' ('+INST[k].unit+')')];
-  const fcRows=[fcHeaders];lRows.forEach(r=>{const row=[pkLabel(r.pk)];instKeys.forEach(k=>row.push(r[k]!=null?r[k]:''));fcRows.push(row);});
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fcRows),'Forward Curve');
-  const ck=CORR_INSTS,series={};ck.forEach(k=>series[k]=getSeries(k,'r1'));
-  const corrHeader=['',...ck.map(k=>INST[k].label)],corrRows=[corrHeader];
-  ck.forEach(a=>{const row=[INST[a].label];ck.forEach(b=>{if(a===b){row.push(1);return;}const{v1,v2}=align2(series[a],series[b]);row.push(pearson(logRet(v1),logRet(v2))||'');});corrRows.push(row);});
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(corrRows),'Correlation M+1');
-  XLSX.writeFile(wb,'LNG_TradeOS_Export_'+new Date().toLocaleDateString('en-GB').replace(/\//g,'.')+'.xlsx');
-}
-
-// ── SECTION SWITCH ──
-function showSec(id,btn){
-  document.querySelectorAll('#fin-analytics .section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));
-  $('sec-'+id).classList.add('active');if(btn)btn.classList.add('active');
-  setTimeout(()=>{
-    [hChart,rc10,rc20,rc30,spChart,spLegsChart,fcChart,seaChart].forEach(c=>c&&c.resize());
-    if(id==='spread')updSpread();
-    if(id==='correlation')updRC2();
-    if(id==='historical')updHist();
-    if(id==='forward')updFC();
-    if(id==='seasonal')updSea();
-  },60);
-}
-
-// ── GOOGLE DRIVE ──
-const API_KEY='AIzaSyAcEeqXFFvX3JIb-HHbtHSdtCSFGqDpLnw';
-const FOLDER_ID='18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
-
-function showManualDrop(){$('dz-auto').style.display='none';$('dz-manual').style.display='flex';setupDrop();}
-
-function setProgress(pct,title,sub){$('progfill').style.width=pct+'%';if(title)$('dz-auto-title').textContent=title;if(sub)$('progtxt').textContent=sub;}
-
-async function listDriveFiles(){
-  const all=[];let pageToken=null;
-  const q=encodeURIComponent(`'${FOLDER_ID}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false`);
-  do{let url=`https://www.googleapis.com/drive/v3/files?q=${q}&key=${API_KEY}&fields=files(id,name),nextPageToken&pageSize=200&orderBy=name`;if(pageToken)url+='&pageToken='+encodeURIComponent(pageToken);const resp=await fetch(url);if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'API error '+resp.status);}const data=await resp.json();if(data.files)all.push(...data.files);pageToken=data.nextPageToken||null;}while(pageToken);
-  return all;
-}
-
-async function loadFromDrive(){
-  try{
-    setProgress(5,'CONNECTING TO GOOGLE DRIVE','Listing curve files...');
-    const files=await listDriveFiles();
-    if(!files.length)throw new Error('No files found in Drive folder.');
-    plog(`Found ${files.length} files in Google Drive`);
-    setProgress(10,'LOADING','Downloading and parsing files...');
-    $('parselog').style.display='block';
-    const BATCH=3;let done=0,added=0,skipped=0;
-    for(let i=0;i<files.length;i+=BATCH){
-      await Promise.all(files.slice(i,i+BATCH).map(async f=>{
-        const date=parseDateFromName(f.name);
-        if(!date){skipped++;return;}
-        const key=toStr(date);
-        if(allData[key]){done++;return;}
-        try{
-          const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${API_KEY}`);
-          if(!resp.ok){plog(`SKIP: ${f.name} (HTTP ${resp.status})`,true);skipped++;return;}
-          const buf=await resp.arrayBuffer();
-          if(buf.byteLength<5000){plog(`SKIP: ${f.name} (empty)`,true);skipped++;return;}
-          const h=new Uint8Array(buf.slice(0,4));
-          if(!(h[0]===0x50&&h[1]===0x4B)){plog(`SKIP: ${f.name} (not Excel)`,true);skipped++;return;}
-          const rows=parseExcel(buf);
-          if(rows.length>0){allData[key]={date,rows};added++;plog(`OK: ${f.name}`);}
-          else{plog(`SKIP: ${f.name} (0 rows parsed)`,true);skipped++;}
-        }catch(e){plog(`ERR: ${f.name} — ${e.message}`,true);skipped++;}
-        done++;
-      }));
-      setProgress(10+(Math.min(done,files.length)/files.length)*86,'LOADING',`${added} dates loaded · ${skipped} skipped`);
-    }
-    sortedDates=Object.keys(allData).sort();
-    if(!sortedDates.length)throw new Error('No valid data extracted.');
-    saveCache();
-    setProgress(100,'READY',`${sortedDates.length} dates loaded from Google Drive`);
-    setTimeout(()=>{showAnalyticsUI();initUI();},600);
-  }catch(err){
-    plog('Drive error: '+err.message,true);
-    $('fallback-btn').style.display='block';
-    $('drive-spinner').style.display='none';
-    $('dz-auto-title').textContent='COULD NOT LOAD FROM DRIVE';
-    $('progtxt').textContent='Click below to load files manually.';
-  }
-}
-
-// ── BOOT ──
 window.addEventListener('DOMContentLoaded',()=>{
-  $('clearCacheBtn').addEventListener('click',clearCache);
-  $('fileInput2').addEventListener('change',()=>{if($('fileInput2').files.length)handleFiles([...$('fileInput2').files],true);});
+  const cc=$('clearCacheBtn'),fi2=$('fileInput2');
+  if(cc)cc.addEventListener('click',clearCache);
+  if(fi2)fi2.addEventListener('change',()=>{if(fi2.files.length)handleFiles([...fi2.files],true);});
   setupDrop();
-  if(loadCache()){
-    showAnalyticsUI();initUI();
-    $('stext').textContent=sortedDates.length+' DATES — '+fmtDate(sortedDates[0])+' → '+fmtDate(sortedDates[sortedDates.length-1])+' · cached';
-    return;
-  }
-  // Auto-load from Drive when Financial section is opened
-  document.getElementById('tab-financial').addEventListener('click',()=>{if(!finDataLoaded)loadFromDrive();},{once:true});
-  document.querySelectorAll('.mod-card[onclick*="financial"]').forEach(el=>{el.addEventListener('click',()=>{if(!finDataLoaded)loadFromDrive();},{once:true});});
+  if(lCache()){showAnalyticsUI();initUI();const st=$('stext');if(st)st.textContent=sDates.length+' DATES — '+fmtD(sDates[0])+' → '+fmtD(sDates[sDates.length-1])+' · cached';return;}
+  const tf=$('tab-financial');
+  if(tf)tf.addEventListener('click',()=>{if(!finLoaded)lDrive();},{once:true});
 });
 </script>
 </body>
