@@ -950,9 +950,58 @@ function cpLineChart(series,labels,height=100){
 }
 
 function initCargo(){
-  CP.fp=cpGet('cp_fp',JSON.parse(JSON.stringify(CP_SEED_PRICES)));
+  // ── FIX 1: Sync flat prices from live analytics data ──
+  let fpSynced=false;
+  if(typeof sDates!=='undefined'&&sDates.length>0){
+    try{
+      const latestDate=sDates[sDates.length-1];
+      const rows=aD[latestDate].rows;
+      const syncFp={HH:[],TTF:[],JKM:[]};
+      let valid=0;
+      ML.forEach((_,i)=>{
+        const now=new Date();
+        const d=new Date(now.getFullYear(),now.getMonth()+1+i,1);
+        const pk=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        const row=rows.find(r=>r.pk===pk);
+        syncFp.HH.push(row?.HH??CP_SEED_PRICES.HH[i]??null);
+        syncFp.TTF.push(row?.TTF??CP_SEED_PRICES.TTF[i]??null);
+        syncFp.JKM.push(row?.JKM??CP_SEED_PRICES.JKM[i]??null);
+        if(row?.TTF!=null)valid++;
+      });
+      if(valid>0){CP.fp=syncFp;cpSet('cp_fp',syncFp);fpSynced=true;CP.fpDate=fmtD(latestDate);}
+    }catch(e){console.warn('Cargo flat price sync failed:',e);}
+  }
+  if(!fpSynced) CP.fp=cpGet('cp_fp',JSON.parse(JSON.stringify(CP_SEED_PRICES)));
+
+  // ── FIX 2: Sync freight from Freight Calculator matrix ──
+  let frSynced=false;
+  const storedMatrix=cpGet('f_matrix',null);
+  if(storedMatrix){
+    try{
+      const syncFr=JSON.parse(JSON.stringify(CP_SEED_FR));
+      const MAP=[
+        ['sabine_rotterdam','sabine','rotterdam'],['sabine_tokyo','sabine','tokyo'],
+        ['sabine_rovigo','sabine','rovigo'],['sabine_huelva','sabine','huelva'],
+        ['angola_gate','angola','rotterdam'],['angola_tokyo','angola','tokyo'],
+        ['angola_dahej','angola','dahej'],['nigeria_gate','nigeria','rotterdam'],
+        ['nigeria_tokyo','nigeria','tokyo'],['nigeria_dahej','nigeria','dahej'],
+        ['oman_gate','oman','rotterdam'],['oman_tokyo','oman','tokyo'],
+        ['oman_dahej','oman','dahej']
+      ];
+      let linked=0;
+      MAP.forEach(([cpKey,orig,disch])=>{
+        if(storedMatrix[orig]&&storedMatrix[orig][disch]){
+          const vals=storedMatrix[orig][disch].map(r=>r?.freight??null);
+          if(vals.some(v=>v!=null)){syncFr[cpKey]=vals;linked++;}
+        }
+      });
+      if(linked>0){CP.freight=syncFr;cpSet('cp_freight',syncFr);frSynced=true;CP.frRoutes=linked;}
+    }catch(e){console.warn('Cargo freight sync failed:',e);}
+  }
+  if(!frSynced) CP.freight=cpGet('cp_freight',JSON.parse(JSON.stringify(CP_SEED_FR)));
+  CP.fpSynced=fpSynced;CP.frSynced=frSynced;
+
   CP.phys=cpGet('cp_phys',JSON.parse(JSON.stringify(CP_SEED_PHYS)));
-  CP.freight=cpGet('cp_freight',JSON.parse(JSON.stringify(CP_SEED_FR)));
   CP.liqFee=cpGet('cp_liqfee',Array(24).fill(0));
   CP.histSnaps=cpGet('cp_hist_snaps',[]);
   CP.tab=0;CP.selMonth=1;CP.indexMode='TTF';
@@ -961,10 +1010,18 @@ function initCargo(){
 
 function renderCargo(){
   const wrap=document.getElementById('cargo-wrap');if(!wrap)return;
+  const fpStatus=CP.fpSynced
+    ?`<span style="color:#4caf50;font-size:9px">● LIVE PRICES — ${CP.fpDate||''}</span>`
+    :`<span style="color:#ff9800;font-size:9px">⚠ SEED PRICES — load Financial Trading data to sync</span>`;
+  const frStatus=CP.frSynced
+    ?`<span style="color:#4caf50;font-size:9px">● LIVE FREIGHT — ${CP.frRoutes||0} routes linked</span>`
+    :`<span style="color:#ff9800;font-size:9px">⚠ SEED FREIGHT — compute Freight Matrix to sync</span>`;
   wrap.innerHTML=`
     <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">CARGO PRICING MODEL</span>
       <span style="flex:1"></span>
+      <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">${fpStatus}${frStatus}</div>
+      <button class="f-btn sm" onclick="initCargo()" title="Re-sync prices and freight">↺ SYNC</button>
       <span style="color:#546e7a;font-size:9px;letter-spacing:1px">INDEX: </span>
       ${['TTF','JKM','HH'].map(m=>`<button class="f-btn sm${CP.indexMode===m?' on':''}" onclick="CP.indexMode='${m}';renderCargoTab()">${m}</button>`).join('')}
     </div>
