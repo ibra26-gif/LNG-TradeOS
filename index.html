@@ -1034,6 +1034,18 @@ function cpSetLiqFee(v){CP.liqFee=Array(24).fill(+v);cpSet('cp_liqfee',CP.liqFee
 function cpSaveHistSnap(){const d=cpDerived();const snap={date:CP.histSnapDate,frDiff:[...d.frDiff],spread:[...d.jkmTtf]};const updated=[snap,...CP.histSnaps.filter(s=>s.date!==CP.histSnapDate)].slice(0,90);CP.histSnaps=updated;cpSet('cp_hist_snaps',updated);renderCargoTab();}
 
 // ══ ANALYTICS ENGINE ══
+// ── Safari-compatible ArrayBuffer helper ──
+async function toAB(src){
+  // File/Blob: use arrayBuffer() if available, else FileReader
+  if(src instanceof Blob){
+    if(typeof src.arrayBuffer==='function') return src.arrayBuffer();
+    return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsArrayBuffer(src);});
+  }
+  // fetch Response: blob first (Safari-safe), then read
+  const blob=await src.blob();
+  if(typeof blob.arrayBuffer==='function') return blob.arrayBuffer();
+  return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsArrayBuffer(blob);});
+}
 const MA=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const SC=['#2d7cff','#22c55e','#f59e0b','#ef4444','#a78bfa','#38bdf8'];
 const CK='lngTradeOS_v4';
@@ -1059,7 +1071,7 @@ function lCache(){try{const raw=localStorage.getItem(CK);if(!raw)return false;co
 function clearCache(){if(confirm('Clear cache and reload?')){localStorage.removeItem(CK);location.reload();}}
 function setupDrop(){const dz=$('dz'),fi=$('fileInput');if(!dz||!fi)return;dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFiles([...e.dataTransfer.files],false);});dz.addEventListener('click',e=>{if(!e.target.classList.contains('dz-btn'))fi.click();});fi.addEventListener('change',()=>{if(fi.files.length)handleFiles([...fi.files],false);});}
 function plog(msg,warn=false){const el=$('parselog');if(!el)return;el.style.display='block';el.innerHTML+=`<div style="color:${warn?'#ef4444':'#3d5070'}">${msg}</div>`;el.scrollTop=el.scrollHeight;}
-async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.match(/\.xlsx?$/i));if(!xl.length){alert('No Excel files found.');return;}if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of xl){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}try{const buf=await file.arrayBuffer();if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$('progfill');if(pf)pf.style.width=Math.round(done/xl.length*100)+'%';const pt=$('progtxt2');if(pt)pt.textContent=`${done}/${xl.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
+async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.match(/\.xlsx?$/i));if(!xl.length){alert('No Excel files found.');return;}if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of xl){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}      try{const buf=await toAB(file);if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$('progfill');if(pf)pf.style.width=Math.round(done/xl.length*100)+'%';const pt=$('progtxt2');if(pt)pt.textContent=`${done}/${xl.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
 function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($('h-t1'),true);bTS($('h-t2'),true);bTS($('rc-t1'),true);bTS($('rc-t2'),true);bDS($('fc-d1'));bDS($('fc-d2'),true);bIS($('sp-i1'));$('sp-i1').value='JKM';bIS($('sp-i2'));$('sp-i2').value='TTF';bTS($('sp-t1'),true);bTS($('sp-t2'),true);buildDash();updHist();updRC2();updSpread();updFC();updSea();}
 function rPK(d,t){const r=new Date(d.getFullYear(),d.getMonth()+parseInt(t),1);return`${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}`;}
 function aPKs(){const s=new Set();for(const ds of sDates)aD[ds].rows.forEach(r=>s.add(r.pk));return[...s].sort();}
@@ -1116,7 +1128,7 @@ async function lDrive(){
       await Promise.all(files.slice(i,i+B).map(async f=>{
         const date=pDFN(f.name);if(!date){sk++;return;}
         const key=toStr(date);if(aD[key]){done++;return;}
-        try{const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${AK}`);if(!resp.ok){sk++;return;}const buf=await resp.arrayBuffer();if(buf.byteLength<5000){sk++;return;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){sk++;return;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;plog(`OK: ${f.name}`);}else sk++;}catch(e){sk++;}done++;
+        try{const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${AK}`);if(!resp.ok){sk++;return;}          const buf=await toAB(resp);if(buf.byteLength<5000){sk++;return;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){sk++;return;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;plog(`OK: ${f.name}`);}else sk++;}catch(e){sk++;}done++;
       }));
       setP(10+(Math.min(done,files.length)/files.length)*86,'LOADING',`${added} loaded · ${sk} skipped`);
     }
