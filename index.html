@@ -139,6 +139,16 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 .disc-div{border:none;border-top:1px solid var(--bl);margin:20px 0}
 .disc-copy{font-size:10px;color:var(--b);margin-top:28px;padding-top:18px;border-top:1px solid var(--bl)}
 .sh-footer{padding:16px 28px;border-top:1px solid var(--bl);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.rg-subnav{display:flex;background:#070b14;border-bottom:1px solid #1e3a5f;overflow-x:auto}
+.rg-tab{padding:10px 14px;cursor:pointer;font-size:10px;letter-spacing:1px;color:#546e7a;background:none;border:none;border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;transition:all .2s}
+.rg-tab:hover{color:#8a9bb5}.rg-tab.active{color:#4fc3f7;border-bottom-color:#4fc3f7}
+.rg-lock{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:400px;gap:16px}
+.rg-inp{background:#0d1526;border:1px solid #1e3a5f;color:#c8d6e5;padding:4px 7px;font-size:11px;font-family:inherit}
+.rg-inp:focus{outline:1px solid #4fc3f7}
+.rg-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.rg-tbl th{color:#546e7a;padding:5px 7px;border-bottom:1px solid #1e3a5f;text-align:left;font-size:9px;letter-spacing:1px;font-weight:400;white-space:nowrap}
+.rg-tbl td{padding:4px 7px;border-bottom:1px solid #0f1f35;color:#c8d6e5;white-space:nowrap}
+.rg-tbl .tr{text-align:right}.rg-tbl tr:hover td{background:#0c1422}
 .ft{font-size:9px;color:var(--td);letter-spacing:.09em}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--gr);display:inline-block;margin-right:5px}
 </style>
@@ -166,14 +176,14 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
   <div class="hero">
     <div class="hero-title">LNG <span class="ac">TradeOS<span class="tm">™</span></span></div>
     <div class="hero-sub">Integrated LNG Trading &amp; Analytics Platform</div>
-    <span class="badge">v1.2</span>
+    <span class="badge">v1.3</span>
   </div>
   <div class="mod-group">
     <div class="group-hdr"><div class="group-icon">▣</div><div><div class="group-ttl">PHYSICAL TRADING</div><div class="group-sub">Voyage economics, cargo pricing and European regasification</div></div></div>
     <div class="cards-grid">
       <div class="mod-card" onclick="shellNav('physical','freight')"><span class="card-num">01</span><div class="card-ttl">Freight Rate Calculator</div><div class="card-desc">Voyage cost estimation across global LNG shipping routes with BLNG curves and per-month positioning</div><span class="s-tag tag-phy">PHYSICAL</span></div>
       <div class="mod-card" onclick="shellNav('physical','cargo')"><span class="card-num">02</span><div class="card-ttl">Cargo Pricing</div><div class="card-desc">USGC/WAF/Oman arb, DES pricing, FOB netback matrix, India pricing and historical basis</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','regas')"><span class="card-num">03</span><div class="card-ttl">EU Regas Model</div><div class="card-desc">European regasification terminal pricing, netback analysis and slot valuation</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','regas')"><span class="card-num">03</span><div class="card-ttl">EU Regas Model</div><div class="card-desc">European regasification terminal pricing, cost graphs, netback analysis and slot valuation</div><span class="s-tag tag-phy">PHYSICAL</span></div>
     </div>
   </div>
   <div class="mod-group">
@@ -213,7 +223,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     </div>
   </div>
   <div class="sh-footer">
-    <div class="ft"><span class="dot"></span>LNG TRADEOS™ v1.2 — PERSONAL TRADING ANALYTICS</div>
+    <div class="ft"><span class="dot"></span>LNG TRADEOS™ v1.3 — PERSONAL TRADING ANALYTICS</div>
     <div class="ft">© 2026 IBRAHIM MAR — LNG TRADEOS™ — ALL RIGHTS RESERVED</div>
   </div>
 </section>
@@ -310,9 +320,9 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 <!-- GAS & LNG ANALYTICS -->
 <section class="s-sec" id="section-gasanalytics">
   <div class="sh-subnav">
-    <button class="sh-stab active" id="gatab-sd"        onclick="gaTab('sd')">S&amp;D BALANCE</button>
-    <button class="sh-stab"        id="gatab-signposts"  onclick="gaTab('signposts')">SIGNPOSTS</button>
-    <button class="sh-stab"        id="gatab-eumetrics"  onclick="gaTab('eumetrics')">EU METRICS</button>
+    <button class="sh-stab active" id="gatab-sd" onclick="gaTab('sd')">S&amp;D BALANCE</button>
+    <button class="sh-stab" id="gatab-signposts" onclick="gaTab('signposts')">SIGNPOSTS</button>
+    <button class="sh-stab" id="gatab-eumetrics" onclick="gaTab('eumetrics')">EU METRICS</button>
   </div>
   <div id="ga-content"></div>
 </section>
@@ -320,9 +330,9 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 <!-- PORTFOLIO VALUATION -->
 <section class="s-sec" id="section-portfolio">
   <div class="sh-subnav">
-    <button class="sh-stab active" id="pvtab-single"    onclick="pvTab('single')">SINGLE DEAL</button>
-    <button class="sh-stab"        id="pvtab-strips"    onclick="pvTab('strips')">STRIPS VALUATION</button>
-    <button class="sh-stab"        id="pvtab-portfolio" onclick="pvTab('portfolio')">PORTFOLIO</button>
+    <button class="sh-stab active" id="pvtab-single" onclick="pvTab('single')">SINGLE DEAL</button>
+    <button class="sh-stab" id="pvtab-strips" onclick="pvTab('strips')">STRIPS VALUATION</button>
+    <button class="sh-stab" id="pvtab-portfolio" onclick="pvTab('portfolio')">PORTFOLIO</button>
   </div>
   <div id="pv-content"></div>
 </section>
@@ -330,10 +340,10 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 <!-- LNG TOOLBOX -->
 <section class="s-sec" id="section-toolbox">
   <div class="sh-subnav">
-    <button class="sh-stab active" id="tbtab-converter"  onclick="tbTab('converter')">GAS CONVERTER</button>
-    <button class="sh-stab"        id="tbtab-gasspec"    onclick="tbTab('gasspec')">GAS SPECIFICATIONS</button>
-    <button class="sh-stab"        id="tbtab-portcosts"  onclick="tbTab('portcosts')">PORT COST DATABASE</button>
-    <button class="sh-stab"        id="tbtab-paperbook"  onclick="tbTab('paperbook')">PAPER BOOK</button>
+    <button class="sh-stab active" id="tbtab-converter" onclick="tbTab('converter')">GAS CONVERTER</button>
+    <button class="sh-stab" id="tbtab-gasspec" onclick="tbTab('gasspec')">GAS SPECIFICATIONS</button>
+    <button class="sh-stab" id="tbtab-portcosts" onclick="tbTab('portcosts')">PORT COST DATABASE</button>
+    <button class="sh-stab" id="tbtab-paperbook" onclick="tbTab('paperbook')">PAPER BOOK</button>
   </div>
   <div id="tb-content"></div>
 </section>
@@ -368,13 +378,13 @@ const ML=(function(){
 // ══ SHELL ══
 let finLoaded=false;
 const PH_T={freight:'FREIGHT RATE CALCULATOR',cargo:'CARGO PRICING',regas:'EU REGAS MODEL'};
-const PH_D={freight:'Voyage cost estimation across global LNG shipping routes with BLNG curves',cargo:'USGC/WAF/Oman arb, DES pricing, FOB netback matrix, India pricing and historical basis',regas:'European regasification terminal pricing, netback analysis and slot valuation'};
+const PH_D={freight:'Voyage cost estimation across global LNG shipping routes with BLNG curves',cargo:'USGC/WAF/Oman arb, DES pricing, FOB netback matrix, India pricing and historical basis',regas:'European regasification terminal pricing, cost graphs, netback analysis and slot valuation'};
 const GA_T={sd:'S&D BALANCE',signposts:'SIGNPOSTS',eumetrics:'EU METRICS'};
-const GA_D={sd:'Global LNG supply and demand balance, liquefaction capacity and demand forecasts',signposts:'Key market indicators, price triggers and directional signals',eumetrics:'European gas storage, send-out, terminal utilisation, pipeline flows and gas balance'};
+const GA_D={sd:'Global LNG supply and demand balance',signposts:'Key market indicators and directional signals',eumetrics:'European gas storage, send-out and terminal utilisation'};
 const PV_T={single:'SINGLE DEAL VALUATION',strips:'STRIPS VALUATION',portfolio:'PORTFOLIO VALUATION'};
-const PV_D={single:'Full extrinsic and optionality valuation for individual LNG cargo contracts',strips:'Multi-cargo strip optionality decomposition with intrinsic and time value analysis',portfolio:'Aggregated P&L, exposure summary and blended optionality across all positions'};
+const PV_D={single:'Full extrinsic and optionality valuation for individual LNG cargo contracts',strips:'Multi-cargo strip optionality decomposition',portfolio:'Aggregated P&L, exposure summary and blended optionality'};
 const TB_T={converter:'NATURAL GAS CONVERTER',gasspec:'GAS SPECIFICATIONS',portcosts:'PORT COST DATABASE',paperbook:'PAPER BOOK'};
-const TB_D={converter:'Unit conversion across mmBtu, MWh, GJ, Mcm, Bcm, MT LNG and all standard gas units',gasspec:'LNG and natural gas quality specifications by origin, terminal and contract grade',portcosts:'130+ terminals — loading and discharge port costs for global LNG terminals',paperbook:'Financial derivatives position tracking and hedge book management'};
+const TB_D={converter:'Unit conversion across mmBtu, MWh, GJ, Mcm, Bcm, MT LNG',gasspec:'LNG and natural gas quality specifications',portcosts:'130+ terminals — loading and discharge port costs',paperbook:'Financial derivatives position tracking'};
 
 function shellNav(sec,sub){
   document.querySelectorAll('.s-sec').forEach(s=>s.classList.remove('active'));
@@ -394,7 +404,6 @@ function shellNav(sec,sub){
 }
 let _pendingFinSub=null;
 
-// ══ MISSING TAB HANDLERS (FIX) ══
 function gaTab(tab){
   document.querySelectorAll('[id^="gatab-"]').forEach(t=>t.classList.remove('active'));
   const el=document.getElementById('gatab-'+tab);if(el)el.classList.add('active');
@@ -413,7 +422,6 @@ function tbTab(tab){
   else if(tab==='portcosts') renderPortCostDB(c);
   else c.innerHTML=`<div class="ph-page"><div class="ph-lbl">LNG TOOLBOX</div><div class="ph-ttl">${TB_T[tab]||tab.toUpperCase()}</div><div class="ph-sub">${TB_D[tab]||''}</div><div class="ph-box">MODULE IN DEVELOPMENT</div></div>`;
 }
-
 function phTab(tab){
   document.querySelectorAll('[id^="ptab-"]').forEach(t=>t.classList.remove('active'));
   const el=document.getElementById('ptab-'+tab);if(el)el.classList.add('active');
@@ -425,6 +433,8 @@ function phTab(tab){
     c.innerHTML='<div id="freight-wrap"></div>';initFreight();
   } else if(tab==='cargo'){
     c.innerHTML='<div id="cargo-wrap"></div>';initCargo();
+  } else if(tab==='regas'){
+    c.innerHTML='<div id="regas-wrap" style="background:#070b14;color:#c8d6e5;min-height:calc(100vh - 105px)"></div>';initRegas();
   } else {
     c.innerHTML=`<div class="ph-page"><div class="ph-lbl">PHYSICAL TRADING</div><div class="ph-ttl">${PH_T[tab]||tab.toUpperCase()}</div><div class="ph-sub">${PH_D[tab]||''}</div><div class="ph-box">MODULE IN DEVELOPMENT</div></div>`;
   }
@@ -436,9 +446,7 @@ function renderGasConverter(c){
   const fields=UNITS.map(u=>`<div style="background:var(--bg2);border:1px solid var(--bl);padding:14px"><div style="font-size:9px;letter-spacing:.12em;color:var(--td);margin-bottom:6px">${u.l.toUpperCase()}</div><input id="conv-${u.k}" class="f-inp" type="number" step="any" placeholder="0" oninput="runConvert('${u.k}',this.value)" style="font-size:14px;color:var(--th);background:transparent;border:none;border-bottom:1px solid var(--bl);padding:4px 0;outline:none;width:100%"></div>`).join('');
   c.innerHTML=`<div style="padding:28px;max-width:680px"><div style="font-size:13px;letter-spacing:.1em;color:var(--th);margin-bottom:4px;font-weight:500">NATURAL GAS UNIT CONVERTER</div><div style="font-size:10px;color:var(--td);margin-bottom:24px">Enter a value in any unit to convert across all standard natural gas units</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">${fields}</div><div style="font-size:9px;color:var(--td);line-height:1.8">Reference: 1 mmBtu = 0.293071 MWh = 1.05506 GJ &nbsp;·&nbsp; 1 MT LNG ≈ 52 mmBtu &nbsp;·&nbsp; 1 Mcm = 35,315 mmBtu</div></div>`;
   window.runConvert=function(fromKey,val){
-    const v=parseFloat(val);
-    const fu=UNITS.find(u=>u.k===fromKey);
-    if(!fu||isNaN(v))return;
+    const v=parseFloat(val);const fu=UNITS.find(u=>u.k===fromKey);if(!fu||isNaN(v))return;
     const inMmbtu=v*fu.f;
     UNITS.forEach(u=>{if(u.k===fromKey)return;const el=document.getElementById('conv-'+u.k);if(el)el.value=v===0?'':(inMmbtu/u.f).toFixed(6).replace(/\.?0+$/,'');});
   };
@@ -468,13 +476,12 @@ const PORT_DB=[
   {country:'Germany',region:'Europe',terminal:'Stade FSRU',type:'Discharge',cost:'260,884',remarks:'Basis discharge 160,000 cbm.',updated:'Apr-24'},
   {country:'Greece',region:'Europe',terminal:'Revithoussa',type:'Discharge',cost:'104,500',remarks:'ROE EUR/USD 1.10.',updated:'Apr-24'},
   {country:'Italy',region:'Europe',terminal:'OLT Toscana (Livorno)',type:'Discharge',cost:'133,200',remarks:'EUR 123,144 at ROE 0.9245.',updated:'Apr-24'},
-  {country:'Italy',region:'Europe',terminal:'Rovigo',type:'Discharge',cost:'266,658',remarks:'Proprietary agent — tariffs not disclosed.',updated:'Apr-24'},
+  {country:'Italy',region:'Europe',terminal:'Rovigo',type:'Discharge',cost:'266,658',remarks:'Proprietary agent.',updated:'Apr-24'},
   {country:'Italy',region:'Europe',terminal:'Panigaglia',type:'Discharge',cost:'133,200',remarks:'',updated:'Apr-24'},
   {country:'Italy',region:'Europe',terminal:'Piombino FSRU',type:'Discharge',cost:'105,000',remarks:'',updated:'Apr-24'},
   {country:'Italy',region:'Europe',terminal:'Ravenna FSRU',type:'Discharge',cost:'140,000',remarks:'',updated:'Apr-24'},
   {country:'Lithuania',region:'Europe',terminal:'Klaipeda',type:'Discharge',cost:'255,000',remarks:'ROE EUR/USD 1.08.',updated:'Apr-24'},
   {country:'Netherlands',region:'Europe',terminal:'Gate Rotterdam',type:'Discharge',cost:'126,694',remarks:'ROE 1.06.',updated:'Apr-24'},
-  {country:'Netherlands',region:'Europe',terminal:'Eemshaven',type:'Discharge',cost:'189,641',remarks:'ROE 1.06.',updated:'Apr-24'},
   {country:'Norway',region:'Europe',terminal:'Hammerfest',type:'Load',cost:'222,000',remarks:'ROE 1 USD = 10 NOK.',updated:'Apr-24'},
   {country:'Poland',region:'Europe',terminal:'Swinoujscie',type:'Discharge',cost:'375,000',remarks:'',updated:'Apr-24'},
   {country:'Portugal',region:'Europe',terminal:'Sines',type:'Discharge',cost:'87,070',remarks:'Basis discharge 65,000 MT. ROE 1.09.',updated:'Apr-24'},
@@ -484,13 +491,12 @@ const PORT_DB=[
   {country:'Spain',region:'Europe',terminal:'Cartagena',type:'Discharge',cost:'151,697',remarks:'ROE 1.08.',updated:'Apr-24'},
   {country:'Spain',region:'Europe',terminal:'Sagunto',type:'Discharge',cost:'117,315',remarks:'24h alongside.',updated:'Apr-24'},
   {country:'Spain',region:'Europe',terminal:'Mugardos',type:'Discharge',cost:'178,053',remarks:'Basis discharge 160,000 cbm.',updated:'Apr-24'},
-  {country:'Spain',region:'Europe',terminal:'Musel',type:'Discharge',cost:'179,113',remarks:'Basis discharge 160,000 cbm.',updated:'Apr-24'},
   {country:'Turkey',region:'Europe',terminal:'Ereglisi',type:'Discharge',cost:'458,500',remarks:'NRT 32,639. ROE TL/USD 31.96.',updated:'Apr-24'},
   {country:'Turkey',region:'Europe',terminal:'Aliaga',type:'Discharge',cost:'290,000',remarks:'Egegaz. Max 30h port stay.',updated:'Apr-24'},
   {country:'UK',region:'Europe',terminal:'South Hook',type:'Discharge',cost:'203,171',remarks:'ROE GBP/USD 1.21893.',updated:'Apr-24'},
   {country:'UK',region:'Europe',terminal:'Dragon LNG',type:'Discharge',cost:'219,320',remarks:'ROE GBP/USD 1.21893.',updated:'Apr-24'},
   {country:'Angola',region:'Africa',terminal:'Soyo',type:'Load',cost:'5,025',remarks:'Angola LNG Terminal excl. agency fee.',updated:'Apr-24'},
-  {country:'Equatorial Guinea',region:'Africa',terminal:'Punta Europa',type:'Load',cost:'13,000',remarks:'USD 11,500 + Ministry of Transport tax USD 1,500.',updated:'Apr-24'},
+  {country:'Equatorial Guinea',region:'Africa',terminal:'Punta Europa',type:'Load',cost:'13,000',remarks:'USD 11,500 + Ministry tax USD 1,500.',updated:'Apr-24'},
   {country:'Nigeria',region:'Africa',terminal:'Bonny',type:'Load',cost:'1,019,874',remarks:'NIMASA 3% freight levy. ROE NGN 1,543.58.',updated:'Apr-24'},
   {country:'Jordan',region:'Middle East',terminal:'Aqaba FSRU',type:'Discharge',cost:'115,715',remarks:'ROE JOD 0.70. Incl. environmental fees.',updated:'Apr-24'},
   {country:'Kuwait',region:'Middle East',terminal:'Mina Al Zour',type:'Discharge',cost:'23,875',remarks:'ROE KWD 0.309. Estimate.',updated:'Apr-24'},
@@ -528,7 +534,7 @@ const PORT_DB=[
   {country:'Japan',region:'Asia Pacific',terminal:'Niigata',type:'Discharge',cost:'69,600',remarks:'ROE JPY 135.',updated:'Apr-24'},
   {country:'Japan',region:'Asia Pacific',terminal:'Joetsu',type:'Discharge',cost:'102,300',remarks:'ROE JPY 135.',updated:'Apr-24'},
   {country:'Malaysia',region:'Asia Pacific',terminal:'Bintulu',type:'Load',cost:'290,000',remarks:'ROE MYR 4.0.',updated:'Apr-24'},
-  {country:'Pakistan',region:'Asia Pacific',terminal:'Port Qasim',type:'Discharge',cost:'504,000',remarks:'ROE 280. Monsoon season +10% on pilotage.',updated:'Apr-24'},
+  {country:'Pakistan',region:'Asia Pacific',terminal:'Port Qasim',type:'Discharge',cost:'504,000',remarks:'ROE 280. Monsoon season +10%.',updated:'Apr-24'},
   {country:'PNG',region:'Asia Pacific',terminal:'Kumul',type:'Load',cost:'155,397',remarks:'USD 80,000 single berthing fee.',updated:'Apr-24'},
   {country:'Russia',region:'Others',terminal:'Sakhalin',type:'Load',cost:'42,312',remarks:'ROE RUB/USD 92.61.',updated:'Apr-24'},
   {country:'Russia',region:'Others',terminal:'Sabetta',type:'Load',cost:'110,445',remarks:'Charges based on vessel GRT.',updated:'Apr-24'},
@@ -548,7 +554,8 @@ function renderPortCostDB(c){
   c.innerHTML=`<div style="padding:20px 28px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <div><div style="font-size:13px;letter-spacing:.1em;color:var(--th);margin-bottom:4px;font-weight:500">PORT COST DATABASE</div>
-      <div style="font-size:10px;color:var(--td)">${PORT_DB.length} terminals · Asia Class Vessels · Updated Apr-24</div></div></div>
+      <div style="font-size:10px;color:var(--td)">${PORT_DB.length} terminals · Asia Class Vessels · Updated Apr-24</div></div>
+    </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
       <div><span class="f-lbl">SEARCH</span><input id="pdb-search" class="f-inp" style="width:180px" placeholder="terminal or country..." oninput="filterPortDB()"></div>
       <div><span class="f-lbl">REGION</span><select id="pdb-region" class="f-sel" style="width:140px" onchange="filterPortDB()">${regions.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
@@ -564,7 +571,6 @@ function renderPortCostDB(c){
     </tr></thead><tbody id="pdb-tbody"></tbody></table></div></div>`;
   filterPortDB();
 }
-
 function filterPortDB(){
   const search=(document.getElementById('pdb-search')||{value:''}).value.toLowerCase();
   const region=(document.getElementById('pdb-region')||{value:'All'}).value;
@@ -714,7 +720,6 @@ function initFreight(){
   F.tab=2;F.detailMode=null;
   renderFreight();
 }
-
 function renderFreight(){
   const wrap=document.getElementById('freight-wrap');if(!wrap)return;
   const stale=F.matrixTs&&F.blngTs&&F.blngTs>F.matrixTs;
@@ -728,9 +733,7 @@ function renderFreight(){
   <div class="f-body" id="f-body"></div>`;
   renderFTab();
 }
-
 function fTab(i){F.tab=i;F.detailMode=null;F.showExportMenu=false;document.querySelectorAll('.f-tab').forEach((t,j)=>t.classList.toggle('active',j===i));renderFTab();}
-
 function renderFTab(){
   const b=document.getElementById('f-body');if(!b)return;
   if(F.tab===0)b.innerHTML=renderFreightCurves();
@@ -739,7 +742,6 @@ function renderFTab(){
   else if(F.tab===3)b.innerHTML=renderMatrix();
   else if(F.tab===4)b.innerHTML=renderDiff();
 }
-
 function renderFreightCurves(){
   const combinedRows=ML.map((m,i)=>`<tr><td style="color:#8a9bb5;white-space:nowrap;min-width:56px">${m}</td>
     ${['BLNG1','BLNG2','BLNG3'].map(c=>`<td style="padding:2px 3px"><input class="f-inp" style="width:76px;text-align:right;color:${BC[c]}" type="number" data-blng="${c}" data-i="${i}" value="${F.blng[c][i]!=null?F.blng[c][i]:''}" onchange="blngChange(this)"/></td>
@@ -764,7 +766,6 @@ function renderFreightCurves(){
     <div class="f-sec" style="margin-top:16px">HISTORICAL SNAPSHOTS</div>
     ${F.snaps.length?F.snaps.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;background:#0d1526;padding:6px 10px;margin-bottom:4px;border:1px solid #1e3a5f"><span style="font-size:10px;color:#8a9bb5">${s.label}</span><button class="f-btn sm" data-snapdate="${s.date}" onclick="loadSnapBtn(this)">LOAD</button></div>`).join(''):'<div style="color:#546e7a;font-size:10px;padding:10px 0">No snapshots saved yet.</div>'}`;
 }
-
 function renderParams(){
   const secs=[
     {t:'VESSEL',f:[{k:'shipSize',l:'Ship Size (cbm)',s:1000},{k:'energyFactor',l:'Energy Factor (Mmbtu/m3)',s:0.01},{k:'loadFactor',l:'Load Factor',s:0.001},{k:'bogRate',l:'BOG Rate (%/day)',s:0.0001},{k:'speedLaden',l:'Speed Laden (kn)',s:0.5},{k:'speedBallast',l:'Speed Ballast (kn)',s:0.5}]},
@@ -781,11 +782,10 @@ function renderParams(){
     </div>
     ${secs.map(sec=>{
       let fields=sec.f.map(f=>`<div><span class="f-lbl">${f.l}</span><input class="f-inp" type="number" step="${f.s}" value="${F.params[f.k]}" onchange="pChange('${f.k}',parseFloat(this.value)||0)"></div>`).join('');
-      if(sec.t==='VOYAGE TIMES (days)')fields+=`<div><span class="f-lbl">LOAD DATE (dd/mm/yyyy)</span><input class="f-inp" type="text" placeholder="dd/mm/yyyy" value="${F.params.loadDate||''}" onchange="pChange('loadDate',this.value)" maxlength="10"></div>`;
+      if(sec.t==='VOYAGE TIMES (days)')fields+=`<div><span class="f-lbl">LOAD DATE</span><input class="f-inp" type="text" placeholder="dd/mm/yyyy" value="${F.params.loadDate||''}" onchange="pChange('loadDate',this.value)" maxlength="10"></div>`;
       return`<div style="margin-bottom:12px"><div class="f-sec">${sec.t}</div><div class="f-gauto">${fields}</div></div>`;
     }).join('')}`;
 }
-
 function renderDetails(){
   if(!F.detailMode)return`<div class="f-sec">SELECT MODE</div><div class="f-gauto">
     ${[['SINGLE VOYAGE','Quick pricing — one route, one date','single'],['UPDATE MATRIX','Recompute all routes × 24 months','matrix'],['HISTORICAL RATES','Freight evolution across snapshots','hist'],['DIFFERENTIALS','Cross-port spread comparison','diff']].map(([t,d,m])=>`
@@ -794,11 +794,9 @@ function renderDetails(){
         <div style="color:#546e7a;font-size:10px">${d}</div>
       </div>`).join('')}
   </div>`;
-
   if(F.detailMode==='matrix_done')return`<button class="f-btn" style="margin-bottom:12px" onclick="F.detailMode=null;renderFTab()">← BACK</button>
     <div class="f-ok">✓ Matrix computed — ${new Date().toLocaleString('en-GB')}</div>
     <button class="f-btn on" onclick="fTab(3)">GO TO FREIGHT MATRIX →</button>`;
-
   if(F.detailMode==='single'){
     const r=calcF(F.svOrig,F.svDisch,F.svMi);
     let dischDate='-';
@@ -834,7 +832,6 @@ function renderDetails(){
       </table></div>`
       :'<div style="color:#f44336;margin-top:12px">No rate available for this route/month combination.</div>'}`;
   }
-
   if(F.detailMode==='hist'){
     const origBlng=F.blng;
     const rows=F.snaps.map(s=>{F.blng=s.blng;const res=calcF(F.histOrig,F.histDisch,F.histMi);F.blng=origBlng;return res?`<tr><td>${s.date}</td><td>${s.label}</td><td class="tr" style="color:${fCol(res.freight)}">${res.freight.toFixed(4)}</td><td class="tr" style="color:#546e7a">${res.rate.toLocaleString()}</td></tr>`:null;}).filter(Boolean).join('');
@@ -850,7 +847,6 @@ function renderDetails(){
   }
   return'';
 }
-
 function renderMatrix(){
   const stale=F.matrixTs&&F.blngTs&&F.blngTs>F.matrixTs;
   const regions=[...new Set(allD().map(p=>p.region))];
@@ -874,7 +870,6 @@ function renderMatrix(){
     ${F.matrixTs?`<div style="color:#546e7a;font-size:10px;margin-bottom:10px">Last computed: ${new Date(F.matrixTs).toLocaleString('en-GB')}</div>`:''}
     ${!F.matrix?'<div style="color:#546e7a">No matrix yet — click REFRESH.</div>':rows}`;
 }
-
 function renderDiff(){
   const base=ML.map((_,i)=>{const r=calcF(F.diffOrig,F.diffBase,i);return r?r.freight:null;});
   const selD=allD().filter(p=>F.diffSel.includes(p.id));
@@ -893,7 +888,6 @@ function renderDiff(){
     <div style="margin-bottom:12px"><span class="f-lbl">COMPARISON PORTS</span><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">${portBtns}</div></div>
     ${selD.length?`<div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:130px">DISCHARGE</th>${ML.map(m=>`<th class="tr" style="min-width:50px">${m}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table><div style="margin-top:6px;color:#546e7a;font-size:10px">Red = more expensive · Green = cheaper than base</div></div>`:''}`;
 }
-
 function blngChange(el){const c=el.dataset.blng,i=+el.dataset.i;F.blng[c][i]=el.value===''?null:+el.value;fSaveBlng(F.blng);}
 function prChange(el){const type=el.dataset.prtype,c=el.dataset.curve,i=+el.dataset.i,v=parseFloat(el.value)||0;if(type==='pos')F.posArr[c][i]=v;else F.repoArr[c][i]=v;fSavePR();}
 function pChange(k,v){F.params[k]=v;fSaveParams(F.params);}
@@ -943,11 +937,11 @@ function cpSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 function fv(v,d=3){return v!=null&&!isNaN(v)?v.toFixed(d):'-';}
 function posCol(v){return v>0?'#4caf50':v<0?'#ef4444':'#c8d6e5';}
 function cpDerived(){
-  const{fp,phys,freight,liqFee}=CP;
+  const{fp,phys,freight}=CP;
   const phyItaly=ML.map((_,i)=>phys.nwe[i]+(freight.sabine_rovigo[i]-freight.sabine_rotterdam[i]));
   const phyMei=ML.map((_,i)=>freight.angola_dahej[i]-freight.angola_tokyo[i]);
   const des={nwe:ML.map((_,i)=>fp.TTF[i]+phys.nwe[i]),iberia:ML.map((_,i)=>fp.TTF[i]+phys.iberia[i]),uk:ML.map((_,i)=>fp.TTF[i]+phys.uk[i]),italy:ML.map((_,i)=>fp.TTF[i]+phyItaly[i]),klaipeda:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.klaipeda[i]),inkoo:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.inkoo[i]),rev:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.rev[i]),krk:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.krk[i]),ain:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.ain[i]),ali:ML.map((_,i)=>fp.TTF[i]+CP_PHYS_FIXED.ali[i]),mei:ML.map((_,i)=>fp.JKM[i]+phyMei[i]),jktc:ML.map((_,i)=>fp.JKM[i]+phys.jktc[i])};
-  const usgcFob=ML.map((_,i)=>1.15*fp.HH[i]+liqFee[i]);
+  const usgcFob=ML.map((_,i)=>1.15*fp.HH[i]+(CP.liqFee[i]||0));
   const profEur=ML.map((_,i)=>des.nwe[i]-freight.sabine_rotterdam[i]-usgcFob[i]);
   const profAsia=ML.map((_,i)=>des.jktc[i]-freight.sabine_tokyo[i]-usgcFob[i]);
   const jkmTtf=ML.map((_,i)=>fp.JKM[i]-fp.TTF[i]);
@@ -978,11 +972,11 @@ function cpIdxBtns(){return`<div style="margin-bottom:12px"><span style="color:#
 function cpPhysDiff(d){
   const rows=[{k:'nwe',label:'DES NWE',hub:'TTF',method:'Manual input',data:CP.phys.nwe,editable:true,physKey:'nwe'},{k:'iberia',label:'Iberia (TVB)',hub:'PVB',method:'Manual input',data:CP.phys.iberia,editable:true,physKey:'iberia'},{k:'uk',label:'UK Terminals',hub:'NBP',method:'Manual input',data:CP.phys.uk,editable:true,physKey:'uk'},{k:'italy',label:'DES Italy',hub:'TTF',method:'Fr diff (USGC Rovigo−Gate)+NWE',data:d.phyItaly,editable:false},{k:'klaipeda',label:'Klaipeda',hub:'TTF',method:'Freight diff',data:CP_PHYS_FIXED.klaipeda,editable:false},{k:'inkoo',label:'Inkoo',hub:'TTF',method:'Freight diff',data:CP_PHYS_FIXED.inkoo,editable:false},{k:'rev',label:'Revithoussa',hub:'TTF',method:'Freight diff',data:CP_PHYS_FIXED.rev,editable:false},{k:'krk',label:'KRK',hub:'TTF',method:'Freight diff',data:CP_PHYS_FIXED.krk,editable:false},{k:'ain',label:'Ain Sukhna',hub:'TTF',method:'Freight diff',data:CP_PHYS_FIXED.ain,editable:false},{k:'ali',label:'Aliaga',hub:'TTF',method:'Freight diff',data:CP_PHYS_FIXED.ali,editable:false},{k:'mei',label:'DES MEI',hub:'JKM',method:'Fr diff (Angola Dahej−Tokyo)',data:d.phyMei,editable:false},{k:'jktc',label:'JKTC',hub:'JKM',method:'Manual input',data:CP.phys.jktc,editable:true,physKey:'jktc'}];
   const desPrices=[['DES NWE','TTF',d.des.nwe],['DES Iberia','PVB',d.des.iberia],['DES UK','NBP',d.des.uk],['DES Italy','TTF',d.des.italy],['DES Klaipeda','TTF',d.des.klaipeda],['DES Inkoo','TTF',d.des.inkoo],['DES Revithoussa','TTF',d.des.rev],['DES KRK','TTF',d.des.krk],['DES Ain Sukhna','TTF',d.des.ain],['DES Aliaga','TTF',d.des.ali],['DES MEI','JKM',d.des.mei],['DES JKTC','JKM',d.des.jktc]];
-  return`<div class="f-sec">PHYSICAL PRICE DIFFERENTIALS — DES vs INDEX ($/Mmbtu) · Blue = manual editable</div>
-    <div style="overflow-x:auto;margin-bottom:20px"><table class="f-tbl"><thead><tr><th style="min-width:130px">TERMINAL</th><th style="min-width:45px">HUB</th><th style="min-width:140px;color:#546e7a;font-size:9px">METHOD</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead>
+  return`<div class="f-sec">PHYSICAL PRICE DIFFERENTIALS — DES vs INDEX ($/Mmbtu)</div>
+    <div style="overflow-x:auto;margin-bottom:20px"><table class="f-tbl"><thead><tr><th style="min-width:130px">TERMINAL</th><th>HUB</th><th style="color:#546e7a;font-size:9px;min-width:140px">METHOD</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead>
     <tbody>${rows.map(row=>`<tr><td style="color:${row.editable?'#4fc3f7':'#c8d6e5'};font-size:10px">${row.label}</td><td style="color:#546e7a;font-size:10px">${row.hub}</td><td style="color:#546e7a;font-size:9px">${row.method}</td>${row.data.map((v,i)=>row.editable?`<td style="padding:2px 3px"><input class="f-inp" style="width:55px;text-align:right;color:#4fc3f7" type="number" step="0.01" value="${v}" onchange="cpSetPhys('${row.physKey}',${i},this.value)"></td>`:`<td class="tr" style="color:${v>0?'#4caf50':v<0?'#ff9800':'#c8d6e5'}">${fv(v,3)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
     <div class="f-sec">DES ABSOLUTE PRICES — $/Mmbtu</div>
-    <div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:130px">DES PRICE</th><th style="min-width:45px">HUB</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead>
+    <div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:130px">DES PRICE</th><th>HUB</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead>
     <tbody>${desPrices.map(([l,h,arr])=>`<tr><td style="font-size:10px">${l}</td><td style="color:#546e7a;font-size:10px">${h}</td>${arr.map(v=>`<td class="tr" style="color:#26c6da">${fv(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 function cpArbDash(d){
@@ -991,32 +985,32 @@ function cpArbDash(d){
     <div class="f-grid f-g2" style="margin-bottom:14px">
       <div class="f-card"><div style="color:#546e7a;font-size:9px;margin-bottom:10px">FRONT MONTH: ${ML[m]}</div>
         <div class="f-grid f-g2" style="gap:8px;margin-bottom:10px">
-          ${[['TO EUROPE',d.profEur[m],'#26c6da'],['TO ASIA',d.profAsia[m],'#ab47bc']].map(([l,v,c])=>`<div style="background:#0a0f1e;border:1px solid ${v>0?c:'#1e3a5f'};padding:10px"><div style="color:#546e7a;font-size:9px">${l}</div><div style="color:${v>0?c:'#f44336'};font-size:18px;font-weight:700;margin-top:4px">${v>=0?'+':''}${fv(v,3)}</div><div style="color:#546e7a;font-size:9px;margin-top:4px">$/Mmbtu</div></div>`).join('')}
+          ${[['TO EUROPE',d.profEur[m],'#26c6da'],['TO ASIA',d.profAsia[m],'#ab47bc']].map(([l,v,c])=>`<div style="background:#0a0f1e;border:1px solid ${v>0?c:'#1e3a5f'};padding:10px"><div style="color:#546e7a;font-size:9px">${l}</div><div style="color:${v>0?c:'#f44336'};font-size:18px;font-weight:700;margin-top:4px">${v>=0?'+':''}${fv(v,3)}</div></div>`).join('')}
         </div>
-        <div style="padding:6px 10px;background:#0a0f1e;border:1px solid ${profDiff[m]>0?'#ab47bc':'#26c6da'}"><span style="color:#546e7a;font-size:9px">ARB POINTING → </span><span style="color:${profDiff[m]>0?'#ab47bc':'#26c6da'};font-weight:700;font-size:11px">${profDiff[m]>0?'ASIA':'EUROPE'} (${profDiff[m]>=0?'+':''}${fv(profDiff[m],3)} $/Mmbtu advantage)</span></div>
+        <div style="padding:6px 10px;background:#0a0f1e;border:1px solid ${profDiff[m]>0?'#ab47bc':'#26c6da'}"><span style="color:#546e7a;font-size:9px">ARB POINTING → </span><span style="color:${profDiff[m]>0?'#ab47bc':'#26c6da'};font-weight:700;font-size:11px">${profDiff[m]>0?'ASIA':'EUROPE'} (${profDiff[m]>=0?'+':''}${fv(profDiff[m],3)} $/MMBtu advantage)</span></div>
       </div>
-      <div class="f-card"><div style="color:#546e7a;font-size:9px;margin-bottom:8px">BREAKEVEN — JKM/TTF vs FREIGHT DIFF (Gate/Tokyo)</div>
+      <div class="f-card"><div style="color:#546e7a;font-size:9px;margin-bottom:8px">BREAKEVEN — JKM/TTF vs FREIGHT DIFF</div>
         ${ML.slice(1,8).map((mo,idx)=>{const i=idx+1;const open=d.jkmTtf[i]>Math.abs(d.frDiff[i]);return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:10px"><span style="color:#546e7a;min-width:46px">${mo}</span><span style="min-width:70px">Spd: <span style="color:#ffeb3b">${fv(d.jkmTtf[i],3)}</span></span><span style="min-width:70px">FrΔ: <span style="color:#ff9800">${fv(d.frDiff[i],3)}</span></span><span style="color:${open?'#4caf50':'#f44336'};font-weight:700">${open?'ASIA OPEN':'EUR OPEN'}</span></div>`;}).join('')}
       </div>
     </div>
-    <div class="f-card" style="margin-bottom:14px"><div style="color:#546e7a;font-size:9px;margin-bottom:8px">FORWARD PROFIT STRIP — EUROPE vs ASIA ($/Mmbtu)</div>${cpLineChart([{label:'Profit to Europe',color:'#26c6da',data:d.profEur},{label:'Profit to Asia',color:'#ab47bc',data:d.profAsia},{label:'Diff (Asia−Eur)',color:'#ffeb3b',data:profDiff}],ML,120)}</div>
+    <div class="f-card" style="margin-bottom:14px"><div style="color:#546e7a;font-size:9px;margin-bottom:8px">FORWARD PROFIT STRIP — $/MMBtu</div>${cpLineChart([{label:'Profit to Europe',color:'#26c6da',data:d.profEur},{label:'Profit to Asia',color:'#ab47bc',data:d.profAsia},{label:'Diff (Asia−Eur)',color:'#ffeb3b',data:profDiff}],ML,120)}</div>
     <div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th>MONTH</th><th class="tr">PROF EUR</th><th class="tr">PROF ASIA</th><th class="tr">DIFF</th><th class="tr">JKM/TTF</th><th class="tr">FR DIFF</th><th>POINTING</th></tr></thead>
     <tbody>${ML.map((mo,i)=>{const p=profDiff[i]>0?'ASIA':'EUROPE';return`<tr${i===m?' class="f-tbl hi-row"':''}><td>${mo}</td><td class="tr" style="color:${posCol(d.profEur[i])}">${fv(d.profEur[i])}</td><td class="tr" style="color:${posCol(d.profAsia[i])}">${fv(d.profAsia[i])}</td><td class="tr" style="color:${posCol(profDiff[i])}">${profDiff[i]>=0?'+':''}${fv(profDiff[i])}</td><td class="tr" style="color:#ffeb3b">${fv(d.jkmTtf[i])}</td><td class="tr" style="color:#ff9800">${fv(d.frDiff[i])}</td><td style="color:${p==='ASIA'?'#ab47bc':'#26c6da'};font-weight:700;font-size:9px">${p}</td></tr>`;}).join('')}</tbody></table></div>`;
 }
 function cpUSGCArb(d){return`<div class="f-sec">USGC ARB — SABINE PASS · FOB Cost = 115%×HH + Liquefaction Fee</div>
-  <div class="f-grid f-g2" style="margin-bottom:12px"><div><span class="f-lbl">LIQUEFACTION FEE ($/Mmbtu) — FLAT ACROSS STRIP</span><input class="f-inp" type="number" step="0.01" value="${CP.liqFee[0]}" onchange="cpSetLiqFee(this.value)"></div><div style="padding-top:18px;color:#546e7a;font-size:10px">USGC FOB Cost ${ML[1]}: <span style="color:#4fc3f7">${fv(d.usgcFob[1],4)} $/Mmbtu</span></div></div>
+  <div class="f-grid f-g2" style="margin-bottom:12px"><div><span class="f-lbl">LIQUEFACTION FEE ($/MMBtu)</span><input class="f-inp" type="number" step="0.01" value="${CP.liqFee[0]}" onchange="cpSetLiqFee(this.value)"></div><div style="padding-top:18px;color:#546e7a;font-size:10px">USGC FOB Cost ${ML[1]}: <span style="color:#4fc3f7">${fv(d.usgcFob[1],4)} $/MMBtu</span></div></div>
   <div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:140px">ITEM</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead><tbody>
-    ${[['HH ($/Mmbtu)',CP.fp.HH,'#c8d6e5'],['115% HH',ML.map((_,i)=>1.15*CP.fp.HH[i]),'#546e7a'],['FOB Cost',d.usgcFob,'#ff9800'],['TTF',CP.fp.TTF,'#26c6da'],['JKM',CP.fp.JKM,'#ab47bc'],['DES NWE',d.des.nwe,'#26c6da'],['DES JKTC',d.des.jktc,'#ab47bc'],['Freight→Gate',CP.freight.sabine_rotterdam,'#546e7a'],['Freight→Tokyo',CP.freight.sabine_tokyo,'#546e7a']].map(([l,arr,c])=>`<tr><td style="color:#546e7a;font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v,3)}</td>`).join('')}</tr>`).join('')}
+    ${[['HH ($/MMBtu)',CP.fp.HH,'#c8d6e5'],['115% HH',ML.map((_,i)=>1.15*CP.fp.HH[i]),'#546e7a'],['FOB Cost',d.usgcFob,'#ff9800'],['TTF',CP.fp.TTF,'#26c6da'],['JKM',CP.fp.JKM,'#ab47bc'],['DES NWE',d.des.nwe,'#26c6da'],['DES JKTC',d.des.jktc,'#ab47bc'],['Freight→Gate',CP.freight.sabine_rotterdam,'#546e7a'],['Freight→Tokyo',CP.freight.sabine_tokyo,'#546e7a']].map(([l,arr,c])=>`<tr><td style="color:#546e7a;font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v,3)}</td>`).join('')}</tr>`).join('')}
     <tr style="border-top:1px solid #4fc3f7"><td style="color:#4fc3f7;font-weight:700">► Profit to Europe</td>${d.profEur.map((v,i)=>`<td class="tr" style="color:${posCol(v)};font-weight:${i===CP.selMonth?700:400}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
     <tr><td style="color:#4fc3f7;font-weight:700">► Profit to Asia</td>${d.profAsia.map((v,i)=>`<td class="tr" style="color:${posCol(v)};font-weight:${i===CP.selMonth?700:400}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
     <tr><td style="color:#ffeb3b;font-size:9px">Arb Pointing</td>${ML.map((_,i)=>{const p=d.profAsia[i]>d.profEur[i]?'ASIA':'EUROPE';return`<td class="tr" style="color:${p==='ASIA'?'#ab47bc':'#26c6da'};font-size:9px">${p}</td>`;}).join('')}</tr>
   </tbody></table></div>`;}
 function cpWAFArb(d){const orgs=[{label:'Angola',frGate:CP.freight.angola_gate,frTokyo:CP.freight.angola_tokyo,frDahej:CP.freight.angola_dahej},{label:'Nigeria',frGate:CP.freight.nigeria_gate,frTokyo:CP.freight.nigeria_tokyo,frDahej:CP.freight.nigeria_dahej}];
-  return`<div class="f-sec">WAF ARB — ANGOLA & NIGERIA · Pure FOB Netback</div>${cpIdxBtns()}${orgs.map(orig=>{const nbEur=ML.map((_,i)=>d.des.nwe[i]-orig.frGate[i]),nbAsia=ML.map((_,i)=>d.des.jktc[i]-orig.frTokyo[i]),nbMEI=ML.map((_,i)=>d.des.mei[i]-orig.frDahej[i]),diff=ML.map((_,i)=>nbAsia[i]-nbEur[i]);return`<div style="margin-bottom:20px"><div style="color:#4fc3f7;font-size:10px;letter-spacing:2px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #1e3a5f">${orig.label.toUpperCase()}</div><div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:160px">ITEM</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead><tbody>${[['Freight → Gate',orig.frGate,'#546e7a'],['Freight → Tokyo',orig.frTokyo,'#546e7a'],['Freight → Dahej',orig.frDahej,'#546e7a'],['DES NWE',d.des.nwe,'#26c6da'],['DES JKTC',d.des.jktc,'#ab47bc'],['DES MEI',d.des.mei,'#ff9800']].map(([l,arr,c])=>`<tr><td style="color:#546e7a;font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v)}</td>`).join('')}</tr>`).join('')}<tr style="border-top:1px solid #26c6da"><td style="color:#26c6da;font-weight:700">► Netback Europe</td>${nbEur.map(v=>`<td class="tr" style="color:#26c6da">${fv(v)}</td>`).join('')}</tr><tr><td style="color:#ab47bc;font-weight:700">► Netback Asia</td>${nbAsia.map(v=>`<td class="tr" style="color:#ab47bc">${fv(v)}</td>`).join('')}</tr><tr><td style="color:#ff9800;font-weight:700">► Netback MEI</td>${nbMEI.map(v=>`<td class="tr" style="color:#ff9800">${fv(v)}</td>`).join('')}</tr><tr style="border-top:1px solid #1e3a5f"><td style="color:#ffeb3b;font-size:9px">Arb Pointing</td>${diff.map(v=>`<td class="tr" style="color:${v>0?'#ab47bc':'#26c6da'};font-size:9px">${v>0?'ASIA':'EUROPE'}</td>`).join('')}</tr></tbody></table></div></div>`;}).join('')}`;}
+  return`<div class="f-sec">WAF ARB — ANGOLA & NIGERIA · FOB Netback</div>${cpIdxBtns()}${orgs.map(orig=>{const nbEur=ML.map((_,i)=>d.des.nwe[i]-orig.frGate[i]),nbAsia=ML.map((_,i)=>d.des.jktc[i]-orig.frTokyo[i]),nbMEI=ML.map((_,i)=>d.des.mei[i]-orig.frDahej[i]),diff=ML.map((_,i)=>nbAsia[i]-nbEur[i]);return`<div style="margin-bottom:20px"><div style="color:#4fc3f7;font-size:10px;letter-spacing:2px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #1e3a5f">${orig.label.toUpperCase()}</div><div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:160px">ITEM</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead><tbody>${[['Freight→Gate',orig.frGate,'#546e7a'],['Freight→Tokyo',orig.frTokyo,'#546e7a'],['Freight→Dahej',orig.frDahej,'#546e7a'],['DES NWE',d.des.nwe,'#26c6da'],['DES JKTC',d.des.jktc,'#ab47bc'],['DES MEI',d.des.mei,'#ff9800']].map(([l,arr,c])=>`<tr><td style="color:#546e7a;font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v)}</td>`).join('')}</tr>`).join('')}<tr style="border-top:1px solid #26c6da"><td style="color:#26c6da;font-weight:700">► Netback Europe</td>${nbEur.map(v=>`<td class="tr" style="color:#26c6da">${fv(v)}</td>`).join('')}</tr><tr><td style="color:#ab47bc;font-weight:700">► Netback Asia</td>${nbAsia.map(v=>`<td class="tr" style="color:#ab47bc">${fv(v)}</td>`).join('')}</tr><tr><td style="color:#ff9800;font-weight:700">► Netback MEI</td>${nbMEI.map(v=>`<td class="tr" style="color:#ff9800">${fv(v)}</td>`).join('')}</tr><tr style="border-top:1px solid #1e3a5f"><td style="color:#ffeb3b;font-size:9px">Arb Pointing</td>${diff.map(v=>`<td class="tr" style="color:${v>0?'#ab47bc':'#26c6da'};font-size:9px">${v>0?'ASIA':'EUROPE'}</td>`).join('')}</tr></tbody></table></div></div>`;}).join('')}`;}
 function cpOmanArb(d){const fr=CP.freight,nbEur=ML.map((_,i)=>d.des.nwe[i]-fr.oman_gate[i]),nbAsia=ML.map((_,i)=>d.des.jktc[i]-fr.oman_tokyo[i]),nbMEI=ML.map((_,i)=>d.des.mei[i]-fr.oman_dahej[i]),diff=ML.map((_,i)=>nbAsia[i]-nbEur[i]),m=CP.selMonth;
-  return`<div class="f-sec">OMAN ARB — FOB NETBACK</div>${cpIdxBtns()}<div class="f-gauto" style="margin-bottom:14px">${[['NETBACK EUROPE',nbEur[m],'#26c6da'],['NETBACK ASIA',nbAsia[m],'#ab47bc'],['NETBACK MEI',nbMEI[m],'#ff9800']].map(([l,v,c])=>`<div class="f-card"><div style="color:#546e7a;font-size:9px">${l} (${ML[m]})</div><div style="color:${c};font-size:16px;font-weight:700;margin-top:4px">${fv(v,4)}</div><div style="color:#546e7a;font-size:9px">$/Mmbtu</div></div>`).join('')}</div><div class="f-card" style="margin-bottom:14px">${cpLineChart([{label:'Netback Europe',color:'#26c6da',data:nbEur},{label:'Netback Asia',color:'#ab47bc',data:nbAsia},{label:'Netback MEI',color:'#ff9800',data:nbMEI}],ML,110)}</div>${cpMonthSel()}<div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:160px">ITEM</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead><tbody>${[['Freight → Gate',fr.oman_gate,'#546e7a'],['Freight → Tokyo',fr.oman_tokyo,'#546e7a'],['Freight → Dahej',fr.oman_dahej,'#546e7a'],['► Netback Europe',nbEur,'#26c6da'],['► Netback Asia',nbAsia,'#ab47bc'],['► Netback MEI',nbMEI,'#ff9800']].map(([l,arr,c])=>`<tr><td style="color:${c};font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v)}</td>`).join('')}</tr>`).join('')}<tr style="border-top:1px solid #1e3a5f"><td style="color:#ffeb3b;font-size:9px">Arb Pointing</td>${diff.map(v=>`<td class="tr" style="color:${v>0?'#ab47bc':'#26c6da'};font-size:9px">${v>0?'ASIA':'EUROPE'}</td>`).join('')}</tr></tbody></table></div>`;}
+  return`<div class="f-sec">OMAN ARB — FOB NETBACK</div>${cpIdxBtns()}<div class="f-gauto" style="margin-bottom:14px">${[['NETBACK EUROPE',nbEur[m],'#26c6da'],['NETBACK ASIA',nbAsia[m],'#ab47bc'],['NETBACK MEI',nbMEI[m],'#ff9800']].map(([l,v,c])=>`<div class="f-card"><div style="color:#546e7a;font-size:9px">${l} (${ML[m]})</div><div style="color:${c};font-size:16px;font-weight:700;margin-top:4px">${fv(v,4)}</div><div style="color:#546e7a;font-size:9px">$/MMBtu</div></div>`).join('')}</div><div class="f-card" style="margin-bottom:14px">${cpLineChart([{label:'Netback Europe',color:'#26c6da',data:nbEur},{label:'Netback Asia',color:'#ab47bc',data:nbAsia},{label:'Netback MEI',color:'#ff9800',data:nbMEI}],ML,110)}</div>${cpMonthSel()}<div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:160px">ITEM</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead><tbody>${[['Freight→Gate',fr.oman_gate,'#546e7a'],['Freight→Tokyo',fr.oman_tokyo,'#546e7a'],['Freight→Dahej',fr.oman_dahej,'#546e7a'],['► Netback Europe',nbEur,'#26c6da'],['► Netback Asia',nbAsia,'#ab47bc'],['► Netback MEI',nbMEI,'#ff9800']].map(([l,arr,c])=>`<tr><td style="color:${c};font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v)}</td>`).join('')}</tr>`).join('')}<tr style="border-top:1px solid #1e3a5f"><td style="color:#ffeb3b;font-size:9px">Arb Pointing</td>${diff.map(v=>`<td class="tr" style="color:${v>0?'#ab47bc':'#26c6da'};font-size:9px">${v>0?'ASIA':'EUROPE'}</td>`).join('')}</tr></tbody></table></div>`;}
 function cpIndia(d){const orgs=[{label:'Angola',frDahej:CP.freight.angola_dahej,frTokyo:CP.freight.angola_tokyo},{label:'Nigeria',frDahej:CP.freight.nigeria_dahej,frTokyo:CP.freight.nigeria_tokyo},{label:'Oman',frDahej:CP.freight.oman_dahej,frTokyo:CP.freight.oman_tokyo}];
-  return`<div class="f-sec">INDIA PRICING — DES India = JKM + Freight Differential (Dahej vs Tokyo)</div>${orgs.map(orig=>{const indiaDiff=ML.map((_,i)=>orig.frDahej[i]-orig.frTokyo[i]),desIndia=ML.map((_,i)=>CP.fp.JKM[i]+indiaDiff[i]);return`<div style="margin-bottom:20px"><div style="color:#4fc3f7;font-size:10px;letter-spacing:2px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #1e3a5f">${orig.label.toUpperCase()} → DAHEJ</div><div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:160px">ITEM</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead><tbody>${[['JKM ($/Mmbtu)',CP.fp.JKM,'#ab47bc'],['India Diff',indiaDiff,'#ff9800'],['Freight → Dahej',orig.frDahej,'#546e7a']].map(([l,arr,c])=>`<tr><td style="color:#546e7a;font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v)}</td>`).join('')}</tr>`).join('')}<tr style="border-top:1px solid #26c6da"><td style="color:#26c6da;font-weight:700">► DES Offer India</td>${desIndia.map(v=>`<td class="tr" style="color:#26c6da;font-weight:700">${fv(v)}</td>`).join('')}</tr></tbody></table></div></div>`;}).join('')}`;}
+  return`<div class="f-sec">INDIA PRICING — DES India = JKM + Freight Differential (Dahej vs Tokyo)</div>${orgs.map(orig=>{const indiaDiff=ML.map((_,i)=>orig.frDahej[i]-orig.frTokyo[i]),desIndia=ML.map((_,i)=>CP.fp.JKM[i]+indiaDiff[i]);return`<div style="margin-bottom:20px"><div style="color:#4fc3f7;font-size:10px;letter-spacing:2px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #1e3a5f">${orig.label.toUpperCase()} → DAHEJ</div><div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:160px">ITEM</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead><tbody>${[['JKM ($/MMBtu)',CP.fp.JKM,'#ab47bc'],['India Diff',indiaDiff,'#ff9800'],['Freight→Dahej',orig.frDahej,'#546e7a']].map(([l,arr,c])=>`<tr><td style="color:#546e7a;font-size:10px">${l}</td>${arr.map(v=>`<td class="tr" style="color:${c}">${fv(v)}</td>`).join('')}</tr>`).join('')}<tr style="border-top:1px solid #26c6da"><td style="color:#26c6da;font-weight:700">► DES Offer India</td>${desIndia.map(v=>`<td class="tr" style="color:#26c6da;font-weight:700">${fv(v)}</td>`).join('')}</tr></tbody></table></div></div>`;}).join('')}`;}
 function cpFOBNetback(d){const orgs=[{label:'Sabine Pass (USGC)',frGate:CP.freight.sabine_rotterdam,frTokyo:CP.freight.sabine_tokyo,frDahej:null},{label:'Angola',frGate:CP.freight.angola_gate,frTokyo:CP.freight.angola_tokyo,frDahej:CP.freight.angola_dahej},{label:'Nigeria',frGate:CP.freight.nigeria_gate,frTokyo:CP.freight.nigeria_tokyo,frDahej:CP.freight.nigeria_dahej},{label:'Oman',frGate:CP.freight.oman_gate,frTokyo:CP.freight.oman_tokyo,frDahej:CP.freight.oman_dahej}];const dests=[{label:'Gate Rotterdam',des:d.des.nwe,frKey:'frGate'},{label:'JKTC',des:d.des.jktc,frKey:'frTokyo'},{label:'DES MEI',des:d.des.mei,frKey:'frDahej'}];
   return`<div class="f-sec">FOB NETBACK MATRIX — ALL ORIGINS × DESTINATIONS</div>${cpIdxBtns()}${orgs.map(orig=>`<div style="margin-bottom:16px"><div style="color:#4fc3f7;font-size:10px;letter-spacing:1px;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid #1e3a5f">${orig.label}</div><div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:160px">DESTINATION</th>${ML.map(m=>`<th class="tr" style="min-width:52px">${m}</th>`).join('')}</tr></thead><tbody>${dests.map(dest=>{const frArr=orig[dest.frKey];if(!frArr)return'';const nb=ML.map((_,i)=>cpNetback(dest.des[i],frArr[i],i,d.usgcFob));const best=nb.reduce((bi,v,i)=>v!=null&&(nb[bi]==null||v>nb[bi])?i:bi,0);return`<tr><td style="font-size:10px">${dest.label}</td>${nb.map((v,i)=>`<td class="tr" style="color:${posCol(v)};font-weight:${i===best?700:400}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>`;}).join('')}</tbody></table></div></div>`).join('')}`;}
 function cpHistBasis(d){const snaps=CP.histSnaps,m=CP.selMonth;
@@ -1026,7 +1020,7 @@ function cpHistBasis(d){const snaps=CP.histSnaps,m=CP.selMonth;
       <div style="display:flex;align-items:flex-end;gap:8px"><div><span class="f-lbl">SNAPSHOT DATE</span><input class="f-inp" type="date" value="${CP.histSnapDate}" onchange="CP.histSnapDate=this.value"></div><button class="f-btn on" onclick="cpSaveHistSnap()">SAVE</button></div>
     </div>
     <div class="f-grid f-g2" style="gap:8px;margin-bottom:14px"><div class="f-card"><div style="color:#546e7a;font-size:9px;margin-bottom:4px">JKM/TTF SPREAD — ${ML[m]}</div><div style="color:#ffeb3b;font-size:18px;font-weight:700">${fv(d.jkmTtf[m],4)}</div></div><div class="f-card"><div style="color:#546e7a;font-size:9px;margin-bottom:4px">FREIGHT DIFF (GATE−TOKYO) — ${ML[m]}</div><div style="color:#ff9800;font-size:18px;font-weight:700">${fv(d.frDiff[m],4)}</div></div></div>
-    <div class="f-card" style="margin-bottom:14px"><div style="color:#546e7a;font-size:9px;margin-bottom:8px">FORWARD STRIP — SPREAD vs FREIGHT DIFF</div>${cpLineChart([{label:'JKM/TTF Spread',color:'#ffeb3b',data:d.jkmTtf},{label:'Fr Diff Gate/Tokyo',color:'#ff9800',data:d.frDiff},{label:'Net (Spd+FrΔ)',color:'#4caf50',data:ML.map((_,i)=>d.jkmTtf[i]+d.frDiff[i])}],ML,120)}</div>
+    <div class="f-card" style="margin-bottom:14px"><div style="color:#546e7a;font-size:9px;margin-bottom:8px">FORWARD STRIP</div>${cpLineChart([{label:'JKM/TTF Spread',color:'#ffeb3b',data:d.jkmTtf},{label:'Fr Diff Gate/Tokyo',color:'#ff9800',data:d.frDiff},{label:'Net (Spd+FrΔ)',color:'#4caf50',data:ML.map((_,i)=>d.jkmTtf[i]+d.frDiff[i])}],ML,120)}</div>
     ${snaps.length?`<div class="f-sec">SNAPSHOT HISTORY</div><table class="f-tbl"><thead><tr><th>DATE</th><th class="tr">JKM/TTF (${ML[m]})</th><th class="tr">FR DIFF (${ML[m]})</th></tr></thead><tbody>${snaps.map(s=>`<tr><td>${s.date}</td><td class="tr" style="color:#ffeb3b">${fv(s.spread[m],4)}</td><td class="tr" style="color:#ff9800">${fv(s.frDiff[m],4)}</td></tr>`).join('')}</tbody></table>`:'<div style="color:#546e7a;padding:20px;text-align:center">No snapshots yet. Save daily snapshots to build your historical basis database.</div>'}`;
 }
 function cpSetPhys(k,i,v){CP.phys[k][i]=+v;cpSet('cp_phys',CP.phys);renderCargoTab();}
@@ -1034,16 +1028,9 @@ function cpSetLiqFee(v){CP.liqFee=Array(24).fill(+v);cpSet('cp_liqfee',CP.liqFee
 function cpSaveHistSnap(){const d=cpDerived();const snap={date:CP.histSnapDate,frDiff:[...d.frDiff],spread:[...d.jkmTtf]};const updated=[snap,...CP.histSnaps.filter(s=>s.date!==CP.histSnapDate)].slice(0,90);CP.histSnaps=updated;cpSet('cp_hist_snaps',updated);renderCargoTab();}
 
 // ══ ANALYTICS ENGINE ══
-// ── Safari-compatible ArrayBuffer helper ──
 async function toAB(src){
-  // File/Blob: use arrayBuffer() if available, else FileReader
-  if(src instanceof Blob){
-    if(typeof src.arrayBuffer==='function') return src.arrayBuffer();
-    return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsArrayBuffer(src);});
-  }
-  // fetch Response: blob first (Safari-safe), then read
-  const blob=await src.blob();
-  if(typeof blob.arrayBuffer==='function') return blob.arrayBuffer();
+  if(src instanceof Blob){if(typeof src.arrayBuffer==='function')return src.arrayBuffer();return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsArrayBuffer(src);});}
+  const blob=await src.blob();if(typeof blob.arrayBuffer==='function')return blob.arrayBuffer();
   return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsArrayBuffer(blob);});
 }
 const MA=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1055,7 +1042,7 @@ const CI=['JKM','TTF','HH','NBP','Brent','Dated'];
 const CN={BRENT:['BRT SW','Brent SW'],TTF:['TTF FT','TTF'],EURUSD:['EUR USD','EURUSD'],GBPUSD:['GBP USD','GBPUSD'],NBP:['NBP FT','NBP'],HH:['HHUB FT','HH'],DATED:['Outright Dated','Dated Brent'],JKM:['JKM'],SLOPE:['Brent JKM','Slope']};
 const aD={};let sDates=[];
 let hChart=null,rc10=null,rc20=null,rc30=null,fcChart=null,seaChart=null,spChart=null,spLegsChart=null,gasChart=null;
-const $=id=>document.getElementById(id);
+const $id=id=>document.getElementById(id);
 function getPK(v){let d=null;if(v instanceof Date)d=v;else if(typeof v==='number'&&v>40000&&v<70000)d=new Date(Math.round((v-25569)*86400)*1000);else return null;const y=d.getUTCFullYear(),m=d.getUTCMonth();if(y<2020||y>2040)return null;return`${y}-${String(m+1).padStart(2,'0')}`;}
 function toNum(v){if(typeof v==='number'&&isFinite(v))return v;if(v instanceof Date){const s=(v.getTime()-new Date(Date.UTC(1899,11,30)).getTime())/86400000;if(s>0.3&&s<20)return+s.toFixed(6);}return null;}
 function toStr(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
@@ -1065,14 +1052,14 @@ function fCol2(hdrs,cands){for(const c of cands){const i=hdrs.findIndex(h=>h&&St
 function pDFN(name){let m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{4})/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{2})(?!\d)/);if(m){const yy=+m[3];return new Date(yy>=50?1900+yy:2000+yy,+m[2]-1,+m[1]);}return null;}
 function gSeaP(){const pks=aPKs();const years=[...new Set(pks.map(pk=>pk.split('-')[0]))];const out=[];years.forEach(y=>{out.push({v:'win-'+y,l:'Win-'+String(y).slice(2),months:[10,11,12,1,2,3],y:+y,type:'seasonal'});out.push({v:'sum-'+y,l:'Sum-'+String(y).slice(2),months:[4,5,6,7,8,9],y:+y,type:'seasonal'});['q1','q2','q3','q4'].forEach((q,qi)=>{const mths=[[1,2,3],[4,5,6],[7,8,9],[10,11,12]][qi];out.push({v:`${q}-${y}`,l:`${q.toUpperCase()}-${String(y).slice(2)}`,months:mths,y:+y,type:'quarterly'});});});return out;}
 function gAgg(inst,t,rows){const vals=[];t.months.forEach(m=>{const yr=(m<=3&&t.months.includes(12))?t.y+1:t.y;const pk=`${yr}-${String(m).padStart(2,'0')}`;const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)vals.push(row[inst]);});if(!vals.length)return null;return vals.reduce((a,b)=>a+b,0)/vals.length;}
-function pExcel(buf){const wb=XLSX.read(buf,{type:'array',cellDates:true});let ws=wb.Sheets['EXCEL PASTE'];if(!ws){const m=wb.SheetNames.find(n=>n.replace(/\s/g,'').toUpperCase()==='EXCELPASTE');if(m)ws=wb.Sheets[m];}if(!ws){for(const n of wb.SheetNames){const d=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:null,raw:false});if(d.slice(0,10).some(r=>r&&String(r[0]).trim()==='Period')){ws=wb.Sheets[n];break;}}}if(!ws)return[];const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});let hdr=-1;for(let i=0;i<Math.min(data.length,15);i++){const row=data[i];if(!row)continue;const c0=row[0]!=null?String(row[0]).trim():'';if(c0==='Period'||row.some(v=>v!=null&&String(v).trim()==='BRT SW')){hdr=i;break;}}if(hdr===-1)return[];const hdrs=data[hdr].map(h=>h?String(h).trim():'');const C={};for(const[k,c]of Object.entries(CN))C[k]=fCol2(hdrs,c);const rows=[];let nulls=0;for(let i=hdr+6;i<data.length;i++){const r=data[i];if(!r||r[0]==null){if(++nulls>8)break;continue;}nulls=0;const pk=getPK(r[0]);if(!pk)continue;const eu=(C.EURUSD>=0?toNum(r[C.EURUSD]):null)||1.15,gb=(C.GBPUSD>=0?toNum(r[C.GBPUSD]):null)||1.28;const g=k=>C[k]>=0?toNum(r[C[k]]):null;const ttfR=g('TTF'),nbpR=g('NBP'),jkm=g('JKM'),hh=g('HH'),brent=g('BRENT'),dated=g('DATED'),slope=g('SLOPE');const ttf=ttfR!=null?+(ttfR*0.293071*eu).toFixed(4):null,nbp=nbpR!=null?+(nbpR/10*gb).toFixed(4):null;rows.push({pk,JKM:jkm,TTF:ttf,HH:hh,NBP:nbp,Brent:brent,Dated:dated,Slope:slope,SP_JT:(jkm!=null&&ttf!=null)?+(jkm-ttf).toFixed(4):null,SP_JH:(jkm!=null&&hh!=null)?+(jkm-hh).toFixed(4):null,SP_TH:(ttf!=null&&hh!=null)?+(ttf-hh).toFixed(4):null});}return rows;}
+function pExcel(buf){const wb=XLSX.read(buf,{type:'array',cellDates:true});let ws=wb.Sheets['EXCEL PASTE'];if(!ws){const mn=wb.SheetNames.find(n=>n.replace(/\s/g,'').toUpperCase()==='EXCELPASTE');if(mn)ws=wb.Sheets[mn];}if(!ws){for(const n of wb.SheetNames){const d=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:null,raw:false});if(d.slice(0,10).some(r=>r&&String(r[0]).trim()==='Period')){ws=wb.Sheets[n];break;}}}if(!ws)return[];const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});let hdr=-1;for(let i=0;i<Math.min(data.length,15);i++){const row=data[i];if(!row)continue;const c0=row[0]!=null?String(row[0]).trim():'';if(c0==='Period'||row.some(v=>v!=null&&String(v).trim()==='BRT SW')){hdr=i;break;}}if(hdr===-1)return[];const hdrs=data[hdr].map(h=>h?String(h).trim():'');const C={};for(const[k,c]of Object.entries(CN))C[k]=fCol2(hdrs,c);const rows=[];let nulls=0;for(let i=hdr+6;i<data.length;i++){const r=data[i];if(!r||r[0]==null){if(++nulls>8)break;continue;}nulls=0;const pk=getPK(r[0]);if(!pk)continue;const eu=(C.EURUSD>=0?toNum(r[C.EURUSD]):null)||1.15,gb=(C.GBPUSD>=0?toNum(r[C.GBPUSD]):null)||1.28;const g=k=>C[k]>=0?toNum(r[C[k]]):null;const ttfR=g('TTF'),nbpR=g('NBP'),jkm=g('JKM'),hh=g('HH'),brent=g('BRENT'),dated=g('DATED'),slope=g('SLOPE');const ttf=ttfR!=null?+(ttfR*0.293071*eu).toFixed(4):null,nbp=nbpR!=null?+(nbpR/10*gb).toFixed(4):null;rows.push({pk,JKM:jkm,TTF:ttf,HH:hh,NBP:nbp,Brent:brent,Dated:dated,Slope:slope,SP_JT:(jkm!=null&&ttf!=null)?+(jkm-ttf).toFixed(4):null,SP_JH:(jkm!=null&&hh!=null)?+(jkm-hh).toFixed(4):null,SP_TH:(ttf!=null&&hh!=null)?+(ttf-hh).toFixed(4):null});}return rows;}
 function sCache(){try{const p={};for(const[k,v]of Object.entries(aD))p[k]={date:v.date.toISOString(),rows:v.rows};localStorage.setItem(CK,JSON.stringify(p));}catch(e){}}
 function lCache(){try{const raw=localStorage.getItem(CK);if(!raw)return false;const p=JSON.parse(raw);for(const[k,v]of Object.entries(p))aD[k]={date:new Date(v.date),rows:v.rows};sDates=Object.keys(aD).sort();return sDates.length>0;}catch(e){localStorage.removeItem(CK);return false;}}
 function clearCache(){if(confirm('Clear cache and reload?')){localStorage.removeItem(CK);location.reload();}}
-function setupDrop(){const dz=$('dz'),fi=$('fileInput');if(!dz||!fi)return;dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFiles([...e.dataTransfer.files],false);});dz.addEventListener('click',e=>{if(!e.target.classList.contains('dz-btn'))fi.click();});fi.addEventListener('change',()=>{if(fi.files.length)handleFiles([...fi.files],false);});}
-function plog(msg,warn=false){const el=$('parselog');if(!el)return;el.style.display='block';el.innerHTML+=`<div style="color:${warn?'#ef4444':'#3d5070'}">${msg}</div>`;el.scrollTop=el.scrollHeight;}
-async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.match(/\.xlsx?$/i));if(!xl.length){alert('No Excel files found.');return;}if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of xl){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}      try{const buf=await toAB(file);if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$('progfill');if(pf)pf.style.width=Math.round(done/xl.length*100)+'%';const pt=$('progtxt2');if(pt)pt.textContent=`${done}/${xl.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
-function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($('h-t1'),true);bTS($('h-t2'),true);bTS($('rc-t1'),true);bTS($('rc-t2'),true);bDS($('fc-d1'));bDS($('fc-d2'),true);bIS($('sp-i1'));$('sp-i1').value='JKM';bIS($('sp-i2'));$('sp-i2').value='TTF';bTS($('sp-t1'),true);bTS($('sp-t2'),true);buildDash();updHist();updRC2();updSpread();updFC();updSea();}
+function setupDrop(){const dz=$id('dz'),fi=$id('fileInput');if(!dz||!fi)return;dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFiles([...e.dataTransfer.files],false);});dz.addEventListener('click',e=>{if(!e.target.classList.contains('dz-btn'))fi.click();});fi.addEventListener('change',()=>{if(fi.files.length)handleFiles([...fi.files],false);});}
+function plog(msg,warn=false){const el=$id('parselog');if(!el)return;el.style.display='block';el.innerHTML+=`<div style="color:${warn?'#ef4444':'#3d5070'}">${msg}</div>`;el.scrollTop=el.scrollHeight;}
+async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.match(/\.xlsx?$/i));if(!xl.length){alert('No Excel files found.');return;}if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$id('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of xl){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}try{const buf=await toAB(file);if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$id('progfill2');if(pf)pf.style.width=Math.round(done/xl.length*100)+'%';const pt=$id('progtxt2');if(pt)pt.textContent=`${done}/${xl.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
+function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($id('h-t1'),true);bTS($id('h-t2'),true);bTS($id('rc-t1'),true);bTS($id('rc-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();updHist();updRC2();updSpread();updFC();updSea();}
 function rPK(d,t){const r=new Date(d.getFullYear(),d.getMonth()+parseInt(t),1);return`${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}`;}
 function aPKs(){const s=new Set();for(const ds of sDates)aD[ds].rows.forEach(r=>s.add(r.pk));return[...s].sort();}
 function gSR(inst,t){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const pk=rPK(date,t);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
@@ -1090,45 +1077,670 @@ function bIS(el,keys=null,wN=false){el.innerHTML=wN?'<option value="none">— No
 function bCS(el){el.innerHTML='';CI.forEach(k=>el.innerHTML+=`<option value="${k}">${INST[k].label}</option>`);}
 function bTS(el,wS=false){el.innerHTML='';[{v:'r1',l:'M+1'},{v:'r2',l:'M+2'},{v:'r3',l:'M+3'},{v:'r6',l:'M+6'}].forEach(o=>el.innerHTML+=`<option value="${o.v}">${o.l}</option>`);el.innerHTML+='<option disabled>── Monthly ──</option>';aPKs().forEach(pk=>el.innerHTML+=`<option value="${pk}">${pkL(pk)}</option>`);if(wS){el.innerHTML+='<option disabled>── Seasonal ──</option>';gSeaP().filter(s=>s.type==='seasonal').forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);el.innerHTML+='<option disabled>── Quarterly ──</option>';gSeaP().filter(s=>s.type==='quarterly').forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);}}
 function bDS(el,wN=false){el.innerHTML=wN?'<option value="none">— None —</option>':'';for(const ds of[...sDates].reverse())el.innerHTML+=`<option value="${ds}">${fmtD(ds)}</option>`;}
-function updStatus(){$('sbar').style.display='flex';$('stext').textContent=`${sDates.length} DATES — ${fmtD(sDates[0])} → ${fmtD(sDates[sDates.length-1])}`;}
-function initUI(){updStatus();bIS($('h-i1'));bIS($('h-i2'),null,true);$('h-i2').value='TTF';bCS($('rc-i1'));bCS($('rc-i2'));$('rc-i2').value='TTF';bIS($('fc-i'));bIS($('sea-i'));bTS($('h-t1'),true);bTS($('h-t2'),true);bTS($('rc-t1'),true);bTS($('rc-t2'),true);bDS($('fc-d1'));bDS($('fc-d2'),true);bIS($('sp-i1'));$('sp-i1').value='JKM';bIS($('sp-i2'));$('sp-i2').value='TTF';bTS($('sp-t1'),true);bTS($('sp-t2'),true);buildDash();updHist();updRC2();updSpread();updFC();updSea();}
-function buildDash(){if(sDates.length<2)return;const ld=sDates[sDates.length-1],pd=sDates[sDates.length-2],lR=aD[ld].rows,pR=aD[pd].rows,m1=rPK(aD[ld].date,1);const mg=$('dash-metrics');if(!mg)return;mg.innerHTML='';INSTS.forEach(inst=>{const lv=lR.find(r=>r.pk===m1)?.[inst.k]??null,pv=pR.find(r=>r.pk===m1)?.[inst.k]??null,chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null,pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null,cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼',dp=inst.unit==='$/bbl'?2:3;mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;});buildGasSnapshot();const ck=CI,cs={};ck.forEach(k=>cs[k]=gSF(k,m1));let cm=`<table class="ctbl"><thead><tr><th></th>${ck.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;ck.forEach(a=>{cm+=`<tr><th style="text-align:left">${INST[a].label}</th>`;ck.forEach(b=>{if(a===b){cm+=`<td style="background:#151e30;color:#5a6882">1.00</td>`;return;}const{v1,v2}=al2(cs[a],cs[b]),r=pear(lRet(v1),lRet(v2));if(isNaN(r)){cm+=`<td style="color:#1e2d45">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;cm+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'}">${r.toFixed(2)}</td>`;});cm+=`</tr>`;});const dc=$('dash-corr');if(dc)dc.innerHTML=cm+'</tbody></table>';const keys=['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH'],pks=lR.map(r=>r.pk).slice(0,12);let dod=`<table class="stbl" style="font-size:10px"><thead><tr><th>Contract</th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;for(const pk of pks){const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);dod+=`<tr><td>${pkL(pk)}</td>${keys.map(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null,d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null,dp=(k==='Brent'||k==='Dated')?2:3;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;}).join('')}</tr>`;}const dd=$('dash-dod');if(dd)dd.innerHTML=dod+'</tbody></table>';}
-function buildGasSnapshot(){const canvas=$('gas-snapshot-chart');if(!canvas||!sDates.length)return;const lbls=sDates.map(ds=>aD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));const serDefs=[{label:'TTF',color:'#4fc3f7',fn:row=>row.TTF},{label:'JKM',color:'#81c784',fn:row=>row.JKM},{label:'NBP',color:'#ffb74d',fn:row=>row.NBP},{label:'115% HH',color:'#f48fb1',fn:row=>row.HH!=null?+(row.HH*1.15).toFixed(4):null},{label:'14% Oil',color:'#ef5350',fn:row=>row.Brent!=null?+(row.Brent*0.14).toFixed(4):null},{label:'11% Oil',color:'#ce93d8',fn:row=>row.Brent!=null?+(row.Brent*0.11).toFixed(4):null}];const datasets=serDefs.map(s=>({label:s.label,data:sDates.map(ds=>{const{date,rows}=aD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?s.fn(row):null;}),borderColor:s.color,backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true}));if(gasChart)gasChart.destroy();gasChart=new Chart(canvas,{type:'line',data:{labels:lbls,datasets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:20}},y:{title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});}
-function updHist(){const i1=$('h-i1').value,t1=$('h-t1').value,i2=$('h-i2').value,t2=$('h-t2').value,has2=i2!=='none',s1=gS(i1,t1),s2=has2?gS(i2,t2):null;if(!s1.length)return;const u1=INST[i1].unit,u2=has2?INST[i2].unit:null,dual=has2&&u1!==u2,lbls=s1.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),ds=[{label:`${INST[i1].label} ${tvL(t1)}`,data:s1.map(d=>+d.value.toFixed(4)),borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:'y'}];if(has2&&s2){const m2=new Map(s2.map(d=>[toStr(d.date),d.value]));ds.push({label:`${INST[i2].label} ${tvL(t2)}`,data:s1.map(d=>{const v=m2.get(toStr(d.date));return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:dual?'y1':'y'});}const scales={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};if(dual)scales.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};if(hChart)hChart.destroy();const hc=$('hChart');if(hc)hChart=new Chart(hc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales}});bStats(t1);}
-function bStats(tv){const st=$('stats-title');if(st)st.textContent='STATISTICS — '+tvL(tv);let html=`<thead><tr><th>Instrument</th><th>Current</th><th>Mean</th><th>Std Dev</th><th>Min</th><th>Max</th><th>N</th><th>Unit</th></tr></thead><tbody>`;INSTS.forEach(inst=>{const s=gS(inst.k,tv);if(!s.length){html+=`<tr><td>${inst.label}</td><td colspan="7" style="color:#3d5070">No data</td></tr>`;return;}const vals=s.map(d=>d.value),cur=vals[vals.length-1],mn=vals.reduce((a,b)=>a+b,0)/vals.length,std=Math.sqrt(vals.reduce((s,v)=>s+(v-mn)**2,0)/vals.length),dp=inst.unit==='$/bbl'?2:3;html+=`<tr><td>${inst.label}</td><td style="color:#c8cfe0">${cur.toFixed(dp)}</td><td>${mn.toFixed(dp)}</td><td>${std.toFixed(dp)}</td><td>${Math.min(...vals).toFixed(dp)}</td><td>${Math.max(...vals).toFixed(dp)}</td><td style="color:#3d5070">${vals.length}</td><td style="color:#3d5070;font-size:9px">${inst.unit}</td></tr>`;});const st2=$('statsTable');if(st2)st2.innerHTML=html+'</tbody>';}
-function updRC2(){const i1=$('rc-i1').value,t1=$('rc-t1').value,i2=$('rc-i2').value,t2=$('rc-t2').value,s1=gS(i1,t1),s2=gS(i2,t2),lbl=`${INST[i1].label} ${tvL(t1)} vs ${INST[i2].label} ${tvL(t2)}`;if(rc10)rc10.destroy();if(rc20)rc20.destroy();if(rc30)rc30.destroy();rc10=mkRC('rc10Chart',10,rCorr(s1,s2,10),lbl);rc20=mkRC('rc20Chart',20,rCorr(s1,s2,20),lbl);rc30=mkRC('rc30Chart',30,rCorr(s1,s2,30),lbl);bCM(t1);}
-function bCM(tv){const keys=CI,cm_el=$('cmat-title');if(cm_el)cm_el.textContent='FULL CORRELATION MATRIX — LOG RETURNS · '+tvL(tv);const ser={};keys.forEach(k=>ser[k]=gS(k,tv));let html=`<thead><tr><th></th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;keys.forEach(a=>{html+=`<tr><th style="text-align:left;font-size:9px">${INST[a].label}</th>`;keys.forEach(b=>{if(a===b){html+=`<td style="background:#151e30;color:#5a6882">1.00</td>`;return;}const{v1,v2}=al2(ser[a],ser[b]),r=pear(lRet(v1),lRet(v2));if(isNaN(r)){html+=`<td style="color:#1e2d45">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;html+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'}">${r.toFixed(2)}</td>`;});html+=`</tr>`;});const cm=$('corrMat');if(cm)cm.innerHTML=html+'</tbody>';}
-function updFC(){if(!sDates.length)return;const inst=$('fc-i').value,d1=$('fc-d1').value,d2=$('fc-d2').value;if(!d1||!aD[d1])return;const unit=INST[inst].unit,rows1=aD[d1].rows,lbls=rows1.map(r=>pkL(r.pk)),v1=rows1.map(r=>r[inst]!=null?+r[inst].toFixed(4):null),fct=$('fc-title');if(fct)fct.textContent=INST[inst].label+' FORWARD CURVE — '+fmtD(d1);const ds=[{label:fmtD(d1),data:v1,borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.08)',borderWidth:2,pointRadius:3.5,tension:.3,fill:false}];if(d2!=='none'&&aD[d2]){const m2=new Map(aD[d2].rows.map(r=>[r.pk,r[inst]]));ds.push({label:fmtD(d2),data:rows1.map(r=>{const v=m2.get(r.pk);return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',borderDash:[6,4],borderWidth:2,pointRadius:3,tension:.3,fill:false});}if(fcChart)fcChart.destroy();const fcc=$('fcChart');if(fcc)fcChart=new Chart(fcc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:24}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});const valid=v1.filter(v=>v!=null);if(valid.length){const fr=valid[0],bk=valid[valid.length-1],sp=bk-fr,mn=Math.min(...valid),mx=Math.max(...valid),avg=valid.reduce((a,b)=>a+b,0)/valid.length,shape=Math.abs(sp)<0.05?'FLAT':sp>0?'CONTANGO':'BACKWARDATION',sc=shape==='CONTANGO'?'#22c55e':shape==='BACKWARDATION'?'#ef4444':'#5a6882',fcs=$('fc-stats');if(fcs)fcs.innerHTML=`<div class="mc"><div class="mc-name">FRONT</div><div class="mc-val" style="font-size:16px">${fr.toFixed(3)}</div></div><div class="mc"><div class="mc-name">BACK</div><div class="mc-val" style="font-size:16px">${bk.toFixed(3)}</div></div><div class="mc"><div class="mc-name">F-B SPREAD</div><div class="mc-val ${sp>=0?'pos':'neg'}" style="font-size:16px">${sp>=0?'+':''}${sp.toFixed(3)}</div></div><div class="mc"><div class="mc-name">SHAPE</div><div class="mc-val" style="color:${sc};font-size:13px">${shape}</div></div><div class="mc"><div class="mc-name">MIN</div><div class="mc-val" style="font-size:16px">${mn.toFixed(3)}</div></div><div class="mc"><div class="mc-name">MAX</div><div class="mc-val" style="font-size:16px">${mx.toFixed(3)}</div></div><div class="mc"><div class="mc-name">AVERAGE</div><div class="mc-val" style="font-size:16px">${avg.toFixed(3)}</div></div>`;}}
-function updSea(){if(!sDates.length)return;const inst=$('sea-i').value,type=$('sea-type').value,unit=INST[inst].unit,st=$('sea-title');if(st)st.textContent=INST[inst].label+' — SEASONAL · YEAR OVER YEAR ('+unit+')';const yd={};if(type==='fwd'){const lat=sDates[sDates.length-1];aD[lat].rows.forEach(r=>{const[y,m]=r.pk.split('-');if(!yd[+y])yd[+y]={};if(r[inst]!=null)yd[+y][+m-1]=r[inst];});}else{sDates.forEach(ds=>{const{date,rows}=aD[ds],yr=date.getFullYear(),mo=date.getMonth(),pk=rPK(date,1),row=rows.find(r=>r.pk===pk);if(!row||row[inst]==null)return;if(!yd[yr])yd[yr]={};if(yd[yr][mo]===undefined)yd[yr][mo]=row[inst];});}const years=Object.keys(yd).map(Number).sort(),dsets=years.map((yr,idx)=>({label:String(yr),data:MA.map((_,mo)=>yd[yr][mo]!==undefined?+yd[yr][mo].toFixed(4):null),borderColor:SC[idx%SC.length],backgroundColor:'transparent',borderWidth:2,pointRadius:4,tension:.3,spanGaps:false}));if(seaChart)seaChart.destroy();const sc=$('seaChart');if(sc)seaChart=new Chart(sc.getContext('2d'),{type:'line',data:{labels:MA,datasets:dsets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});let tbl=`<thead><tr><th>Month</th>${years.map(y=>`<th>${y}</th>`).join('')}${years.slice(0,-1).map((y,i)=>`<th>${y}→${years[i+1]}</th>`).join('')}</tr></thead><tbody>`;MA.forEach((m,mo)=>{tbl+=`<tr><td>${m}</td>${years.map(yr=>`<td>${yd[yr][mo]!==undefined?yd[yr][mo].toFixed(3):'—'}</td>`).join('')}`;for(let i=0;i<years.length-1;i++){const a=yd[years[i]][mo],b=yd[years[i+1]][mo];tbl+=a!==undefined&&b!==undefined?`<td class="${b-a>=0?'pos':'neg'}">${b-a>=0?'+':''}${(b-a).toFixed(3)}</td>`:`<td style="color:#3d5070">—</td>`;}tbl+=`</tr>`;});const st2=$('sea-tbl');if(st2)st2.innerHTML=tbl+'</tbody>';}
-function updSpread(){const i1=$('sp-i1').value,t1=$('sp-t1').value,i2=$('sp-i2').value,t2=$('sp-t2').value;if(!i1||!i2||!t1||!t2)return;const s1=gS(i1,t1),s2=gS(i2,t2);if(!s1.length||!s2.length)return;const u1=INST[i1].unit,u2=INST[i2].unit,lbl1=INST[i1].label+' '+tvL(t1),lbl2=INST[i2].label+' '+tvL(t2),sU=(u1===u2)?u1:'mixed units',m2=new Map(s2.map(d=>[toStr(d.date),d.value])),aligned=[];s1.forEach(d=>{const v2=m2.get(toStr(d.date));if(v2!=null)aligned.push({date:d.date,v1:d.value,v2,spread:+(d.value-v2).toFixed(4)});});if(!aligned.length)return;const lbls=aligned.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),spreads=aligned.map(d=>d.spread),spt=$('sp-title');if(spt)spt.textContent=lbl1+' MINUS '+lbl2+' ('+sU+')';if(spChart)spChart.destroy();const sp=$('spChart');if(sp)spChart=new Chart(sp.getContext('2d'),{type:'bar',data:{labels:lbls,datasets:[{label:'Spread ('+sU+')',data:spreads,backgroundColor:spreads.map(v=>v>=0?'rgba(45,124,255,0.7)':'rgba(239,68,68,0.7)'),borderWidth:0,borderRadius:1}]},options:{...CD,plugins:{...CD.plugins,legend:{display:false}},scales:{x:CD.scales.x,y:{title:{display:true,text:sU,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});const dualL=u1!==u2,sL={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#2d7cff',font:{size:9}},ticks:{color:'#2d7cff',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};if(dualL)sL.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};if(spLegsChart)spLegsChart.destroy();const slc=$('spLegsChart');if(slc)spLegsChart=new Chart(slc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:[{label:lbl1,data:aligned.map(d=>+d.v1.toFixed(4)),borderColor:'#2d7cff',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:'y'},{label:lbl2,data:aligned.map(d=>+d.v2.toFixed(4)),borderColor:'#f59e0b',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:dualL?'y1':'y'}]},options:{...CD,scales:sL}});}
+function updStatus(){$id('sbar').style.display='flex';$id('stext').textContent=`${sDates.length} DATES — ${fmtD(sDates[0])} → ${fmtD(sDates[sDates.length-1])}`;}
+function initUI(){updStatus();bIS($id('h-i1'));bIS($id('h-i2'),null,true);$id('h-i2').value='TTF';bCS($id('rc-i1'));bCS($id('rc-i2'));$id('rc-i2').value='TTF';bIS($id('fc-i'));bIS($id('sea-i'));bTS($id('h-t1'),true);bTS($id('h-t2'),true);bTS($id('rc-t1'),true);bTS($id('rc-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();updHist();updRC2();updSpread();updFC();updSea();}
+function buildDash(){if(sDates.length<2)return;const ld=sDates[sDates.length-1],pd=sDates[sDates.length-2],lR=aD[ld].rows,pR=aD[pd].rows,m1=rPK(aD[ld].date,1);const mg=$id('dash-metrics');if(!mg)return;mg.innerHTML='';INSTS.forEach(inst=>{const lv=lR.find(r=>r.pk===m1)?.[inst.k]??null,pv=pR.find(r=>r.pk===m1)?.[inst.k]??null,chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null,pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null,cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼',dp=inst.unit==='$/bbl'?2:3;mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;});buildGasSnapshot();const ck=CI,cs={};ck.forEach(k=>cs[k]=gSF(k,m1));let cm=`<table class="ctbl"><thead><tr><th></th>${ck.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;ck.forEach(a=>{cm+=`<tr><th style="text-align:left">${INST[a].label}</th>`;ck.forEach(b=>{if(a===b){cm+=`<td style="background:#151e30;color:#5a6882">1.00</td>`;return;}const{v1,v2}=al2(cs[a],cs[b]),r=pear(lRet(v1),lRet(v2));if(isNaN(r)){cm+=`<td style="color:#1e2d45">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;cm+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'}">${r.toFixed(2)}</td>`;});cm+=`</tr>`;});const dc=$id('dash-corr');if(dc)dc.innerHTML=cm+'</tbody></table>';const keys=['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH'],pks=lR.map(r=>r.pk).slice(0,12);let dod=`<table class="stbl" style="font-size:10px"><thead><tr><th>Contract</th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;for(const pk of pks){const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);dod+=`<tr><td>${pkL(pk)}</td>${keys.map(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null,d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null,dp=(k==='Brent'||k==='Dated')?2:3;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;}).join('')}</tr>`;}const dd=$id('dash-dod');if(dd)dd.innerHTML=dod+'</tbody></table>';}
+function buildGasSnapshot(){const canvas=$id('gas-snapshot-chart');if(!canvas||!sDates.length)return;const lbls=sDates.map(ds=>aD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));const serDefs=[{label:'TTF',color:'#4fc3f7',fn:row=>row.TTF},{label:'JKM',color:'#81c784',fn:row=>row.JKM},{label:'NBP',color:'#ffb74d',fn:row=>row.NBP},{label:'115% HH',color:'#f48fb1',fn:row=>row.HH!=null?+(row.HH*1.15).toFixed(4):null},{label:'14% Oil',color:'#ef5350',fn:row=>row.Brent!=null?+(row.Brent*0.14).toFixed(4):null},{label:'11% Oil',color:'#ce93d8',fn:row=>row.Brent!=null?+(row.Brent*0.11).toFixed(4):null}];const datasets=serDefs.map(s=>({label:s.label,data:sDates.map(ds=>{const{date,rows}=aD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?s.fn(row):null;}),borderColor:s.color,backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true}));if(gasChart)gasChart.destroy();gasChart=new Chart(canvas,{type:'line',data:{labels:lbls,datasets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:20}},y:{title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});}
+function updHist(){const i1=$id('h-i1').value,t1=$id('h-t1').value,i2=$id('h-i2').value,t2=$id('h-t2').value,has2=i2!=='none',s1=gS(i1,t1),s2=has2?gS(i2,t2):null;if(!s1.length)return;const u1=INST[i1].unit,u2=has2?INST[i2].unit:null,dual=has2&&u1!==u2,lbls=s1.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),ds=[{label:`${INST[i1].label} ${tvL(t1)}`,data:s1.map(d=>+d.value.toFixed(4)),borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:'y'}];if(has2&&s2){const m2=new Map(s2.map(d=>[toStr(d.date),d.value]));ds.push({label:`${INST[i2].label} ${tvL(t2)}`,data:s1.map(d=>{const v=m2.get(toStr(d.date));return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:dual?'y1':'y'});}const scales={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};if(dual)scales.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};if(hChart)hChart.destroy();const hc=$id('hChart');if(hc)hChart=new Chart(hc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales}});bStats(t1);}
+function bStats(tv){const st=$id('stats-title');if(st)st.textContent='STATISTICS — '+tvL(tv);let html=`<thead><tr><th>Instrument</th><th>Current</th><th>Mean</th><th>Std Dev</th><th>Min</th><th>Max</th><th>N</th><th>Unit</th></tr></thead><tbody>`;INSTS.forEach(inst=>{const s=gS(inst.k,tv);if(!s.length){html+=`<tr><td>${inst.label}</td><td colspan="7" style="color:#3d5070">No data</td></tr>`;return;}const vals=s.map(d=>d.value),cur=vals[vals.length-1],mn=vals.reduce((a,b)=>a+b,0)/vals.length,std=Math.sqrt(vals.reduce((s,v)=>s+(v-mn)**2,0)/vals.length),dp=inst.unit==='$/bbl'?2:3;html+=`<tr><td>${inst.label}</td><td style="color:#c8cfe0">${cur.toFixed(dp)}</td><td>${mn.toFixed(dp)}</td><td>${std.toFixed(dp)}</td><td>${Math.min(...vals).toFixed(dp)}</td><td>${Math.max(...vals).toFixed(dp)}</td><td style="color:#3d5070">${vals.length}</td><td style="color:#3d5070;font-size:9px">${inst.unit}</td></tr>`;});const st2=$id('statsTable');if(st2)st2.innerHTML=html+'</tbody>';}
+function updRC2(){const i1=$id('rc-i1').value,t1=$id('rc-t1').value,i2=$id('rc-i2').value,t2=$id('rc-t2').value,s1=gS(i1,t1),s2=gS(i2,t2),lbl=`${INST[i1].label} ${tvL(t1)} vs ${INST[i2].label} ${tvL(t2)}`;if(rc10)rc10.destroy();if(rc20)rc20.destroy();if(rc30)rc30.destroy();rc10=mkRC('rc10Chart',10,rCorr(s1,s2,10),lbl);rc20=mkRC('rc20Chart',20,rCorr(s1,s2,20),lbl);rc30=mkRC('rc30Chart',30,rCorr(s1,s2,30),lbl);bCM(t1);}
+function bCM(tv){const keys=CI,cm_el=$id('cmat-title');if(cm_el)cm_el.textContent='FULL CORRELATION MATRIX — LOG RETURNS · '+tvL(tv);const ser={};keys.forEach(k=>ser[k]=gS(k,tv));let html=`<thead><tr><th></th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;keys.forEach(a=>{html+=`<tr><th style="text-align:left;font-size:9px">${INST[a].label}</th>`;keys.forEach(b=>{if(a===b){html+=`<td style="background:#151e30;color:#5a6882">1.00</td>`;return;}const{v1,v2}=al2(ser[a],ser[b]),r=pear(lRet(v1),lRet(v2));if(isNaN(r)){html+=`<td style="color:#1e2d45">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;html+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'}">${r.toFixed(2)}</td>`;});html+=`</tr>`;});const cm=$id('corrMat');if(cm)cm.innerHTML=html+'</tbody>';}
+function updFC(){if(!sDates.length)return;const inst=$id('fc-i').value,d1=$id('fc-d1').value,d2=$id('fc-d2').value;if(!d1||!aD[d1])return;const unit=INST[inst].unit,rows1=aD[d1].rows,lbls=rows1.map(r=>pkL(r.pk)),v1=rows1.map(r=>r[inst]!=null?+r[inst].toFixed(4):null),fct=$id('fc-title');if(fct)fct.textContent=INST[inst].label+' FORWARD CURVE — '+fmtD(d1);const ds=[{label:fmtD(d1),data:v1,borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.08)',borderWidth:2,pointRadius:3.5,tension:.3,fill:false}];if(d2!=='none'&&aD[d2]){const m2=new Map(aD[d2].rows.map(r=>[r.pk,r[inst]]));ds.push({label:fmtD(d2),data:rows1.map(r=>{const v=m2.get(r.pk);return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',borderDash:[6,4],borderWidth:2,pointRadius:3,tension:.3,fill:false});}if(fcChart)fcChart.destroy();const fcc=$id('fcChart');if(fcc)fcChart=new Chart(fcc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:24}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});const valid=v1.filter(v=>v!=null);if(valid.length){const fr=valid[0],bk=valid[valid.length-1],sp=bk-fr,mn=Math.min(...valid),mx=Math.max(...valid),avg=valid.reduce((a,b)=>a+b,0)/valid.length,shape=Math.abs(sp)<0.05?'FLAT':sp>0?'CONTANGO':'BACKWARDATION',sc=shape==='CONTANGO'?'#22c55e':shape==='BACKWARDATION'?'#ef4444':'#5a6882',fcs=$id('fc-stats');if(fcs)fcs.innerHTML=`<div class="mc"><div class="mc-name">FRONT</div><div class="mc-val" style="font-size:16px">${fr.toFixed(3)}</div></div><div class="mc"><div class="mc-name">BACK</div><div class="mc-val" style="font-size:16px">${bk.toFixed(3)}</div></div><div class="mc"><div class="mc-name">F-B SPREAD</div><div class="mc-val ${sp>=0?'pos':'neg'}" style="font-size:16px">${sp>=0?'+':''}${sp.toFixed(3)}</div></div><div class="mc"><div class="mc-name">SHAPE</div><div class="mc-val" style="color:${sc};font-size:13px">${shape}</div></div><div class="mc"><div class="mc-name">MIN</div><div class="mc-val" style="font-size:16px">${mn.toFixed(3)}</div></div><div class="mc"><div class="mc-name">MAX</div><div class="mc-val" style="font-size:16px">${mx.toFixed(3)}</div></div><div class="mc"><div class="mc-name">AVERAGE</div><div class="mc-val" style="font-size:16px">${avg.toFixed(3)}</div></div>`;}}
+function updSea(){if(!sDates.length)return;const inst=$id('sea-i').value,type=$id('sea-type').value,unit=INST[inst].unit,st=$id('sea-title');if(st)st.textContent=INST[inst].label+' — SEASONAL · YEAR OVER YEAR ('+unit+')';const yd={};if(type==='fwd'){const lat=sDates[sDates.length-1];aD[lat].rows.forEach(r=>{const[y,m]=r.pk.split('-');if(!yd[+y])yd[+y]={};if(r[inst]!=null)yd[+y][+m-1]=r[inst];});}else{sDates.forEach(ds=>{const{date,rows}=aD[ds],yr=date.getFullYear(),mo=date.getMonth(),pk=rPK(date,1),row=rows.find(r=>r.pk===pk);if(!row||row[inst]==null)return;if(!yd[yr])yd[yr]={};if(yd[yr][mo]===undefined)yd[yr][mo]=row[inst];});}const years=Object.keys(yd).map(Number).sort(),dsets=years.map((yr,idx)=>({label:String(yr),data:MA.map((_,mo)=>yd[yr][mo]!==undefined?+yd[yr][mo].toFixed(4):null),borderColor:SC[idx%SC.length],backgroundColor:'transparent',borderWidth:2,pointRadius:4,tension:.3,spanGaps:false}));if(seaChart)seaChart.destroy();const sc=$id('seaChart');if(sc)seaChart=new Chart(sc.getContext('2d'),{type:'line',data:{labels:MA,datasets:dsets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});let tbl=`<thead><tr><th>Month</th>${years.map(y=>`<th>${y}</th>`).join('')}${years.slice(0,-1).map((y,i)=>`<th>${y}→${years[i+1]}</th>`).join('')}</tr></thead><tbody>`;MA.forEach((m,mo)=>{tbl+=`<tr><td>${m}</td>${years.map(yr=>`<td>${yd[yr][mo]!==undefined?yd[yr][mo].toFixed(3):'—'}</td>`).join('')}`;for(let i=0;i<years.length-1;i++){const a=yd[years[i]][mo],b=yd[years[i+1]][mo];tbl+=a!==undefined&&b!==undefined?`<td class="${b-a>=0?'pos':'neg'}">${b-a>=0?'+':''}${(b-a).toFixed(3)}</td>`:`<td style="color:#3d5070">—</td>`;}tbl+=`</tr>`;});const st2=$id('sea-tbl');if(st2)st2.innerHTML=tbl+'</tbody>';}
+function updSpread(){const i1=$id('sp-i1').value,t1=$id('sp-t1').value,i2=$id('sp-i2').value,t2=$id('sp-t2').value;if(!i1||!i2||!t1||!t2)return;const s1=gS(i1,t1),s2=gS(i2,t2);if(!s1.length||!s2.length)return;const u1=INST[i1].unit,u2=INST[i2].unit,lbl1=INST[i1].label+' '+tvL(t1),lbl2=INST[i2].label+' '+tvL(t2),sU=(u1===u2)?u1:'mixed units',m2=new Map(s2.map(d=>[toStr(d.date),d.value])),aligned=[];s1.forEach(d=>{const v2=m2.get(toStr(d.date));if(v2!=null)aligned.push({date:d.date,v1:d.value,v2,spread:+(d.value-v2).toFixed(4)});});if(!aligned.length)return;const lbls=aligned.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),spreads=aligned.map(d=>d.spread),spt=$id('sp-title');if(spt)spt.textContent=lbl1+' MINUS '+lbl2+' ('+sU+')';if(spChart)spChart.destroy();const sp=$id('spChart');if(sp)spChart=new Chart(sp.getContext('2d'),{type:'bar',data:{labels:lbls,datasets:[{label:'Spread ('+sU+')',data:spreads,backgroundColor:spreads.map(v=>v>=0?'rgba(45,124,255,0.7)':'rgba(239,68,68,0.7)'),borderWidth:0,borderRadius:1}]},options:{...CD,plugins:{...CD.plugins,legend:{display:false}},scales:{x:CD.scales.x,y:{title:{display:true,text:sU,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});const dualL=u1!==u2,sL={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#2d7cff',font:{size:9}},ticks:{color:'#2d7cff',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};if(dualL)sL.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};if(spLegsChart)spLegsChart.destroy();const slc=$id('spLegsChart');if(slc)spLegsChart=new Chart(slc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:[{label:lbl1,data:aligned.map(d=>+d.v1.toFixed(4)),borderColor:'#2d7cff',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:'y'},{label:lbl2,data:aligned.map(d=>+d.v2.toFixed(4)),borderColor:'#f59e0b',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:dualL?'y1':'y'}]},options:{...CD,scales:sL}});}
 function exportToExcel(){if(!sDates.length){alert('No data.');return;}const wb=XLSX.utils.book_new(),ik=INSTS.map(i=>i.k),headers=['Date',...ik.map(k=>INST[k].label+' M+1')],rows=[headers];sDates.forEach(ds=>{const{date,rows:dr}=aD[ds],m1=rPK(date,1),row=[date.toLocaleDateString('en-GB')];ik.forEach(k=>{const r=dr.find(r=>r.pk===m1);row.push(r&&r[k]!=null?r[k]:'');});rows.push(row);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Historical M+1');XLSX.writeFile(wb,'LNG_TradeOS_'+new Date().toLocaleDateString('en-GB').replace(/\//g,'.')+'.xlsx');}
-function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,rc10,rc20,rc30,spChart,spLegsChart,fcChart,seaChart,gasChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')updRC2();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard')buildGasSnapshot();},60);}
-function showAnalyticsUI(){const fd=$('fin-dropzone'),fa=$('fin-analytics');if(fd)fd.style.display='none';if(fa)fa.style.display='block';finLoaded=true;}
+function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,rc10,rc20,rc30,spChart,spLegsChart,fcChart,seaChart,gasChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')updRC2();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard')buildGasSnapshot();},60);}
+function showAnalyticsUI(){const fd=$id('fin-dropzone'),fa=$id('fin-analytics');if(fd)fd.style.display='none';if(fa)fa.style.display='block';finLoaded=true;}
+
+// ══ EU REGAS MODULE v2 ══
+// Tab layout: 0=HUB CURVES(open) 1=TTF DIFF(open) 2=TARIFFS(🔒) 3=COSTS(🔒) 4=ITM(🔒) 5=COST GRAPH(🔒) 6=IMPLIED DES(🔒) 7=NETBACK(🔒) 8=KB(open)
+const RG_TABS=['HUB CURVES','TTF DIFFERENTIAL','TERMINAL TARIFFS','REGAS COSTS','ITM MONITOR','COST GRAPH','IMPLIED DES','NETBACK 🔒','KNOWLEDGE DB'];
+const RG_HUBS=['TTF','ZEE','PEG','THE','PSV','PVB','NBP'];
+const RG_SPREAD_DEF={TTF:0,ZEE:0.051,PEG:0.068,THE:0.034,PSV:0.680,PVB:-0.170,NBP:-0.073};
+const RG_DIFF_DEF={zeebrugge:-0.20,dunkerque:-0.20,foscavaou:-0.20,montoir:-0.20,fostonkin:-0.20,brunsbuttel:-0.20,wilhelmshaven1:-0.20,wilhelmshaven2:-0.20,lubmin:-0.20,gate:-0.20,adriatic:-0.05,olttoscana:-0.05,panigaglia:-0.05,piombino:-0.05,ravenna:-0.05,revithoussa:0.00,krk:0.00,klaipeda:-0.04,swinoujscie:-0.10,inkoo:-0.10,barcelona:-0.20,cartagena:-0.20,huelva:-0.20,bilbao:-0.20,mugardos:-0.20,sagunto:-0.20,sines:-0.20,dragon:-0.40,isleofgrain:-0.40,southhook:-0.40,stade:-0.20};
+const RG_T_DEF=[
+  {id:'zeebrugge',name:'Zeebrugge',country:'Belgium',region:'NW Europe',op:'Fluxys',type:'Onshore',hub:'ZEE',gik:1.30,slot:624247,cqs:0.66,mar:0,tt:'lump_sum',trf:0},
+  {id:'dunkerque',name:'Dunkerque',country:'France',region:'NW Europe',op:'Dunkerque LNG',type:'Onshore',hub:'PEG',gik:1.00,slot:650000,cqs:0.75,mar:0,tt:'lump_sum',trf:0},
+  {id:'foscavaou',name:'Fos Cavaou',country:'France',region:'S Europe',op:'Elengy',type:'Onshore',hub:'PEG',gik:1.00,slot:600000,cqs:0.70,mar:0,tt:'lump_sum',trf:0},
+  {id:'montoir',name:'Montoir',country:'France',region:'NW Europe',op:'Elengy',type:'Onshore',hub:'PEG',gik:1.00,slot:650000,cqs:0.80,mar:0,tt:'lump_sum',trf:0},
+  {id:'fostonkin',name:'Fos Tonkin',country:'France',region:'S Europe',op:'Elengy',type:'Onshore',hub:'PEG',gik:1.00,slot:550000,cqs:0.85,mar:0,tt:'lump_sum',trf:0},
+  {id:'brunsbuttel',name:'Brunsbuttel',country:'Germany',region:'NW Europe',op:'RWE/DET',type:'FSRU',hub:'THE',gik:0.70,slot:700000,cqs:0.85,mar:0,tt:'per_mmbtu',trf:3.86},
+  {id:'wilhelmshaven1',name:'Wilhelmshaven 1',country:'Germany',region:'NW Europe',op:'Uniper/DET',type:'FSRU',hub:'THE',gik:0.70,slot:680000,cqs:0.80,mar:0,tt:'per_mmbtu',trf:1.01},
+  {id:'wilhelmshaven2',name:'Wilhelmshaven 2',country:'Germany',region:'NW Europe',op:'TES',type:'FSRU',hub:'THE',gik:1.30,slot:680000,cqs:0.80,mar:0,tt:'per_mmbtu',trf:2.35},
+  {id:'lubmin',name:'Lubmin',country:'Germany',region:'NW Europe',op:'Deutsche ReGas',type:'FSRU',hub:'THE',gik:0.50,slot:700000,cqs:0.85,mar:0,tt:'per_mmbtu',trf:0},
+  {id:'gate',name:'Gate Terminal',country:'Netherlands',region:'NW Europe',op:'Gasunie/Vopak',type:'Onshore',hub:'TTF',gik:0.50,slot:750000,cqs:0.70,mar:0,tt:'lump_sum',trf:0},
+  {id:'adriatic',name:'Adriatic LNG',country:'Italy',region:'Italy',op:'VTTI/Snam',type:'Offshore',hub:'PSV',gik:0.75,slot:700000,cqs:0.55,mar:235394,tt:'lump_sum',trf:0},
+  {id:'olttoscana',name:'OLT Toscana',country:'Italy',region:'Italy',op:'OLT Offshore',type:'FSRU',hub:'PSV',gik:0.73,slot:550000,cqs:0.60,mar:0,tt:'lump_sum',trf:0},
+  {id:'panigaglia',name:'Panigaglia',country:'Italy',region:'Italy',op:'Snam',type:'Onshore',hub:'PSV',gik:1.40,slot:450000,cqs:0.65,mar:0,tt:'lump_sum',trf:0},
+  {id:'piombino',name:'Piombino',country:'Italy',region:'Italy',op:'Snam',type:'FSRU',hub:'PSV',gik:1.10,slot:500000,cqs:0.58,mar:0,tt:'lump_sum',trf:0},
+  {id:'ravenna',name:'Ravenna',country:'Italy',region:'Italy',op:'Snam',type:'FSRU',hub:'PSV',gik:1.10,slot:520000,cqs:0.60,mar:0,tt:'lump_sum',trf:0},
+  {id:'revithoussa',name:'Revithoussa',country:'Greece',region:'SE Europe',op:'DESFA',type:'Onshore',hub:'TTF',gik:1.00,slot:600000,cqs:0.75,mar:0,tt:'lump_sum',trf:0},
+  {id:'krk',name:'KRK',country:'Croatia',region:'SE Europe',op:'LNG Hrvatska',type:'FSRU',hub:'TTF',gik:1.00,slot:580000,cqs:0.70,mar:0,tt:'lump_sum',trf:0},
+  {id:'klaipeda',name:'Klaipeda',country:'Lithuania',region:'Baltic',op:'KN Energies',type:'FSRU',hub:'TTF',gik:1.00,slot:0,cqs:0.75,mar:0,tt:'per_mmbtu',trf:0.800},
+  {id:'swinoujscie',name:'Swinoujscie',country:'Poland',region:'Baltic',op:'Gaz-System',type:'Onshore',hub:'TTF',gik:0.91,slot:580000,cqs:0.70,mar:0,tt:'lump_sum',trf:0},
+  {id:'inkoo',name:'Inkoo',country:'Finland',region:'Baltic',op:'Gasgrid',type:'FSRU',hub:'TTF',gik:0.80,slot:650000,cqs:0.80,mar:0,tt:'lump_sum',trf:0},
+  {id:'barcelona',name:'Barcelona',country:'Spain',region:'Iberia',op:'Enagas',type:'Onshore',hub:'PVB',gik:0.50,slot:400000,cqs:0.45,mar:0,tt:'lump_sum',trf:0},
+  {id:'cartagena',name:'Cartagena',country:'Spain',region:'Iberia',op:'Enagas',type:'Onshore',hub:'PVB',gik:0.50,slot:400000,cqs:0.45,mar:0,tt:'lump_sum',trf:0},
+  {id:'huelva',name:'Huelva',country:'Spain',region:'Iberia',op:'Enagas',type:'Onshore',hub:'PVB',gik:0.50,slot:400000,cqs:0.45,mar:0,tt:'lump_sum',trf:0},
+  {id:'bilbao',name:'Bilbao BBG',country:'Spain',region:'Iberia',op:'BBG',type:'Onshore',hub:'PVB',gik:0.50,slot:420000,cqs:0.48,mar:0,tt:'lump_sum',trf:0},
+  {id:'mugardos',name:'Mugardos',country:'Spain',region:'Iberia',op:'Reganosa',type:'Onshore',hub:'PVB',gik:0.50,slot:450000,cqs:0.50,mar:0,tt:'lump_sum',trf:0},
+  {id:'sagunto',name:'Sagunto',country:'Spain',region:'Iberia',op:'Saggas',type:'Onshore',hub:'PVB',gik:0.50,slot:420000,cqs:0.48,mar:0,tt:'lump_sum',trf:0},
+  {id:'sines',name:'Sines',country:'Portugal',region:'Iberia',op:'REN',type:'Onshore',hub:'PVB',gik:0.75,slot:480000,cqs:0.55,mar:0,tt:'lump_sum',trf:0},
+  {id:'dragon',name:'Dragon LNG',country:'UK',region:'UK',op:'Dragon LNG',type:'Onshore',hub:'NBP',gik:0.30,slot:500000,cqs:0.50,mar:0,tt:'lump_sum',trf:0},
+  {id:'isleofgrain',name:'Isle of Grain',country:'UK',region:'UK',op:'Centrica/ECP',type:'Onshore',hub:'NBP',gik:0.25,slot:480000,cqs:0.45,mar:0,tt:'lump_sum',trf:0},
+  {id:'southhook',name:'South Hook',country:'UK',region:'UK',op:'QatarEnergy',type:'Onshore',hub:'NBP',gik:0.20,slot:450000,cqs:0.40,mar:0,tt:'lump_sum',trf:0},
+  {id:'stade',name:'Stade',country:'Germany',region:'NW Europe',op:'DET',type:'FSRU',hub:'THE',gik:0.50,slot:0,cqs:0,mar:0,tt:'per_mmbtu',trf:2.42}
+];
+
+// Per-tab lock state — module-level so it persists across initRegas() calls within the session
+const RG_UNLOCK={2:false,3:false,4:false,5:false,6:false,7:false};
+const RG_LOCK_TABS=new Set([2,3,4,5,6,7]); // tabs requiring password
+const RG_PW='@Moustapha1';
+
+let RG={tab:0,eurUsd:1.16,eua:92,cargo:3800000,ttfCurve:Array(24).fill(17.50),hubSpreads:{...RG_SPREAD_DEF},diffs:{},terminals:[],selMonth:1,nbkTerm:'adriatic',nbkSlippage:0,nbkBunker:0.08,nbkCredit:0.05,nbkDeadFreight:0,nbkExtraShipping:0,nbkExtrinsic:false,nbkVol:25,nbkRawExt:0.15,nbkCapture:70,tsoOpex:0.02,gridCapex:0.05,impliedMon:{},cgUnit:'usd',cgShowTotal:false,cgMonth:1};
+
+function rgg(k,d){try{const v=localStorage.getItem('rg_'+k);return v?JSON.parse(v):d;}catch{return d;}}
+function rgs(k,v){try{localStorage.setItem('rg_'+k,JSON.stringify(v));}catch{}}
+
+function initRegas(){
+  // NOTE: RG_UNLOCK NOT reset here — lock state persists within session
+  RG.terminals=rgg('terminals',JSON.parse(JSON.stringify(RG_T_DEF)));
+  RG.ttfCurve=rgg('ttfCurve',Array(24).fill(17.50));
+  RG.hubSpreads=rgg('hubSpreads',{...RG_SPREAD_DEF});
+  RG.eurUsd=rgg('eurUsd',1.16);RG.eua=rgg('eua',92);RG.cargo=rgg('cargo',3800000);
+  const sd=rgg('rgDiffs',{});
+  RG_T_DEF.forEach(t=>{RG.diffs[t.id]=sd[t.id]||Array(24).fill(RG_DIFF_DEF[t.id]||0);});
+  RG.cgUnit=rgg('cgUnit','usd');RG.cgShowTotal=false;RG.cgMonth=1;
+  RG.tab=0;
+  renderRegas();
+}
+
+function renderRegas(){
+  const wrap=document.getElementById('regas-wrap');if(!wrap)return;
+  wrap.innerHTML=`<div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">EU REGAS MODEL</span><span style="flex:1"></span>
+    <span style="color:#546e7a;font-size:9px">EUR/USD</span><input class="rg-inp" style="width:58px" type="number" step="0.01" value="${RG.eurUsd}" onchange="rgP('eurUsd',+this.value)">
+    <span style="color:#546e7a;font-size:9px">EUA (€/t)</span><input class="rg-inp" style="width:55px" type="number" step="1" value="${RG.eua}" onchange="rgP('eua',+this.value)">
+    <span style="color:#546e7a;font-size:9px">Cargo (MMBtu)</span><input class="rg-inp" style="width:88px" type="number" step="100000" value="${RG.cargo}" onchange="rgP('cargo',+this.value)">
+    <button class="f-btn sm" onclick="rgAutoLoadFromFinancial()" title="Sync TTF+NBP from Financial Trading EOD data">↺ SYNC CURVES</button>
+    <button class="f-btn sm" onclick="rgExportITM()" style="border-color:#22c55e;color:#22c55e" title="Export ITM Monitor PDF">↓ ITM PDF</button>
+  </div>
+  <div class="rg-subnav">${RG_TABS.map((t,i)=>`<button class="rg-tab${RG.tab===i?' active':''}" onclick="rgTab(${i})">${t}${RG_LOCK_TABS.has(i)&&!RG_UNLOCK[i]?' 🔒':''}</button>`).join('')}</div>
+  <div class="f-body" id="rg-body"></div>`;
+  rgRT();
+}
+
+function rgTab(i){RG.tab=i;document.querySelectorAll('.rg-tab').forEach((t,j)=>t.classList.toggle('active',j===i));rgRT();}
+function rgP(k,v){RG[k]=v;rgs(k,v);rgRT();}
+
+function rgRT(){
+  const b=document.getElementById('rg-body');if(!b)return;
+  // Check lock for protected tabs
+  if(RG_LOCK_TABS.has(RG.tab)&&!RG_UNLOCK[RG.tab]){b.innerHTML=rgLock(RG.tab);return;}
+  if(RG.tab===0)b.innerHTML=rgHub();
+  else if(RG.tab===1)b.innerHTML=rgDiff();
+  else if(RG.tab===2)b.innerHTML=rgTariff();
+  else if(RG.tab===3)b.innerHTML=rgCosts();
+  else if(RG.tab===4)b.innerHTML=rgITM();
+  else if(RG.tab===5)b.innerHTML=rgCostGraph();
+  else if(RG.tab===6)b.innerHTML=rgImplied();
+  else if(RG.tab===7)b.innerHTML=rgNBK();
+  else b.innerHTML=rgKB();
+}
+
+// ── GENERIC LOCK SCREEN ──
+function rgLock(tabIdx){
+  const names={2:'TERMINAL TARIFFS',3:'REGAS COSTS',4:'ITM MONITOR',5:'COST GRAPH',6:'IMPLIED DES',7:'NETBACK'};
+  return`<div class="rg-lock">
+    <div style="font-size:40px">🔒</div>
+    <div style="color:#4fc3f7;font-size:12px;letter-spacing:2px;margin-bottom:4px">${names[tabIdx]||'MODULE'} — RESTRICTED</div>
+    <div style="color:#546e7a;font-size:10px;text-align:center;line-height:1.7;max-width:340px">Proprietary module — LNG TradeOS™<br>Enter password to unlock this section.</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="password" id="rg-pw-${tabIdx}" class="rg-inp" style="width:200px" placeholder="Password..."
+        onkeydown="if(event.key==='Enter')rgUnlockTab(${tabIdx})">
+      <button class="f-btn" onclick="rgUnlockTab(${tabIdx})">UNLOCK</button>
+    </div>
+    <div id="rg-pw-err-${tabIdx}" style="color:#f44336;font-size:10px;display:none">Incorrect password.</div>
+  </div>`;
+}
+function rgUnlockTab(tabIdx){
+  const pw=document.getElementById('rg-pw-'+tabIdx);
+  if(pw&&pw.value===RG_PW){
+    RG_UNLOCK[tabIdx]=true;
+    renderRegas(); // re-render with updated tab lock indicators
+  } else {
+    const e=document.getElementById('rg-pw-err-'+tabIdx);
+    if(e)e.style.display='block';
+  }
+}
+
+// ── CALCS ──
+function rgTTF(mi){return RG.ttfCurve[mi]*RG.eurUsd/3.41214;}
+function rgHP(hub,mi){return rgTTF(mi)+(RG.hubSpreads[hub]||0);}
+function rgDES(tid,mi){return rgTTF(mi)+((RG.diffs[tid]||[])[mi]||0);}
+function rgVar(t,mi){const hp=rgHP(t.hub,mi),gik=(t.gik/100)*hp/(1-t.gik/100),emiss=t.cqs*RG.eua*RG.eurUsd/1000,gridV=t.hub==='NBP'?RG.tsoOpex:0;return{gik,emiss,gridV,total:gik+emiss+gridV};}
+function rgFix(t){const fixCap=t.tt==='per_mmbtu'?t.trf*RG.eurUsd:t.slot*RG.eurUsd/RG.cargo,gridF=RG.gridCapex,marit=t.mar*RG.eurUsd/RG.cargo;return{fixCap,gridF,marit,total:fixCap+gridF+marit};}
+function fmm(v,d=4){return v!=null&&!isNaN(v)?Number(v).toFixed(d):'-';}
+function msel(){return`<select class="f-sel" style="width:100px" onchange="RG.selMonth=+this.value;rgRT()">${ML.map((m,i)=>`<option value="${i}"${RG.selMonth===i?' selected':''}>${m}</option>`).join('')}</select>`;}
+
+// ── TAB 0: HUB CURVES ──
+function rgHub(){
+  const rows=ML.map((m,i)=>`<tr><td style="color:#8a9bb5;min-width:56px">${m}</td>
+    <td style="padding:2px 3px"><input class="rg-inp" style="width:70px;text-align:right" type="number" step="0.01" value="${RG.ttfCurve[i].toFixed(2)}" onchange="rgSetTTF(${i},+this.value)"></td>
+    <td class="tr" style="color:#4fc3f7">${rgTTF(i).toFixed(4)}</td>
+    ${['ZEE','PEG','THE','PSV','PVB','NBP'].map(h=>`<td class="tr" style="color:${h==='PSV'?'#81c784':h==='NBP'?'#ffb74d':h==='PVB'?'#ab47bc':'#c8d6e5'}">${rgHP(h,i).toFixed(3)}</td>`).join('')}
+  </tr>`).join('');
+  const spreads=['ZEE','PEG','THE','PSV','PVB','NBP'].map(h=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+    <span style="min-width:40px;color:#4fc3f7;font-size:10px">${h}</span>
+    <span style="color:#546e7a;font-size:9px">spread vs TTF ($/MMBtu)</span>
+    <input class="rg-inp" style="width:75px;text-align:right" type="number" step="0.001" value="${(RG.hubSpreads[h]||0).toFixed(3)}" onchange="rgSetSpread('${h}',+this.value)">
+    <span style="color:#546e7a;font-size:9px">→ M+1: ${rgHP(h,RG.selMonth).toFixed(3)} $/MMBtu</span>
+  </div>`).join('');
+  return`<div class="f-sec">EUROPEAN HUB FORWARD CURVES</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <div style="flex:1;min-width:400px;overflow-x:auto"><table class="rg-tbl"><thead><tr>
+        <th>PERIOD</th><th class="tr">TTF (€/MWh)</th><th class="tr" style="color:#4fc3f7">TTF ($/MMBtu)</th>
+        ${['ZEE','PEG','THE','PSV','PVB','NBP'].map(h=>`<th class="tr">${h} ($/MMBtu)</th>`).join('')}
+      </tr></thead><tbody>${rows}</tbody></table></div>
+      <div style="min-width:320px"><div class="f-sec">HUB SPREADS vs TTF ($/MMBtu)</div>
+        <div style="color:#546e7a;font-size:9px;margin-bottom:10px;line-height:1.7">Hub Price = TTF ($/MMBtu) + Spread<br>PSV & THE: premium to TTF · PVB & NBP: discount<br>PEG & ZEE: near par. Auto-synced for TTF+NBP only.</div>
+        ${spreads}
+        <div style="margin-top:12px;color:#546e7a;font-size:9px;line-height:1.8">TTF conversion: €/MWh × EUR/USD / 3.41214 = $/MMBtu<br>EUR/USD: ${RG.eurUsd} · Reference: ${ML[RG.selMonth]}<br>TTF M+1: ${rgTTF(RG.selMonth).toFixed(4)} $/MMBtu</div>
+      </div>
+    </div>`;
+}
+function rgSetTTF(i,v){RG.ttfCurve[i]=v;rgs('ttfCurve',RG.ttfCurve);rgRT();}
+function rgSetSpread(h,v){RG.hubSpreads[h]=v;rgs('hubSpreads',RG.hubSpreads);rgRT();}
+
+// ── TAB 1: TTF DIFFERENTIAL ──
+function rgDiff(){
+  const rowsA=RG_T_DEF.map(t=>`<tr>
+    <td style="color:var(--th);font-size:10px">${t.name}</td>
+    <td style="color:#546e7a;font-size:9px">${t.country}</td>
+    <td style="color:#4fc3f7;font-size:9px">${t.hub}</td>
+    ${ML.map((_,i)=>{const d=(RG.diffs[t.id]||[])[i]||0;return`<td style="padding:1px 2px"><input class="rg-inp" style="width:50px;text-align:right;color:${d<0?'#f44336':d===0?'#c8d6e5':'#4caf50'}" type="number" step="0.01" value="${d.toFixed(2)}" onchange="rgSetDiff('${t.id}',${i},+this.value)"></td>`;}).join('')}
+  </tr>`).join('');
+  const rowsB=RG_T_DEF.map(t=>`<tr>
+    <td style="color:var(--th);font-size:10px">${t.name}</td>
+    <td style="color:#4fc3f7;font-size:9px">${t.hub}</td>
+    ${ML.map((_,i)=>`<td class="tr" style="color:#26c6da;font-size:10px">${rgDES(t.id,i).toFixed(3)}</td>`).join('')}
+  </tr>`).join('');
+  return`<div class="f-sec">SECTION A — TTF DIFFERENTIAL INPUTS ($/MMBtu) · Negative = discount to TTF</div>
+    <div style="color:#546e7a;font-size:9px;margin-bottom:10px">DES Price = TTF ($/MMBtu) + Differential. Red = negative (discount), green = premium.</div>
+    <div style="overflow-x:auto;margin-bottom:20px"><table class="rg-tbl"><thead><tr>
+      <th style="min-width:130px">TERMINAL</th><th>COUNTRY</th><th>HUB</th>
+      ${ML.map(m=>`<th class="tr" style="min-width:54px">${m}</th>`).join('')}
+    </tr></thead><tbody>${rowsA}</tbody></table></div>
+    <div class="f-sec">SECTION B — CALCULATED DES PRICES ($/MMBtu) = TTF + Differential</div>
+    <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
+      <th style="min-width:130px">TERMINAL</th><th>HUB</th>
+      ${ML.map(m=>`<th class="tr" style="min-width:54px">${m}</th>`).join('')}
+    </tr></thead><tbody>${rowsB}</tbody></table></div>`;
+}
+function rgSetDiff(tid,i,v){if(!RG.diffs[tid])RG.diffs[tid]=Array(24).fill(0);RG.diffs[tid][i]=v;rgs('rgDiffs',RG.diffs);rgRT();}
+
+// ── TAB 2: TERMINAL TARIFFS ──
+function rgTariff(){
+  const rows=RG.terminals.map((t,ri)=>`<tr>
+    <td style="color:${t.tt==='per_mmbtu'?'#ffeb3b':'var(--th)'};font-size:10px">${t.name}</td>
+    <td style="color:#546e7a;font-size:9px">${t.country}</td><td style="color:#546e7a;font-size:9px">${t.region}</td>
+    <td style="color:#546e7a;font-size:9px">${t.op}</td><td style="color:#546e7a;font-size:9px">${t.type}</td>
+    <td style="color:#4fc3f7">${t.hub}</td>
+    <td style="padding:2px 3px"><input class="rg-inp" style="width:46px;text-align:right" type="number" step="0.01" value="${t.gik}" onchange="rgSetTar(${ri},'gik',+this.value)"></td>
+    <td style="padding:2px 3px"><input class="rg-inp" style="width:72px;text-align:right" type="number" step="1000" value="${t.slot}" onchange="rgSetTar(${ri},'slot',+this.value)"></td>
+    <td style="padding:2px 3px"><input class="rg-inp" style="width:48px;text-align:right" type="number" step="0.01" value="${t.cqs}" onchange="rgSetTar(${ri},'cqs',+this.value)"></td>
+    <td style="padding:2px 3px"><input class="rg-inp" style="width:70px;text-align:right" type="number" step="1000" value="${t.mar}" onchange="rgSetTar(${ri},'mar',+this.value)"></td>
+    <td style="color:#546e7a;font-size:9px">${t.tt}</td>
+    <td style="padding:2px 3px"><input class="rg-inp" style="width:52px;text-align:right;color:${t.tt==='per_mmbtu'?'#ffeb3b':'#3d5070'}" type="number" step="0.01" value="${t.trf}" onchange="rgSetTar(${ri},'trf',+this.value)"${t.tt==='lump_sum'?' disabled':''}></td>
+  </tr>`).join('');
+  return`<div class="f-sec">EUROPEAN LNG TERMINAL DATABASE — TARIFFS</div>
+    <div style="color:#546e7a;font-size:9px;margin-bottom:10px">Yellow = German DET per_mmbtu tariff. Lump_sum = fixed slot cost.</div>
+    <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
+      <th style="min-width:130px">TERMINAL</th><th>COUNTRY</th><th>REGION</th><th>OPERATOR</th><th>TYPE</th><th>HUB</th>
+      <th class="tr">GIK%</th><th class="tr">SLOT COST (€)</th><th class="tr">Cqs (€/MWh)</th><th class="tr">MARITIME (€)</th>
+      <th>TARIFF TYPE</th><th class="tr" style="color:#ffeb3b">TARIFF (€/MMBtu)</th>
+    </tr></thead><tbody>${rows}</tbody></table></div>
+    <div style="margin-top:8px"><button class="f-btn sm" onclick="if(confirm('Reset all terminal data to defaults?')){RG.terminals=JSON.parse(JSON.stringify(RG_T_DEF));rgs('terminals',RG.terminals);rgRT();}">RESET TO DEFAULTS</button></div>`;
+}
+function rgSetTar(ri,k,v){RG.terminals[ri][k]=v;rgs('terminals',RG.terminals);rgRT();}
+
+// ── TAB 3: REGAS COSTS ──
+function rgCosts(){
+  const mi=RG.selMonth;
+  const all=RG.terminals.map(t=>{const v=rgVar(t,mi),fx=rgFix(t);return{t,gik:v.gik,emiss:v.emiss,gridV:v.gridV,totVar:v.total,fixCap:fx.fixCap,gridF:fx.gridF,marit:fx.marit,totFix:fx.total,totAll:v.total+fx.total};});
+  const rkV=[...all].sort((a,b)=>a.totVar-b.totVar).map(x=>x.t.id);
+  const rkF=[...all].sort((a,b)=>a.fixCap-b.fixCap).map(x=>x.t.id);
+  const rkA=[...all].sort((a,b)=>a.totAll-b.totAll).map(x=>x.t.id);
+  const rows=all.map(c=>`<tr>
+    <td style="color:${c.t.tt==='per_mmbtu'&&c.t.hub==='THE'?'#ffeb3b':'var(--th)'};font-size:10px">${c.t.name}</td>
+    <td style="color:#4fc3f7;font-size:9px">${c.t.hub}</td>
+    <td class="tr">${c.t.gik.toFixed(2)}</td>
+    <td class="tr">${fmm(c.gik)}</td><td class="tr">${fmm(c.emiss)}</td><td class="tr" style="color:#546e7a">${fmm(c.gridV)}</td>
+    <td class="tr" style="background:#0d1f35;color:#4fc3f7;font-weight:700">${fmm(c.totVar)}</td>
+    <td class="tr" style="color:${c.t.tt==='per_mmbtu'?'#ffeb3b':'#c8d6e5'}">${fmm(c.fixCap)}</td>
+    <td class="tr" style="color:#546e7a">${fmm(c.gridF)}</td><td class="tr" style="color:#546e7a">${fmm(c.marit)}</td>
+    <td class="tr" style="background:#0d1f35;color:#81c784;font-weight:700">${fmm(c.totFix)}</td>
+    <td class="tr" style="background:#0d2a0d;color:#ffeb3b;font-weight:700">${fmm(c.totAll)}</td>
+    <td class="tr" style="color:#546e7a">${rkV.indexOf(c.t.id)+1}</td>
+    <td class="tr" style="color:#546e7a">${rkF.indexOf(c.t.id)+1}</td>
+    <td class="tr" style="color:#546e7a">${rkA.indexOf(c.t.id)+1}</td>
+  </tr>`).join('');
+  return`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    <div class="f-sec" style="border:none;margin:0">SELECT MONTH</div>${msel()}
+    <span style="color:#546e7a;font-size:9px">TTF: ${rgTTF(mi).toFixed(3)} $/MMBtu · Cargo: ${(RG.cargo/1e6).toFixed(2)}M MMBtu · EUR/USD: ${RG.eurUsd} · EUA: €${RG.eua}/t</span>
+  </div>
+  <div class="f-sec">REGAS COSTS BREAKDOWN ($/MMBtu) — ${ML[mi]}</div>
+  <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
+    <th style="min-width:130px">TERMINAL</th><th>HUB</th><th class="tr">GIK%</th>
+    <th class="tr">GIK Cost</th><th class="tr">Emiss</th><th class="tr">Grid(V)</th>
+    <th class="tr" style="color:#4fc3f7">TotVar</th>
+    <th class="tr">FixCap</th><th class="tr">Grid(F)</th><th class="tr">Marit</th>
+    <th class="tr" style="color:#81c784">TotFix</th>
+    <th class="tr" style="color:#ffeb3b">TotAll</th>
+    <th class="tr" style="color:#546e7a">Rk Var</th><th class="tr" style="color:#546e7a">Rk Fix</th><th class="tr" style="color:#546e7a">Rk All</th>
+  </tr></thead><tbody>${rows}</tbody></table></div>
+  <div style="margin-top:10px;color:#546e7a;font-size:9px;line-height:1.8">
+    GIK Cost = GIK% × Hub Price / (1 − GIK%) · Emission = Cqs × EUA × EUR/USD / 1000 · Grid(V) = TSO Opex (UK NBP only)<br>
+    FixCap: lump_sum → SlotCost × EUR/USD ÷ Cargo; per_mmbtu → Tariff × EUR/USD · Grid(F) = ${RG.gridCapex.toFixed(3)} · Maritime = Port cost × EUR/USD ÷ Cargo
+  </div>`;
+}
+
+// ── TAB 4: ITM MONITOR ──
+function rgITM(){
+  const mi=RG.selMonth;
+  const res=RG.terminals.map(t=>{const hp=rgHP(t.hub,mi),des=rgDES(t.id,mi),v=rgVar(t,mi),diff=(RG.diffs[t.id]||[])[mi]||0,money=hp-v.total-des;return{t,hp,des,diff,varC:v.total,money,itm:money>0};});
+  const ranked=[...res].sort((a,b)=>b.money-a.money);
+  const rkMap={};ranked.forEach((r,i)=>rkMap[r.t.id]=i+1);
+  const top10=ranked.slice(0,10).map(r=>r.t.id);
+  const rows=res.map(r=>`<tr style="${r.itm?'background:rgba(76,175,80,.07)':''}">
+    <td style="color:${r.itm?'#4caf50':'var(--th)'};font-size:10px;font-weight:${r.itm?700:400}">${r.t.name}</td>
+    <td style="color:#546e7a;font-size:9px">${r.t.country}</td>
+    <td style="color:#4fc3f7;font-size:9px">${r.t.hub}</td>
+    <td class="tr" style="color:${r.diff<0?'#f44336':r.diff===0?'#546e7a':'#4caf50'}">${r.diff.toFixed(2)}</td>
+    <td class="tr" style="color:#26c6da">${fmm(r.des)}</td>
+    <td class="tr">${fmm(r.varC)}</td>
+    <td class="tr" style="color:#ffeb3b;font-weight:700">${fmm(r.hp)}</td>
+    <td class="tr" style="color:${r.itm?'#4caf50':'#f44336'};font-weight:700;font-size:12px">${r.money>=0?'+':''}${fmm(r.money)}</td>
+    <td style="color:${r.itm?'#4caf50':'#f44336'};font-weight:700;font-size:10px;text-align:center">${r.itm?'ITM':'OTM'}</td>
+    <td class="tr" style="color:#546e7a">${rkMap[r.t.id]}</td>
+    <td style="color:#ffeb3b;font-size:9px;text-align:center">${top10.includes(r.t.id)?'★ TOP 10':''}</td>
+  </tr>`).join('');
+  const topRows=ranked.slice(0,10).map((r,i)=>`<tr><td style="color:#ffeb3b">${i+1}</td><td style="color:#4caf50;font-weight:700;font-size:10px">${r.t.name}</td><td style="color:#4fc3f7;font-size:9px">${r.t.hub}</td><td class="tr" style="color:#4caf50;font-weight:700">${r.money>=0?'+':''}${fmm(r.money)}</td></tr>`).join('');
+  return`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    <div class="f-sec" style="border:none;margin:0">SELECT MONTH</div>${msel()}
+    <span style="color:#546e7a;font-size:9px">Moneyness = Hub Price − Variable Cost − DES Price</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 260px;gap:12px;margin-bottom:14px">
+    <div class="f-card"><div class="f-sec">TOP 10 ITM TERMINALS — ${ML[mi]}</div>
+      <table class="rg-tbl"><thead><tr><th>#</th><th>TERMINAL</th><th>HUB</th><th class="tr">MONEYNESS</th></tr></thead><tbody>${topRows}</tbody></table>
+    </div>
+    <div class="f-card"><div class="f-sec">MARKET SNAPSHOT — ${ML[mi]}</div>
+      ${RG_HUBS.map(h=>`<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px"><span style="color:#546e7a">${h}</span><span style="color:#4fc3f7;font-weight:700">${rgHP(h,mi).toFixed(3)}</span></div>`).join('')}
+      <div style="border-top:1px solid #1e3a5f;padding-top:8px;margin-top:6px">
+        <div style="font-size:9px;color:#4caf50">ITM: ${res.filter(r=>r.itm).length} terminals</div>
+        <div style="font-size:9px;color:#f44336">OTM: ${res.filter(r=>!r.itm).length} terminals</div>
+        <div style="font-size:9px;color:#546e7a;margin-top:4px">EUR/USD: ${RG.eurUsd} · EUA: €${RG.eua}/t</div>
+      </div>
+    </div>
+  </div>
+  <div class="f-sec">IN-THE-MONEY MONITOR — ALL TERMINALS</div>
+  <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
+    <th style="min-width:130px">TERMINAL</th><th>COUNTRY</th><th>HUB</th>
+    <th class="tr">TTF DIFF</th><th class="tr">DES PRICE</th><th class="tr">VAR COST</th>
+    <th class="tr">HUB PRICE</th><th class="tr">MONEYNESS</th><th>STATUS</th><th class="tr">RANK</th><th>TOP 10</th>
+  </tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// ── TAB 5: COST GRAPH (NEW) ──
+function rgCostGraph(){
+  const mi=RG.cgMonth,unit=RG.cgUnit||'usd',showTotal=!!RG.cgShowTotal;
+  const toU=v=>unit==='eur'?+(v*3.41214/RG.eurUsd).toFixed(4):+v.toFixed(4);
+  const unitLbl=unit==='eur'?'€/MWh':'$/MMBtu';
+  const GERMAN=['brunsbuttel','wilhelmshaven1','wilhelmshaven2','lubmin','stade'];
+  const pts=RG.terminals.map(t=>{
+    const v=rgVar(t,mi),fx=rgFix(t);
+    const varC=toU(v.total),fixC=toU(fx.total);
+    return{name:t.name,id:t.id,isGerman:GERMAN.includes(t.id),varC,fixC,dispC:showTotal?varC+fixC:varC};
+  }).sort((a,b)=>b.dispC-a.dispC);
+
+  const W=640,rowH=26,PL=158,PR=72,PT=48,PB=56;
+  const H=PT+pts.length*rowH+PB;
+  const maxVal=Math.max(...pts.map(d=>showTotal?d.varC+d.fixC:d.varC))*1.18||2;
+  const xs=v=>PL+(v/maxVal)*(W-PL-PR);
+
+  // Nice ticks
+  const rawStep=maxVal/5,mag=Math.pow(10,Math.floor(Math.log10(rawStep)));
+  const niceStep=Math.ceil(rawStep/mag)*mag;
+  const ticks=[];for(let v=0;v<=maxVal*1.05;v=+(v+niceStep).toFixed(6))ticks.push(v);
+
+  const gridSvg=ticks.map(v=>{
+    const x=xs(v).toFixed(1),yBot=PT+pts.length*rowH;
+    return`<line x1="${x}" y1="${PT-8}" x2="${x}" y2="${yBot}" stroke="#1a2d45" stroke-width="0.8" stroke-dasharray="2,4"/>
+    <text x="${x}" y="${+yBot+14}" fill="#546e7a" font-size="8.5" text-anchor="middle">${v.toFixed(2)}</text>`;
+  }).join('');
+
+  const rows2=pts.map((d,i)=>{
+    const y=(PT+i*rowH+rowH/2).toFixed(1);
+    const col=d.isGerman?'#26c6da':'#c8d6e5';
+    const x0=xs(0).toFixed(1),xV=xs(d.varC).toFixed(1),xT=xs(d.varC+d.fixC).toFixed(1);
+    const dotX=showTotal?xT:xV;
+    let bar=`<line x1="${x0}" y1="${y}" x2="${xV}" y2="${y}" stroke="${col}" stroke-width="2.5"/>`;
+    if(showTotal&&d.fixC>0.001)bar+=`<line x1="${xV}" y1="${y}" x2="${xT}" y2="${y}" stroke="${col}" stroke-width="2" stroke-dasharray="4,3" opacity="0.45"/>`;
+    return`<text x="${PL-8}" y="${+y+3.5}" fill="${col}" font-size="10" text-anchor="end">${d.name}</text>
+      ${bar}
+      <circle cx="${dotX}" cy="${y}" r="5.5" fill="${col}"/>
+      <text x="${(+dotX+8).toFixed(1)}" y="${+y+3.5}" fill="${col}" font-size="8.5">${d.dispC.toFixed(3)}</text>`;
+  }).join('');
+
+  const svgStr=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:480px;display:block" font-family="'IBM Plex Mono',monospace">
+    <text x="${PL}" y="20" fill="#4fc3f7" font-size="11" font-weight="600" letter-spacing="0.08em">${showTotal?'TOTAL':'VARIABLE'} REGAS COST RANKING — ${ML[mi]} (${unitLbl})</text>
+    <text x="${PL}" y="36" fill="#546e7a" font-size="9">${showTotal?'Variable + fixed capacity cost':'GIK charge + emission + TSO opex (variable component only)'}</text>
+    <line x1="${xs(0).toFixed(1)}" y1="${PT-8}" x2="${xs(0).toFixed(1)}" y2="${PT+pts.length*rowH}" stroke="#2d4a6a" stroke-width="1.2"/>
+    ${gridSvg}${rows2}
+    <circle cx="${PL}" cy="${H-PB+22}" r="5.5" fill="#26c6da"/>
+    <text x="${PL+14}" y="${H-PB+26}" fill="#26c6da" font-size="9">German FSRU terminals</text>
+    <circle cx="${PL+175}" cy="${H-PB+22}" r="5.5" fill="#c8d6e5"/>
+    <text x="${PL+189}" y="${H-PB+26}" fill="#c8d6e5" font-size="9">Other terminals</text>
+    <text x="${PL}" y="${H-PB+42}" fill="#3d5070" font-size="8">LNG TradeOS™ © Ibrahim Mar — EUR/USD ${RG.eurUsd} · EUA €${RG.eua}/t · Cargo ${(RG.cargo/1e6).toFixed(1)}M MMBtu</text>
+  </svg>`;
+
+  const uBtn=(k,l)=>`<button class="f-btn sm${(RG.cgUnit||'usd')===k?' on':''}" onclick="RG.cgUnit='${k}';rgs('cgUnit','${k}');rgRT()">${l}</button>`;
+  const tBtn=(v,l)=>`<button class="f-btn sm${!!RG.cgShowTotal===v?' on':''}" onclick="RG.cgShowTotal=${v};rgRT()">${l}</button>`;
+  return`<div class="f-sec">REGASIFICATION COST COMPARISON — TERMINAL RANKING</div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:5px"><span style="color:#546e7a;font-size:9px;letter-spacing:1px">UNIT</span>${uBtn('usd','$/MMBtu')}${uBtn('eur','€/MWh')}</div>
+      <div style="display:flex;align-items:center;gap:5px"><span style="color:#546e7a;font-size:9px;letter-spacing:1px">COST</span>${tBtn(false,'VARIABLE ONLY')}${tBtn(true,'TOTAL (VAR+FIX)')}</div>
+      <div style="display:flex;align-items:center;gap:5px"><span style="color:#546e7a;font-size:9px;letter-spacing:1px">MONTH</span>
+        <select class="f-sel" style="width:90px" onchange="RG.cgMonth=+this.value;rgRT()">${ML.map((m,i)=>`<option value="${i}"${RG.cgMonth===i?' selected':''}>${m}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="f-card" style="overflow-x:auto;padding:16px">${svgStr}</div>
+    <div style="margin-top:10px;color:#546e7a;font-size:9px;line-height:1.8">
+      Variable = GIK charge + Emission (Cqs × EUA × EUR/USD / 1000) + TSO Opex (UK NBP only)<br>
+      Fixed = Slot capacity cost (lump-sum or per-MMBtu) + Grid capex + Maritime charges<br>
+      German DET FSRU terminals shown in teal — cost scales with cargo (per-MMBtu tariff structure)
+    </div>`;
+}
+
+// ── TAB 6: IMPLIED DES ──
+function rgImplied(){
+  const mi=RG.selMonth;
+  const rows=RG.terminals.map(t=>{
+    const hp=rgHP(t.hub,mi),v=rgVar(t,mi),ttf=rgTTF(mi);
+    const mktDiff=(RG.diffs[t.id]||[])[mi]||0,mktDES=ttf+mktDiff;
+    const qMon=RG.impliedMon[t.id]||0;
+    const implDES=hp-v.total-qMon,implDiff=implDES-ttf,basis=implDiff-mktDiff;
+    const signal=Math.abs(basis)<0.05?'FAIR':basis>0?'CHEAP':'EXPENSIVE';
+    const sc=signal==='CHEAP'?'#4caf50':signal==='EXPENSIVE'?'#f44336':'#ffeb3b';
+    return`<tr style="background:${basis>0.05?'rgba(76,175,80,.07)':basis<-0.05?'rgba(244,67,54,.06)':''}">
+      <td style="color:var(--th);font-size:10px">${t.name}</td>
+      <td style="color:#4fc3f7;font-size:9px">${t.hub}</td>
+      <td class="tr" style="color:#ffeb3b">${fmm(hp)}</td>
+      <td class="tr">${fmm(v.total)}</td>
+      <td class="tr" style="color:${mktDiff<0?'#f44336':'#546e7a'}">${mktDiff.toFixed(2)}</td>
+      <td class="tr" style="color:#26c6da">${fmm(mktDES)}</td>
+      <td style="padding:1px 3px"><input class="rg-inp" style="width:64px;text-align:right" type="number" step="0.001" value="${qMon.toFixed(3)}" onchange="RG.impliedMon['${t.id}']=+this.value;rgRT()"></td>
+      <td class="tr" style="color:#c8d6e5;font-weight:700">${fmm(implDES)}</td>
+      <td class="tr" style="color:${basis>0.05?'#4caf50':basis<-0.05?'#f44336':'#546e7a'}">${implDiff>=0?'+':''}${fmm(implDiff,3)}</td>
+      <td class="tr" style="color:${basis>0.05?'#4caf50':basis<-0.05?'#f44336':'#546e7a'};font-weight:${Math.abs(basis)>=0.05?700:400}">${basis>=0?'+':''}${fmm(basis,3)}</td>
+      <td style="color:${sc};font-weight:700;font-size:10px;text-align:center">${signal}</td>
+    </tr>`;
+  }).join('');
+  return`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+    <div class="f-sec" style="border:none;margin:0">SELECT MONTH</div>${msel()}
+    <span style="color:#546e7a;font-size:9px">Implied Diff = Hub − VarCost − Quoted Moneyness − TTF</span>
+  </div>
+  <div class="f-grid f-g3" style="gap:8px;margin-bottom:14px">
+    <div class="f-card"><div style="color:#4caf50;font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:5px">★ CHEAP — GOOD DEAL</div><div style="color:#546e7a;font-size:9px;line-height:1.7">Implied DES > Market DES · Basis > +0.05<br>Counterparty offering value vs market</div></div>
+    <div class="f-card"><div style="color:#ffeb3b;font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:5px">◎ FAIR — IN LINE WITH MARKET</div><div style="color:#546e7a;font-size:9px;line-height:1.7">Implied ≈ Market Diff · Basis within ±0.05<br>Quote consistent with where DES trades</div></div>
+    <div class="f-card"><div style="color:#f44336;font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:5px">✗ EXPENSIVE — BAD DEAL</div><div style="color:#546e7a;font-size:9px;line-height:1.7">Implied DES < Market DES · Basis < −0.05<br>Counterparty extracting value from DES</div></div>
+  </div>
+  <div class="f-sec">IMPLIED DES ANALYSIS — ${ML[mi]} · All values $/MMBtu</div>
+  <div style="color:#546e7a;font-size:9px;margin-bottom:10px">Enter counterparty's quoted moneyness per terminal. Model back-solves the implied TTF differential and compares to your market DES.</div>
+  <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
+    <th style="min-width:130px">TERMINAL</th><th>HUB</th>
+    <th class="tr">HUB PRICE</th><th class="tr">VAR COST</th>
+    <th class="tr">MKT DIFF</th><th class="tr">MKT DES</th>
+    <th class="tr" style="color:#ffeb3b">QUOTED MON.</th>
+    <th class="tr">IMPLIED DES</th><th class="tr">IMPLIED DIFF</th>
+    <th class="tr">BASIS</th><th>SIGNAL</th>
+  </tr></thead><tbody>${rows}</tbody></table></div>
+  <div style="margin-top:10px;color:#546e7a;font-size:9px;line-height:1.8">
+    Basis = Implied Diff − Market Diff · CHEAP if Basis &gt; 0.05 · EXPENSIVE if Basis &lt; −0.05
+  </div>`;
+}
+
+// ── TAB 7: NETBACK (no internal lock — tab-level lock handles it) ──
+function rgNBK(){
+  const mi=RG.selMonth;
+  const t=RG.terminals.find(x=>x.id===RG.nbkTerm)||RG.terminals[0];
+  const hp=rgHP(t.hub,mi),des=rgDES(t.id,mi),diff=(RG.diffs[t.id]||[])[mi]||0;
+  const v=rgVar(t,mi);
+  const extras=RG.nbkSlippage+RG.nbkBunker+RG.nbkCredit+RG.nbkDeadFreight+RG.nbkExtraShipping;
+  const totV=v.total+extras;
+  const fx=rgFix(t);
+  const intr=hp-des-totV;
+  const extV=RG.nbkExtrinsic?RG.nbkRawExt*RG.nbkCapture/100:0;
+  const totVal=intr+extV,maxBid=totVal,recBid=maxBid*0.90;
+  const cfPT=(hp-des-totV-fx.total)*RG.cargo/1e6;
+  const col=v=>v>=0?'#4caf50':'#f44336';
+  return`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <div class="f-sec" style="border:none;margin:0">MODEL 2 — NETBACK · SLOT BIDDING &amp; OPTIONALITY</div>
+    <button class="f-btn sm" onclick="RG_UNLOCK[7]=false;renderRegas()">🔒 RE-LOCK</button>
+  </div>
+  <div class="f-grid f-g2" style="margin-bottom:12px">
+    <div class="f-card"><div class="f-sec">SELECTION</div>
+      <div class="f-grid f-g2" style="gap:8px">
+        <div><span class="f-lbl">TERMINAL</span><select class="f-sel" onchange="RG.nbkTerm=this.value;rgRT()">${RG.terminals.map(tt=>`<option value="${tt.id}"${RG.nbkTerm===tt.id?' selected':''}>${tt.name}</option>`).join('')}</select></div>
+        <div><span class="f-lbl">MONTH</span>${msel()}</div>
+        <div><span class="f-lbl">CARGO (MMBtu)</span><input class="rg-inp" style="width:100%" type="number" step="100000" value="${RG.cargo}" onchange="rgP('cargo',+this.value)"></div>
+        <div style="padding-top:18px;color:#4fc3f7;font-size:9px">Hub: ${t.hub} · ${(RG.cargo/1e6).toFixed(2)}M MMBtu</div>
+      </div>
+    </div>
+    <div class="f-card"><div class="f-sec">MARKET DATA</div>
+      ${[['TTF (€/MWh)',RG.ttfCurve[mi].toFixed(3),'#c8d6e5'],['EUR/USD',RG.eurUsd,'#c8d6e5'],['TTF ($/MMBtu)',rgTTF(mi).toFixed(4),'#4fc3f7'],['Hub Price ('+t.hub+')',hp.toFixed(4),'#ffeb3b'],['TTF Differential',diff.toFixed(3),'#f44336'],['DES Price',des.toFixed(4),'#26c6da']].map(([l,v2,c])=>`<div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px"><span style="color:#546e7a">${l}</span><span style="color:${c};font-weight:700">${v2}</span></div>`).join('')}
+    </div>
+  </div>
+  <div class="f-grid f-g2" style="margin-bottom:12px">
+    <div class="f-card"><div class="f-sec">VARIABLE COSTS ($/MMBtu)</div>
+      ${[['GIK Charge',v.gik,null,'GIK% × Hub / (1−GIK%)'],['Regas Emission',v.emiss,null,'Cqs × EUA × EUR/USD / 1000'],['Grid Entry (Var)',v.gridV,null,'TSO Opex — UK NBP only'],['Slippage',RG.nbkSlippage,'nbkSlippage','Market execution'],['Bunker Fuel',RG.nbkBunker,'nbkBunker','Vessel fuel cost'],['Credit Charge',RG.nbkCredit,'nbkCredit','Working capital'],['Dead Freight',RG.nbkDeadFreight,'nbkDeadFreight','Idle vessel discharge'],['Extra Shipping',RG.nbkExtraShipping,'nbkExtraShipping','Extra freight vs Gate']].map(([l,val,k,note])=>`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="color:#546e7a;font-size:9px;min-width:110px">${l}</span>
+        ${k?`<input class="rg-inp" style="width:70px;text-align:right" type="number" step="0.001" value="${val}" onchange="RG.${k}=+this.value;rgRT()">`:`<span style="font-size:11px">${fmm(val)}</span>`}
+        <span style="color:#3d5070;font-size:8px;text-align:right;width:130px">${note}</span>
+      </div>`).join('')}
+      <div style="border-top:1px solid #1e3a5f;padding-top:6px;margin-top:4px;display:flex;justify-content:space-between"><span style="color:#4fc3f7;font-weight:700">TOTAL VARIABLE</span><span style="color:#4fc3f7;font-weight:700">${fmm(totV)}</span></div>
+    </div>
+    <div class="f-card">
+      <div class="f-sec">FIXED COSTS ($/MMBtu)</div>
+      ${[['Fixed Capacity',fx.fixCap,t.tt==='per_mmbtu'?'Tariff × EUR/USD':'SlotCost × EUR/USD ÷ Cargo'],['Grid Entry (Cap)',fx.gridF,'TSO Capex standard 0.05'],['Maritime',fx.marit,'Port cost × EUR/USD ÷ Cargo']].map(([l,val,note])=>`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="color:#546e7a;font-size:9px;min-width:120px">${l}</span><span style="font-size:11px">${fmm(val)}</span><span style="color:#3d5070;font-size:8px;width:160px;text-align:right">${note}</span></div>`).join('')}
+      <div style="border-top:1px solid #1e3a5f;padding-top:6px;margin-top:4px;display:flex;justify-content:space-between"><span style="color:#81c784;font-weight:700">TOTAL FIXED</span><span style="color:#81c784;font-weight:700">${fmm(fx.total)}</span></div>
+      <div class="f-sec" style="margin-top:14px">INTRINSIC VALUE</div>
+      ${[['Hub Price',hp,'#ffeb3b'],['− DES Price',des,'#26c6da'],['− Variable Costs',totV,'#f44336'],['INTRINSIC',intr,col(intr)]].map(([l,val,c],i)=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px${i===3?';border-top:1px solid #1e3a5f;padding-top:6px;margin-top:4px':''}"><span style="color:${i===3?c:'#546e7a'};font-weight:${i===3?700:400}">${l}</span><span style="color:${c};font-weight:${i===3?700:400}">${fmm(val)}</span></div>`).join('')}
+    </div>
+  </div>
+  <div class="f-grid f-g2" style="margin-bottom:12px">
+    <div class="f-card"><div class="f-sec">EXTRINSIC VALUE (OPTIONALITY)</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="color:#546e7a;font-size:9px">Include Extrinsic?</span>
+        <button class="f-btn sm${RG.nbkExtrinsic?' on':''}" onclick="RG.nbkExtrinsic=!RG.nbkExtrinsic;rgRT()">${RG.nbkExtrinsic?'YES':'NO'}</button>
+        <span style="color:#546e7a;font-size:9px">YES for slots 2+ months out</span>
+      </div>
+      ${[['Volatility (annual %)',RG.nbkVol,'nbkVol',1],['Raw Extrinsic Value',RG.nbkRawExt,'nbkRawExt',0.001],['Capture Rate (%)',RG.nbkCapture,'nbkCapture',5]].map(([l,val,k,s])=>`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="color:#546e7a;font-size:9px">${l}</span><input class="rg-inp" style="width:80px;text-align:right" type="number" step="${s}" value="${val}" onchange="RG.${k}=+this.value;rgRT()"></div>`).join('')}
+      <div style="border-top:1px solid #1e3a5f;padding-top:6px;margin-top:4px;display:flex;justify-content:space-between"><span style="color:#a78bfa;font-weight:700">EXTRINSIC VALUE</span><span style="color:#a78bfa;font-weight:700">${fmm(extV)}</span></div>
+    </div>
+    <div class="f-card"><div class="f-sec">SLOT BID RECOMMENDATION</div>
+      ${[['Intrinsic Value',intr,col(intr)],['+ Extrinsic Value',extV,'#a78bfa'],['TOTAL VALUE',totVal,col(totVal)],['Current Fixed Cap',fx.fixCap,'#81c784']].map(([l,val,c],i)=>`<div style="display:flex;justify-content:space-between;margin-bottom:6px${i===2?';border-top:1px solid #1e3a5f;padding-top:6px;margin-top:4px':''}"><span style="color:${i>=2?c:'#546e7a'};font-weight:${i===2?700:400}">${l}</span><span style="color:${c};font-weight:${i===2?700:400}">${fmm(val)}</span></div>`).join('')}
+      <div style="background:${maxBid>0?'rgba(76,175,80,.15)':'rgba(244,67,54,.08)'};border:1px solid ${maxBid>0?'#4caf50':'#f44336'};padding:12px;margin-top:8px">
+        <div style="color:#546e7a;font-size:9px;margin-bottom:4px">MAXIMUM SLOT BID</div>
+        <div style="color:${col(maxBid)};font-size:20px;font-weight:700">${maxBid>=0?'+':''}${fmm(maxBid)} $/MMBtu</div>
+        <div style="color:#546e7a;font-size:9px;margin-top:8px">RECOMMENDED BID (90% buffer)</div>
+        <div style="color:${col(recBid)};font-size:16px;font-weight:700">${recBid>=0?'+':''}${fmm(recBid)} $/MMBtu</div>
+      </div>
+      <div style="margin-top:8px;color:#546e7a;font-size:9px;line-height:1.7">${totVal>fx.fixCap?'✓ TOTAL VALUE > Fixed Capacity → PARTICIPATE in auction':'✗ TOTAL VALUE < Fixed Capacity → PASS or negotiate'}<br>Recommended Bid = 90% of max (execution risk buffer)</div>
+    </div>
+  </div>
+  <div class="f-card"><div class="f-sec">CASH FLOW — ${t.name} · ${ML[mi]}</div>
+    <table class="rg-tbl"><thead><tr><th style="min-width:200px">ITEM</th><th class="tr">$/MMBtu</th><th class="tr">$M</th><th>NOTES</th></tr></thead><tbody>
+      <tr><td style="color:#4caf50">Gas Sales Revenue</td><td class="tr" style="color:#4caf50">${fmm(hp)}</td><td class="tr" style="color:#4caf50">${(hp*RG.cargo/1e6).toFixed(3)}</td><td style="color:#546e7a;font-size:9px">Hub Price × Cargo</td></tr>
+      <tr><td style="color:#f44336">Cost of LNG (DES)</td><td class="tr" style="color:#f44336">−${fmm(des)}</td><td class="tr" style="color:#f44336">−${(des*RG.cargo/1e6).toFixed(3)}</td><td style="color:#546e7a;font-size:9px">DES Purchase Price</td></tr>
+      <tr><td style="color:#f44336">Variable Regas</td><td class="tr" style="color:#f44336">−${fmm(totV)}</td><td class="tr" style="color:#f44336">−${(totV*RG.cargo/1e6).toFixed(3)}</td><td style="color:#546e7a;font-size:9px">GIK + Emission + extras</td></tr>
+      <tr><td style="color:#f44336">Fixed Capacity</td><td class="tr" style="color:#f44336">−${fmm(fx.total)}</td><td class="tr" style="color:#f44336">−${(fx.total*RG.cargo/1e6).toFixed(3)}</td><td style="color:#546e7a;font-size:9px">FixCap + Grid(F) + Maritime</td></tr>
+      <tr><td style="color:#a78bfa">Extrinsic Value</td><td class="tr" style="color:#a78bfa">${fmm(extV)}</td><td class="tr" style="color:#a78bfa">${(extV*RG.cargo/1e6).toFixed(3)}</td><td style="color:#546e7a;font-size:9px">Optionality (if included)</td></tr>
+      <tr style="border-top:2px solid #1e3a5f"><td style="color:${col(cfPT)};font-weight:700">PRE-TAX CASH FLOW</td><td class="tr" style="color:${col(cfPT)};font-weight:700">${cfPT>=0?'+':''}${fmm(cfPT)}</td><td class="tr" style="color:${col(cfPT)};font-weight:700">${cfPT>=0?'+':''}${cfPT.toFixed(3)}</td><td style="color:#546e7a;font-size:9px">Revenue − All costs + Extrinsic</td></tr>
+    </tbody></table>
+  </div>`;
+}
+
+// ── TAB 8: KNOWLEDGE DB (fixed — duplicate fragment removed) ──
+function rgKB(){
+  const data=[
+    {n:'Zeebrugge',c:'Belgium',gik:'1.30% — HIGHEST GIK',cost:'€624K/slot — CREG regulated, indexed monthly',hub:'ZEE (TTF proxy)',access:'Annual primary + FCFS spot 60d ahead. Ascending auction (Fluxys EDP).',notes:'Slot ~40 tides (~10.3 days). Connects ZEE/TTF/NBP/PEG.'},
+    {n:'Dunkerque',c:'France',gik:'~1.0%',cost:'CRE-regulated ATTM7 — 4yr framework',hub:'PEG',access:'Short-term if primary unsold. Contact Dunkerque LNG.',notes:'13 bcm/yr. North coast. Access PEG/TTF/ZEE/NBP.'},
+    {n:'Fos Cavaou',c:'France',gik:'~1.0%',cost:'€1.14/MWh (ATTM7 Apr-25)',hub:'PEG',access:'SPOT tariff after D-20 of M-1. FCFS.',notes:'Pooling with Montoir/Fos Tonkin. 10 bcm/yr.'},
+    {n:'Montoir',c:'France',gik:'~1.0%',cost:'€1.04/MWh — CHEAPEST Elengy',hub:'PEG',access:'SPOT after 20th of M-1.',notes:'Atlantic location. Americas/WAF. Project Ulysse €220M 2025-28.'},
+    {n:'Fos Tonkin',c:'France',gik:'~1.0%',cost:'€1.53/MWh — MOST EXPENSIVE Elengy',hub:'PEG',access:'Same SPOT as other Elengy terminals.',notes:'Oldest French terminal (1972). 1.5 bcm/yr. Elengy pooling.'},
+    {n:'Brunsbuttel',c:'Germany',gik:'0.7% OL / 0.9% CL',cost:'€3.86/MMBtu per_mmbtu — MOST EXPENSIVE DET',hub:'THE',access:'DET descending auction.',notes:'PER_MMBTU: cost scales with cargo. Non-delivery penalty 30% min €600K.'},
+    {n:'Wilhelmshaven 1',c:'Germany',gik:'0.7% OL / 2.5% CL — LARGEST JUMP',cost:'€1.01/MMBtu — CHEAPEST DET',hub:'THE',access:'DET descending auction.',notes:'Min slot 125,000 m3. Winter: 2.5% CL — material cost impact.'},
+    {n:'Wilhelmshaven 2',c:'Germany',gik:'1.3% OL / 2.3% CL',cost:'€2.35/MMBtu',hub:'THE',access:'DET descending auction.',notes:'Higher OL GIK (1.3%) than WHV1. H2-ready. TES strategic partner.'},
+    {n:'Stade',c:'Germany',gik:'0.5% OL (LOWEST DET) / 2.2% CL',cost:'€2.42/MMBtu (H2 2026 only)',hub:'THE',access:'DET auction from Jul 2026.',notes:'NOT OPERATIONAL before 01/07/2026. FSRU Energos Force. Min 125,000 m3.'},
+    {n:'Lubmin',c:'Germany',gik:'Not disclosed',cost:'PRIVATE — no regulated tariff',hub:'THE/GASCADE',access:'Direct negotiation with Deutsche ReGas.',notes:'Only private FSRU in Germany. Customers: BASF, Equinor, TotalEnergies, MET.'},
+    {n:'Gate Terminal',c:'Netherlands',gik:'~0.5%',cost:'€12.5M/BCM/yr throughput right (TRADEABLE)',hub:'TTF',access:'FCFS short-term. Secondary market.',notes:'Largest EU terminal (→20 bcm, 4th tank 2026). GTS entry tariff +50% in 2026 (ACM).'},
+    {n:'Adriatic LNG',c:'Italy',gik:'~0.75%',cost:'ARERA-regulated RTRG 2024-2027. Maritime: €235,394',hub:'PSV',access:'Spot if available. Open Season 2025 for 2029-2050.',notes:'ONLY offshore GBS in Europe. Predominantly Qatari cargoes.'},
+    {n:'OLT Toscana',c:'Italy',gik:'~0.73%',cost:'ARERA-regulated RTRG',hub:'PSV',access:'Contact Snam.',notes:'3.75→5 bcm/yr. Snam acquiring 100% (Dec 2025, 7.6× EBITDA).'},
+    {n:'Panigaglia',c:'Italy',gik:'1.40% — HIGHEST Italy',cost:'ARERA-regulated RTRG',hub:'PSV',access:'Contact Snam. Limited spot.',notes:'Oldest Italian terminal (1971). Snam €1bn expansion 2026-30.'},
+    {n:'Piombino',c:'Italy',gik:'~1.10%',cost:'ARERA-regulated RTRG',hub:'PSV',access:'Contact Snam.',notes:'MOST ACTIVE Italian terminal 2024: 3.59 bcm (39 unloadings). 100% Snam.'},
+    {n:'Ravenna',c:'Italy',gik:'~1.10%',cost:'ARERA-regulated RTRG',hub:'PSV',access:'Contact Snam.',notes:'Online May 2025 — NEWEST Italian terminal. Adriatic Backbone integration 2026.'},
+    {n:'Revithoussa',c:'Greece',gik:'~1.0%',cost:'RAAEY-regulated',hub:'TTF (no Greek hub)',access:'Contact DESFA.',notes:'ONLY Greek LNG import — strategic monopoly. Enagás ~20% in DESFA.'},
+    {n:'KRK',c:'Croatia',gik:'~1.0%',cost:'~€1.25/MWh GCV (contracted)',hub:'TTF proxy',access:'NO spot on existing. PRISMA auction for expansion.',notes:'ACCESS-CONSTRAINED. Fully booked to 2033. Phase 1 expansion Q3 2025. EU PCI (€101.4M CEF grant).'},
+    {n:'Klaipeda',c:'Lithuania',gik:'~1.0%',cost:'Full stack 2.73 €/MWh = 0.80 €/MMBtu',hub:'TTF',access:'~4 spot cargoes/year in 2026 only.',notes:'ACCESS-CONSTRAINED. LT fully booked to 2033.'},
+    {n:'Swinoujscie',c:'Poland',gik:'~0.91%',cost:'Gaz-System regulated Tariff No.10',hub:'TTF',access:'Short-term FCFS. Polish regulator approval.',notes:'6.2 bcm/yr (expanding). LNG storage 100% discount ENDED 2026.'},
+    {n:'Inkoo',c:'Finland',gik:'0.80% (model) / 3.0% own-use FSRU fuel',cost:'2.46 €/MWh + Gasgrid entry',hub:'TTF (via Balticconnector)',access:'Annual procedure Jul-Aug. ~13 of 20 slots unbooked 2026.',notes:'MOST EXPENSIVE in model. 15-18% utilisation 2025.'},
+    {n:'Spanish Terminals (6)',c:'Spain',gik:'~0.5%',cost:'CNMC: Fixed Term + Variable €17.00/GWh',hub:'PVB',access:'ATR short-term via Enagás. FCFS.',notes:'LARGEST EU LNG infra. LOWEST utilisation (~34%).'},
+    {n:'Sines',c:'Portugal',gik:'~0.75%',cost:'ERSE-regulated',hub:'PVB (MIBGAS/Iberian)',access:'Contact REN Gas. FCFS.',notes:'Strategic Atlantic import point. Americas/WAF/Qatar cargoes.'},
+    {n:'Dragon LNG',c:'UK',gik:'0.30%',cost:'Ofgem-regulated + NGGT TSO Capex + TSO Opex',hub:'NBP',access:'NGGT capacity booking + terminal spot. PRISMA secondary.',notes:'UK UNIQUE: 4 cost components. NGGT TSO Opex variable ~0.02 $/MMBtu.'},
+    {n:'Isle of Grain',c:'UK',gik:'0.25%',cost:'Ofgem-regulated + NGGT (Capex + Opex)',hub:'NBP',access:'Secondary market via xoserve/PRISMA.',notes:'Centrica + ECP. NBP at discount to TTF (~1.40 $/MMBtu as of Mar-26).'},
+    {n:'South Hook',c:'UK',gik:'0.20% — LOWEST in Europe',cost:'Formula: max[(Pelec×1.08)+(Peac×2.33)+70.2] £/GWh. NTS Entry = £0/GWh.',hub:'NBP',access:'Long-term Qatari tolling. No spot.',notes:'NTS Entry Capacity = £0/GWh (unique among UK). Regas fee formula-based.'}
+  ];
+  const rows=data.map(d=>`<tr>
+    <td style="color:var(--th);font-size:10px;font-weight:500">${d.n}</td>
+    <td style="color:#546e7a;font-size:9px">${d.c}</td>
+    <td style="color:#4fc3f7;font-size:10px">${d.gik}</td>
+    <td style="color:#c8d6e5;font-size:9px;max-width:180px;white-space:normal;line-height:1.4">${d.cost}</td>
+    <td style="color:#ffb74d;font-size:9px">${d.hub}</td>
+    <td style="color:#81c784;font-size:9px;max-width:150px;white-space:normal;line-height:1.4">${d.access}</td>
+    <td style="color:#546e7a;font-size:9px;max-width:250px;white-space:normal;line-height:1.5">${d.notes}</td>
+  </tr>`).join('');
+  return`<div class="f-sec">TERMINAL KNOWLEDGE DATABASE — ASSESSMENT MAR 2026</div>
+    <div style="color:#546e7a;font-size:9px;margin-bottom:10px">PROPRIETARY &amp; CONFIDENTIAL — Ibrahim Mar — LNG TradeOS™ — Internal Use Only</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      ${[['COST STRUCTURE','NW Europe: 3 components (Regas Capex + Opex + TSO Capex). UK unique: 4 components (adds variable TSO Opex). German DET: per_mmbtu tariff — cost scales with cargo.','#4fc3f7'],
+         ['MONEYNESS FORMULA','Moneyness = Hub Price − Variable Costs − DES Price. ITM > 0. Variable = GIK + Emission + Grid(V). Hub is terminal-specific: PSV for Italy, PVB for Spain, NBP for UK.','#ffeb3b'],
+         ['SLOT BIDDING','Intrinsic = Hub − DES − VarCosts. Extrinsic = optionality (70% capture typical). Max Bid = Intrinsic + Extrinsic. Recommended = 90% of max. Only bid if Total Value > Fixed Capacity.','#81c784']
+      ].map(([t,d2,c])=>`<div class="f-card"><div style="color:${c};font-size:9px;letter-spacing:1px;margin-bottom:5px">${t}</div><div style="color:#546e7a;font-size:9px;line-height:1.7">${d2}</div></div>`).join('')}
+    </div>
+    <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
+      <th style="min-width:150px">TERMINAL</th><th>COUNTRY</th><th>GIK</th>
+      <th style="min-width:180px">COST STRUCTURE</th><th>HUB</th>
+      <th style="min-width:150px">SPOT ACCESS</th><th style="min-width:240px">KEY SPECIFICITIES</th>
+    </tr></thead><tbody>${rows}</tbody></table></div>
+    <div style="margin-top:12px;color:#546e7a;font-size:9px;line-height:1.8">
+      Sources: Fluxys · CRE/Elengy · Bundesnetzagentur · Gasgrid · AmberGrid+KN · CNMC/Enagás · ARERA/Snam · LNG Hrvatska · DESFA · Gaz-System · ERSE · Ofgem/NGGT<br>
+      <b style="color:#f44336">PROPRIETARY &amp; CONFIDENTIAL — Ibrahim Mar — LNG TradeOS™</b>
+    </div>`;
+}
+
+// ── SYNC FROM FINANCIAL TRADING (enhanced) ──
+function rgAutoLoadFromFinancial(){
+  if(!sDates||!sDates.length){alert('No financial data loaded. Open Financial Trading and load your EOD files first.');return;}
+  const latestDs=sDates[sDates.length-1],fwdRows=aD[latestDs].rows;
+  const newCurve=[];let nbpSum=0,nbpN=0;
+  for(let i=0;i<24;i++){
+    const now=new Date(),d2=new Date(now.getFullYear(),now.getMonth()+1+i,1);
+    const pk=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
+    const row=fwdRows.find(r=>r.pk===pk);
+    if(row&&row.TTF!=null){
+      newCurve.push(+(row.TTF*3.41214/RG.eurUsd).toFixed(3));
+      if(row.NBP!=null){nbpSum+=row.NBP-row.TTF;nbpN++;}
+    } else newCurve.push(RG.ttfCurve[i]||17.50);
+  }
+  RG.ttfCurve=newCurve;
+  if(nbpN>0){RG.hubSpreads.NBP=+(nbpSum/nbpN).toFixed(3);rgs('hubSpreads',RG.hubSpreads);}
+  rgs('ttfCurve',RG.ttfCurve);
+  // Navigate to Hub Curves tab
+  RG.tab=0;
+  renderRegas();
+  alert(`Hub Curves synced from ${latestDs}.\n\nTTF: ${newCurve.filter(v=>v>0).length}/24 months loaded.\nNBP spread auto-computed: ${RG.hubSpreads.NBP.toFixed(3)} $/MMBtu.\n\nPSV (premium ~0.68) · THE (premium ~0.03) · PEG (slight premium) · PVB (discount ~-0.17) · ZEE (slight premium)\n→ These remain spread-based using current Hub Curves settings.\n→ Adjust manually in Hub Curves tab as live data becomes available.`);
+}
+
+// ── ITM PDF SNAPSHOT ──
+function rgExportITM(){
+  const mi=RG.selMonth;
+  const res=RG.terminals.map(t=>{const hp=rgHP(t.hub,mi),des=rgDES(t.id,mi),v=rgVar(t,mi),diff=(RG.diffs[t.id]||[])[mi]||0,money=hp-v.total-des;return{t,hp,des,diff,varC:v.total,money,itm:money>0};}).sort((a,b)=>b.money-a.money);
+  const trows=res.map((r,i)=>`<tr class="${r.itm?'itm':'otm'}">
+    <td>${i+1}</td><td><b>${r.t.name}</b></td><td>${r.t.country}</td>
+    <td style="color:#1565c0;font-weight:bold">${r.t.hub}</td>
+    <td class="r" style="color:${r.diff<0?'#c62828':'#2e7d32'}">${r.diff.toFixed(2)}</td>
+    <td class="r">${fmm(r.des)}</td><td class="r">${fmm(r.varC)}</td>
+    <td class="r"><b>${fmm(r.hp)}</b></td>
+    <td class="r" style="color:${r.itm?'#2e7d32':'#c62828'};font-weight:bold">${r.money>=0?'+':''}${fmm(r.money)}</td>
+    <td style="color:${r.itm?'#2e7d32':'#c62828'};font-weight:bold;text-align:center">${r.itm?'✓ ITM':'✗ OTM'}</td>
+  </tr>`).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ITM Monitor — ${ML[mi]}</title><style>
+    *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10px;margin:20px;color:#111}
+    .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:2px solid #1a237e;padding-bottom:8px}
+    h1{font-size:14px;color:#1a237e;margin-bottom:2px}h2{font-size:9px;color:#666;font-weight:normal}
+    .snap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+    .si{background:#f5f5f5;padding:6px 10px;border-left:3px solid #1a237e}.sl{font-size:7px;color:#999;text-transform:uppercase;letter-spacing:.5px}.sv{font-size:12px;font-weight:bold;color:#1a237e}
+    table{width:100%;border-collapse:collapse}th{background:#1a237e;color:#fff;padding:5px 7px;text-align:left;font-size:8px;letter-spacing:.5px}th.r,td.r{text-align:right}
+    td{padding:4px 7px;border-bottom:1px solid #eee}.itm{background:#f1f8e9}.otm{background:#fff8f8}
+    .ft{margin-top:10px;font-size:7.5px;color:#999;border-top:1px solid #ddd;padding-top:6px;display:flex;justify-content:space-between}
+    button{padding:5px 14px;background:#1a237e;color:#fff;border:none;cursor:pointer;font-size:9px}
+    @media print{button{display:none}@page{size:A4 landscape;margin:1.2cm}}
+  </style></head><body>
+  <div class="hdr">
+    <div><h1>LNG TradeOS™ — IN-THE-MONEY TERMINAL MONITOR</h1>
+    <h2>Month: <b>${ML[mi]}</b> &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} &nbsp;·&nbsp; © Ibrahim Mar — CONFIDENTIAL</h2></div>
+    <button onclick="window.print()">PRINT / SAVE PDF</button>
+  </div>
+  <div class="snap">
+    ${RG_HUBS.map(h=>`<div class="si"><div class="sl">${h}</div><div class="sv">${rgHP(h,mi).toFixed(3)}</div></div>`).join('')}
+    <div class="si"><div class="sl">EUR/USD</div><div class="sv">${RG.eurUsd}</div></div>
+    <div class="si"><div class="sl">EUA</div><div class="sv">€${RG.eua}/t</div></div>
+    <div class="si"><div class="sl">Cargo</div><div class="sv">${(RG.cargo/1e6).toFixed(1)}M MMBtu</div></div>
+    <div class="si" style="border-left-color:green"><div class="sl">ITM / Total</div><div class="sv" style="color:green">${res.filter(r=>r.itm).length} / ${res.length}</div></div>
+  </div>
+  <table><thead><tr><th>#</th><th>TERMINAL</th><th>COUNTRY</th><th>HUB</th><th class="r">TTF DIFF</th><th class="r">DES PRICE</th><th class="r">VAR COST</th><th class="r">HUB PRICE</th><th class="r">MONEYNESS</th><th>STATUS</th></tr></thead>
+  <tbody>${trows}</tbody></table>
+  <div class="ft"><span>Moneyness = Hub Price − Variable Costs − DES Price &nbsp;·&nbsp; Variable = GIK + Emission + Grid(V)</span><span>LNG TradeOS™ v1.3 &nbsp;·&nbsp; Proprietary &amp; Confidential &nbsp;·&nbsp; Ibrahim Mar</span></div>
+  </body></html>`;
+  const w=window.open('','_blank','width=1150,height=780');
+  if(!w){alert('Please allow popups for PDF export.');return;}
+  w.document.write(html);w.document.close();
+}
 
 // ══ DRIVE AUTO-LOAD ══
 const AK='AIzaSyAcEeqXFFvX3JIb-HHbtHSdtCSFGqDpLnw',FID='18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
-function showManualDrop(){const da=$('dz-auto'),dm=$('dz-manual');if(da)da.style.display='none';if(dm)dm.style.display='flex';setupDrop();}
-function setP(pct,title,sub){const pf=$('progfill'),pt=$('progtxt'),dt=$('dz-auto-title');if(pf)pf.style.width=pct+'%';if(title&&dt)dt.textContent=title;if(sub&&pt)pt.textContent=sub;}
+function showManualDrop(){const da=$id('dz-auto'),dm=$id('dz-manual');if(da)da.style.display='none';if(dm)dm.style.display='flex';setupDrop();}
+function setP(pct,title,sub){const pf=$id('progfill'),pt=$id('progtxt'),dt=$id('dz-auto-title');if(pf)pf.style.width=pct+'%';if(title&&dt)dt.textContent=title;if(sub&&pt)pt.textContent=sub;}
 async function lFiles(){const all=[];let pt=null;const q=encodeURIComponent(`'${FID}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false`);do{let url=`https://www.googleapis.com/drive/v3/files?q=${q}&key=${AK}&fields=files(id,name),nextPageToken&pageSize=200&orderBy=name`;if(pt)url+='&pageToken='+encodeURIComponent(pt);const r=await fetch(url);if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'API error');}const d=await r.json();if(d.files)all.push(...d.files);pt=d.nextPageToken||null;}while(pt);return all;}
 let _driveLoading=false;
 async function lDrive(){
   if(finLoaded||_driveLoading)return;
   _driveLoading=true;
-  // If cache exists, use it
-  if(lCache()){showAnalyticsUI();initUI();const st=$('stext');if(st)st.textContent=sDates.length+' DATES — '+fmtD(sDates[0])+' → '+fmtD(sDates[sDates.length-1])+' · cached';if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}return;}
+  if(lCache()){showAnalyticsUI();initUI();const st=$id('stext');if(st)st.textContent=sDates.length+' DATES (cached)';if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}return;}
   try{
     setP(5,'CONNECTING TO GOOGLE DRIVE','Listing files...');
     const files=await lFiles();
     if(!files.length)throw new Error('No files found in Drive folder.');
-    plog(`Found ${files.length} files`);
-    setP(10,'LOADING','Downloading...');
-    $('parselog').style.display='block';
+    setP(10,'LOADING',`${files.length} files found — downloading...`);
+    $id('parselog').style.display='block';
     const B=3;let done=0,added=0,sk=0;
     for(let i=0;i<files.length;i+=B){
       await Promise.all(files.slice(i,i+B).map(async f=>{
         const date=pDFN(f.name);if(!date){sk++;return;}
         const key=toStr(date);if(aD[key]){done++;return;}
-        try{const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${AK}`);if(!resp.ok){sk++;return;}          const buf=await toAB(resp);if(buf.byteLength<5000){sk++;return;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){sk++;return;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;plog(`OK: ${f.name}`);}else sk++;}catch(e){sk++;}done++;
+        try{const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${AK}`);if(!resp.ok){sk++;return;}
+          const buf=await toAB(resp);if(buf.byteLength<5000){sk++;return;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){sk++;return;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;plog(`OK: ${f.name}`);}else sk++;}catch(e){sk++;}done++;
       }));
       setP(10+(Math.min(done,files.length)/files.length)*86,'LOADING',`${added} loaded · ${sk} skipped`);
     }
@@ -1138,7 +1750,7 @@ async function lDrive(){
     setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},600);
   }catch(e){
     plog('Drive error: '+e.message,true);
-    const fb=$('fallback-btn'),ds=$('drive-spinner'),dt=$('dz-auto-title'),pt=$('progtxt');
+    const fb=$id('fallback-btn'),ds=$id('drive-spinner'),dt=$id('dz-auto-title'),pt=$id('progtxt');
     if(fb)fb.style.display='block';if(ds)ds.style.display='none';
     if(dt)dt.textContent='COULD NOT LOAD FROM DRIVE';
     if(pt)pt.textContent='Click below to load manually.';
@@ -1147,12 +1759,11 @@ async function lDrive(){
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
-  const cc=$('clearCacheBtn'),fi2=$('fileInput2');
+  const cc=$id('clearCacheBtn'),fi2=$id('fileInput2');
   if(cc)cc.addEventListener('click',clearCache);
   if(fi2)fi2.addEventListener('change',()=>{if(fi2.files.length)handleFiles([...fi2.files],true);});
   setupDrop();
-  // Auto-load from cache on startup if available
-  if(lCache()){showAnalyticsUI();initUI();const st=$('stext');if(st)st.textContent=sDates.length+' DATES (cached)';}
+  if(lCache()){showAnalyticsUI();initUI();const st=$id('stext');if(st)st.textContent=sDates.length+' DATES (cached)';}
 });
 </script>
 </body>
