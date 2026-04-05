@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/drive.js": {
+      "maxDuration": 30
+    }
+  }
+}
