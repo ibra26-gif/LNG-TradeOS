@@ -1049,14 +1049,38 @@ function toStr(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,
 function fmtD(s){return new Date(s+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
 function pkL(pk){const[y,m]=pk.split('-');return MA[+m-1]+'-'+String(y).slice(2);}
 function fCol2(hdrs,cands){for(const c of cands){const i=hdrs.findIndex(h=>h&&String(h).trim()===c);if(i>=0)return i;}return-1;}
-function pDFN(name){let m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{4})/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{2})(?!\d)/);if(m){const yy=+m[3];return new Date(yy>=50?1900+yy:2000+yy,+m[2]-1,+m[1]);}return null;}
+function pDFN(name){
+  // YYYY.MM.DD or YYYY-MM-DD or YYYY_MM_DD  (new Drive format: "OB LNG EOD Curve 2024.03.15.xlsx")
+  let m=name.match(/(\d{4})[._\s\-](\d{2})[._\s\-](\d{2})/);
+  if(m){const d=new Date(+m[1],+m[2]-1,+m[3]);if(!isNaN(d)&&+m[1]>=2020&&+m[1]<=2040)return d;}
+  // DD.MM.YYYY (legacy)
+  m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{4})/);
+  if(m)return new Date(+m[3],+m[2]-1,+m[1]);
+  // DD.MM.YY (legacy short)
+  m=name.match(/(\d{2})[._\s\-](\d{2})[._\s\-](\d{2})(?!\d)/);
+  if(m){const yy=+m[3];return new Date(yy>=50?1900+yy:2000+yy,+m[2]-1,+m[1]);}
+  return null;
+}
 function gSeaP(){const pks=aPKs();const years=[...new Set(pks.map(pk=>pk.split('-')[0]))];const out=[];years.forEach(y=>{out.push({v:'win-'+y,l:'Win-'+String(y).slice(2),months:[10,11,12,1,2,3],y:+y,type:'seasonal'});out.push({v:'sum-'+y,l:'Sum-'+String(y).slice(2),months:[4,5,6,7,8,9],y:+y,type:'seasonal'});['q1','q2','q3','q4'].forEach((q,qi)=>{const mths=[[1,2,3],[4,5,6],[7,8,9],[10,11,12]][qi];out.push({v:`${q}-${y}`,l:`${q.toUpperCase()}-${String(y).slice(2)}`,months:mths,y:+y,type:'quarterly'});});});return out;}
 function gAgg(inst,t,rows){const vals=[];t.months.forEach(m=>{const yr=(m<=3&&t.months.includes(12))?t.y+1:t.y;const pk=`${yr}-${String(m).padStart(2,'0')}`;const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)vals.push(row[inst]);});if(!vals.length)return null;return vals.reduce((a,b)=>a+b,0)/vals.length;}
 function pExcel(buf){const wb=XLSX.read(buf,{type:'array',cellDates:true});let ws=wb.Sheets['EXCEL PASTE'];if(!ws){const mn=wb.SheetNames.find(n=>n.replace(/\s/g,'').toUpperCase()==='EXCELPASTE');if(mn)ws=wb.Sheets[mn];}if(!ws){for(const n of wb.SheetNames){const d=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:null,raw:false});if(d.slice(0,10).some(r=>r&&String(r[0]).trim()==='Period')){ws=wb.Sheets[n];break;}}}if(!ws)return[];const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});let hdr=-1;for(let i=0;i<Math.min(data.length,15);i++){const row=data[i];if(!row)continue;const c0=row[0]!=null?String(row[0]).trim():'';if(c0==='Period'||row.some(v=>v!=null&&String(v).trim()==='BRT SW')){hdr=i;break;}}if(hdr===-1)return[];const hdrs=data[hdr].map(h=>h?String(h).trim():'');const C={};for(const[k,c]of Object.entries(CN))C[k]=fCol2(hdrs,c);const rows=[];let nulls=0;for(let i=hdr+6;i<data.length;i++){const r=data[i];if(!r||r[0]==null){if(++nulls>8)break;continue;}nulls=0;const pk=getPK(r[0]);if(!pk)continue;const eu=(C.EURUSD>=0?toNum(r[C.EURUSD]):null)||1.15,gb=(C.GBPUSD>=0?toNum(r[C.GBPUSD]):null)||1.28;const g=k=>C[k]>=0?toNum(r[C[k]]):null;const ttfR=g('TTF'),nbpR=g('NBP'),jkm=g('JKM'),hh=g('HH'),brent=g('BRENT'),dated=g('DATED'),slope=g('SLOPE');const ttf=ttfR!=null?+(ttfR*0.293071*eu).toFixed(4):null,nbp=nbpR!=null?+(nbpR/10*gb).toFixed(4):null;rows.push({pk,JKM:jkm,TTF:ttf,HH:hh,NBP:nbp,Brent:brent,Dated:dated,Slope:slope,SP_JT:(jkm!=null&&ttf!=null)?+(jkm-ttf).toFixed(4):null,SP_JH:(jkm!=null&&hh!=null)?+(jkm-hh).toFixed(4):null,SP_TH:(ttf!=null&&hh!=null)?+(ttf-hh).toFixed(4):null});}return rows;}
 function sCache(){try{const p={};for(const[k,v]of Object.entries(aD))p[k]={date:v.date.toISOString(),rows:v.rows};localStorage.setItem(CK,JSON.stringify(p));}catch(e){}}
 function lCache(){try{const raw=localStorage.getItem(CK);if(!raw)return false;const p=JSON.parse(raw);for(const[k,v]of Object.entries(p))aD[k]={date:new Date(v.date),rows:v.rows};sDates=Object.keys(aD).sort();return sDates.length>0;}catch(e){localStorage.removeItem(CK);return false;}}
 function clearCache(){if(confirm('Clear cache and reload?')){localStorage.removeItem(CK);location.reload();}}
-function setupDrop(){const dz=$id('dz'),fi=$id('fileInput');if(!dz||!fi)return;dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFiles([...e.dataTransfer.files],false);});dz.addEventListener('click',e=>{if(!e.target.classList.contains('dz-btn'))fi.click();});fi.addEventListener('change',()=>{if(fi.files.length)handleFiles([...fi.files],false);});}
+function setupDrop(){
+  const dz=$id('dz'),fi=$id('fileInput');if(!dz||!fi)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();dz.classList.add('over');});
+  dz.addEventListener('dragleave',e=>{e.stopPropagation();dz.classList.remove('over');});
+  dz.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();dz.classList.remove('over');
+    const files=[...(e.dataTransfer.files||[])];if(files.length)handleFiles(files,false);});
+  // Safari: use click on the button only, not the whole dz div, to avoid double-trigger
+  dz.querySelector('.dz-btn')?.addEventListener('click',e=>{e.stopPropagation();fi.click();});
+  dz.addEventListener('click',e=>{if(e.target===dz)fi.click();});
+  fi.addEventListener('change',e=>{
+    const files=[...(e.target.files||[])];
+    if(files.length){handleFiles(files,false);fi.value='';}  // reset so same file re-triggers on Safari
+  });
+}
 function plog(msg,warn=false){const el=$id('parselog');if(!el)return;el.style.display='block';el.innerHTML+=`<div style="color:${warn?'#ef4444':'#3d5070'}">${msg}</div>`;el.scrollTop=el.scrollHeight;}
 async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.match(/\.xlsx?$/i));if(!xl.length){alert('No Excel files found.');return;}if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$id('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of xl){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}try{const buf=await toAB(file);if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$id('progfill2');if(pf)pf.style.width=Math.round(done/xl.length*100)+'%';const pt=$id('progtxt2');if(pt)pt.textContent=`${done}/${xl.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
 function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($id('h-t1'),true);bTS($id('h-t2'),true);bTS($id('rc-t1'),true);bTS($id('rc-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();updHist();updRC2();updSpread();updFC();updSea();}
@@ -1718,11 +1742,22 @@ function rgExportITM(){
   w.document.write(html);w.document.close();
 }
 
-// ══ DRIVE AUTO-LOAD ══
-const AK='AIzaSyAcEeqXFFvX3JIb-HHbtHSdtCSFGqDpLnw',FID='18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
+// ══ DRIVE AUTO-LOAD (via Vercel proxy — API key is server-side, never exposed) ══
 function showManualDrop(){const da=$id('dz-auto'),dm=$id('dz-manual');if(da)da.style.display='none';if(dm)dm.style.display='flex';setupDrop();}
 function setP(pct,title,sub){const pf=$id('progfill'),pt=$id('progtxt'),dt=$id('dz-auto-title');if(pf)pf.style.width=pct+'%';if(title&&dt)dt.textContent=title;if(sub&&pt)pt.textContent=sub;}
-async function lFiles(){const all=[];let pt=null;const q=encodeURIComponent(`'${FID}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false`);do{let url=`https://www.googleapis.com/drive/v3/files?q=${q}&key=${AK}&fields=files(id,name),nextPageToken&pageSize=200&orderBy=name`;if(pt)url+='&pageToken='+encodeURIComponent(pt);const r=await fetch(url);if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'API error');}const d=await r.json();if(d.files)all.push(...d.files);pt=d.nextPageToken||null;}while(pt);return all;}
+async function lFiles(){
+  const all=[];let pt=null;
+  do{
+    let url=`/api/drive?action=list`;
+    if(pt)url+=`&pageToken=${encodeURIComponent(pt)}`;
+    const r=await fetch(url);
+    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Drive API error');}
+    const d=await r.json();
+    if(d.files)all.push(...d.files);
+    pt=d.nextPageToken||null;
+  }while(pt);
+  return all;
+}
 let _driveLoading=false;
 async function lDrive(){
   if(finLoaded||_driveLoading)return;
@@ -1739,7 +1774,7 @@ async function lDrive(){
       await Promise.all(files.slice(i,i+B).map(async f=>{
         const date=pDFN(f.name);if(!date){sk++;return;}
         const key=toStr(date);if(aD[key]){done++;return;}
-        try{const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${AK}`);if(!resp.ok){sk++;return;}
+        try{const resp=await fetch(`/api/drive?action=file&id=${f.id}`);if(!resp.ok){sk++;return;}
           const buf=await toAB(resp);if(buf.byteLength<5000){sk++;return;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){sk++;return;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;plog(`OK: ${f.name}`);}else sk++;}catch(e){sk++;}done++;
       }));
       setP(10+(Math.min(done,files.length)/files.length)*86,'LOADING',`${added} loaded · ${sk} skipped`);
