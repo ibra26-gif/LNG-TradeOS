@@ -1066,7 +1066,12 @@ function gAgg(inst,t,rows){const vals=[];t.months.forEach(m=>{const yr=(m<=3&&t.
 function pExcel(buf){const wb=XLSX.read(buf,{type:'array',cellDates:true});let ws=wb.Sheets['EXCEL PASTE'];if(!ws){const mn=wb.SheetNames.find(n=>n.replace(/\s/g,'').toUpperCase()==='EXCELPASTE');if(mn)ws=wb.Sheets[mn];}if(!ws){for(const n of wb.SheetNames){const d=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:null,raw:false});if(d.slice(0,10).some(r=>r&&String(r[0]).trim()==='Period')){ws=wb.Sheets[n];break;}}}if(!ws)return[];const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});let hdr=-1;for(let i=0;i<Math.min(data.length,15);i++){const row=data[i];if(!row)continue;const c0=row[0]!=null?String(row[0]).trim():'';if(c0==='Period'||row.some(v=>v!=null&&String(v).trim()==='BRT SW')){hdr=i;break;}}if(hdr===-1)return[];const hdrs=data[hdr].map(h=>h?String(h).trim():'');const C={};for(const[k,c]of Object.entries(CN))C[k]=fCol2(hdrs,c);const rows=[];let nulls=0;for(let i=hdr+6;i<data.length;i++){const r=data[i];if(!r||r[0]==null){if(++nulls>8)break;continue;}nulls=0;const pk=getPK(r[0]);if(!pk)continue;const eu=(C.EURUSD>=0?toNum(r[C.EURUSD]):null)||1.15,gb=(C.GBPUSD>=0?toNum(r[C.GBPUSD]):null)||1.28;const g=k=>C[k]>=0?toNum(r[C[k]]):null;const ttfR=g('TTF'),nbpR=g('NBP'),jkm=g('JKM'),hh=g('HH'),brent=g('BRENT'),dated=g('DATED'),slope=g('SLOPE');const ttf=ttfR!=null?+(ttfR*0.293071*eu).toFixed(4):null,nbp=nbpR!=null?+(nbpR/10*gb).toFixed(4):null;rows.push({pk,JKM:jkm,TTF:ttf,HH:hh,NBP:nbp,Brent:brent,Dated:dated,Slope:slope,SP_JT:(jkm!=null&&ttf!=null)?+(jkm-ttf).toFixed(4):null,SP_JH:(jkm!=null&&hh!=null)?+(jkm-hh).toFixed(4):null,SP_TH:(ttf!=null&&hh!=null)?+(ttf-hh).toFixed(4):null});}return rows;}
 function sCache(){try{const p={};for(const[k,v]of Object.entries(aD))p[k]={date:v.date.toISOString(),rows:v.rows};localStorage.setItem(CK,JSON.stringify(p));}catch(e){}}
 function lCache(){try{const raw=localStorage.getItem(CK);if(!raw)return false;const p=JSON.parse(raw);for(const[k,v]of Object.entries(p))aD[k]={date:new Date(v.date),rows:v.rows};sDates=Object.keys(aD).sort();return sDates.length>0;}catch(e){localStorage.removeItem(CK);return false;}}
-function clearCache(){if(confirm('Clear cache and reload?')){localStorage.removeItem(CK);location.reload();}}
+function clearCache(){
+  const pw=prompt('Enter password to clear cache:');
+  if(pw===null)return; // cancelled
+  if(pw==='@Moustapha1'){localStorage.removeItem(CK);location.reload();}
+  else alert('Incorrect password.');
+}
 function setupDrop(){
   const dz=$id('dz'),fi=$id('fileInput');if(!dz||!fi)return;
   dz.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();dz.classList.add('over');});
