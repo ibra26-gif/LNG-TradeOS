@@ -2931,7 +2931,18 @@ const NM={
 };
 const DEF_P={shipSize:174000,energyFactor:22.88,loadFactor:0.985,bogRate:0.0015,speedLaden:19.5,speedBallast:19.5,hfoLaden:90,hfoBallast:85,hfoPrice:550,lsmgoLaden:0,lsmgoBallast:0,lsmgoDischarge:8,pilotFuel:1,lsmgoPrice:750,cooldownDays:0.25,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,loadTimeDays:0.25,bufferDays:2,dischargeDays:0.25,heelVolume:3000,heelCost:0,co2Mgo:3.206,co2Hfo:3.114,etsCoverage:1.0,euaPrice:80.206,eurUsd:1.09,loadDate:''};
 
-let F={blng:null,params:null,snaps:null,matrix:null,matrixTs:null,blngTs:null,extraD:null,posArr:null,repoArr:null,tab:2,detailMode:null,showExportMenu:false,svOrig:'sabine',svDisch:'rotterdam',svMi:0,svLoadDate:new Date().toISOString().slice(0,10),diffOrig:'sabine',diffBase:'rotterdam',diffSel:['tokyo','singapore'],histOrig:'sabine',histDisch:'rotterdam',histMi:0,fOrig:'all',fRegion:'all',snapDate:new Date().toISOString().slice(0,10)};
+let F={blng:null,params:null,snaps:null,matrix:null,matrixTs:null,blngTs:null,extraD:null,posArr:null,repoArr:null,
+  // Matrix section sub-tabs
+  matSubTab:0,
+  // Single voyage local state (independent — never written to matrix curves)
+  mainTab:0,svBlng:null,svParams:null,svPosArr:null,svRepoArr:null,
+  showExportMenu:false,
+  // SV voyage selectors
+  svOrig:'sabine',svDisch:'rotterdam',svMi:0,svLoadDate:new Date().toISOString().slice(0,10),
+  // Matrix section selectors
+  diffOrig:'sabine',diffBase:'rotterdam',diffSel:['tokyo','singapore'],
+  histOrig:'sabine',histDisch:'rotterdam',histMi:0,
+  fOrig:'all',fRegion:'all',snapDate:new Date().toISOString().slice(0,10)};
 
 function fg(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
 function fs(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
@@ -2976,7 +2987,8 @@ function miniSVG(blng){
   return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block" font-family="IBM Plex Mono,monospace">${grid}${ticks}${lines}${legend}</svg>`;
 }
 
-const FTABS=['FREIGHT CURVES','SHIP PARAMS','FREIGHT DETAILS','FREIGHT MATRIX','DIFFERENTIALS'];
+// ── SECTION CONSTANTS ────────────────────────────────────────────────────────
+const FMTABS=['FREIGHT CURVES','SHIP PARAMS','MATRIX','DIFFERENTIALS','HISTORICAL'];
 
 function initFreight(){
   F.blng=fg('f_blng',JSON.parse(JSON.stringify(IB)));
@@ -2989,45 +3001,288 @@ function initFreight(){
   const z24=()=>Array(24).fill(0);
   F.posArr=fg('f_posArr',{BLNG1:z24(),BLNG2:z24(),BLNG3:z24()});
   F.repoArr=fg('f_repoArr',{BLNG1:z24(),BLNG2:z24(),BLNG3:z24()});
-  F.tab=2;F.detailMode=null;
+  // ── SV local state: independent copy, never written to matrix ──
+  F.svBlng=JSON.parse(JSON.stringify(F.blng));
+  F.svParams={...F.params};
+  F.svPosArr=JSON.parse(JSON.stringify(F.posArr));
+  F.svRepoArr=JSON.parse(JSON.stringify(F.repoArr));
+  F.mainTab=fg('f_mainTab',0);
+  F.matSubTab=0;
+  // Historical Freight Curves (Google Drive loaded)
+  F.histCurves=fg('f_hist_curves',[]);
+  F.histView='forward';
+  F.histSelDate=0;
+  F.histSelMonth=0;
+  F.histLoading=false;
+  F.showExportMenu=false;
   renderFreight();
 }
+// ── calcF: parameterised — SV section passes local overrides, matrix uses saved ──
+// Returns cooldown as separate component (split from hire), matching Excel layout
+function calcF(orig,disch,mi,blngOvr,paramsOvr,posOvr,repoOvr){
+  const sp=SUPPLY.find(x=>x.id===orig),dp=allD().find(x=>x.id===disch);
+  if(!sp||!dp)return null;
+  const nm=NM[orig]?.[disch];if(!nm)return null;
+  const blng=blngOvr||F.blng;
+  const curve=sp.curve,rate=blng[curve]?.[mi];if(!rate)return null;
+  const pArr=posOvr||F.posArr,rArr=repoOvr||F.repoArr;
+  const posPct=(pArr[curve]?.[mi]||0)/100,repoPct=(rArr[curve]?.[mi]||0)/100;
+  const p=paramsOvr||F.params;
+  const voyDays=nm/(p.speedLaden*24);
+  const coolDays=p.cooldownEnabled?p.cooldownDays:0,gas=p.gasUpEnabled?p.gasUpDays:0;
+  const totalDays=coolDays+gas+p.loadTimeDays+p.bufferDays+voyDays+p.dischargeDays;
+  const loaded=p.shipSize*p.energyFactor*p.loadFactor,estDisch=loaded*(1-p.bogRate*totalDays);
+  // Hire = hire days (transit + port time), Cooldown split out separately (matches Excel)
+  const hireDays=totalDays-coolDays;
+  const hire=rate*hireDays,cooldown=rate*coolDays;
+  const pos=rate*posPct*hireDays,repo=rate*repoPct*hireDays;
+  const hfo=(p.hfoLaden+p.hfoBallast)*voyDays*p.hfoPrice;
+  const lsmgo=(p.lsmgoLaden+p.lsmgoBallast)*voyDays*p.lsmgoPrice+(p.lsmgoDischarge*p.dischargeDays+p.pilotFuel)*p.lsmgoPrice;
+  const port=sp.loadCost+dp.dischCost,heel=p.heelVolume*(p.heelCost||0);
+  let ets=0;
+  if(dp.euEts){const co2=(p.hfoLaden+p.hfoBallast)*voyDays*p.co2Hfo+(p.lsmgoLaden+p.lsmgoBallast)*voyDays*p.co2Mgo;ets=co2*p.etsCoverage*p.euaPrice*p.eurUsd;}
+  const total=hire+cooldown+pos+repo+hfo+lsmgo+port+heel+ets;
+  return{freight:total/estDisch,total,hire,cooldown,pos,repo,hfo,lsmgo,port,heel,ets,totalDays,voyDays,hireDays,coolDays,estDisch,loaded,rate,nm,sp,dp,curve};
+}
+
+// ── TOP-LEVEL RENDER ──────────────────────────────────────────────────────────
 function renderFreight(){
   const wrap=document.getElementById('freight-wrap');if(!wrap)return;
   const stale=F.matrixTs&&F.blngTs&&F.blngTs>F.matrixTs;
-  wrap.innerHTML=`<div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">FREIGHT RATE CALCULATOR</span>
+  wrap.innerHTML=`
+  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">FREIGHT</span>
     <span style="flex:1"></span>
-    ${stale?'<span style="color:#ff9800;font-size:10px">MATRIX STALE</span>':''}
+    ${stale?'<span style="color:#ff9800;font-size:10px;letter-spacing:1px">⚠ MATRIX STALE</span>':''}
     <button class="f-btn sm" onclick="showPortMgr()">PORT MGR</button>
   </div>
-  <div class="f-subnav">${FTABS.map((t,i)=>`<button class="f-tab${F.tab===i?' active':''}" onclick="fTab(${i})">${t}</button>`).join('')}</div>
+  <div class="f-subnav" style="padding:0;gap:0;border-bottom:2px solid #0a0f1e">
+    <button class="f-tab${F.mainTab===0?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px;border-right:1px solid #1e3a5f" onclick="fMainTab(0)">① SINGLE VOYAGE CALCULATION</button>
+    <button class="f-tab${F.mainTab===1?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px" onclick="fMainTab(1)">② UPDATE FREIGHT MATRIX</button>
+  </div>
   <div class="f-body" id="f-body"></div>`;
-  renderFTab();
+  renderFMain();
 }
-function fTab(i){F.tab=i;F.detailMode=null;F.showExportMenu=false;document.querySelectorAll('.f-tab').forEach((t,j)=>t.classList.toggle('active',j===i));renderFTab();}
-function renderFTab(){
-  const b=document.getElementById('f-body');if(!b)return;
-  if(F.tab===0)b.innerHTML=renderFreightCurves();
-  else if(F.tab===1)b.innerHTML=renderParams();
-  else if(F.tab===2)b.innerHTML=renderDetails();
-  else if(F.tab===3)b.innerHTML=renderMatrix();
-  else if(F.tab===4)b.innerHTML=renderDiff();
+function fMainTab(i){F.mainTab=i;fs('f_mainTab',i);F.showExportMenu=false;renderFreight();}
+function renderFMain(){const b=document.getElementById('f-body');if(!b)return;b.innerHTML=F.mainTab===0?renderSV():renderMatrixSection();}
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION 1 — SINGLE VOYAGE CALCULATION
+// Local curves/params only — zero impact on the freight matrix
+// ══════════════════════════════════════════════════════════════════════════════
+function renderSV(){
+  const sp=SUPPLY.find(p=>p.id===F.svOrig)||SUPPLY[0];
+  const curve=sp.curve;
+  const dp=allD().find(p=>p.id===F.svDisch)||allD()[0];
+  const nm=NM[F.svOrig]?.[F.svDisch];
+  const p=F.svParams;
+  const voyDays=nm?(nm/(p.speedLaden*24)).toFixed(2):'-';
+  const coolDays=p.cooldownEnabled?p.cooldownDays:0;
+  const totalDays=nm?(+voyDays+coolDays+(p.gasUpEnabled?p.gasUpDays:0)+p.loadTimeDays+p.bufferDays+p.dischargeDays).toFixed(2):'-';
+  const loaded=p.shipSize*p.energyFactor*p.loadFactor;
+  const estDisch=nm?Math.round(loaded*(1-p.bogRate*+totalDays)):'-';
+  const tableRows=ML.map((m,i)=>{
+    const r=calcF(F.svOrig,F.svDisch,i,F.svBlng,F.svParams,F.svPosArr,F.svRepoArr);
+    const isActive=i===F.svMi;
+    if(!r)return`<tr${isActive?' class="hi-row"':''}><td style="color:${isActive?'#4fc3f7':'#8a9bb5'}">${m}</td><td colspan="12" style="color:#3d5070;text-align:center">—</td></tr>`;
+    const $=v=>v===0?'0':v.toLocaleString(undefined,{maximumFractionDigits:0});
+    return`<tr style="background:${isActive?'#0d2035':''}">
+      <td style="white-space:nowrap;color:${isActive?'#4fc3f7':'#8a9bb5'}">${m}</td>
+      <td class="tr">${r.rate.toLocaleString()}</td>
+      <td class="tr">${$(r.hire)}</td>
+      <td class="tr" style="color:${r.pos?'#4fc3f7':'#3d5070'}">${$(r.pos)}</td>
+      <td class="tr" style="color:${r.repo?'#ffb74d':'#3d5070'}">${$(r.repo)}</td>
+      <td class="tr" style="color:${r.cooldown?'#81c784':'#3d5070'}">${$(r.cooldown)}</td>
+      <td class="tr">${$(r.hfo)}</td>
+      <td class="tr">${$(r.lsmgo)}</td>
+      <td class="tr">${$(r.port)}</td>
+      <td class="tr" style="color:${r.ets?'#ffb74d':'#3d5070'}">${$(r.ets)}</td>
+      <td class="tr" style="color:${r.heel?'#c8d6e5':'#3d5070'}">${$(r.heel)}</td>
+      <td class="tr" style="font-weight:600">${$(r.total)}</td>
+      <td class="tr" style="color:${fCol(r.freight)};font-weight:700">${r.freight.toFixed(4)}</td>
+    </tr>`;
+  }).join('');
+  const exportMenuHtml=F.showExportMenu?`<div style="display:flex;gap:6px;margin:4px 14px"><button class="f-btn sm grn" onclick="svExportCSV()">CSV</button><button class="f-btn sm grn" onclick="svExportXLS()">EXCEL</button><button class="f-btn sm" onclick="F.showExportMenu=false;renderFMain()">✕</button></div>`:'';
+  const svp=(k,l,step='any')=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #0d1526">
+    <span style="font-size:10px;color:#8a9bb5">${l}</span>
+    <input class="f-inp" type="number" step="${step}" style="width:90px;text-align:right" value="${F.svParams[k]}" onchange="F.svParams['${k}']=parseFloat(this.value)||0;renderFMain()">
+  </div>`;
+  return`
+  <div style="background:#071a2b;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:12px">
+    <span style="color:#4fc3f7;font-size:9px;letter-spacing:2px;font-weight:700">AD HOC — INDEPENDENT FROM FREIGHT MATRIX</span>
+    <span style="flex:1"></span>
+    <button class="f-btn sm" onclick="svSyncFromSaved()">↺ SYNC FROM SAVED CURVES</button>
+    <button class="f-btn sm grn" onclick="F.showExportMenu=!F.showExportMenu;renderFMain()">EXPORT</button>
+  </div>
+  ${exportMenuHtml}
+  <div style="padding:14px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+    <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px">
+      <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">CARGO PARAMETERS — Select supply &amp; discharge port</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <span class="f-lbl">SUPPLY LOCATION</span>
+          <select class="f-sel" onchange="F.svOrig=this.value;renderFMain()">${SUPPLY.map(p=>`<option value="${p.id}"${F.svOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select>
+          <div style="margin-top:5px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:9px;color:#546e7a">RATE BAND</span>
+            <span style="font-size:10px;font-weight:700;color:${BC[curve]}">${curve} &larr; auto-detected</span>
+          </div>
+        </div>
+        <div>
+          <span class="f-lbl">DISCHARGE PORT</span>
+          <select class="f-sel" onchange="F.svDisch=this.value;renderFMain()">${allD().map(p=>`<option value="${p.id}"${F.svDisch===p.id?' selected':''}>${p.name}</option>`).join('')}</select>
+          <div style="margin-top:5px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:9px;color:#546e7a">RATE BAND</span>
+            <span style="font-size:10px;font-weight:700;color:${BC[curve]}">${curve} &larr; auto from FC</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div><span class="f-lbl">PRICING MONTH</span><select class="f-sel" onchange="F.svMi=+this.value;renderFMain()">${ML.map((m,i)=>`<option value="${i}"${F.svMi===i?' selected':''}>${m}</option>`).join('')}</select></div>
+        <div><span class="f-lbl">LOAD DATE</span><input class="f-inp" type="date" value="${F.svLoadDate}" onchange="F.svLoadDate=this.value;renderFMain()"></div>
+      </div>
+    </div>
+    <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px">
+      <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">FIXED ROUTE INPUTS (constant across all months)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+        ${[
+          ['Laden Distance (NM)',nm?nm.toLocaleString():'-','NM'],
+          ['Laden Transit Days',nm?voyDays:'-','days'],
+          ['Est. Discharge Qty (Mmbtu)',nm?estDisch.toLocaleString():'-','Mmbtu',true],
+          ['Total Voyage Days',nm?totalDays:'-','days'],
+          ['Load Port Cost ($)',sp.loadCost.toLocaleString(),'$'],
+          ['Discharge Port Cost ($)',dp.dischCost.toLocaleString(),'$'],
+          ['EU ETS Applicable',dp.euEts?'YES':'NO',''],
+          ['Ship Loaded (Mmbtu)',Math.round(loaded).toLocaleString(),'Mmbtu'],
+        ].map(([l,v,u,hl])=>`
+          <div style="font-size:9px;color:#546e7a;padding:4px 0;border-bottom:1px solid #0d1526">${l}</div>
+          <div style="font-size:10px;padding:4px 0;border-bottom:1px solid #0d1526;text-align:right;font-weight:${hl?'700':'400'};color:${hl?'#4fc3f7':'#c8d6e5'}">${v} <span style="color:#3d5070;font-size:9px">${u}</span></div>
+        `).join('')}
+      </div>
+    </div>
+  </div>
+  <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px;margin-bottom:12px">
+    <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5;display:flex;justify-content:space-between;align-items:center">
+      <span>VESSEL PARAMETERS (from local params — edits do not affect the matrix)</span>
+      <div style="display:flex;gap:6px">
+        <button class="f-btn sm${p.cooldownEnabled?' on':''}" onclick="F.svParams.cooldownEnabled=!F.svParams.cooldownEnabled;renderFMain()">COOLDOWN ${p.cooldownEnabled?'ON':'OFF'}</button>
+        <button class="f-btn sm${p.gasUpEnabled?' on':''}" onclick="F.svParams.gasUpEnabled=!F.svParams.gasUpEnabled;renderFMain()">GAS UP ${p.gasUpEnabled?'ON':'OFF'}</button>
+        <button class="f-btn sm" onclick="F.svParams={...F.params};renderFMain()">RESET TO SAVED</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-top:4px">
+      <div>
+        ${svp('shipSize','Ship Size (m3)',1000)}
+        ${svp('energyFactor','Energy Factor (Mmbtu/m3)',0.01)}
+        ${svp('hfoLaden','Laden HFO (tns/day)',1)}
+        ${svp('lsmgoLaden','Laden LSMGO (tns/day)',0.5)}
+        ${svp('lsmgoDischarge','Discharge LSMGO (t/d)',0.5)}
+        ${svp('hfoPrice','HFO Price ($/tn)',10)}
+        ${svp('loadTimeDays','Load Port Days',0.25)}
+        ${svp('etsCoverage','EU ETS Applicable (%)',0.05)}
+        ${svp('cooldownDays','Cooldown Days',0.25)}
+        ${svp('heelVolume','Heel Retention (m3)',100)}
+      </div>
+      <div>
+        ${svp('speedLaden','Speed (knots)',0.5)}
+        ${svp('bogRate','BOG Rate (%/day)',0.0001)}
+        ${svp('hfoBallast','Ballast HFO (tns/day)',1)}
+        ${svp('lsmgoBallast','Ballast LSMGO (t/d)',0.5)}
+        ${svp('pilotFuel','Pilot Fuel (tns)',0.5)}
+        ${svp('lsmgoPrice','LSMGO Price ($/tn)',10)}
+        ${svp('dischargeDays','Discharge Port Days',0.25)}
+        ${svp('euaPrice','EUA Price ($/tn)',1)}
+        ${svp('co2Hfo','CO2 Factor HFO',0.001)}
+        ${svp('co2Mgo','CO2 Factor LSMGO',0.001)}
+      </div>
+    </div>
+  </div>
+  <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px;margin-bottom:12px">
+    <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5;display:flex;justify-content:space-between;align-items:center">
+      <span>FREIGHT CURVES — LOCAL ($/day · Pos% · Repo% — active curve: <span style="color:${BC[curve]}">${curve}</span>)</span>
+      <button class="f-btn sm" onclick="F.svBlng=JSON.parse(JSON.stringify(F.blng));F.svPosArr=JSON.parse(JSON.stringify(F.posArr));F.svRepoArr=JSON.parse(JSON.stringify(F.repoArr));renderFMain()">RESET TO SAVED</button>
+    </div>
+    <div style="overflow-x:auto"><table class="f-tbl"><thead>
+      <tr><th rowspan="2" style="vertical-align:bottom">PERIOD</th>
+      ${['BLNG1 — PACIFIC','BLNG2 — ATLANTIC','BLNG3 X-BASIN'].map((l,ci)=>{const c=['BLNG1','BLNG2','BLNG3'][ci];return`<th colspan="3" style="text-align:center;color:${BC[c]};background:${c===curve?'#0d1e36':''}">${l}${c===curve?' ◀':''}</th>`;}).join('')}</tr>
+      <tr>${['BLNG1','BLNG2','BLNG3'].map(c=>`<th style="text-align:right;color:${BC[c]};font-size:9px">$/day</th><th style="text-align:right;color:#4fc3f7;font-size:9px">Pos%</th><th style="text-align:right;color:#ffb74d;font-size:9px">Repo%</th>`).join('')}</tr>
+    </thead><tbody>
+    ${ML.map((m,i)=>{
+      const isActive=i===F.svMi;
+      return`<tr style="background:${isActive?'#0d2035':''}">
+        <td style="color:${isActive?'#4fc3f7':'#8a9bb5'};white-space:nowrap">${m}</td>
+        ${['BLNG1','BLNG2','BLNG3'].map(c=>`
+        <td style="padding:2px 3px"><input class="f-inp" style="width:72px;text-align:right;color:${BC[c]}" type="number" value="${F.svBlng[c][i]!=null?F.svBlng[c][i]:''}" onchange="F.svBlng['${c}'][${i}]=this.value===''?null:+this.value;renderFMain()"></td>
+        <td style="padding:2px 3px"><input class="f-inp" style="width:44px;text-align:right;color:#4fc3f7" type="number" step="0.1" value="${F.svPosArr[c][i]||0}" onchange="F.svPosArr['${c}'][${i}]=parseFloat(this.value)||0;renderFMain()"></td>
+        <td style="padding:2px 3px"><input class="f-inp" style="width:44px;text-align:right;color:#ffb74d" type="number" step="0.1" value="${F.svRepoArr[c][i]||0}" onchange="F.svRepoArr['${c}'][${i}]=parseFloat(this.value)||0;renderFMain()"></td>`).join('')}
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>
+  </div>
+  <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px">
+    <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">
+      FREIGHT COST BY DELIVERY MONTH — All parameters from Freight Rates Parameters &amp; Freight Curves above
+    </div>
+    <div style="overflow-x:auto;margin-top:4px"><table class="f-tbl"><thead>
+      <tr>
+        <th style="min-width:60px">MONTH</th>
+        <th class="tr" style="min-width:72px">RATE $/day</th>
+        <th class="tr" style="min-width:68px">HIRE $</th>
+        <th class="tr" style="min-width:56px;color:#4fc3f7">POS $</th>
+        <th class="tr" style="min-width:56px;color:#ffb74d">REPO $</th>
+        <th class="tr" style="min-width:72px;color:#81c784">COOLDOWN $</th>
+        <th class="tr" style="min-width:60px">HFO $</th>
+        <th class="tr" style="min-width:60px">LSMGO $</th>
+        <th class="tr" style="min-width:78px">PORT COSTS $</th>
+        <th class="tr" style="min-width:52px;color:#ffb74d">ETS $</th>
+        <th class="tr" style="min-width:48px">HEEL $</th>
+        <th class="tr" style="min-width:86px;font-weight:700">TOTAL VOY $</th>
+        <th class="tr" style="min-width:82px;font-weight:700">UNIT $/MMBtu</th>
+      </tr>
+    </thead><tbody>${tableRows}</tbody></table></div>
+  </div>
+  </div>`;
 }
-function renderFreightCurves(){
+function svSyncFromSaved(){F.svBlng=JSON.parse(JSON.stringify(F.blng));F.svParams={...F.params};F.svPosArr=JSON.parse(JSON.stringify(F.posArr));F.svRepoArr=JSON.parse(JSON.stringify(F.repoArr));renderFMain();}
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION 2 — UPDATE FREIGHT MATRIX
+// Persistent curves/params — feeds cargo pricing section
+// ══════════════════════════════════════════════════════════════════════════════
+const FMAT_TABS=['FREIGHT CURVES','SHIP PARAMS','MATRIX','DIFFERENTIALS','HISTORICAL FREIGHT CURVES'];
+function renderMatrixSection(){
+  const stale=F.matrixTs&&F.blngTs&&F.blngTs>F.matrixTs;
+  return`<div style="background:#071a2b;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:12px">
+    <span style="color:#81c784;font-size:9px;letter-spacing:2px;font-weight:700">PERSISTENT — FEEDS CARGO PRICING</span>
+    <span style="flex:1"></span>
+    ${stale?'<span style="color:#ff9800;font-size:10px;font-weight:700">⚠ MATRIX STALE — update curves then UPDATE MATRIX</span>':'<span style="color:#4caf50;font-size:9px">MATRIX CURRENT</span>'}
+  </div>
+  <div class="f-subnav" style="padding:0;gap:0">
+    ${FMAT_TABS.map((t,i)=>`<button class="f-tab${F.matSubTab===i?' active':''}" style="padding:8px 14px;font-size:9px" onclick="fMatTab(${i})">${t}</button>`).join('')}
+  </div>
+  <div class="f-body" style="padding:14px" id="f-mat-body">
+    ${[renderMatCurves,renderMatParams,renderMatrix,renderDiff,()=>`<div id="f-hist-body">${renderHistorical()}</div>`][F.matSubTab]()}
+  </div>`;
+}
+function fMatTab(i){F.matSubTab=i;document.getElementById('f-mat-body').innerHTML=[renderMatCurves,renderMatParams,renderMatrix,renderDiff,()=>`<div id="f-hist-body">${renderHistorical()}</div>`][i]();}
+
+function renderMatCurves(){
   const combinedRows=ML.map((m,i)=>`<tr><td style="color:#8a9bb5;white-space:nowrap;min-width:56px">${m}</td>
-    ${['BLNG1','BLNG2','BLNG3'].map(c=>`<td style="padding:2px 3px"><input class="f-inp" style="width:76px;text-align:right;color:${BC[c]}" type="number" data-blng="${c}" data-i="${i}" value="${F.blng[c][i]!=null?F.blng[c][i]:''}" onchange="blngChange(this)"/></td>
-    <td style="padding:2px 3px"><input class="f-inp" style="width:50px;text-align:right;color:#4fc3f7" type="number" step="0.1" data-prtype="pos" data-curve="${c}" data-i="${i}" value="${F.posArr[c][i]||0}" onchange="prChange(this)"/></td>
-    <td style="padding:2px 3px"><input class="f-inp" style="width:50px;text-align:right;color:#ffb74d" type="number" step="0.1" data-prtype="repo" data-curve="${c}" data-i="${i}" value="${F.repoArr[c][i]||0}" onchange="prChange(this)"/></td>`).join('')}</tr>`).join('');
-  const snapBtns=F.snaps.slice(0,3).map(s=>`<button class="f-btn sm" data-snapdate="${s.date}" onclick="loadSnapBtn(this)" title="${s.label}">↺ ${s.label}</button>`).join('');
-  return`<div class="f-sec" style="font-size:12px;letter-spacing:3px;margin-bottom:12px">FORWARD FREIGHT CURVES</div>
+    ${['BLNG1','BLNG2','BLNG3'].map(c=>`
+    <td style="padding:2px 3px"><input class="f-inp" style="width:76px;text-align:right;color:${BC[c]}" type="number" value="${F.blng[c][i]!=null?F.blng[c][i]:''}" onchange="F.blng['${c}'][${i}]=this.value===''?null:+this.value;fSaveBlng(F.blng)"></td>
+    <td style="padding:2px 3px"><input class="f-inp" style="width:48px;text-align:right;color:#4fc3f7" type="number" step="0.1" value="${F.posArr[c][i]||0}" onchange="F.posArr['${c}'][${i}]=parseFloat(this.value)||0;fSavePR()"></td>
+    <td style="padding:2px 3px"><input class="f-inp" style="width:48px;text-align:right;color:#ffb74d" type="number" step="0.1" value="${F.repoArr[c][i]||0}" onchange="F.repoArr['${c}'][${i}]=parseFloat(this.value)||0;fSavePR()"></td>`).join('')}</tr>`).join('');
+  const latestSnap=F.snaps.length?F.snaps[0]:null;
+  return`<div class="f-sec" style="font-size:11px;letter-spacing:2px;margin-bottom:10px">FORWARD FREIGHT CURVES — SAVED (feed the matrix)</div>
     ${miniSVG(F.blng)}
-    <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px;margin-top:10px">
       <div><span class="f-lbl">SNAPSHOT DATE</span><input class="f-inp" style="width:140px" type="date" value="${F.snapDate}" onchange="F.snapDate=this.value"></div>
-      <button class="f-btn" onclick="saveSnap()">SAVE SNAPSHOT</button>
-      <button class="f-btn" onclick="document.getElementById('blng-csv').click()">UPLOAD CSV</button>
+      <button class="f-btn" onclick="fAuthGate(()=>saveSnap())">SAVE SNAPSHOT</button>
+      <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('blng-csv').click())">UPLOAD CSV</button>
       <input type="file" id="blng-csv" accept=".csv,.txt" style="display:none" onchange="parseBLNGcsv(this)">
-      ${snapBtns}
+      <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('blng-xls').click())">UPLOAD EXCEL</button>
+      <input type="file" id="blng-xls" accept=".xlsx,.xls" style="display:none" onchange="parseBLNGxls(this)">
+      <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('blng-snap').click())">UPLOAD SNAPSHOT</button>
+      <input type="file" id="blng-snap" accept=".json" style="display:none" onchange="parseSnapFile(this)">
+      ${latestSnap?`<button class="f-btn sm" data-snapdate="${latestSnap.date}" onclick="loadSnapBtn(this)">↺ Latest curve ${latestSnap.date}</button>`:''}
     </div>
     <div class="f-sec">BLNG CURVES $/day · Pos% · Repo% per month</div>
     <div style="overflow-x:auto"><table class="f-tbl"><thead>
@@ -3036,9 +3291,10 @@ function renderFreightCurves(){
       <tr>${['BLNG1','BLNG2','BLNG3'].map(c=>`<th style="text-align:right;color:${BC[c]};font-size:9px">$/day</th><th style="text-align:right;color:#4fc3f7;font-size:9px">Pos%</th><th style="text-align:right;color:#ffb74d;font-size:9px">Repo%</th>`).join('')}</tr>
     </thead><tbody>${combinedRows}</tbody></table></div>
     <div class="f-sec" style="margin-top:16px">HISTORICAL SNAPSHOTS</div>
-    ${F.snaps.length?F.snaps.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;background:#0d1526;padding:6px 10px;margin-bottom:4px;border:1px solid #1e3a5f"><span style="font-size:10px;color:#8a9bb5">${s.label}</span><button class="f-btn sm" data-snapdate="${s.date}" onclick="loadSnapBtn(this)">LOAD</button></div>`).join(''):'<div style="color:#546e7a;font-size:10px;padding:10px 0">No snapshots saved yet.</div>'}`;
+    ${F.snaps.length?F.snaps.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;background:#0d1526;padding:6px 10px;margin-bottom:4px;border:1px solid #1e3a5f"><span style="font-size:10px;color:#8a9bb5">${s.label}</span><button class="f-btn sm" data-snapdate="${s.date}" onclick="loadSnapBtn(this)">LOAD</button></div>`).join(''):'<div style="color:#546e7a;font-size:10px;padding:10px 0">No snapshots saved yet.</div>'}
+    <div style="margin-top:14px"><button class="f-btn on" onclick="computeMatrix();fMatTab(2)">UPDATE MATRIX →</button></div>`;
 }
-function renderParams(){
+function renderMatParams(){
   const secs=[
     {t:'VESSEL',f:[{k:'shipSize',l:'Ship Size (cbm)',s:1000},{k:'energyFactor',l:'Energy Factor (Mmbtu/m3)',s:0.01},{k:'loadFactor',l:'Load Factor',s:0.001},{k:'bogRate',l:'BOG Rate (%/day)',s:0.0001},{k:'speedLaden',l:'Speed Laden (kn)',s:0.5},{k:'speedBallast',l:'Speed Ballast (kn)',s:0.5}]},
     {t:'FUEL CONSUMPTION (t/day)',f:[{k:'hfoLaden',l:'HFO Laden',s:1},{k:'hfoBallast',l:'HFO Ballast',s:1},{k:'lsmgoLaden',l:'LSMGO Laden',s:0.5},{k:'lsmgoBallast',l:'LSMGO Ballast',s:0.5},{k:'lsmgoDischarge',l:'LSMGO Discharge',s:0.5},{k:'pilotFuel',l:'Pilot Fuel (t/voy)',s:0.5}]},
@@ -3047,77 +3303,13 @@ function renderParams(){
     {t:'HEEL',f:[{k:'heelVolume',l:'Volume (m3)',s:100},{k:'heelCost',l:'Cost ($/m3)',s:0.5}]},
     {t:'EU ETS',f:[{k:'co2Mgo',l:'CO2/t LSMGO',s:0.01},{k:'co2Hfo',l:'CO2/t HFO',s:0.01},{k:'etsCoverage',l:'Coverage (0-1)',s:0.05},{k:'euaPrice',l:'EUA ($/t)',s:1},{k:'eurUsd',l:'EUR/USD',s:0.01}]}
   ];
-  return`<div class="f-sec">SHIP PARAMETERS — 174K TFDE</div>
+  return`<div class="f-sec">SHIP PARAMETERS — SAVED (feed the matrix)</div>
     <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="f-btn${F.params.cooldownEnabled?' on':''}" onclick="pChange('cooldownEnabled',!F.params.cooldownEnabled);renderFTab()">COOLDOWN ${F.params.cooldownEnabled?'ON':'OFF'}</button>
-      <button class="f-btn${F.params.gasUpEnabled?' on':''}" onclick="pChange('gasUpEnabled',!F.params.gasUpEnabled);renderFTab()">GAS UP ${F.params.gasUpEnabled?'ON':'OFF'}</button>
+      <button class="f-btn${F.params.cooldownEnabled?' on':''}" onclick="pChange('cooldownEnabled',!F.params.cooldownEnabled);fMatTab(1)">COOLDOWN ${F.params.cooldownEnabled?'ON':'OFF'}</button>
+      <button class="f-btn${F.params.gasUpEnabled?' on':''}" onclick="pChange('gasUpEnabled',!F.params.gasUpEnabled);fMatTab(1)">GAS UP ${F.params.gasUpEnabled?'ON':'OFF'}</button>
     </div>
-    ${secs.map(sec=>{
-      let fields=sec.f.map(f=>`<div><span class="f-lbl">${f.l}</span><input class="f-inp" type="number" step="${f.s}" value="${F.params[f.k]}" onchange="pChange('${f.k}',parseFloat(this.value)||0)"></div>`).join('');
-      if(sec.t==='VOYAGE TIMES (days)')fields+=`<div><span class="f-lbl">LOAD DATE</span><input class="f-inp" type="text" placeholder="dd/mm/yyyy" value="${F.params.loadDate||''}" onchange="pChange('loadDate',this.value)" maxlength="10"></div>`;
-      return`<div style="margin-bottom:12px"><div class="f-sec">${sec.t}</div><div class="f-gauto">${fields}</div></div>`;
-    }).join('')}`;
-}
-function renderDetails(){
-  if(!F.detailMode)return`<div class="f-sec">SELECT MODE</div><div class="f-gauto">
-    ${[['SINGLE VOYAGE','Quick pricing — one route, one date','single'],['UPDATE MATRIX','Recompute all routes × 24 months','matrix'],['HISTORICAL RATES','Freight evolution across snapshots','hist'],['DIFFERENTIALS','Cross-port spread comparison','diff']].map(([t,d,m])=>`
-      <div class="f-card" style="cursor:pointer" onclick="fDetailMode('${m}')">
-        <div style="color:#4fc3f7;font-size:11px;letter-spacing:1px;margin-bottom:4px">${t}</div>
-        <div style="color:#546e7a;font-size:10px">${d}</div>
-      </div>`).join('')}
-  </div>`;
-  if(F.detailMode==='matrix_done')return`<button class="f-btn" style="margin-bottom:12px" onclick="F.detailMode=null;renderFTab()">← BACK</button>
-    <div class="f-ok">✓ Matrix computed — ${new Date().toLocaleString('en-GB')}</div>
-    <button class="f-btn on" onclick="fTab(3)">GO TO FREIGHT MATRIX →</button>`;
-  if(F.detailMode==='single'){
-    const r=calcF(F.svOrig,F.svDisch,F.svMi);
-    let dischDate='-';
-    if(r&&F.svLoadDate){const d=new Date(F.svLoadDate);d.setDate(d.getDate()+Math.round(r.totalDays));dischDate=d.toISOString().slice(0,10);}
-    const exportMenuHtml=F.showExportMenu?`<div style="display:flex;gap:6px;margin-top:8px"><button class="f-btn sm grn" onclick="exportSingleCSV()">CSV</button><button class="f-btn sm grn" onclick="exportSingleXLS()">EXCEL</button><button class="f-btn sm" onclick="F.showExportMenu=false;renderFTab()">✕</button></div>`:'';
-    return`<button class="f-btn" style="margin-bottom:14px" onclick="F.detailMode=null;renderFTab()">← BACK</button>
-      <div class="f-sec">SINGLE VOYAGE PRICING</div>
-      <div class="f-grid f-g2" style="margin-bottom:12px">
-        <div><span class="f-lbl">ORIGIN</span><select class="f-sel" onchange="F.svOrig=this.value;renderFTab()">${SUPPLY.map(p=>`<option value="${p.id}"${F.svOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
-        <div><span class="f-lbl">DISCHARGE</span><select class="f-sel" onchange="F.svDisch=this.value;renderFTab()">${allD().map(p=>`<option value="${p.id}"${F.svDisch===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
-        <div><span class="f-lbl">LOAD MONTH</span><select class="f-sel" onchange="F.svMi=+this.value;renderFTab()">${ML.map((m,i)=>`<option value="${i}"${F.svMi===i?' selected':''}>${m}</option>`).join('')}</select></div>
-        <div><span class="f-lbl">LOAD DATE</span><input class="f-inp" type="date" value="${F.svLoadDate}" onchange="F.svLoadDate=this.value;renderFTab()"></div>
-      </div>
-      ${r?`<div class="f-gauto" style="margin-bottom:14px">
-        ${[['FREIGHT RATE',r.freight.toFixed(4)+' $/Mmbtu'],['TOTAL COST','$'+(r.total/1000).toFixed(0)+'k'],['TC RATE',r.rate.toLocaleString()+' $/day'],['LOAD DATE',F.svLoadDate||'-'],['DISCH DATE',dischDate],['TRANSIT DAYS',r.totalDays.toFixed(2)+' d'],['VOYAGE DAYS',r.voyDays.toFixed(2)+' d'],['DISTANCE',r.nm.toLocaleString()+' NM']].map(([l,v])=>`<div class="f-card"><div style="color:#546e7a;font-size:10px;margin-bottom:4px">${l}</div><div style="color:#e0f7fa;font-weight:700;font-size:13px">${v}</div></div>`).join('')}
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-        <div class="f-sec" style="margin:0;border:none;padding:0">COST BREAKDOWN</div>
-        <button class="f-btn grn" onclick="F.showExportMenu=!F.showExportMenu;renderFTab()">EXPORT</button>
-      </div>
-      ${exportMenuHtml}
-      <table class="f-tbl" style="margin-bottom:14px">
-        <thead><tr><th>COMPONENT</th><th class="tr">USD</th><th class="tr">$/Mmbtu</th><th class="tr">%</th></tr></thead>
-        <tbody>
-          ${[['Hire',r.hire],['Positioning',r.pos],['Repositioning',r.repo],['HFO Bunkers',r.hfo],['LSMGO Bunkers',r.lsmgo],['Port Costs',r.port],['Heel',r.heel],['EU ETS',r.ets]].map(([l,v])=>`<tr><td>${l}</td><td class="tr">$${v.toLocaleString(undefined,{maximumFractionDigits:0})}</td><td class="tr">${(v/r.estDisch).toFixed(4)}</td><td class="tr" style="color:#546e7a">${(v/r.total*100).toFixed(1)}%</td></tr>`).join('')}
-          <tr class="hi-row"><td>TOTAL</td><td class="tr">$${r.total.toLocaleString(undefined,{maximumFractionDigits:0})}</td><td class="tr">${r.freight.toFixed(4)}</td><td class="tr">100%</td></tr>
-        </tbody>
-      </table>
-      <div class="f-sec">24-MONTH STRIP — ${SUPPLY.find(p=>p.id===F.svOrig)?.name} → ${allD().find(p=>p.id===F.svDisch)?.name}</div>
-      <div style="overflow-x:auto"><table class="f-tbl">
-        <thead><tr><th>MONTH</th><th class="tr">RATE ($/day)</th><th class="tr">FREIGHT ($/Mmbtu)</th><th class="tr">VOYAGE DAYS</th></tr></thead>
-        <tbody>${ML.map((m,i)=>{const res=calcF(F.svOrig,F.svDisch,i);return`<tr${i===F.svMi?' class="hi-row"':''}><td>${m}</td><td class="tr">${res&&res.rate?res.rate.toLocaleString():'-'}</td><td class="tr" style="color:${res?fCol(res.freight):'#546e7a'}">${res?res.freight.toFixed(4):'-'}</td><td class="tr" style="color:#546e7a">${res?res.voyDays.toFixed(1)+' d':'-'}</td></tr>`;}).join('')}</tbody>
-      </table></div>`
-      :'<div style="color:#f44336;margin-top:12px">No rate available for this route/month combination.</div>'}`;
-  }
-  if(F.detailMode==='hist'){
-    const origBlng=F.blng;
-    const rows=F.snaps.map(s=>{F.blng=s.blng;const res=calcF(F.histOrig,F.histDisch,F.histMi);F.blng=origBlng;return res?`<tr><td>${s.date}</td><td>${s.label}</td><td class="tr" style="color:${fCol(res.freight)}">${res.freight.toFixed(4)}</td><td class="tr" style="color:#546e7a">${res.rate.toLocaleString()}</td></tr>`:null;}).filter(Boolean).join('');
-    return`<button class="f-btn" style="margin-bottom:14px" onclick="F.detailMode=null;renderFTab()">← BACK</button>
-      <div class="f-sec">HISTORICAL FREIGHT RATES</div>
-      <div class="f-grid f-g3" style="margin-bottom:12px">
-        <div><span class="f-lbl">ORIGIN</span><select class="f-sel" onchange="F.histOrig=this.value;renderFTab()">${SUPPLY.map(p=>`<option value="${p.id}"${F.histOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
-        <div><span class="f-lbl">DISCHARGE</span><select class="f-sel" onchange="F.histDisch=this.value;renderFTab()">${allD().map(p=>`<option value="${p.id}"${F.histDisch===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
-        <div><span class="f-lbl">MONTH</span><select class="f-sel" onchange="F.histMi=+this.value;renderFTab()">${ML.map((m,i)=>`<option value="${i}"${F.histMi===i?' selected':''}>${m}</option>`).join('')}</select></div>
-      </div>
-      <table class="f-tbl"><thead><tr><th>DATE</th><th>SNAPSHOT</th><th class="tr">FREIGHT ($/Mmbtu)</th><th class="tr">TC RATE ($/day)</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="4" style="color:#546e7a">No snapshots saved yet.</td></tr>'}</tbody></table>`;
-  }
-  return'';
+    ${secs.map(sec=>`<div style="margin-bottom:12px"><div class="f-sec">${sec.t}</div><div class="f-gauto">${sec.f.map(f=>`<div><span class="f-lbl">${f.l}</span><input class="f-inp" type="number" step="${f.s}" value="${F.params[f.k]}" onchange="pChange('${f.k}',parseFloat(this.value)||0)"></div>`).join('')}</div></div>`).join('')}
+    <div style="margin-top:6px"><button class="f-btn on" onclick="computeMatrix();fMatTab(2)">UPDATE MATRIX →</button></div>`;
 }
 function renderMatrix(){
   const stale=F.matrixTs&&F.blngTs&&F.blngTs>F.matrixTs;
@@ -3125,22 +3317,16 @@ function renderMatrix(){
   const filtO=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);
   const filtD=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);
   let rows='';
-  if(F.matrix){
-    filtO.forEach(sp=>{
-      rows+=`<div style="margin-bottom:20px"><div style="color:#4fc3f7;font-size:10px;letter-spacing:2px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #1e3a5f">${sp.name.toUpperCase()} — ${sp.curve}</div><div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:130px">DISCHARGE</th>${ML.map(m=>`<th class="tr" style="min-width:50px">${m}</th>`).join('')}</tr></thead><tbody>`;
-      filtD.forEach(dp=>{const row=F.matrix[sp.id]&&F.matrix[sp.id][dp.id];rows+=`<tr><td style="font-size:10px">${dp.name}${dp.euEts?` <span class="f-badge-ets">ETS</span>`:''}</td>${ML.map((_,i)=>{const v=row&&row[i]?row[i].freight:null;return`<td class="tr" style="color:${fCol(v)}">${v?v.toFixed(3):'-'}</td>`;}).join('')}</tr>`;});
-      rows+='</tbody></table></div></div>';
-    });
-  }
-  return`${stale?'<div class="f-warn">Curves updated — click REFRESH to recompute matrix.</div>':''}
+  if(F.matrix){filtO.forEach(sp=>{rows+=`<div style="margin-bottom:20px"><div style="color:#4fc3f7;font-size:10px;letter-spacing:2px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #1e3a5f">${sp.name.toUpperCase()} — ${sp.curve}</div><div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:130px">DISCHARGE</th>${ML.map(m=>`<th class="tr" style="min-width:50px">${m}</th>`).join('')}</tr></thead><tbody>`;filtD.forEach(dp=>{const row=F.matrix[sp.id]&&F.matrix[sp.id][dp.id];rows+=`<tr><td style="font-size:10px">${dp.name}${dp.euEts?` <span class="f-badge-ets">ETS</span>`:''}</td>${ML.map((_,i)=>{const v=row&&row[i]?row[i].freight:null;return`<td class="tr" style="color:${fCol(v)}">${v?v.toFixed(3):'-'}</td>`;}).join('')}</tr>`;});rows+='</tbody></table></div></div>';});}
+  return`${stale?'<div class="f-warn" style="margin-bottom:10px">⚠ Curves or params updated — click UPDATE MATRIX to recompute.</div>':''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
-      <div style="flex:1;min-width:120px"><span class="f-lbl">ORIGIN</span><select class="f-sel" onchange="F.fOrig=this.value;renderFTab()"><option value="all">ALL ORIGINS</option>${SUPPLY.map(p=>`<option value="${p.id}"${F.fOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
-      <div style="flex:1;min-width:120px"><span class="f-lbl">REGION</span><select class="f-sel" onchange="F.fRegion=this.value;renderFTab()"><option value="all">ALL REGIONS</option>${regions.map(r=>`<option value="${r}"${F.fRegion===r?' selected':''}>${r}</option>`).join('')}</select></div>
-      <button class="f-btn on" onclick="computeMatrix()">REFRESH</button>
+      <div style="flex:1;min-width:120px"><span class="f-lbl">ORIGIN</span><select class="f-sel" onchange="F.fOrig=this.value;fMatTab(2)"><option value="all">ALL ORIGINS</option>${SUPPLY.map(p=>`<option value="${p.id}"${F.fOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
+      <div style="flex:1;min-width:120px"><span class="f-lbl">REGION</span><select class="f-sel" onchange="F.fRegion=this.value;fMatTab(2)"><option value="all">ALL REGIONS</option>${regions.map(r=>`<option value="${r}"${F.fRegion===r?' selected':''}>${r}</option>`).join('')}</select></div>
+      <button class="f-btn on" onclick="computeMatrix();fMatTab(2)">UPDATE MATRIX</button>
       ${F.matrix?'<button class="f-btn" onclick="exportMatrixCSV()">EXPORT CSV</button><button class="f-btn" onclick="exportMatrixXLS()">EXPORT EXCEL</button>':''}
     </div>
     ${F.matrixTs?`<div style="color:#546e7a;font-size:10px;margin-bottom:10px">Last computed: ${new Date(F.matrixTs).toLocaleString('en-GB')}</div>`:''}
-    ${!F.matrix?'<div style="color:#546e7a">No matrix yet — click REFRESH.</div>':rows}`;
+    ${!F.matrix?'<div style="color:#546e7a">No matrix yet — click UPDATE MATRIX.</div>':rows}`;
 }
 function renderDiff(){
   const base=ML.map((_,i)=>{const r=calcF(F.diffOrig,F.diffBase,i);return r?r.freight:null;});
@@ -3148,31 +3334,262 @@ function renderDiff(){
   const baseName=allD().find(p=>p.id===F.diffBase)?.name||F.diffBase;
   const portBtns=allD().filter(p=>p.id!==F.diffBase).map(p=>`<button class="f-btn sm${F.diffSel.includes(p.id)?' on':''}" onclick="toggleDiff('${p.id}')">${p.name}</button>`).join(' ');
   let tableRows='';
-  if(selD.length){
-    tableRows=`<tr class="hi-row"><td>BASE: ${baseName}</td>${base.map(v=>`<td class="tr">${v?v.toFixed(3):'-'}</td>`).join('')}</tr>`;
-    selD.forEach(dp=>{const sf=ML.map((_,i)=>{const r=calcF(F.diffOrig,dp.id,i);return r?r.freight:null;});tableRows+=`<tr><td>${dp.name}</td>${sf.map((v,i)=>{const d=v!=null&&base[i]!=null?v-base[i]:null;return`<td class="tr" style="color:${d==null?'#546e7a':d>0?'#f44336':d<0?'#4caf50':'#c8d6e5'}">${d!=null?(d>0?'+':'')+d.toFixed(3):'-'}</td>`;}).join('')}</tr>`;});
-  }
+  if(selD.length){tableRows=`<tr class="hi-row"><td>BASE: ${baseName}</td>${base.map(v=>`<td class="tr">${v?v.toFixed(3):'-'}</td>`).join('')}</tr>`;selD.forEach(dp=>{const sf=ML.map((_,i)=>{const r=calcF(F.diffOrig,dp.id,i);return r?r.freight:null;});tableRows+=`<tr><td>${dp.name}</td>${sf.map((v,i)=>{const d=v!=null&&base[i]!=null?v-base[i]:null;return`<td class="tr" style="color:${d==null?'#546e7a':d>0?'#f44336':d<0?'#4caf50':'#c8d6e5'}">${d!=null?(d>0?'+':'')+d.toFixed(3):'-'}</td>`;}).join('')}</tr>`;});}
   return`<div class="f-sec">FREIGHT RATE DIFFERENTIALS</div>
     <div class="f-grid f-g2" style="margin-bottom:12px">
-      <div><span class="f-lbl">BASE ORIGIN</span><select class="f-sel" onchange="F.diffOrig=this.value;renderFTab()">${SUPPLY.map(p=>`<option value="${p.id}"${F.diffOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
-      <div><span class="f-lbl">BASE DISCHARGE</span><select class="f-sel" onchange="F.diffBase=this.value;F.diffSel=F.diffSel.filter(x=>x!==this.value);renderFTab()">${allD().map(p=>`<option value="${p.id}"${F.diffBase===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
+      <div><span class="f-lbl">BASE ORIGIN</span><select class="f-sel" onchange="F.diffOrig=this.value;fMatTab(3)">${SUPPLY.map(p=>`<option value="${p.id}"${F.diffOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
+      <div><span class="f-lbl">BASE DISCHARGE</span><select class="f-sel" onchange="F.diffBase=this.value;F.diffSel=F.diffSel.filter(x=>x!==this.value);fMatTab(3)">${allD().map(p=>`<option value="${p.id}"${F.diffBase===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
     </div>
     <div style="margin-bottom:12px"><span class="f-lbl">COMPARISON PORTS</span><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">${portBtns}</div></div>
     ${selD.length?`<div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:130px">DISCHARGE</th>${ML.map(m=>`<th class="tr" style="min-width:50px">${m}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table><div style="margin-top:6px;color:#546e7a;font-size:10px">Red = more expensive · Green = cheaper than base</div></div>`:''}`;
 }
+function renderHistorical(){
+  const curves=F.histCurves||[];
+  const hasCurves=curves.length>0;
+
+  // ── FORWARD CURVE VIEW ────────────────────────────────────────────────────
+  // Pick an observation date → see BLNG1/2/3 forward strip for that date
+  function fwdView(){
+    if(!hasCurves)return'';
+    const idx=Math.min(F.histSelDate,curves.length-1);
+    const snap=curves[idx];
+    const blng=snap.blng;
+    const rows=ML.map((m,i)=>{
+      const b1=blng.BLNG1?.[i],b2=blng.BLNG2?.[i],b3=blng.BLNG3?.[i];
+      const fmt=v=>v!=null?v.toLocaleString():'-';
+      return`<tr>
+        <td style="color:#8a9bb5;white-space:nowrap">${m}</td>
+        <td class="tr" style="color:${BC.BLNG1}">${fmt(b1)}</td>
+        <td class="tr" style="color:${BC.BLNG2}">${fmt(b2)}</td>
+        <td class="tr" style="color:${BC.BLNG3}">${fmt(b3)}</td>
+      </tr>`;
+    }).join('');
+    return`
+    <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div><span class="f-lbl">OBSERVATION DATE</span>
+        <select class="f-sel" onchange="F.histSelDate=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">
+          ${curves.map((s,i)=>`<option value="${i}"${i===idx?' selected':''}>${s.date} — ${s.label}</option>`).join('')}
+        </select>
+      </div>
+      <span style="color:#546e7a;font-size:9px;padding-bottom:6px">${curves.length} observation dates loaded</span>
+    </div>
+    ${miniSVG(blng)}
+    <div style="overflow-x:auto;margin-top:8px">
+    <table class="f-tbl"><thead>
+      <tr>
+        <th>DELIVERY MONTH</th>
+        <th class="tr" style="color:${BC.BLNG1}">BLNG1 $/day<br><span style="font-size:8px;color:#546e7a">PACIFIC</span></th>
+        <th class="tr" style="color:${BC.BLNG2}">BLNG2 $/day<br><span style="font-size:8px;color:#546e7a">ATLANTIC</span></th>
+        <th class="tr" style="color:${BC.BLNG3}">BLNG3 $/day<br><span style="font-size:8px;color:#546e7a">X-BASIN</span></th>
+      </tr>
+    </thead><tbody>${rows}</tbody></table></div>`;
+  }
+
+  // ── HISTORICAL RATE VIEW ──────────────────────────────────────────────────
+  // Pick a delivery month → see BLNG1/2/3 rates across all observation dates
+  function histView(){
+    if(!hasCurves)return'';
+    const mi=F.histSelMonth;
+    // Build time series sorted by date asc
+    const sorted=[...curves].sort((a,b)=>a.date.localeCompare(b.date));
+    const rows=sorted.map(s=>{
+      const b1=s.blng.BLNG1?.[mi],b2=s.blng.BLNG2?.[mi],b3=s.blng.BLNG3?.[mi];
+      const fmt=v=>v!=null?v.toLocaleString():'-';
+      const chg=(arr,key)=>{
+        const prev=arr[arr.indexOf(s)-1];
+        if(!prev||!prev.blng[key]?.[mi]||!s.blng[key]?.[mi])return'';
+        const d=s.blng[key][mi]-prev.blng[key][mi];
+        return d===0?'':d>0?`<span style="color:#f44336;font-size:9px"> +${d.toLocaleString()}</span>`:`<span style="color:#4caf50;font-size:9px"> ${d.toLocaleString()}</span>`;
+      };
+      return`<tr>
+        <td style="color:#8a9bb5;white-space:nowrap">${s.date}</td>
+        <td style="color:#8a9bb5;font-size:9px">${s.label}</td>
+        <td class="tr" style="color:${BC.BLNG1}">${fmt(b1)}${chg(sorted,'BLNG1')}</td>
+        <td class="tr" style="color:${BC.BLNG2}">${fmt(b2)}${chg(sorted,'BLNG2')}</td>
+        <td class="tr" style="color:${BC.BLNG3}">${fmt(b3)}${chg(sorted,'BLNG3')}</td>
+      </tr>`;
+    }).join('');
+    // Mini time-series SVG
+    const W=600,H=100,PL=36,PR=8,PT=6,PB=16;
+    const vals=['BLNG1','BLNG2','BLNG3'].flatMap(c=>sorted.map(s=>s.blng[c]?.[mi]).filter(v=>v!=null));
+    let svgEl='';
+    if(vals.length>1){
+      const mn=Math.min(...vals),mx=Math.max(...vals);
+      const xS=i=>PL+(W-PL-PR)/(sorted.length-1||1)*i;
+      const yS=v=>H-PB-((v-mn)/(mx-mn||1))*(H-PT-PB);
+      const mkL=c=>{const pts=sorted.map((s,i)=>{const v=s.blng[c]?.[mi];return v!=null?`${xS(i).toFixed(1)},${yS(v).toFixed(1)}`:null;}).filter(Boolean);return pts.length>1?`<polyline points="${pts.join(' ')}" fill="none" stroke="${BC[c]}" stroke-width="1.5" stroke-linejoin="round"/>`:''};
+      const ticks=sorted.filter((_,i)=>i===0||i===sorted.length-1||i%Math.max(1,Math.floor(sorted.length/5))===0).map(s=>{const i=sorted.indexOf(s);return`<text x="${xS(i).toFixed(1)}" y="${H-2}" fill="#546e7a" font-size="7" text-anchor="middle">${s.date.slice(2,10)}</text>`;}).join('');
+      const gridLines=[mn,mn+(mx-mn)/2,mx].map(v=>`<line x1="${PL}" x2="${W-PR}" y1="${yS(v).toFixed(1)}" y2="${yS(v).toFixed(1)}" stroke="#1e3a5f" stroke-width="0.5"/><text x="${PL-3}" y="${(yS(v)+4).toFixed(1)}" fill="#546e7a" font-size="7" text-anchor="end">${(v/1000).toFixed(0)}k</text>`).join('');
+      svgEl=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;margin-bottom:8px" font-family="IBM Plex Mono,monospace">${gridLines}${ticks}${mkL('BLNG1')}${mkL('BLNG2')}${mkL('BLNG3')}</svg>`;
+    }
+    return`
+    <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div><span class="f-lbl">DELIVERY MONTH</span>
+        <select class="f-sel" onchange="F.histSelMonth=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">
+          ${ML.map((m,i)=>`<option value="${i}"${i===mi?' selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <span style="color:#546e7a;font-size:9px;padding-bottom:6px">${sorted.length} observation dates · colour = change vs prior obs.</span>
+    </div>
+    ${svgEl}
+    <div style="overflow-x:auto">
+    <table class="f-tbl"><thead>
+      <tr>
+        <th>OBS. DATE</th><th>LABEL</th>
+        <th class="tr" style="color:${BC.BLNG1}">BLNG1 $/day</th>
+        <th class="tr" style="color:${BC.BLNG2}">BLNG2 $/day</th>
+        <th class="tr" style="color:${BC.BLNG3}">BLNG3 $/day</th>
+      </tr>
+    </thead><tbody>${rows||'<tr><td colspan="5" style="color:#546e7a">No data.</td></tr>'}</tbody></table></div>`;
+  }
+
+  // ── MAIN RENDER ───────────────────────────────────────────────────────────
+  return`
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <span style="color:#4fc3f7;font-size:10px;letter-spacing:2px;font-weight:700">HISTORICAL FREIGHT CURVES</span>
+    <span style="flex:1"></span>
+    ${F.histLoading
+      ?`<span style="color:#ffb74d;font-size:9px;animation:pulse 1s infinite">⟳ LOADING FROM GOOGLE DRIVE…</span>`
+      :`<button class="f-btn on" onclick="fAuthGate(()=>loadHistFromGDrive())">⬇ LOAD FROM GOOGLE DRIVE</button>`}
+    ${hasCurves?`<button class="f-btn sm" onclick="fAuthGate(()=>{F.histCurves=[];fs('f_hist_curves',[]);document.getElementById('f-hist-body').innerHTML=renderHistorical()})">CLEAR</button>`:''}
+  </div>
+  ${hasCurves
+    ?`<div style="background:#071a2b;border:1px solid #1e3a5f;padding:4px;display:inline-flex;gap:0;margin-bottom:14px;border-radius:2px">
+        <button class="f-tab${F.histView==='forward'?' active':''}" style="padding:6px 14px;font-size:9px;letter-spacing:1px" onclick="F.histView='forward';document.getElementById('f-hist-body').innerHTML=renderHistorical()">FORWARD CURVE BY DATE</button>
+        <button class="f-tab${F.histView==='historical'?' active':''}" style="padding:6px 14px;font-size:9px;letter-spacing:1px" onclick="F.histView='historical';document.getElementById('f-hist-body').innerHTML=renderHistorical()">HISTORICAL RATE BY MONTH</button>
+      </div>
+      ${F.histView==='forward'?fwdView():histView()}`
+    :`<div style="background:#0a1628;border:1px dashed #1e3a5f;padding:32px;text-align:center">
+        <div style="color:#546e7a;font-size:10px;letter-spacing:1px;margin-bottom:8px">NO HISTORICAL CURVES LOADED</div>
+        <div style="color:#3d5070;font-size:9px">Click "LOAD FROM GOOGLE DRIVE" to scrape the LNG Freight Curves folder</div>
+      </div>`}`;
+}
+
+// ── Google Drive scraper: reads LNG Freight Curves folder via Anthropic API ──
+async function loadHistFromGDrive(){
+  F.histLoading=true;
+  document.getElementById('f-hist-body').innerHTML=renderHistorical();
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:8000,
+        system:`You are a data extraction assistant. Your ONLY output must be a valid JSON array — no preamble, no markdown, no explanation.
+The JSON array must follow this exact schema:
+[{"date":"YYYY-MM-DD","label":"string","blng":{"BLNG1":[24 numbers or nulls],"BLNG2":[24 numbers or nulls],"BLNG3":[24 numbers or nulls]}}]
+- date: the observation/EOD date of the curve file (ISO format)
+- label: a short human-readable label (e.g. "OB FFA 16/03/2026")
+- blng: BLNG1=Pacific, BLNG2=Atlantic, BLNG3=X-Basin rates in $/day for 24 consecutive forward months
+- If a value is missing or unavailable, use null
+- Sort array by date ascending
+- Return ONLY the JSON array. No other text whatsoever.`,
+        messages:[{role:'user',content:`Search Google Drive for a folder named "LNG Freight Curves". 
+List all files in it. For each file (Excel or CSV), download it and parse the BLNG freight curve data.
+Extract: the observation date (from filename or file date), and BLNG1/BLNG2/BLNG3 rates in $/day for each forward month (24 months).
+Return the complete dataset as a JSON array per the schema in your instructions.`}],
+        mcp_servers:[{type:'url',url:'https://gdrive.mcp.claude.com/mcp',name:'gdrive'}]
+      })
+    });
+    const data=await resp.json();
+    // Extract text from response — may be across multiple content blocks
+    const text=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    // Strip any accidental markdown fences
+    const clean=text.replace(/```[a-z]*\n?/gi,'').trim();
+    const parsed=JSON.parse(clean);
+    if(!Array.isArray(parsed)||!parsed.length)throw new Error('No curve data returned');
+    // Validate & normalise each entry
+    const validated=parsed.filter(s=>s.date&&s.blng&&(s.blng.BLNG1||s.blng.BLNG2||s.blng.BLNG3)).map(s=>({
+      date:s.date,
+      label:s.label||`OB FFA ${s.date}`,
+      blng:{
+        BLNG1:(s.blng.BLNG1||Array(24).fill(null)).slice(0,24),
+        BLNG2:(s.blng.BLNG2||Array(24).fill(null)).slice(0,24),
+        BLNG3:(s.blng.BLNG3||Array(24).fill(null)).slice(0,24)
+      }
+    }));
+    F.histCurves=validated;
+    fs('f_hist_curves',validated);
+    F.histSelDate=0;
+    alert(`Loaded ${validated.length} curve snapshot(s) from Google Drive.`);
+  }catch(err){
+    alert('Failed to load from Google Drive: '+err.message);
+  }finally{
+    F.histLoading=false;
+    document.getElementById('f-hist-body').innerHTML=renderHistorical();
+  }
+}
+// ── Persistent param helpers (Section 2 only) ────────────────────────────────
+function pChange(k,v){F.params[k]=v;fSaveParams(F.params);}
 function blngChange(el){const c=el.dataset.blng,i=+el.dataset.i;F.blng[c][i]=el.value===''?null:+el.value;fSaveBlng(F.blng);}
 function prChange(el){const type=el.dataset.prtype,c=el.dataset.curve,i=+el.dataset.i,v=parseFloat(el.value)||0;if(type==='pos')F.posArr[c][i]=v;else F.repoArr[c][i]=v;fSavePR();}
-function pChange(k,v){F.params[k]=v;fSaveParams(F.params);}
+function fAuthGate(cb){
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:400;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML=`<div style="background:#0a0f1e;border:1px solid #1e3a5f;padding:24px;min-width:280px;font-family:IBM Plex Mono,monospace">
+    <div style="font-size:10px;letter-spacing:2px;color:#4fc3f7;margin-bottom:14px">AUTHORISATION REQUIRED</div>
+    <input id="f-auth-pw" type="password" class="f-inp" style="width:100%;margin-bottom:12px" placeholder="Enter password" autofocus>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="f-btn sm" onclick="this.closest('div[style*=fixed]').remove()">CANCEL</button>
+      <button class="f-btn sm on" id="f-auth-ok">CONFIRM</button>
+    </div>
+    <div id="f-auth-err" style="color:#f44336;font-size:9px;margin-top:8px;display:none">Incorrect password.</div>
+  </div>`;
+  document.body.appendChild(modal);
+  const inp=modal.querySelector('#f-auth-pw');
+  const err=modal.querySelector('#f-auth-err');
+  const confirm=()=>{
+    if(inp.value==='@Moustapha1'){modal.remove();cb();}
+    else{err.style.display='block';inp.value='';inp.focus();}
+  };
+  modal.querySelector('#f-auth-ok').onclick=confirm;
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')confirm();});
+}
+function parseSnapFile(el){
+  const f=el.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      // Accept either a single snapshot object {date,label,blng} or an array
+      const snaps=Array.isArray(data)?data:[data];
+      let added=0;
+      snaps.forEach(s=>{
+        if(s.date&&s.blng&&s.blng.BLNG1&&s.blng.BLNG2&&s.blng.BLNG3){
+          const label=s.label||`Snapshot ${s.date}`;
+          F.snaps=[{date:s.date,label,blng:s.blng},...F.snaps.filter(x=>x.date!==s.date)];
+          added++;
+        }
+      });
+      if(added){fs('f_snaps',F.snaps);fSaveBlng(JSON.parse(JSON.stringify(F.snaps[0].blng)));fMatTab(0);alert(`${added} snapshot(s) loaded.`);}
+      else alert('No valid snapshot data found in file.');
+    }catch(err){alert('Error reading snapshot file: '+err.message);}
+  };
+  r.readAsText(f);el.value='';
+}
 function saveSnap(){const d=F.snapDate,s=[{date:d,label:`OB FFA ${d}`,blng:JSON.parse(JSON.stringify(F.blng))},...F.snaps.filter(x=>x.date!==d)];F.snaps=s;fs('f_snaps',s);alert('Snapshot saved: '+d);}
-function loadSnapBtn(el){const date=el.dataset.snapdate;const s=F.snaps.find(x=>x.date===date);if(s){fSaveBlng(JSON.parse(JSON.stringify(s.blng)));renderFTab();}}
-function parseBLNGcsv(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const lines=e.target.result.split('\n').map(l=>l.split(/[,\t]/));const h=lines[0]||[];let b1=-1,b2=-1,b3=-1;h.forEach((x,i)=>{const t=x.trim().toUpperCase();if(t.includes('BLNG1'))b1=i;if(t.includes('BLNG2'))b2=i;if(t.includes('BLNG3'))b3=i;});const nb=JSON.parse(JSON.stringify(IB));lines.slice(1).forEach((row,ri)=>{if(ri>=24)return;const pv=ci=>{const v=parseFloat((row[ci]||'').replace(/[^0-9.]/g,''));return isNaN(v)?null:v;};if(b1>=0)nb.BLNG1[ri]=pv(b1);if(b2>=0)nb.BLNG2[ri]=pv(b2);if(b3>=0)nb.BLNG3[ri]=pv(b3);});fSaveBlng(nb);renderFTab();alert('Curves loaded.');};r.readAsText(f);el.value='';}
-function fDetailMode(m){if(m==='matrix'){computeMatrix();F.detailMode='matrix_done';}else if(m==='diff'){fTab(4);return;}else F.detailMode=m;renderFTab();}
-function computeMatrix(){const m={};SUPPLY.forEach(sp=>{m[sp.id]={};allD().forEach(dp=>{m[sp.id][dp.id]=ML.map((_,i)=>calcF(sp.id,dp.id,i));});});F.matrix=m;const ts=new Date().toISOString();F.matrixTs=ts;fs('f_matrix',m);localStorage.setItem('f_matrix_ts',ts);renderFTab();}
-function toggleDiff(id){F.diffSel=F.diffSel.includes(id)?F.diffSel.filter(x=>x!==id):[...F.diffSel,id];renderFTab();}
+function loadSnapBtn(el){const date=el.dataset.snapdate;const s=F.snaps.find(x=>x.date===date);if(s){fSaveBlng(JSON.parse(JSON.stringify(s.blng)));fMatTab(0);}}
+function parseBLNGcsv(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const lines=e.target.result.split('\n').map(l=>l.split(/[,\t]/));const h=lines[0]||[];let b1=-1,b2=-1,b3=-1;h.forEach((x,i)=>{const t=x.trim().toUpperCase();if(t.includes('BLNG1'))b1=i;if(t.includes('BLNG2'))b2=i;if(t.includes('BLNG3'))b3=i;});const nb=JSON.parse(JSON.stringify(IB));lines.slice(1).forEach((row,ri)=>{if(ri>=24)return;const pv=ci=>{const v=parseFloat((row[ci]||'').replace(/[^0-9.]/g,''));return isNaN(v)?null:v;};if(b1>=0)nb.BLNG1[ri]=pv(b1);if(b2>=0)nb.BLNG2[ri]=pv(b2);if(b3>=0)nb.BLNG3[ri]=pv(b3);});fSaveBlng(nb);fMatTab(0);alert('Curves loaded.');};r.readAsText(f);el.value='';}
+function parseBLNGxls(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const h=(rows[0]||[]).map(x=>String(x).trim().toUpperCase());let b1=-1,b2=-1,b3=-1;h.forEach((x,i)=>{if(x.includes('BLNG1'))b1=i;if(x.includes('BLNG2'))b2=i;if(x.includes('BLNG3'))b3=i;});const nb=JSON.parse(JSON.stringify(IB));rows.slice(1).forEach((row,ri)=>{if(ri>=24)return;const pv=ci=>{const v=parseFloat(String(row[ci]||'').replace(/[^0-9.]/g,''));return isNaN(v)?null:v;};if(b1>=0)nb.BLNG1[ri]=pv(b1);if(b2>=0)nb.BLNG2[ri]=pv(b2);if(b3>=0)nb.BLNG3[ri]=pv(b3);});fSaveBlng(nb);fMatTab(0);alert('Curves loaded from Excel.');}catch(err){alert('Error reading Excel file: '+err.message);}};r.readAsArrayBuffer(f);el.value='';}
+function computeMatrix(){const m={};SUPPLY.forEach(sp=>{m[sp.id]={};allD().forEach(dp=>{m[sp.id][dp.id]=ML.map((_,i)=>calcF(sp.id,dp.id,i));});});F.matrix=m;const ts=new Date().toISOString();F.matrixTs=ts;fs('f_matrix',m);localStorage.setItem('f_matrix_ts',ts);}
+function toggleDiff(id){F.diffSel=F.diffSel.includes(id)?F.diffSel.filter(x=>x!==id):[...F.diffSel,id];fMatTab(3);}
 function showPortMgr(){const d=allD();const modal=document.createElement('div');modal.id='port-mgr-modal';modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px';modal.innerHTML=`<div style="background:#0a0f1e;border:1px solid #1e3a5f;width:100%;max-width:720px;max-height:85vh;overflow-y:auto;padding:20px"><div style="display:flex;justify-content:space-between;margin-bottom:14px"><span style="color:#4fc3f7;letter-spacing:2px;font-size:12px">PORT MANAGER</span><button class="f-btn sm" onclick="document.getElementById('port-mgr-modal').remove()">CLOSE</button></div><div class="f-sec">SUPPLY PORTS</div><table class="f-tbl"><thead><tr><th>NAME</th><th>CURVE</th><th class="tr">LOAD COST ($)</th></tr></thead><tbody>${SUPPLY.map(p=>`<tr><td>${p.name}</td><td>${p.curve}</td><td class="tr">${p.loadCost.toLocaleString()}</td></tr>`).join('')}</tbody></table><div class="f-sec" style="margin-top:16px">DISCHARGE PORTS (${d.length})</div><table class="f-tbl"><thead><tr><th>NAME</th><th>REGION</th><th class="tr">DISCH COST ($)</th><th>ETS</th></tr></thead><tbody>${d.map(p=>`<tr><td>${p.name}</td><td>${p.region}</td><td class="tr">${p.dischCost.toLocaleString()}</td><td>${p.euEts?'<span class="f-badge-ets">YES</span>':'NO'}</td></tr>`).join('')}</tbody></table></div>`;document.body.appendChild(modal);}
-function svBreakdownData(){const r=calcF(F.svOrig,F.svDisch,F.svMi);if(!r)return null;const sp=SUPPLY.find(p=>p.id===F.svOrig),dp=allD().find(p=>p.id===F.svDisch);const header=['Component','USD','$/Mmbtu','%'];const rows=[['Hire',r.hire,r.hire/r.estDisch,r.hire/r.total*100],['Positioning',r.pos,r.pos/r.estDisch,r.pos/r.total*100],['Repositioning',r.repo,r.repo/r.estDisch,r.repo/r.total*100],['HFO Bunkers',r.hfo,r.hfo/r.estDisch,r.hfo/r.total*100],['LSMGO Bunkers',r.lsmgo,r.lsmgo/r.estDisch,r.lsmgo/r.total*100],['Port Costs',r.port,r.port/r.estDisch,r.port/r.total*100],['Heel',r.heel,r.heel/r.estDisch,r.heel/r.total*100],['EU ETS',r.ets,r.ets/r.estDisch,r.ets/r.total*100],['TOTAL',r.total,r.freight,100]];const title=`${sp?.name||F.svOrig} → ${dp?.name||F.svDisch} | ${ML[F.svMi]} | ${F.svLoadDate}`;return{title,header,rows,freight:r.freight,total:r.total};}
-function exportSingleCSV(){const d=svBreakdownData();if(!d)return;const csv=[`# ${d.title}`,d.header.join(','),...d.rows.map(r=>[r[0],r[1].toFixed(0),r[2].toFixed(4),r[3].toFixed(2)].join(','))].join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`freight_${F.svOrig}_${F.svDisch}_${ML[F.svMi]}.csv`;a.click();F.showExportMenu=false;renderFTab();}
-function exportSingleXLS(){const d=svBreakdownData();if(!d)return;const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([[d.title],[''],[d.header],...d.rows.map(r=>[r[0],+r[1].toFixed(0),+r[2].toFixed(4),+r[3].toFixed(2)])]);XLSX.utils.book_append_sheet(wb,ws,'Freight Breakdown');XLSX.writeFile(wb,`freight_${F.svOrig}_${F.svDisch}_${ML[F.svMi]}.xlsx`);F.showExportMenu=false;renderFTab();}
+// ── SV Export (uses local SV state) ─────────────────────────────────────────
+function svExportCSV(){
+  const sp=SUPPLY.find(p=>p.id===F.svOrig),dp=allD().find(p=>p.id===F.svDisch);
+  const title=`${sp?.name||F.svOrig} → ${dp?.name||F.svDisch} (LOCAL CURVES)`;
+  const hdr=['Month','Rate $/day','Hire $','Pos $','Repo $','Cooldown $','HFO $','LSMGO $','Port $','ETS $','Heel $','Total $','Unit $/MMBtu'];
+  const rows=ML.map((m,i)=>{const r=calcF(F.svOrig,F.svDisch,i,F.svBlng,F.svParams,F.svPosArr,F.svRepoArr);return r?[m,r.rate,r.hire,r.pos,r.repo,r.cooldown,r.hfo,r.lsmgo,r.port,r.ets,r.heel,r.total,r.freight.toFixed(4)].join(','):`${m},,,,,,,,,,,,-`;}).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([`# ${title}\n${hdr.join(',')}\n${rows}`],{type:'text/csv'}));a.download=`sv_${F.svOrig}_${F.svDisch}.csv`;a.click();F.showExportMenu=false;renderFMain();
+}
+function svExportXLS(){
+  const sp=SUPPLY.find(p=>p.id===F.svOrig),dp=allD().find(p=>p.id===F.svDisch);
+  const title=`${sp?.name||F.svOrig} → ${dp?.name||F.svDisch} (LOCAL CURVES)`;
+  const hdr=['Month','Rate $/day','Hire $','Pos $','Repo $','Cooldown $','HFO $','LSMGO $','Port $','ETS $','Heel $','Total $','Unit $/MMBtu'];
+  const dataRows=ML.map((m,i)=>{const r=calcF(F.svOrig,F.svDisch,i,F.svBlng,F.svParams,F.svPosArr,F.svRepoArr);return r?[m,r.rate,+r.hire.toFixed(0),+r.pos.toFixed(0),+r.repo.toFixed(0),+r.cooldown.toFixed(0),+r.hfo.toFixed(0),+r.lsmgo.toFixed(0),+r.port.toFixed(0),+r.ets.toFixed(0),+r.heel.toFixed(0),+r.total.toFixed(0),+r.freight.toFixed(4)]:[m,...Array(12).fill('-')];});
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([[title],[],hdr,...dataRows]),'Single Voyage');XLSX.writeFile(wb,`sv_${F.svOrig}_${F.svDisch}.xlsx`);F.showExportMenu=false;renderFMain();
+}
 function exportMatrixCSV(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);const dd=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);const rows=[['Origin',...ML]];fd.forEach(sp=>dd.forEach(dp=>rows.push([`${sp.name} → ${dp.name}`,...ML.map((_,i)=>F.matrix[sp.id]&&F.matrix[sp.id][dp.id]&&F.matrix[sp.id][dp.id][i]?F.matrix[sp.id][dp.id][i].freight.toFixed(4):'-')])));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));a.download=`freight_matrix_${new Date().toISOString().slice(0,10)}.csv`;a.click();}
 function exportMatrixXLS(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);const dd=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);const rows=[['Origin',...ML]];fd.forEach(sp=>dd.forEach(dp=>rows.push([`${sp.name} → ${dp.name}`,...ML.map((_,i)=>{const v=F.matrix[sp.id]&&F.matrix[sp.id][dp.id]&&F.matrix[sp.id][dp.id][i];return v?+v.freight.toFixed(4):'-';})])));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Freight Matrix');XLSX.writeFile(wb,`freight_matrix_${new Date().toISOString().slice(0,10)}.xlsx`);}
 
