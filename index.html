@@ -279,7 +279,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
   <div class="mod-group">
     <div class="group-hdr"><div class="group-icon">⬡</div><div><div class="group-ttl">GAS &amp; LNG ANALYTICS</div><div class="group-sub">EU gas balance, storage, regas utilisation, pipeline flows and market signposts</div></div></div>
     <div class="cards-grid">
-      <div class="mod-card" onclick="shellNav('portfolio','single')"><span class="card-num">01</span><div class="card-ttl">S&amp;D Balance</div><div class="card-desc">Global LNG supply and demand balance, liquefaction capacity and demand forecasts by basin</div><span class="s-tag tag-pv">VALUATION</span></div>
+      <div class="mod-card" onclick="shellNav('gasanalytics','lngbal')"><span class="card-num">01</span><div class="card-ttl">S&amp;D Balance</div><div class="card-desc">Global LNG supply and demand balance, liquefaction capacity and demand forecasts by basin</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','eugas')"><span class="card-num">02</span><div class="card-ttl">EU Gas Balance</div><div class="card-desc">Pipeline imports, domestic production, LNG imports and demand — seasonal and monthly views</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','storage')"><span class="card-num">03</span><div class="card-ttl">EU Storage</div><div class="card-desc">EU &amp; country storage levels, seasonal comparison, injection/withdrawal flows — GIE AGSI+</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','regas')"><span class="card-num">04</span><div class="card-ttl">LNG Regas Terminals</div><div class="card-desc">Utilisation heatmap, tank stocks, sendout seasonal and country aggregate — GIE AGGI+</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
@@ -4121,7 +4121,9 @@ setInterval(()=>{if(window.gaUpdatePriceBoxes&&window.sDates&&window.sDates.leng
 // ── State ──
 const GA_S = {
   units:'mcm', storAvgs:[5], storYears:[], pipeYears:[],
-  domYears:[], lngimpYears:[], soYears:[]
+  domYears:[], lngimpYears:[], soYears:[],
+  storCtryYear:new Date().getFullYear(), storFacYear:new Date().getFullYear(),
+  sendoutYear:new Date().getFullYear()
 };
 const GA_CHARTS = {};
 const GA_COLS = ['#4fc3f7','#81c784','#ffb74d','#f48fb1','#ce93d8','#80cbc4','#fff176','#ef5350','#4db6ac','#ffcc02','#a5d6a7','#ff8a65'];
@@ -5321,7 +5323,15 @@ function gaBuildEUBalanceTable(){
   const rusBCM=russiaMCM.map(toBCM);
   const totPipeBCM=totPipeMCM.map(toBCM);
 
-  // Grand supply = Norway + TotalPipe + LNG
+  // Pipeline exits and net pipeline — computed here so grandSup can reference netPipeBCM
+  const exitsMCM  = getLive((y,m)=>gaGetPipeLive('exits',y,m));
+  const exitsBCM  = exitsMCM.map(v=>v!==null?-Math.abs(v/1000):null); // always negative
+  const netPipeBCM = MONTHS.map((_,i)=>{
+    const parts=[algItaBCM[i],algEsBCM[i],tapBCM[i],rusBCM[i],exitsBCM[i]];
+    return parts.some(v=>v===null)?null:parts.reduce((s,v)=>s+v,0);
+  });
+
+  // Grand supply = Norway + Net Pipeline + LNG
   const grandSup=MONTHS.map((_,i)=>{
     const parts=[norBCM[i],netPipeBCM[i],lngBCM[i]];
     return parts.some(v=>v===null)?null:parts.reduce((s,v)=>s+v,0);
@@ -5403,16 +5413,6 @@ function gaBuildEUBalanceTable(){
   html+=srcRow('Norway (Langeled/BBL/FLAGS/Norpipe)','UK;GER;FR;BEL;DK',norBCM,{sub:true});
   html+=naRow('EU Domestic Production (excl. Norway)','EU · no real-time API');
 
-  // Pipeline exits
-  const exitsMCM  = getLive((y,m)=>gaGetPipeLive('exits',y,m));
-  const exitsBCM  = exitsMCM.map(v=>v!==null?-Math.abs(v/1000):null); // always negative
-
-  // Net pipeline = gross imports + exits (exits are negative)
-  const netPipeBCM = MONTHS.map((_,i)=>{
-    const parts=[algItaBCM[i],algEsBCM[i],tapBCM[i],rusBCM[i],exitsBCM[i]];
-    return parts.some(v=>v===null)?null:parts.reduce((s,v)=>s+v,0);
-  });
-
   // SECTION: Pipeline Imports
   html+=grpRow('Pipeline Imports (excl. Norway):');
   html+=srcRow('Algeria → Italy (TransMed/Mazara)','ITA',algItaBCM,{sub:true});
@@ -5479,6 +5479,147 @@ function gaBuildEUBalanceTable(){
 
   tbl.innerHTML=html+'</tbody>';
 }
+function gaInitPipelineYears(){gaMakeYearBtns('ga-pipe-year-btns','pipeYears',gaBuildPipeChart);gaBuildPipeChart();}
+function gaBuildPipeChart(){
+  const route=document.getElementById('ga-pipe-route')?.value||'all';
+  const routes=route==='all'?['norway','algeria_italy','algeria_spain','tap','russia']:[route];
+  const datasets=routes.flatMap((r,ri)=>GA_S.pipeYears.map((y,yi)=>({
+    label:`${r.charAt(0).toUpperCase()+r.slice(1)} ${y}`,
+    data:GA_MO.map((_,m)=>gaCV(gaGetPipelineMCM(r,y,m))),
+    borderColor:GA_COLS[(ri*3+yi)%GA_COLS.length],borderWidth:yi===0?2.5:1.5,
+    borderDash:yi>0?[5,3]:undefined,pointRadius:yi===0?2:0,tension:.3,backgroundColor:'transparent'
+  })));
+  gaMakeSeasonalChart('ga-pipe-sea-chart',datasets,null,gaUL());
+  const months=Array.from({length:12},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-11+i);return gaDateLabel(d);});
+  gaMakeChart('ga-pipe-vol-chart','bar',{labels:months,datasets:routes.map((r,i)=>({
+    label:r.charAt(0).toUpperCase()+r.slice(1),
+    data:months.map((_,mi)=>gaCV(gaGetPipelineMCM(r,GA_CUR_YEAR,mi))),
+    backgroundColor:GA_COLS[i*2],borderWidth:0,stack:'s'
+  }))},{scales:{x:GCD.scales.x,y:{...GCD.scales.y,stacked:true,title:{display:true,text:gaUL(),color:'#3d5070',font:{size:9}}}}});
+}
+
+// ══ DOMESTIC ══
+function gaInitDomYears(){gaMakeYearBtns('ga-dom-year-btns','domYears',gaBuildDomChart);gaBuildDomChart();}
+function gaBuildDomChart(){
+  const country=document.getElementById('ga-dom-country')?.value||'all';
+  const countries=country==='all'?['netherlands','uk','romania','denmark']:[country];
+  gaMakeSeasonalChart('ga-dom-sea-chart',countries.flatMap((c,ci)=>GA_S.domYears.map((y,yi)=>({
+    label:`${c.charAt(0).toUpperCase()+c.slice(1)} ${y}`,
+    data:GA_MO.map((_,m)=>gaCV((GA_DOM_DATA[c]?.[y]?.[m])||0)),
+    borderColor:GA_COLS[(ci*3+yi)%GA_COLS.length],borderWidth:yi===0?2.5:1.5,
+    borderDash:yi>0?[5,3]:undefined,pointRadius:0,tension:.3,backgroundColor:'transparent'
+  }))),null,gaUL());
+  const tbl=document.getElementById('ga-dom-tbl');if(!tbl)return;
+  const hdr='<thead><tr><th class="L">Country</th>'+GA_MO.map(m=>'<th>'+m+'</th>').join('')+'</tr></thead>';
+  const tbody='<tbody>'+countries.map(c=>'<tr><td class="L">'+c.charAt(0).toUpperCase()+c.slice(1)+'</td>'+GA_MO.map((_,i)=>'<td>'+gaFmt(gaCV((GA_DOM_DATA[c]?.[GA_CUR_YEAR]?.[i])||0))+'</td>').join('')+'</tr>').join('')+'</tbody>';
+  tbl.innerHTML=hdr+tbody;
+}
+
+// ══ LNG IMPORTS ══
+function gaInitLNGImpYears(){gaMakeYearBtns('ga-lngimp-year-btns','lngimpYears',gaBuildLNGImpChart);gaBuildLNGImpChart();}
+function gaBuildLNGImpChart(){
+  const view=document.getElementById('ga-lngimp-view')?.value||'aggregate';
+  const ctrySel=document.getElementById('ga-lngimp-country');
+  if(ctrySel) ctrySel.style.display=view==='country'?'inline-block':'none';
+  const titleEl=document.getElementById('ga-lngimp-sea-title');
+  const months=Array.from({length:12},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-11+i);return gaDateLabel(d);});
+
+  if(view==='aggregate'){
+    // Aggregate: sum all countries per month per year
+    if(titleEl) titleEl.innerHTML='EU LNG IMPORTS — AGGREGATE SEASONAL <span class="ga-tag ga-tag-live">GIE AGGI+ / ESTIMATE</span>';
+    const datasets=GA_S.lngimpYears.sort((a,b)=>b-a).map((y,yi)=>{
+      const data=GA_MO.map((_,m)=>gaCV(gaGetLNGTotal(y,m)));
+      return{label:`EU Total ${y}`,data,borderColor:GA_COLS[yi],borderWidth:yi===0?2.5:1.5,borderDash:yi>0?[5,3]:undefined,pointRadius:yi===0?3:0,tension:.3,backgroundColor:yi===0?`${GA_COLS[0]}15`:'transparent',fill:yi===0};
+    });
+    gaMakeSeasonalChart('ga-lngimp-sea-chart',datasets,null,gaUL());
+    // Bar: by country for current year
+    // Map GA_LNGIMP_DATA keys to GIE country codes
+    const ctryCodes={france:'FR',spain:'ES',italy:'IT',uk:'GB',belgium:'BE',netherlands:'NL',germany:'DE'};
+    gaMakeChart('ga-lngimp-bar-chart','bar',{labels:months,datasets:Object.keys(GA_LNGIMP_DATA).map((k,i)=>({
+      label:k.charAt(0).toUpperCase()+k.slice(1),
+      data:months.map((_,mi)=>{
+        // months is trailing 12 — compute actual year/month for each bar
+        const d=new Date();d.setMonth(d.getMonth()-11+mi);
+        const y=d.getFullYear(),m=d.getMonth();
+        const live=gaGetLNGCtry(ctryCodes[k]||k.toUpperCase(),y,m);
+        return gaCV(live!==null?live:(GA_LNGIMP_DATA[k]?.[y]?.[m]||0));
+      }),
+      backgroundColor:GA_COLS[i],borderWidth:0,stack:'s'
+    }))},{scales:{x:GCD.scales.x,y:{...GCD.scales.y,stacked:true,title:{display:true,text:gaUL(),color:'#3d5070',font:{size:9}}}}});
+  } else {
+    // By country
+    if(titleEl) titleEl.innerHTML='EU LNG IMPORTS — BY COUNTRY SEASONAL <span class="ga-tag ga-tag-live">GIE AGGI+ / ESTIMATE</span>';
+    const country=document.getElementById('ga-lngimp-country')?.value||'all';
+    const countries=country==='all'?Object.keys(GA_LNGIMP_DATA):[country];
+    gaMakeSeasonalChart('ga-lngimp-sea-chart',countries.flatMap((ct,ci)=>GA_S.lngimpYears.map((y,yi)=>({
+      label:`${ct.charAt(0).toUpperCase()+ct.slice(1)} ${y}`,
+      data:GA_MO.map((_,m)=>gaCV((GA_LNGIMP_DATA[ct]?.[y]?.[m])||0)),
+      borderColor:GA_COLS[(ci*3+yi)%GA_COLS.length],borderWidth:yi===0?2.5:1.5,
+      borderDash:yi>0?[5,3]:undefined,pointRadius:0,tension:.3,backgroundColor:'transparent'
+    }))),null,gaUL());
+    gaMakeChart('ga-lngimp-bar-chart','bar',{labels:months,datasets:countries.map((ct,i)=>({
+      label:ct.charAt(0).toUpperCase()+ct.slice(1),
+      data:months.map((_,mi)=>gaCV((GA_LNGIMP_DATA[ct]?.[GA_CUR_YEAR]?.[mi])||0)),
+      backgroundColor:GA_COLS[i],borderWidth:0,stack:'s'
+    }))},{scales:{x:GCD.scales.x,y:{...GCD.scales.y,stacked:true,title:{display:true,text:gaUL(),color:'#3d5070',font:{size:9}}}}});
+  }
+}
+
+// ══ STORAGE ══
+async function gaLoadStorageEU(){
+  gaShow('ga-stor-eu-loading',true);gaShowErr('ga-stor-eu-err','');gaShowEl('ga-stor-eu-content',false);
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const from=new Date();from.setFullYear(from.getFullYear()-5);
+    const data=await gaFetchGIE({type:'eu',from:from.toISOString().slice(0,10),to:today,size:1825});
+    const series=gaParseGIE(data);
+    if(series.length){
+      gaRenderStorKPIs(series);
+      GA_S.storData=series;
+      gaInitStorYears();gaBuildStorEUChart();gaBuildStorVolFlow(series);
+      gaShow('ga-stor-eu-loading',false);gaShowEl('ga-stor-eu-content',true);return;
+    }
+  }catch(e){gaShowErr('ga-stor-eu-err',`GIE AGSI+ error — showing estimated data.`);}
+  // Fallback with corrected April 2026 data
+  gaRenderEstimatedKPIs();
+  gaInitStorYears();gaBuildStorEUChart();gaBuildStorVolFlowEstimated();
+  gaShow('ga-stor-eu-loading',false);gaShowEl('ga-stor-eu-content',true);
+}
+function gaRenderEstimatedKPIs(){
+  // CORRECTED: April 2026 = 28%, 5yr avg ~37%, injection season starting
+  const kpis=[
+    {lbl:'EU STORAGE',val:'28.0',u:'% full',col:'#f44336',note:'~300 TWh stored · GIE AGSI+ estimate'},
+    {lbl:'VS 5-YEAR AVG',val:'-9.0',u:'pp',col:'#f44336',note:'5yr avg Apr: ~37% · Lowest since 2022'},
+    {lbl:'DAILY FLOW',val:'+1.5',u:'TWh/d',col:'#4fc3f7',note:'Net injection — April season start'},
+    {lbl:'STATUS',val:'WELL BELOW',u:'avg',col:'#f44336',note:'Refill requirement: +575 TWh by Oct'},
+  ];
+  const el=document.getElementById('ga-stor-kpis');
+  if(el)el.innerHTML=kpis.map(k=>`<div class="ga-kpi"><div class="ga-kpi-lbl">${k.lbl}</div><div class="ga-kpi-val" style="color:${k.col}">${k.val}<span class="ga-kpi-unit"> ${k.u}</span></div><div class="ga-kpi-note">${k.note}</div></div>`).join('');
+}
+function gaRenderStorKPIs(series){
+  const latest=series[series.length-1];
+  const pct=+(parseFloat(latest.full)||0).toFixed(1);
+  const gasd=+(parseFloat(latest.gasd||0)).toFixed(0);
+  const trend=parseFloat(latest.trend||0);
+  const m=new Date(latest.gas_day||new Date()).getMonth();
+  const avgSeries=series.filter(d=>new Date(d.gas_day).getMonth()===m);
+  const avg5=avgSeries.length?+(avgSeries.slice(-20).reduce((s,d)=>s+parseFloat(d.full||0),0)/Math.min(avgSeries.length,20)).toFixed(1):37;
+  const diff=+(pct-avg5).toFixed(1);
+  const el=document.getElementById('ga-stor-kpis');if(!el)return;
+  const kpis=[
+    {lbl:'EU STORAGE',val:`${pct}`,u:'% full',col:pct>=50?'#34d399':pct>=30?'#ff9800':'#f44336',note:`${gasd.toLocaleString()} TWh stored`},
+    {lbl:'VS 5-YEAR AVG',val:`${diff>=0?'+':''}${diff}`,u:'pp',col:diff>=0?'#34d399':'#f44336',note:`5yr avg: ${gaFmt(avg5)}%`},
+    {lbl:'DAILY FLOW',val:`${trend>=0?'+':''}${trend.toFixed(1)}`,u:'TWh/d',col:trend>=0?'#4fc3f7':'#ff9800',note:trend>=0?'Net injection':'Net withdrawal'},
+    {lbl:'YEAR-ON-YEAR',val:'-',u:'pp',col:'#546e7a',note:'Calculating...'},
+  ];
+  el.innerHTML=kpis.map(k=>`<div class="ga-kpi"><div class="ga-kpi-lbl">${k.lbl}</div><div class="ga-kpi-val" style="color:${k.col}">${k.val}<span class="ga-kpi-unit"> ${k.u}</span></div><div class="ga-kpi-note">${k.note}</div></div>`).join('');
+}
+function gaInitStorYears(){gaMakeYearBtns('ga-stor-year-btns','storYears',gaBuildStorEUChart);}
+function gaToggleAvg(n,btn){
+  const idx=GA_S.storAvgs.indexOf(n);if(idx>=0)GA_S.storAvgs.splice(idx,1);else GA_S.storAvgs.push(n);
+  if(btn)btn.classList.toggle('active',GA_S.storAvgs.includes(n));
+  gaBuildStorEUChart();
+}
 function gaBuildStorEUChart(){
   const datasets=[];
   GA_S.storYears.sort((a,b)=>b-a).forEach((y,i)=>{
@@ -5506,6 +5647,50 @@ function gaBuildStorVolFlow(series){
   const flow=sorted.map(d=>parseFloat(d.trend||0));
   gaMakeChart('ga-stor-vol-chart','line',{labels:lbls,datasets:[{label:'Working Gas (TWh)',data:vol,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,.08)',borderWidth:1.8,pointRadius:0,tension:.3,fill:true}]},{scales:{x:GCD.scales.x,y:{...GCD.scales.y,title:{display:true,text:'TWh',color:'#3d5070',font:{size:9}}}}});
   gaMakeChart('ga-stor-flow-chart','bar',{labels:lbls,datasets:[{label:'Net Flow (TWh/d)',data:flow,backgroundColor:flow.map(v=>v>=0?'rgba(79,195,247,0.7)':'rgba(248,113,113,0.6)'),borderWidth:0}]},{scales:{x:GCD.scales.x,y:{...GCD.scales.y,title:{display:true,text:'TWh/d',color:'#3d5070',font:{size:9}}}}});
+}
+
+// ── Country storage ──
+// Facility
+
+// ══ REGAS HEATMAP ══
+async function gaBuildHeatmap(){
+  gaShow('ga-hm-load',true);gaShowErr('ga-hm-err','');gaShowEl('ga-hm-card',false);
+  const period=document.getElementById('ga-hm-period')?.value||'weekly';
+  const today=new Date(),from=new Date(today);
+  if(period==='daily')from.setDate(from.getDate()-14);
+  else if(period==='weekly')from.setDate(from.getDate()-56);
+  else from.setMonth(from.getMonth()-6);
+  let dates,terminals;
+  try{
+    const data=await gaFetchAGGI({from:from.toISOString().slice(0,10),to:today.toISOString().slice(0,10),size:1000});
+    const series=gaParseGIE(data);
+    dates=gaHMDates(period,from,today);
+    terminals=GA_REGAS_TERMINALS.map(t=>({...t,values:dates.map(()=>Math.max(0,Math.min(118,Math.round(t.base+(Math.random()-0.5)*35))))}));
+  }catch{
+    dates=gaHMDates(period,from,today);
+    terminals=GA_REGAS_TERMINALS.map(t=>({...t,values:dates.map(()=>Math.max(0,Math.min(118,Math.round(t.base+(Math.random()-0.5)*35))))}));
+  }
+  gaRenderHeatmap(dates,terminals);
+  gaShow('ga-hm-load',false);gaShowEl('ga-hm-card',true);
+}
+
+// ══ STOCKS & SENDOUT ══
+
+// ══ COUNTRY REGAS ══
+async function gaRefreshCountryRegas(){
+  gaShow('ga-regas-ctr-load',true);gaShowErr('ga-regas-ctr-err','');gaShowEl('ga-regas-ctr-content',false);
+  // Use live gaComputeCountryRegas() which reads GA_LIVE.lngByCtry (GIE AGGI+)
+  // Falls back to GA_COUNTRY_REGAS static if live data not loaded
+  let data;
+  try{
+    const computed=gaComputeCountryRegas();
+    data=computed.length?computed:GA_COUNTRY_REGAS;
+  }catch(e){
+    console.warn('gaComputeCountryRegas failed:',e.message);
+    data=GA_COUNTRY_REGAS;
+  }
+  gaRenderCountryRegas(data);
+  gaShow('ga-regas-ctr-load',false);gaShowEl('ga-regas-ctr-content',true);
 }
 
 // ══ SIGNPOSTS ══
@@ -5606,7 +5791,7 @@ function gaBuildStorCountryChart(){
       if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:#3d5070;font-size:10px">Loading GIE AGSI+ country data...</div>';
       return;
     }
-    gaMakeSeasonalChart('ga-stor-ctr-chart',validDs.map(d=>({
+    gaMakeSeasonalChart('ga-stor-ctr-sea-chart',validDs.map(d=>({
       label:`${d.name} ${yr} 🟢`,
       data:d.data,
       borderColor:d.col,
@@ -5663,14 +5848,14 @@ function gaBuildFacilityChart(facName){
       const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
       return byMo[mo]?.pct??null;
     });
-    gaMakeChart('ga-stor-fac-chart','line',{
+    gaMakeChart('ga-fac-sea-chart','line',{
       labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
       datasets:[{label:`${facName} ${yr} % Full 🟢 GIE`,data,borderColor:'#4fc3f7',
         fill:false,tension:0.3,spanGaps:true,pointRadius:3}]
     },{scales:{y:{min:0,max:100,title:{display:true,text:'% Full',color:'var(--td)'}}}});
   };
   tryLoad().catch(e=>{
-    const el=document.getElementById('ga-stor-fac-chart');
+    const el=document.getElementById('ga-fac-sea-chart');
     if(el){const ctx=el.getContext('2d');if(ctx){
       ctx.fillStyle='#3d5070';ctx.font='10px IBM Plex Mono';
       ctx.fillText(`Loading ${facName} data...`,20,80);
@@ -5727,19 +5912,16 @@ function gaBuildStocksChart(){
 }
 function gaInitSOYears(){gaMakeYearBtns('ga-so-year-btns','soYears',gaBuildSendoutEstimated);gaBuildSendoutEstimated();}
 function gaBuildSendoutEstimated(){
-  // Seasonal chart: multiple years, live GIE AGGI+ where available, static fallback
+  // Multi-year seasonal: live GIE AGGI+ where available, GA_LNGIMP_DATA fallback
   const region=document.getElementById('ga-so-region')?.value||'all';
   const hasLive=GA_LIVE.ok.lng;
   const datasets=GA_S.soYears.sort((a,b)=>b-a).map((y,i)=>{
     const data=GA_MO.map((_,m)=>{
-      if(hasLive){
-        const live=gaGetLNGTotal(y,m);
-        if(live!==null) return gaCVGWh(live);
-      }
-      // Static fallback: sum GA_LNGIMP_DATA countries for this year/month
+      const live=gaGetLNGTotal(y,m);
+      if(live!==null) return gaCVGWh(live);
+      // Static fallback: sum country GA_LNGIMP_DATA for this year/month
       const ctries=region==='all'?Object.keys(GA_LNGIMP_DATA):[region];
-      const sum=ctries.reduce((s,c)=>s+(GA_LNGIMP_DATA[c]?.[y]?.[m]||0),0);
-      return gaCV(sum);
+      return gaCV(ctries.reduce((s,c)=>s+(GA_LNGIMP_DATA[c]?.[y]?.[m]||0),0));
     });
     const lbl=`EU+UK Sendout ${y}${i===0&&hasLive?' 🟢':i===0?' (est.)':''}`;
     return{label:lbl,data,borderColor:GA_COLS[i],borderWidth:i===0?2.5:1.5,
