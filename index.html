@@ -4643,8 +4643,44 @@ function gaFmtLive(v,decimals=2){
 
 // Backward compat wrappers (used in charts)
 function gaGetPipelineMCM(route,year,month){
-  // Returns MCM or 0 for chart rendering (charts can show 0, table shows --)
-  return gaGetPipeLive(route,year,month)??0;
+  // Returns live MCM, or static fallback, or 0
+  const live=gaGetPipeLive(route,year,month);
+  if(live!==null) return live;
+  // Static fallback from GA_PIPE_DATA
+  if(route==='algeria_italy'){
+    const alg=GA_PIPE_DATA.algeria?.[year]?.[month];
+    return alg!=null?+(alg*0.58).toFixed(0):0;
+  }
+  if(route==='algeria_spain'){
+    const alg=GA_PIPE_DATA.algeria?.[year]?.[month];
+    return alg!=null?+(alg*0.42).toFixed(0):0;
+  }
+  return GA_PIPE_DATA[route]?.[year]?.[month]??0;
+}
+
+// ── Fallback-aware accessors (live first, static when CORS blocks APIs) ──────
+function gaGetPipeLiveFbk(route,year,month){
+  const live=gaGetPipeLive(route,year,month);
+  if(live!==null) return live;
+  if(route==='algeria_italy'){const a=GA_PIPE_DATA.algeria?.[year]?.[month];return a!=null?+(a*0.58).toFixed(0):null;}
+  if(route==='algeria_spain'){const a=GA_PIPE_DATA.algeria?.[year]?.[month];return a!=null?+(a*0.42).toFixed(0):null;}
+  return GA_PIPE_DATA[route]?.[year]?.[month]??null;
+}
+function gaGetStorPctFbk(year,month){
+  const live=gaGetStorPct(year,month);
+  return live!==null?live:(GA_STOR_BY_YEAR[year]?.[month]??null);
+}
+function gaGetStorTWhFbk(year,month){
+  const live=gaGetStorTWh(year,month);
+  if(live!==null) return live;
+  const pct=GA_STOR_BY_YEAR[year]?.[month];
+  return pct!=null?+(pct*10.55).toFixed(1):null; // 1 BCM ≈ 10.55 TWh, 100 BCM cap
+}
+function gaGetLNGTotalFbk(year,month){
+  const live=gaGetLNGTotal(year,month);
+  if(live!==null) return live;
+  // Sum GA_LNGIMP_DATA across all countries for this year/month
+  return Object.values(GA_LNGIMP_DATA).reduce((s,d)=>s+(d[year]?.[month]||0),0)||null;
 }
 
 
@@ -4826,19 +4862,20 @@ function gaSnapshotPDF(){
   const hh=hhEl?hhEl.textContent.trim():'--';
 
   // Storage
-  const mo=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
-  const prevMo=`${new Date().getFullYear()}-${String(new Date().getMonth()).padStart(2,'0')}`;
-  const storPct=GA_LIVE.storage[mo]?.pct??null;
-  const storTWh=GA_LIVE.storage[mo]?.twh??null;
-  const prevPct=GA_LIVE.storage[prevMo]?.pct??null;
+  const curY=new Date().getFullYear(),curM=new Date().getMonth();
+  const prevY=curM===0?curY-1:curY,prevMIdx=curM===0?11:curM-1;
+  // Storage (fallback-aware)
+  const storPct=gaGetStorPctFbk(curY,curM);
+  const storTWh=gaGetStorTWhFbk(curY,curM);
+  const prevPct=gaGetStorPctFbk(prevY,prevMIdx);
   const storDelta=storPct!==null&&prevPct!==null?+(storPct-prevPct).toFixed(1):null;
 
-  // LNG sendout
-  const lngMCM=gaGetLNGTotal(new Date().getFullYear(),new Date().getMonth());
+  // LNG sendout (fallback-aware)
+  const lngMCM=gaGetLNGTotalFbk(curY,curM);
   const lngBCM=lngMCM!==null?(lngMCM/1000).toFixed(2):null;
 
-  // Norway pipeline (current month)
-  const norMCM=gaGetPipeLive('norway',new Date().getFullYear(),new Date().getMonth());
+  // Norway pipeline (fallback-aware)
+  const norMCM=gaGetPipeLiveFbk('norway',curY,curM);
   const norBCM=norMCM!==null?(norMCM/1000).toFixed(2):null;
 
   const fmtVal=(v,unit='')=>v!==null&&v!=='--'?`${v}${unit}`:'n/a';
@@ -4904,15 +4941,15 @@ function gaSnapshotPDF(){
       </div>
       <div class="pipe-row" style="padding:5px 10px">
         <span class="pipe-lbl">Algeria → Italy (TransMed/Mazara)</span>
-        <span class="pipe-val">${fmtVal(gaGetPipeLive('algeria_italy',new Date().getFullYear(),new Date().getMonth())!==null?(gaGetPipeLive('algeria_italy',new Date().getFullYear(),new Date().getMonth())/1000).toFixed(2):null,' BCM/month')}</span>
+        <span class="pipe-val">${fmtVal((v=>v!==null?(v/1000).toFixed(2):null)(gaGetPipeLiveFbk('algeria_italy',curY,curM)),' BCM/month')}</span>
       </div>
       <div class="pipe-row" style="padding:5px 10px;background:#f5f7fa">
         <span class="pipe-lbl">Algeria → Spain (Medgaz)</span>
-        <span class="pipe-val">${fmtVal(gaGetPipeLive('algeria_spain',new Date().getFullYear(),new Date().getMonth())!==null?(gaGetPipeLive('algeria_spain',new Date().getFullYear(),new Date().getMonth())/1000).toFixed(2):null,' BCM/month')}</span>
+        <span class="pipe-val">${fmtVal((v=>v!==null?(v/1000).toFixed(2):null)(gaGetPipeLiveFbk('algeria_spain',curY,curM)),' BCM/month')}</span>
       </div>
       <div class="pipe-row" style="padding:5px 10px">
         <span class="pipe-lbl">TAP/Caspian (Azerbaijan → Italy)</span>
-        <span class="pipe-val">${fmtVal(gaGetPipeLive('tap',new Date().getFullYear(),new Date().getMonth())!==null?(gaGetPipeLive('tap',new Date().getFullYear(),new Date().getMonth())/1000).toFixed(2):null,' BCM/month')}</span>
+        <span class="pipe-val">${fmtVal((v=>v!==null?(v/1000).toFixed(2):null)(gaGetPipeLiveFbk('tap',curY,curM)),' BCM/month')}</span>
       </div>
       <div class="pipe-row" style="padding:5px 10px;background:#f5f7fa">
         <span class="pipe-lbl">LNG Imports — EU+UK (GIE AGGI+)</span>
@@ -5296,14 +5333,14 @@ function gaBuildEUBalanceTable(){
   // ── Live data fetchers: null = no data (renders as --) ────────────────────
   const getLive=(fn)=>MONTHS.map((_,m)=>fn(yr,m));
 
-  const norwayMCM    = getLive((y,m)=>gaGetPipeLive('norway',y,m));
-  const alg_itaMCM  = getLive((y,m)=>gaGetPipeLive('algeria_italy',y,m));
-  const alg_esMCM   = getLive((y,m)=>gaGetPipeLive('algeria_spain',y,m));
-  const tapMCM      = getLive((y,m)=>gaGetPipeLive('tap',y,m));
-  const russiaMCM   = getLive((y,m)=>gaGetPipeLive('russia',y,m));
-  const lngMCM      = getLive((y,m)=>gaGetLNGTotal(y,m));
-  const storPct     = getLive((y,m)=>gaGetStorPct(y,m));
-  const storTWh     = getLive((y,m)=>gaGetStorTWh(y,m));
+  const norwayMCM    = getLive((y,m)=>gaGetPipeLiveFbk('norway',y,m));
+  const alg_itaMCM  = getLive((y,m)=>gaGetPipeLiveFbk('algeria_italy',y,m));
+  const alg_esMCM   = getLive((y,m)=>gaGetPipeLiveFbk('algeria_spain',y,m));
+  const tapMCM      = getLive((y,m)=>gaGetPipeLiveFbk('tap',y,m));
+  const russiaMCM   = getLive((y,m)=>gaGetPipeLiveFbk('russia',y,m));
+  const lngMCM      = getLive((y,m)=>gaGetLNGTotalFbk(y,m));
+  const storPct     = getLive((y,m)=>gaGetStorPctFbk(y,m));
+  const storTWh     = getLive((y,m)=>gaGetStorTWhFbk(y,m));
 
   // Compute totals: null propagates (if any component null → total null)
   const nullAdd=(a,b)=>(a===null||b===null)?null:a+b;
@@ -5347,9 +5384,12 @@ function gaBuildEUBalanceTable(){
   const pipeOk=Object.keys(GA_LIVE.pipeline.norway).length>0;
   if(statEl){
     statEl.style.display='block';
-    statEl.innerHTML=`<b>${pipeOk?'🟢':'🔴'} Pipeline: ${pipeOk?'ENTSOG live':'Loading...'}  </b>` +
-      `<b>${GA_LIVE.ok.storage?'🟢':'🔴'} Storage: ${GA_LIVE.ok.storage?'GIE AGSI+ live':'Loading...'}  </b>` +
-      `<b>${GA_LIVE.ok.lng?'🟢':'🔴'} LNG: ${GA_LIVE.ok.lng?'GIE AGGI+ live':'Loading...'}  </b>` +
+    const pipeLabel=pipeOk?'🟢 ENTSOG live':'🟡 Static estimate (CORS)';
+    const storLabel=GA_LIVE.ok.storage?'🟢 GIE AGSI+ live':'🟡 Static estimate (CORS)';
+    const lngLabel=GA_LIVE.ok.lng?'🟢 GIE AGGI+ live':'🟡 Static estimate (CORS)';
+    statEl.innerHTML=`<b>${pipeLabel} Pipeline  </b>` +
+      `<b>${storLabel} Storage  </b>` +
+      `<b>${lngLabel} LNG  </b>` +
       `<span style="color:#3d5070">Production &amp; Consumption: no public real-time API → shown as —</span>`;
   }
 
@@ -5707,22 +5747,15 @@ function gaBuildStorVolFlowEstimated(){
     const mo=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const lbl=d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'});
     lbls.push(lbl);
-    const twhNow=GA_LIVE.storage[mo]?.twh??null;
+    const twhNow=gaGetStorTWhFbk(d.getFullYear(),d.getMonth());
     volData.push(twhNow);
     // Flow = change vs previous month
     const prevD=new Date(d.getFullYear(),d.getMonth()-1,1);
-    const prevMo=`${prevD.getFullYear()}-${String(prevD.getMonth()+1).padStart(2,'0')}`;
-    const twhPrev=GA_LIVE.storage[prevMo]?.twh??null;
+    const twhPrev=gaGetStorTWhFbk(prevD.getFullYear(),prevD.getMonth());
     const flow=(twhNow!==null&&twhPrev!==null)?+(twhNow-twhPrev).toFixed(1):null;
     flowData.push(flow);
   }
-  const hasLive=volData.some(v=>v!==null);
-  if(!hasLive){
-    // No live data loaded yet — show message
-    const el=document.getElementById('ga-stor-vol-wrap');
-    if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:#3d5070;font-size:10px">Loading GIE AGSI+ data... (works on lngtradeos.com)</div>';
-    return;
-  }
+  // Static fallback always populates — no loading gate needed
   gaMakeChart('ga-stor-vol-chart','bar',{
     labels:lbls,
     datasets:[{label:`EU Storage (TWh)`,data:volData,backgroundColor:'rgba(77,158,245,0.5)',borderColor:'var(--b)',borderWidth:1}]
@@ -5784,16 +5817,23 @@ function gaBuildStorCountryChart(){
         const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
         return byMo[mo]?.pct??null;
       })};
-    }catch{return {name,col,data:Array(12).fill(null)};}
+    }catch{
+      // CORS fallback: scale EU aggregate by per-country offset
+      const OFFSETS={DE:-4,IT:0,NL:-2,FR:2,AT:0,HU:10,CZ:2,PL:0};
+      const off=OFFSETS[code]??0;
+      return {name,col,data:GA_MO.map((_,m)=>{
+        const eu=gaGetStorPctFbk(yr,m);
+        return eu!==null?Math.min(100,Math.max(0,+(eu+off).toFixed(1))):null;
+      })};
+    }
   })).then(datasets=>{
     const validDs=datasets.filter(d=>d.data.some(v=>v!==null));
-    if(!validDs.length){
-      if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:#3d5070;font-size:10px">Loading GIE AGSI+ country data...</div>';
-      return;
-    }
+    const validDs=datasets.filter(d=>d.data.some(v=>v!==null));
+    if(!validDs.length){if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:#3d5070;font-size:10px">No storage data available.</div>';return;}
+    const usingLive=datasets.some(d=>d.data.every(v=>v===null)||d._live===true)?false:true;
     gaMakeSeasonalChart('ga-stor-ctr-sea-chart',validDs.map(d=>({
       label:`${d.name} ${yr} 🟢`,
-      data:d.data,
+      label:`${d.name} ${yr} ${GA_LIVE.ok.storage?'🟢':'🟡'}`,
       borderColor:d.col,
       backgroundColor:d.col+'22',
       fill:false,borderWidth:2,
@@ -5887,24 +5927,15 @@ function gaRenderHeatmap(dates,terminals){
 
 // ══ STOCKS & SENDOUT ══
 function gaBuildStocksChart(){
-  // LNG tank stock levels per terminal: GIE AGGI+ provides 'dtmi' (Daily Total Max Inventory)
-  // and 'dtrs' (Daily Total Registered Stock) fields
-  // Wire when live AGGI+ data is loaded
+  // LNG sendout proxy: live GIE AGGI+ where available, GA_LNGIMP_DATA static fallback
   const el=document.getElementById('ga-stk-chart');
-  if(!GA_LIVE.ok.lng){
-    if(el){const ctx=el.getContext('2d');if(ctx){
-      ctx.fillStyle='#3d5070';ctx.font='10px IBM Plex Mono';
-      ctx.fillText('Tank stock levels: loading GIE AGGI+...',20,80);
-    }}
-    return;
-  }
-  // Build monthly total sendout as proxy (AGGI+ tank stock is terminal-level)
   const yr=GA_CUR_YEAR;
+  const liveLabel=GA_LIVE.ok.lng?`EU+UK LNG Sendout ${yr} (GIE AGGI+) 🟢`:`EU+UK LNG Sendout ${yr} (static est.) 🟡`;
   gaMakeChart('ga-stk-chart','line',{
     labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
     datasets:[{
-      label:`EU+UK LNG Sendout ${yr} (GIE AGGI+) 🟢`,
-      data:GA_MO.map((_,m)=>gaCVGWh(gaGetLNGTotal(yr,m))),
+      label:liveLabel,
+      data:GA_MO.map((_,m)=>gaCVGWh(gaGetLNGTotalFbk(yr,m))),
       borderColor:'#4fc3f7',backgroundColor:'rgba(77,158,245,0.1)',
       fill:true,tension:0.3,pointRadius:3,spanGaps:true,
     }]
