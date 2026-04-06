@@ -407,8 +407,7 @@ let _pendingFinSub=null;
 function gaTab(tab){
   document.querySelectorAll('[id^="gatab-"]').forEach(t=>t.classList.remove('active'));
   const el=document.getElementById('gatab-'+tab);if(el)el.classList.add('active');
-  document.getElementById('ga-content').innerHTML=
-    `<iframe src="/gas_analytics_v3.html" style="width:100%;height:calc(100vh - 105px);border:none;background:#070b14"></iframe>`;
+  document.getElementById('ga-content').innerHTML=`<iframe src="/gas_analytics_v3.html" style="width:100%;height:calc(100vh - 105px);border:none;background:#070b14"></iframe>`;
 }
 function pvTab(tab){
   document.querySelectorAll('[id^="pvtab-"]').forEach(t=>t.classList.remove('active'));
