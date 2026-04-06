@@ -878,103 +878,351 @@ function phTab(tab){
 }
 
 // ══ GAS CONVERTER ══
-function renderGasConverter(c){
+function renderGasConverter(container){
+  // ── Conversion factors: 1 unit = f MMBtu ─────────────────────────────────
   const UNITS=[
-    {k:'mmbtu',l:'MMBtu',f:1},
-    {k:'mwh',l:'MWh',f:0.29307107},
-    {k:'gj',l:'GJ',f:1.05505585},
-    {k:'mcm',l:'MCM',f:35.3147},
-    {k:'bcm',l:'BCM',f:35314.667},
-    {k:'mt',l:'MT LNG',f:52.0},
-    {k:'mtpa',l:'MTPA',f:52000000.0/8760},
-    {k:'tbtu',l:'TBtu',f:1000000},
-    {k:'bcf',l:'BCF',f:1000000},
+    {k:'mmbtu',   l:'MMBtu',          g:'energy',  f:1,             abbr:'MMBtu'},
+    {k:'therm',   l:'Therm',          g:'energy',  f:0.1,           abbr:'therm'},
+    {k:'mtherm',  l:'Million Therms', g:'energy',  f:100000,        abbr:'M.therm'},
+    {k:'kwh',     l:'kWh',            g:'power',   f:0.0034095106,  abbr:'kWh'},
+    {k:'mwh',     l:'MWh',            g:'power',   f:3.4095106,     abbr:'MWh'},
+    {k:'gwh',     l:'GWh',            g:'power',   f:3409.5106,     abbr:'GWh'},
+    {k:'twh',     l:'TWh',            g:'power',   f:3409510.6,     abbr:'TWh'},
+    {k:'t_lng',   l:'Tonnes (LNG)',   g:'mass',    f:48.7092,       abbr:'t'},
+    {k:'mt_lng',  l:'MT LNG',         g:'mass',    f:48709200,      abbr:'MT'},
+    {k:'cbm_lng', l:'CBM (LNG)',      g:'vol_liq', f:21.188502,     abbr:'m³'},
+    {k:'mcm_lng', l:'MCM (LNG)',      g:'vol_liq', f:21188502,      abbr:'MCM'},
+    {k:'cbm_gas', l:'CBM (Gas)',      g:'vol_gas', f:0.036232338,   abbr:'m³'},
+    {k:'mcm_gas', l:'MCM (Gas)',      g:'vol_gas', f:36232.338,     abbr:'MCM'},
+    {k:'bcm_gas', l:'BCM (Gas)',      g:'vol_gas', f:36232338,      abbr:'BCM'},
+    {k:'cf_lng',  l:'ft³ (LNG)',      g:'vol_liq', f:0.59963461,    abbr:'ft³'},
+    {k:'cf_gas',  l:'ft³ (Gas)',      g:'vol_gas', f:0.0010253752,  abbr:'ft³'},
+    {k:'mmcf',    l:'MMcf (Gas)',     g:'vol_gas', f:1025.3752,     abbr:'MMcf'},
+    {k:'mbs',     l:'MBs (1000 BBL)',g:'oil',     f:5813.9535,     abbr:'MBs'},
   ];
+  const G_COLORS={energy:'#4fc3f7',power:'#81c784',mass:'#ffb74d',vol_liq:'#ce93d8',vol_gas:'#f48fb1',oil:'#80cbc4'};
+  const G_LABELS={energy:'ENERGY',power:'POWER',mass:'MASS (LNG)',vol_liq:'LIQUID VOL.',vol_gas:'GAS VOL.',oil:'OIL EQ.'};
 
-  // Corrected reference figures from LNG TradeOS desk reference card
-  const REF_ROWS = [
-    {left:'1 MTPA',eq:'≈',right:'16 cargoes',note:'~62kt cargo / ~138k cbm vessel'},
-    {left:'1 BCM',eq:'≈',right:'12 cargoes',note:'~82kt cargo basis'},
-    {left:'158,000 cbm cargo',eq:'=',right:'3,760,000 MMBtu',note:'@ 23.8 BTU/scf'},
-    {left:'1 BCM',eq:'=',right:'0.7 MTPA',note:''},
-    {left:'2 BCF',eq:'≈',right:'0.04 MTPA',note:'corrected: 2 bcf = 0.0196 MTPA × 2'},
-    {left:'1 TBtu',eq:'=',right:'19,000 t  (0.019 MT)',note:''},
-    {left:'100 TBtu',eq:'≈',right:'1.9 MTPA',note:''},
-    {left:'10 GWh',eq:'≈',right:'1 cargo',note:'~138k cbm vessel'},
-    {left:'1 MMBtu',eq:'=',right:'0.293 MWh',note:''},
-    {left:'1 BCM',eq:'=',right:'35,315 MMBtu',note:''},
-    {left:'1 MCM',eq:'=',right:'35.3 MMBtu',note:''},
-    {left:'1 MT LNG',eq:'≈',right:'52 MMBtu',note:'@ 23.8 BTU/scf, 0.45 t/m³'},
-  ];
+  const fmtNum=(v)=>{if(v===null||isNaN(v))return '';
+    const a=Math.abs(v);
+    if(a===0)return '0';
+    if(a>=1e9)return (v/1e9).toPrecision(6)+'B';
+    if(a>=1e6)return (v/1e6).toPrecision(6)+'M';
+    if(a>=1000)return v.toLocaleString('en-US',{maximumSignificantDigits:6});
+    if(a<0.0001)return v.toExponential(4);
+    return v.toPrecision(6).replace(/\.?0+$/,'');
+  };
 
-  const fields=UNITS.map(u=>`
-    <div style="background:var(--bg2);border:1px solid var(--bl);padding:14px">
-      <div style="font-size:9px;letter-spacing:.12em;color:var(--td);margin-bottom:6px">${u.l}</div>
-      <input id="conv-${u.k}" class="f-inp" type="number" step="any" placeholder="0"
-        oninput="runConvert('${u.k}',this.value)"
-        style="font-size:14px;color:var(--th);background:transparent;border:none;
-               border-bottom:1px solid var(--bl);padding:4px 0;outline:none;width:100%">
-    </div>`).join('');
+  // ── Tab system ─────────────────────────────────────────────────────────────
+  container.innerHTML=`
+  <div style="padding:0">
+    <div style="display:flex;border-bottom:1px solid rgba(77,158,245,.18);background:var(--bg2)">
+      ${['UNIT CONVERTER','PRICE CONVERTER','FLOW RATES','REFERENCE'].map((t,i)=>
+        `<button id="gc-tab-${i}" onclick="gcTab(${i})" style="background:${i===0?'rgba(77,158,245,.12)':'transparent'};border:none;border-bottom:${i===0?'2px solid var(--b)':'2px solid transparent'};color:${i===0?'var(--b)':'var(--td)'};padding:10px 16px;font-family:inherit;font-size:9px;font-weight:600;letter-spacing:.12em;cursor:pointer;white-space:nowrap">${t}</button>`
+      ).join('')}
+    </div>
+    <div id="gc-body" style="padding:24px;max-width:960px"></div>
+  </div>`;
 
-  const refRows=REF_ROWS.map(r=>`
-    <tr style="border-bottom:1px solid rgba(77,158,245,.06)">
-      <td style="padding:7px 12px;color:var(--b);font-weight:600;white-space:nowrap">${r.left}</td>
-      <td style="padding:7px 8px;color:#3d5070;text-align:center;font-size:11px">${r.eq}</td>
-      <td style="padding:7px 12px;color:var(--th);font-weight:500">${r.right}</td>
-      <td style="padding:7px 12px;color:#3d5070;font-size:9px">${r.note}</td>
-    </tr>`).join('');
+  window.gcTab=function(idx){
+    [0,1,2,3].forEach(i=>{
+      const b=document.getElementById('gc-tab-'+i);
+      if(!b)return;
+      b.style.background=i===idx?'rgba(77,158,245,.12)':'transparent';
+      b.style.borderBottom=i===idx?'2px solid var(--b)':'2px solid transparent';
+      b.style.color=i===idx?'var(--b)':'var(--td)';
+    });
+    const body=document.getElementById('gc-body');
+    if(!body)return;
+    if(idx===0) gcRenderUnits(body);
+    else if(idx===1) gcRenderPrice(body);
+    else if(idx===2) gcRenderFlow(body);
+    else gcRenderRef(body);
+  };
 
-  c.innerHTML=`
-    <div style="padding:28px;max-width:900px">
-
-      <!-- Interactive Converter -->
-      <div style="font-size:11px;letter-spacing:.15em;color:var(--b);margin-bottom:4px;font-weight:700">
-        NATURAL GAS UNIT CONVERTER
+  // ── TAB 0: UNIT CONVERTER ─────────────────────────────────────────────────
+  window.gcRenderUnits=function(el){
+    const groups=['energy','power','mass','vol_liq','vol_gas','oil'];
+    el.innerHTML=`
+      <div style="font-size:11px;letter-spacing:.12em;color:var(--b);font-weight:700;margin-bottom:4px">UNIT CONVERTER</div>
+      <div style="font-size:9px;color:#3d5070;margin-bottom:20px">Enter any value — all units update automatically · Source: LNG TradeOS™ desk reference</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px" id="gc-unit-grid">
+      ${UNITS.map(u=>`
+        <div style="background:var(--bg2);border:1px solid rgba(77,158,245,.1);border-left:2px solid ${G_COLORS[u.g]};padding:10px 12px">
+          <div style="font-size:8px;color:${G_COLORS[u.g]};letter-spacing:.1em;margin-bottom:2px">${G_LABELS[u.g]}</div>
+          <div style="font-size:9px;color:var(--td);margin-bottom:5px">${u.l}</div>
+          <input id="gc-u-${u.k}" type="number" step="any" placeholder="0" oninput="gcConvert('${u.k}',this.value)"
+            style="width:100%;background:transparent;border:none;border-bottom:1px solid rgba(77,158,245,.2);color:var(--th);font-size:13px;font-family:inherit;padding:3px 0;outline:none">
+        </div>`).join('')}
       </div>
-      <div style="font-size:10px;color:var(--td);margin-bottom:20px">
-        Enter a value in any unit — all others update automatically
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:32px">
-        ${fields}
+      <div style="font-size:8px;color:#2a3a55;margin-top:14px">
+        All factors from LNG TradeOS™ spreadsheet · Density: 0.435 t/m³ LNG · 48.7092 MMBtu/t · 584.795 m³ gas/m³ LNG · 1 MMBtu = 293.07 kWh
+      </div>`;
+
+    window.gcConvert=function(fromKey,val){
+      const v=parseFloat(val);
+      const fu=UNITS.find(u=>u.k===fromKey);
+      if(!fu||isNaN(v))return;
+      const inMmbtu=v*fu.f;
+      UNITS.forEach(u=>{
+        if(u.k===fromKey)return;
+        const el=document.getElementById('gc-u-'+u.k);
+        if(el)el.value=v===0?'':fmtNum(inMmbtu/u.f);
+      });
+    };
+  };
+
+  // ── TAB 1: PRICE CONVERTER ────────────────────────────────────────────────
+  window.gcRenderPrice=function(el){
+    el.innerHTML=`
+      <div style="font-size:11px;letter-spacing:.12em;color:var(--b);font-weight:700;margin-bottom:4px">PRICE CONVERTER</div>
+      <div style="font-size:9px;color:#3d5070;margin-bottom:20px">Convert gas prices between common trading units · Enter any price to compute all others</div>
+
+      <!-- FX Rates -->
+      <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="background:var(--bg2);border:1px solid rgba(77,158,245,.12);padding:10px 14px">
+          <div style="font-size:8px;color:#3d5070;letter-spacing:.1em;margin-bottom:4px">GBP/EUR RATE</div>
+          <input id="gc-fx-gbpeur" type="number" step="0.0001" value="1.1125"
+            style="width:100px;background:transparent;border:none;border-bottom:1px solid var(--b);color:var(--b);font-size:13px;font-family:inherit;padding:2px 0;outline:none"
+            oninput="gcPriceCalc()">
+        </div>
+        <div style="background:var(--bg2);border:1px solid rgba(77,158,245,.12);padding:10px 14px">
+          <div style="font-size:8px;color:#3d5070;letter-spacing:.1em;margin-bottom:4px">EUR/USD RATE</div>
+          <input id="gc-fx-eurusd" type="number" step="0.0001" value="1.0800"
+            style="width:100px;background:transparent;border:none;border-bottom:1px solid var(--b);color:var(--b);font-size:13px;font-family:inherit;padding:2px 0;outline:none"
+            oninput="gcPriceCalc()">
+        </div>
       </div>
 
-      <!-- Reference Table -->
-      <div style="font-size:11px;letter-spacing:.15em;color:var(--b);margin-bottom:4px;font-weight:700;
-                  padding-top:20px;border-top:1px solid rgba(77,158,245,.12)">
-        GAS CONVERSION FIGURES
+      <!-- Price inputs -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px">
+        ${[
+          {k:'usd_mmbtu', l:'USD/MMBtu',  col:'#4fc3f7', note:'Henry Hub / JKM / TTF in USD'},
+          {k:'eur_mwh',   l:'EUR/MWh',    col:'#81c784', note:'TTF / NBP EUR terms'},
+          {k:'gbp_mwh',   l:'GBP/MWh',   col:'#ffb74d', note:'NBP natural unit'},
+          {k:'p_therm',   l:'P/therm',    col:'#ce93d8', note:'UK NBP natural unit'},
+          {k:'usd_mscf',  l:'USD/MMscf',  col:'#f48fb1', note:'US gas market unit'},
+          {k:'usd_btu',   l:'USD/BTU',    col:'#80cbc4', note:'Micro-unit reference'},
+        ].map(p=>`
+          <div style="background:var(--bg2);border:1px solid rgba(77,158,245,.1);border-left:2px solid ${p.col};padding:12px">
+            <div style="font-size:9px;color:${p.col};font-weight:700;margin-bottom:2px">${p.l}</div>
+            <div style="font-size:8px;color:#3d5070;margin-bottom:6px">${p.note}</div>
+            <input id="gc-px-${p.k}" type="number" step="any" placeholder="--" oninput="gcPriceFrom('${p.k}',this.value)"
+              style="width:100%;background:transparent;border:none;border-bottom:1px solid rgba(77,158,245,.2);color:var(--th);font-size:15px;font-family:inherit;padding:3px 0;outline:none">
+          </div>`).join('')}
       </div>
-      <div style="font-size:9px;color:#3d5070;margin-bottom:14px">
-        Desk reference — LNG TradeOS™
+
+      <!-- Spread calculator -->
+      <div style="border-top:1px solid rgba(77,158,245,.1);padding-top:16px">
+        <div style="font-size:9px;color:var(--b);font-weight:700;letter-spacing:.1em;margin-bottom:10px">SPREAD CALCULATOR</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--td)">
+          <select id="gc-sp-a" style="background:var(--bg2);border:1px solid rgba(77,158,245,.18);color:var(--tx);padding:5px 8px;font-size:9px;font-family:inherit">
+            ${[['usd_mmbtu','USD/MMBtu'],['eur_mwh','EUR/MWh'],['p_therm','P/therm'],['gbp_mwh','GBP/MWh']].map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}
+          </select>
+          <span style="color:#3d5070">−</span>
+          <select id="gc-sp-b" style="background:var(--bg2);border:1px solid rgba(77,158,245,.18);color:var(--tx);padding:5px 8px;font-size:9px;font-family:inherit">
+            ${[['usd_mmbtu','USD/MMBtu'],['eur_mwh','EUR/MWh'],['p_therm','P/therm'],['gbp_mwh','GBP/MWh']].map(([k,l],i)=>`<option value="${k}"${i===1?' selected':''}>${l}</option>`).join('')}
+          </select>
+          <span style="font-size:8px;color:#3d5070">=</span>
+          <span id="gc-spread-out" style="font-size:15px;color:var(--b);font-weight:700">--</span>
+        </div>
+      </div>`;
+
+    window.gcPriceFrom=function(fromKey,val){
+      const v=parseFloat(val);if(isNaN(v))return;
+      window._gcPx=window._gcPx||{};
+      window._gcPx[fromKey]=v;
+      const fx_gbpeur=parseFloat(document.getElementById('gc-fx-gbpeur')?.value)||1.1125;
+      const fx_eurusd=parseFloat(document.getElementById('gc-fx-eurusd')?.value)||1.0800;
+      // Conversion relationships (all via USD/MMBtu)
+      const toUsdMmbtu={
+        usd_mmbtu: (x)=>x,
+        eur_mwh:   (x)=>x/fx_eurusd/3.4095106,   // EUR/MWh → USD/MWh → USD/MMBtu
+        gbp_mwh:   (x)=>x*fx_gbpeur/fx_eurusd/3.4095106,
+        p_therm:   (x)=>x*fx_gbpeur/100/fx_eurusd/3.4095106*10,  // P/therm → GBP/therm → therm/0.1MMBtu → USD/MMBtu
+        usd_mscf:  (x)=>x/1025.3752,
+        usd_btu:   (x)=>x*1e6,
+      };
+      const fromUsdMmbtu={
+        usd_mmbtu: (x)=>x,
+        eur_mwh:   (x)=>x*fx_eurusd*3.4095106,
+        gbp_mwh:   (x)=>x*fx_eurusd/fx_gbpeur*3.4095106,
+        p_therm:   (x)=>x*fx_eurusd/fx_gbpeur*100*3.4095106/10,
+        usd_mscf:  (x)=>x*1025.3752,
+        usd_btu:   (x)=>x/1e6,
+      };
+      const base=toUsdMmbtu[fromKey]?.(v);
+      if(base==null)return;
+      Object.keys(fromUsdMmbtu).forEach(k=>{
+        if(k===fromKey)return;
+        const el=document.getElementById('gc-px-'+k);
+        if(el)el.value=fromUsdMmbtu[k](base).toFixed(4).replace(/\.?0+$/,'');
+      });
+      // Update spread
+      const sa=document.getElementById('gc-sp-a')?.value;
+      const sb=document.getElementById('gc-sp-b')?.value;
+      const sout=document.getElementById('gc-spread-out');
+      const pxMap={};
+      Object.keys(fromUsdMmbtu).forEach(k=>{const el=document.getElementById('gc-px-'+k);if(el&&el.value)pxMap[k]=parseFloat(el.value);});
+      if(sout&&pxMap[sa]!=null&&pxMap[sb]!=null){
+        const diff=+(pxMap[sa]-pxMap[sb]).toFixed(4);
+        sout.textContent=(diff>0?'+':'')+diff+' '+[['usd_mmbtu','$/MMBtu'],['eur_mwh','€/MWh'],['p_therm','P/th'],['gbp_mwh','£/MWh']].find(([k])=>k===sa)?.[1]||'';
+        sout.style.color=diff>0?'#34d399':diff<0?'#f44336':'var(--td)';
+      }
+    };
+    window.gcPriceCalc=function(){
+      // Re-trigger from whichever field has a value
+      ['usd_mmbtu','eur_mwh','gbp_mwh','p_therm','usd_mscf'].forEach(k=>{
+        const el=document.getElementById('gc-px-'+k);
+        if(el&&el.value)gcPriceFrom(k,el.value);
+      });
+    };
+  };
+
+  // ── TAB 2: FLOW RATES ─────────────────────────────────────────────────────
+  window.gcRenderFlow=function(el){
+    el.innerHTML=`
+      <div style="font-size:11px;letter-spacing:.12em;color:var(--b);font-weight:700;margin-bottom:4px">FLOW RATE CALCULATOR</div>
+      <div style="font-size:9px;color:#3d5070;margin-bottom:20px">Enter any flow rate or volume — all others update · Cargo size adjustable</div>
+
+      <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end">
+        <div style="background:var(--bg2);border:1px solid rgba(77,158,245,.12);padding:10px 14px">
+          <div style="font-size:8px;color:#3d5070;letter-spacing:.1em;margin-bottom:4px">CARGO SIZE (m³)</div>
+          <input id="gc-fl-cargo" type="number" step="1000" value="174000"
+            style="width:120px;background:transparent;border:none;border-bottom:1px solid var(--b);color:var(--b);font-size:13px;font-family:inherit;padding:2px 0;outline:none"
+            oninput="gcFlowCalc()">
+        </div>
+        <div style="background:var(--bg2);border:1px solid rgba(77,158,245,.12);padding:10px 14px">
+          <div style="font-size:8px;color:#3d5070;letter-spacing:.1em;margin-bottom:4px">CBM FILL RATE (%)</div>
+          <input id="gc-fl-fill" type="number" step="0.5" value="98.5"
+            style="width:80px;background:transparent;border:none;border-bottom:1px solid var(--b);color:var(--b);font-size:13px;font-family:inherit;padding:2px 0;outline:none"
+            oninput="gcFlowCalc()">
+        </div>
       </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:20px">
+        ${[
+          {k:'bcmyr',   l:'BCM / year',     col:'#4fc3f7'},
+          {k:'mtpa',    l:'MTPA (LNG)',      col:'#81c784'},
+          {k:'mcmday',  l:'MCM / day',       col:'#ffb74d'},
+          {k:'mmscfd',  l:'MMscfd',          col:'#ce93d8'},
+          {k:'tpday',   l:'Tonnes / day',    col:'#f48fb1'},
+          {k:'cargosyr',l:'Cargoes / year',  col:'#80cbc4'},
+        ].map(p=>`
+          <div style="background:var(--bg2);border:1px solid rgba(77,158,245,.1);border-left:2px solid ${p.col};padding:12px">
+            <div style="font-size:9px;color:${p.col};font-weight:700;margin-bottom:6px">${p.l}</div>
+            <input id="gc-fl-${p.k}" type="number" step="any" placeholder="0" oninput="gcFlowFrom('${p.k}',this.value)"
+              style="width:100%;background:transparent;border:none;border-bottom:1px solid rgba(77,158,245,.2);color:var(--th);font-size:15px;font-family:inherit;padding:3px 0;outline:none">
+          </div>`).join('')}
+      </div>
+
+      <div style="border-top:1px solid rgba(77,158,245,.1);padding-top:14px">
+        <div style="font-size:8px;color:#3d5070;line-height:1.9">
+          <b style="color:var(--td)">Key identities:</b><br>
+          1 BCM gas/yr = 2.7397 MCM/d = 96.76 MMscfd = 0.7 MTPA LNG ·
+          1 MTPA = 16 cargoes (138k cbm) = 13 cargoes (174k cbm) ·
+          LNG density: 0.435 t/m³ · Gas expansion: 584.8 m³gas/m³LNG
+        </div>
+      </div>`;
+
+    window.gcFlowFrom=function(fromKey,val){
+      const v=parseFloat(val);if(isNaN(v)||v<0)return;
+      const cargo_cbm=parseFloat(document.getElementById('gc-fl-cargo')?.value)||174000;
+      const fill=parseFloat(document.getElementById('gc-fl-fill')?.value)||98.5;
+      const cargo_vol=cargo_cbm*(fill/100); // usable CBM
+      const cargo_t=cargo_vol*0.435;        // tonnes per cargo
+      // All → BCM/yr as base
+      const toPer={
+        bcmyr:    (x)=>x,
+        mtpa:     (x)=>x/0.7,           // 1 BCM ≈ 0.7 MTPA → 1 MTPA = 1/0.7 BCM
+        mcmday:   (x)=>x*365/1000,
+        mmscfd:   (x)=>x*365/(1000*35.3147),
+        tpday:    (x)=>x*365/(0.7e6),   // tonne/day → MTPA → BCM
+        cargosyr: (x)=>x*cargo_t/1e6/0.7,
+      };
+      const fromPer={
+        bcmyr:    (x)=>x,
+        mtpa:     (x)=>x*0.7,
+        mcmday:   (x)=>x*1000/365,
+        mmscfd:   (x)=>x*1000*35.3147/365,
+        tpday:    (x)=>x*0.7e6/365,
+        cargosyr: (x)=>x*0.7e6/(cargo_t),
+      };
+      const base=toPer[fromKey]?.(v);if(base==null)return;
+      Object.keys(fromPer).forEach(k=>{
+        if(k===fromKey)return;
+        const el=document.getElementById('gc-fl-'+k);
+        if(el)el.value=fromPer[k](base).toFixed(k==='cargosyr'?1:4).replace(/\.?0+$/,'');
+      });
+    };
+    window.gcFlowCalc=function(){
+      ['bcmyr','mtpa','mcmday','mmscfd'].forEach(k=>{
+        const el=document.getElementById('gc-fl-'+k);
+        if(el&&el.value)gcFlowFrom(k,el.value);
+      });
+    };
+  };
+
+  // ── TAB 3: REFERENCE ─────────────────────────────────────────────────────
+  window.gcRenderRef=function(el){
+    const REF=[
+      {section:'VOLUME & MASS'},
+      {l:'1 BCM (gas)',eq:'=',r:'1,000 MCM gas',note:''},
+      {l:'1 BCM (gas)',eq:'=',r:'1.710 MCM LNG',note:'÷ 584.795 expansion'},
+      {l:'1 BCM (gas)',eq:'≈',r:'0.7 MTPA LNG',note:'rounded: 0.6706 MTPA'},
+      {l:'1 MTPA LNG',eq:'≈',r:'16 cargoes/yr',note:'138k cbm, 62,500t/cargo'},
+      {l:'1 MTPA LNG',eq:'≈',r:'13 cargoes/yr',note:'174k cbm, 78,300t/cargo'},
+      {l:'1 BCM (gas)',eq:'≈',r:'12 cargoes/yr',note:'174k cbm basis'},
+      {l:'1 m³ LNG',eq:'=',r:'584.795 m³ gas',note:'expansion factor'},
+      {l:'1 m³ LNG',eq:'=',r:'0.435 tonnes LNG',note:'density'},
+      {l:'1 MCM LNG',eq:'=',r:'435,000 tonnes',note:''},
+      {l:'158,000 m³ cargo',eq:'=',r:'3,760,000 MMBtu',note:'@23.8 BTU/scf'},
+      {l:'1 ft³',eq:'=',r:'0.028317 m³',note:''},
+      {section:'ENERGY'},
+      {l:'1 tonne LNG',eq:'=',r:'48.7092 MMBtu',note:'HHV basis'},
+      {l:'1 CBM LNG',eq:'=',r:'21.189 MMBtu',note:'= 0.435t × 48.7092'},
+      {l:'1 CBM gas',eq:'=',r:'0.03623 MMBtu',note:'@1026 BTU/scf CV'},
+      {l:'1 MMBtu',eq:'=',r:'293.07 kWh = 0.29307 MWh',note:''},
+      {l:'1 MWh',eq:'=',r:'3.4095 MMBtu',note:''},
+      {l:'1 Therm',eq:'=',r:'0.1 MMBtu = 100,000 BTU',note:''},
+      {l:'1 MMscf gas',eq:'=',r:'1,025.4 MMBtu',note:'@1026 BTU/scf'},
+      {l:'1 BBL oil (OE)',eq:'=',r:'5.814 MMBtu',note:''},
+      {section:'FLOW RATES'},
+      {l:'1 BCM/yr',eq:'=',r:'2.7397 MCM/day',note:'÷365 days'},
+      {l:'1 BCM/yr',eq:'=',r:'96.76 MMscfd',note:'× 35.3147'},
+      {l:'1 MCM/day',eq:'=',r:'35.3147 MMscfd',note:''},
+      {l:'1 BCM/yr',eq:'≈',r:'0.700 MTPA',note:'rounded market convention'},
+      {section:'PRICE CONVERSIONS (example: GBP/EUR=1.1125)'},
+      {l:'P/therm → EUR/MWh',eq:'×',r:'(GBP/EUR) ÷ 2.93071',note:'÷100×3.4095÷GBP/EUR...'},
+      {l:'EUR/MWh → P/therm',eq:'×',r:'2.93071 ÷ (GBP/EUR)',note:'×0.0293071÷GBP/EUR×100'},
+      {l:'USD/MMBtu → EUR/MWh',eq:'×',r:'EUR/USD × 3.4095',note:''},
+      {l:'EUR/MWh → USD/MMBtu',eq:'÷',r:'(EUR/USD × 3.4095)',note:''},
+      {l:'2 BCF',eq:'≈',r:'0.04 MTPA',note:'corrected: 2×0.028317bcm×0.7'},
+    ];
+    el.innerHTML=`
+      <div style="font-size:11px;letter-spacing:.12em;color:var(--b);font-weight:700;margin-bottom:4px">REFERENCE TABLE</div>
+      <div style="font-size:9px;color:#3d5070;margin-bottom:16px">LNG TradeOS™ desk reference · Derived from NG_Conversions_Tool.xlsx</div>
       <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-family:IBM Plex Mono,monospace;font-size:10px">
-          <thead>
-            <tr style="border-bottom:1px solid rgba(77,158,245,.2)">
-              <th style="padding:8px 12px;text-align:left;color:#3d5070;font-weight:500;font-size:9px;letter-spacing:.1em">FROM</th>
-              <th style="padding:8px 8px;color:#3d5070;font-weight:500;font-size:9px"></th>
-              <th style="padding:8px 12px;text-align:left;color:#3d5070;font-weight:500;font-size:9px;letter-spacing:.1em">TO</th>
-              <th style="padding:8px 12px;text-align:left;color:#3d5070;font-weight:500;font-size:9px;letter-spacing:.1em">NOTE</th>
-            </tr>
-          </thead>
-          <tbody>${refRows}</tbody>
+        <table style="width:100%;border-collapse:collapse;font-family:IBM Plex Mono,monospace;font-size:9.5px">
+          ${REF.map(r=>{
+            if(r.section) return `<tr><td colspan="4" style="padding:12px 8px 4px;color:var(--b);font-size:8px;letter-spacing:.15em;font-weight:700;border-bottom:1px solid rgba(77,158,245,.15)">${r.section}</td></tr>`;
+            return `<tr style="border-bottom:1px solid rgba(77,158,245,.06)">
+              <td style="padding:6px 8px;color:var(--td);white-space:nowrap">${r.l}</td>
+              <td style="padding:6px 6px;color:#3d5070;text-align:center">${r.eq}</td>
+              <td style="padding:6px 8px;color:var(--th);font-weight:600">${r.r}</td>
+              <td style="padding:6px 8px;color:#3d5070;font-size:8px">${r.note}</td>
+            </tr>`;
+          }).join('')}
         </table>
       </div>
-      <div style="font-size:8px;color:#2a3a55;margin-top:16px">
-        Source: LNG TradeOS™ desk reference · Standard conversion factors · ≈ indicates approximation
-      </div>
-    </div>`;
-
-  window.runConvert=function(fromKey,val){
-    const v=parseFloat(val);
-    const fu=UNITS.find(u=>u.k===fromKey);
-    if(!fu||isNaN(v))return;
-    const inMmbtu=v*fu.f;
-    UNITS.forEach(u=>{
-      if(u.k===fromKey)return;
-      const el=document.getElementById('conv-'+u.k);
-      if(el)el.value=v===0?'':(inMmbtu/u.f).toFixed(6).replace(/\.?0+$/,'');
-    });
+      <div style="font-size:8px;color:#2a3a55;margin-top:14px">
+        Source: LNG TradeOS™ · NG_Conversions_Tool.xlsx · © Ibrahim Mar
+      </div>`;
   };
+
+  // ── Init: render tab 0 ────────────────────────────────────────────────────
+  const body=document.getElementById('gc-body');
+  if(body) gcRenderUnits(body);
 }
 
 // ══ PORT COST DATABASE ══
@@ -2513,12 +2761,19 @@ const ENTSOG_CORRIDOR_POINTS = {
     'Isaccea',         // Ukraine → Romania (minimal residual)
     'Kiskundorozsma',  // TurkStream → Hungary
   ],
+  // Pipeline EXITS — subtract from supply (directionKey=exit)
+  exits: [
+    'Isaccea',         // Romania → Moldova (small)
+    'Medgidia South',  // Romania → Bulgaria exits
+    'Kiskundorozsma',  // Hungary → Serbia/Balkans re-export
+    'Strandzha',       // Possible Balkan re-exports
+  ],
 };
 
 // ── GA_LIVE: single source of truth for all live data ────────────────────────
 const GA_LIVE = {
   // ENTSOG pipeline: {route: {YYYY-MM: MCM_total}}  null = API not yet loaded
-  pipeline: {norway:{}, algeria_italy:{}, algeria_spain:{}, tap:{}, russia:{}},
+  pipeline: {norway:{}, algeria_italy:{}, algeria_spain:{}, tap:{}, russia:{}, exits:{}},
   // GIE AGSI+: {YYYY-MM: {pct, twhStored}}
   storage: {},
   // GIE AGGI+: {YYYY-MM: totalMCM} + per country {YYYY-MM: MCM}
@@ -2563,11 +2818,13 @@ async function gaLoadLiveData(){
     gaLoadLiveStorage(from5y, today),
     gaLoadLiveLNG(from5y, today),
     gaLoadLiveONS(),
-    // ENTSOG: fetch current year live + historical from cache per route
-    ...Object.keys(ENTSOG_CORRIDOR_POINTS).map(route =>
+    // ENTSOG supply routes
+    ...['norway','algeria_italy','algeria_spain','tap','russia'].map(route =>
       gaLoadENTSOGRoute(route, currentYearStart, today, true)
         .then(() => gaLoadENTSOGHistorical(route, yr5ago.getFullYear()))
     ),
+    // ENTSOG exits (exit direction)
+    gaLoadENTSOGExits(currentYearStart, today),
   ];
 
   const results = await Promise.allSettled(jobs);
@@ -2766,6 +3023,36 @@ async function gaLoadENTSOGHistorical(route,minYear){
 }
 
 // Aggregate ENTSOG raw JSON into GA_LIVE.pipeline[route]
+// Fetch pipeline exits (subtract from supply)
+async function gaLoadENTSOGExits(from,to){
+  try{
+    const cacheKey=`entsog_exits_${from}_${to.slice(0,7)}`;
+    let raw=gaCacheGet(cacheKey);
+    if(!raw){
+      const points=[...new Set(ENTSOG_CORRIDOR_POINTS.exits)];
+      const params=new URLSearchParams({
+        indicator:'Physical Flow',directionKey:'exit',
+        pointLabel:points.join(','),
+        from,to,periodType:'day',timezone:'CET',limit:'10000',
+      });
+      const r=await fetch(`${ENTSOG_BASE}/operationaldatas?${params}`,{headers:{Accept:'application/json'}});
+      if(!r.ok) return;
+      raw=await r.json();
+      gaCacheSet(cacheKey,raw,6);
+    }
+    const rows=raw?.operationalData||raw?.data||[];
+    rows.forEach(d=>{
+      const valMCM=(parseFloat(d.value||0)||0)*ENTSOG_KWH_TO_MCM;
+      const date=(d.periodFrom||d.from||'').slice(0,10);
+      const mo=date.slice(0,7);
+      if(!mo||mo.length<7)return;
+      if(!GA_LIVE.pipeline.exits)GA_LIVE.pipeline.exits={};
+      GA_LIVE.pipeline.exits[mo]=(GA_LIVE.pipeline.exits[mo]||0)+valMCM;
+    });
+    console.log('Pipeline exits loaded');
+  }catch(e){console.warn('ENTSOG exits failed:',e.message);}
+}
+
 function gaAggENTSOGToLive(route,raw){
   const rows=raw?.operationalData||raw?.data||[];
   if(!rows.length) return;
@@ -3311,7 +3598,7 @@ function gaBuildEUBalanceTable(){
 
   // Grand supply = Norway + TotalPipe + LNG
   const grandSup=MONTHS.map((_,i)=>{
-    const parts=[norBCM[i],totPipeBCM[i],lngBCM[i]];
+    const parts=[norBCM[i],netPipeBCM[i],lngBCM[i]];
     return parts.some(v=>v===null)?null:parts.reduce((s,v)=>s+v,0);
   });
 
@@ -3391,13 +3678,24 @@ function gaBuildEUBalanceTable(){
   html+=srcRow('Norway (Langeled/BBL/FLAGS/Norpipe)','UK;GER;FR;BEL;DK',norBCM,{sub:true});
   html+=naRow('EU Domestic Production (excl. Norway)','EU · no real-time API');
 
+  // Pipeline exits
+  const exitsMCM  = getLive((y,m)=>gaGetPipeLive('exits',y,m));
+  const exitsBCM  = exitsMCM.map(v=>v!==null?-Math.abs(v/1000):null); // always negative
+
+  // Net pipeline = gross imports + exits (exits are negative)
+  const netPipeBCM = MONTHS.map((_,i)=>{
+    const parts=[algItaBCM[i],algEsBCM[i],tapBCM[i],rusBCM[i],exitsBCM[i]];
+    return parts.some(v=>v===null)?null:parts.reduce((s,v)=>s+v,0);
+  });
+
   // SECTION: Pipeline Imports
   html+=grpRow('Pipeline Imports (excl. Norway):');
   html+=srcRow('Algeria → Italy (TransMed/Mazara)','ITA',algItaBCM,{sub:true});
   html+=srcRow('Algeria → Spain (Medgaz/Almeria)','ESP',algEsBCM,{sub:true});
   html+=srcRow('Caspian (TAP — Azerbaijan → Italy)','ITA',tapBCM,{sub:true});
   html+=srcRow('Russia (TurkStream residual)','Balkans/CEE',rusBCM,{sub:true});
-  html+=srcRow('Total Pipeline Imports','',totPipeBCM,{isTotal:true});
+  html+=srcRow('Pipeline Exports (UA/MD/HU exits)','exits',exitsBCM,{sub:true});
+  html+=srcRow('Net Pipeline Imports','',netPipeBCM,{isTotal:true});
 
   // LNG
   html+=`<tr><td class="L" style="${STICKY};background:var(--bg);padding-top:8px;font-weight:600">LNG Imports (EU+UK, all terminals)</td>
@@ -3406,13 +3704,37 @@ function gaBuildEUBalanceTable(){
 
   // GRANDTOTAL
   html+=`<tr style="background:rgba(77,158,245,.04)">
-    <td class="L" style="font-weight:700;font-size:11px;color:var(--b);${STICKY};background:rgba(11,13,22,.95)">Grandtotal Supply (Norway + Pipeline + LNG)</td>
+    <td class="L" style="font-weight:700;font-size:11px;color:var(--b);${STICKY};background:rgba(11,13,22,.95)">Grandtotal Supply (Norway + Net Pipeline + LNG)</td>
     <td style="font-size:8px;color:#3d5070;text-align:left">EU+UK</td>
     ${grandSup.map(v=>`<td style="font-weight:700;color:var(--b)">${f2(v)}</td>`).join('')}</tr>`;
 
   // Consumption / Surplus — no live API
   html+=naRow('Consumption (28 countries)','EU-28 · no real-time API');
   html+=naRow('Surplus / Deficit','EU-28 · derived from consumption');
+
+  // ── BACK-CALCULATED DEMAND ──────────────────────────────────────────────
+  // Identity: Supply = Demand + Storage Change → Demand = Supply − ΔStorage
+  // ΔStorage = storage end − storage start (from GIE AGSI+, in BCM)
+  const impliedDemand = MONTHS.map((_,i)=>{
+    const sup = grandSup[i];
+    const storEnd   = storBCM[i];
+    const storStart = i===0
+      ? (GA_LIVE.storage[`${yr-1}-12`]!=null ? (GA_LIVE.storage[`${yr-1}-12`].twh/10.55) : null)
+      : storBCM[i-1];
+    if(sup===null||storEnd===null||storStart===null) return null;
+    const dStorage = storEnd - storStart; // BCM injected (+) or withdrawn (-)
+    return +(sup - dStorage).toFixed(2);
+  });
+  const hasImplied = impliedDemand.some(v=>v!==null);
+  if(hasImplied){
+    html+=`<tr style="background:rgba(77,158,245,.02)">
+      <td class="L" style="font-style:italic;color:var(--td);${STICKY};background:rgba(11,13,22,.95)">
+        Implied Gas Demand <span style="font-size:8px;color:#3d5070">(back-calc: Supply − ΔStorage)</span>
+      </td>
+      <td style="font-size:8px;color:#3d5070;text-align:left">EU+UK</td>
+      ${impliedDemand.map(v=>`<td style="font-style:italic;color:var(--td)">${f2(v)}</td>`).join('')}
+    </tr>`;
+  }
 
   // STORAGE
   html+=grpRow('Storage (GIE AGSI+ — EU working gas):');
