@@ -881,27 +881,35 @@ function phTab(tab){
 function renderGasConverter(container){
   // ── Conversion factors: 1 unit = f MMBtu ─────────────────────────────────
   const UNITS=[
-    {k:'mmbtu',   l:'MMBtu',          g:'energy',  f:1,             abbr:'MMBtu'},
-    {k:'therm',   l:'Therm',          g:'energy',  f:0.1,           abbr:'therm'},
-    {k:'mtherm',  l:'Million Therms', g:'energy',  f:100000,        abbr:'M.therm'},
-    {k:'kwh',     l:'kWh',            g:'power',   f:0.0034095106,  abbr:'kWh'},
-    {k:'mwh',     l:'MWh',            g:'power',   f:3.4095106,     abbr:'MWh'},
-    {k:'gwh',     l:'GWh',            g:'power',   f:3409.5106,     abbr:'GWh'},
-    {k:'twh',     l:'TWh',            g:'power',   f:3409510.6,     abbr:'TWh'},
-    {k:'t_lng',   l:'Tonnes (LNG)',   g:'mass',    f:48.7092,       abbr:'t'},
-    {k:'mt_lng',  l:'MT LNG',         g:'mass',    f:48709200,      abbr:'MT'},
-    {k:'cbm_lng', l:'CBM (LNG)',      g:'vol_liq', f:21.188502,     abbr:'m³'},
-    {k:'mcm_lng', l:'MCM (LNG)',      g:'vol_liq', f:21188502,      abbr:'MCM'},
-    {k:'cbm_gas', l:'CBM (Gas)',      g:'vol_gas', f:0.036232338,   abbr:'m³'},
-    {k:'mcm_gas', l:'MCM (Gas)',      g:'vol_gas', f:36232.338,     abbr:'MCM'},
-    {k:'bcm_gas', l:'BCM (Gas)',      g:'vol_gas', f:36232338,      abbr:'BCM'},
-    {k:'cf_lng',  l:'ft³ (LNG)',      g:'vol_liq', f:0.59963461,    abbr:'ft³'},
-    {k:'cf_gas',  l:'ft³ (Gas)',      g:'vol_gas', f:0.0010253752,  abbr:'ft³'},
-    {k:'mmcf',    l:'MMcf (Gas)',     g:'vol_gas', f:1025.3752,     abbr:'MMcf'},
-    {k:'mbs',     l:'MBs (1000 BBL)',g:'oil',     f:5813.9535,     abbr:'MBs'},
+    {k:'mmbtu',   l:'MMBtu',          g:'energy',   f:1,              abbr:'MMBtu'},
+    {k:'therm',   l:'Therm',          g:'energy',   f:0.1,            abbr:'therm'},
+    {k:'mtherm',  l:'Million Therms', g:'energy',   f:100000,         abbr:'M.therm'},
+    {k:'kwh',     l:'kWh',            g:'power',    f:0.0034095106,   abbr:'kWh'},
+    {k:'mwh',     l:'MWh',            g:'power',    f:3.4095106,      abbr:'MWh'},
+    {k:'gwh',     l:'GWh',            g:'power',    f:3409.5106,      abbr:'GWh'},
+    {k:'twh',     l:'TWh',            g:'power',    f:3409510.6,      abbr:'TWh'},
+    {k:'t_lng',   l:'Tonnes (LNG)',   g:'mass',     f:48.7092,        abbr:'t'},
+    {k:'mt_lng',  l:'MT LNG',         g:'mass',     f:48709200,       abbr:'MT'},
+    // ── Annual / Monthly flow units ──
+    {k:'mtpa',    l:'MTPA',           g:'flow_ann', f:48709200,       abbr:'MTPA'},  // = MT LNG / yr
+    {k:'mtpm',    l:'MTPM',           g:'flow_mo',  f:48709200/12,    abbr:'MTPM'},  // = MT LNG / month (÷12)
+    {k:'bcma',    l:'BCMA',           g:'flow_ann', f:36232338,       abbr:'BCMA'},  // = BCM gas / yr
+    {k:'mcm',     l:'MCM',            g:'flow_mo',  f:36232.338,      abbr:'MCM'},   // MCM gas (monthly context)
+    // ── Volume units ──
+    {k:'cbm_lng', l:'CBM (LNG)',      g:'vol_liq',  f:21.188502,      abbr:'m³'},
+    {k:'mcm_lng', l:'MCM (LNG)',      g:'vol_liq',  f:21188502,       abbr:'MCM'},
+    {k:'cbm_gas', l:'CBM (Gas)',      g:'vol_gas',  f:0.036232338,    abbr:'m³'},
+    {k:'mcm_gas', l:'MCM (Gas)',      g:'vol_gas',  f:36232.338,      abbr:'MCM'},
+    {k:'bcm_gas', l:'BCM (Gas)',      g:'vol_gas',  f:36232338,       abbr:'BCM'},
+    {k:'cf_lng',  l:'ft³ (LNG)',      g:'vol_liq',  f:0.59963461,     abbr:'ft³'},
+    {k:'cf_gas',  l:'ft³ (Gas)',      g:'vol_gas',  f:0.0010253752,   abbr:'ft³'},
+    {k:'mmcf',    l:'MMcf (Gas)',     g:'vol_gas',  f:1025.3752,      abbr:'MMcf'},
+    {k:'mbs',     l:'MBs (1000 BBL)',g:'oil',      f:5813.9535,      abbr:'MBs'},
   ];
-  const G_COLORS={energy:'#4fc3f7',power:'#81c784',mass:'#ffb74d',vol_liq:'#ce93d8',vol_gas:'#f48fb1',oil:'#80cbc4'};
-  const G_LABELS={energy:'ENERGY',power:'POWER',mass:'MASS (LNG)',vol_liq:'LIQUID VOL.',vol_gas:'GAS VOL.',oil:'OIL EQ.'};
+  const G_COLORS={energy:'#4fc3f7',power:'#81c784',mass:'#ffb74d',
+    flow_ann:'#34d399',flow_mo:'#26a69a',vol_liq:'#ce93d8',vol_gas:'#f48fb1',oil:'#80cbc4'};
+  const G_LABELS={energy:'ENERGY',power:'POWER',mass:'MASS (LNG)',
+    flow_ann:'ANNUAL FLOW',flow_mo:'MONTHLY / VOL',vol_liq:'LIQUID VOL.',vol_gas:'GAS VOL.',oil:'OIL EQ.'};
 
   const fmtNum=(v)=>{if(v===null||isNaN(v))return '';
     const a=Math.abs(v);
@@ -944,7 +952,10 @@ function renderGasConverter(container){
   window.gcRenderUnits=function(el){
     const groups=['energy','power','mass','vol_liq','vol_gas','oil'];
     el.innerHTML=`
-      <div style="font-size:11px;letter-spacing:.12em;color:var(--b);font-weight:700;margin-bottom:4px">UNIT CONVERTER</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+        <div style="font-size:11px;letter-spacing:.12em;color:var(--b);font-weight:700">UNIT CONVERTER</div>
+        <button onclick="gcRefreshUnits()" style="background:transparent;border:1px solid rgba(77,158,245,.35);color:var(--b);padding:5px 12px;font-family:inherit;font-size:8px;font-weight:600;letter-spacing:.1em;cursor:pointer">↺ REFRESH</button>
+      </div>
       <div style="font-size:9px;color:#3d5070;margin-bottom:20px">Enter any value — all units update automatically · Source: LNG TradeOS™ desk reference</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px" id="gc-unit-grid">
       ${UNITS.map(u=>`
@@ -970,12 +981,24 @@ function renderGasConverter(container){
         if(el)el.value=v===0?'':fmtNum(inMmbtu/u.f);
       });
     };
+    window.gcRefreshUnits=function(){
+      UNITS.forEach(u=>{
+        const el=document.getElementById('gc-u-'+u.k);
+        if(el)el.value='';
+      });
+      // Focus first input
+      const first=document.getElementById('gc-u-mmbtu');
+      if(first)first.focus();
+    };
   };
 
   // ── TAB 1: PRICE CONVERTER ────────────────────────────────────────────────
   window.gcRenderPrice=function(el){
     el.innerHTML=`
-      <div style="font-size:11px;letter-spacing:.12em;color:var(--b);font-weight:700;margin-bottom:4px">PRICE CONVERTER</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+        <div style="font-size:11px;letter-spacing:.12em;color:var(--b);font-weight:700">PRICE CONVERTER</div>
+        <button onclick="gcRefreshPrices()" style="background:transparent;border:1px solid rgba(77,158,245,.35);color:var(--b);padding:5px 12px;font-family:inherit;font-size:8px;font-weight:600;letter-spacing:.1em;cursor:pointer">↺ REFRESH</button>
+      </div>
       <div style="font-size:9px;color:#3d5070;margin-bottom:20px">Convert gas prices between common trading units · Enter any price to compute all others</div>
 
       <!-- FX Rates -->
@@ -1071,34 +1094,28 @@ function renderGasConverter(container){
       }
     };
     window.gcPriceCalc=function(){
-      // Re-trigger from whichever field has a value
       ['usd_mmbtu','eur_mwh','gbp_mwh','p_therm','usd_mscf'].forEach(k=>{
         const el=document.getElementById('gc-px-'+k);
         if(el&&el.value)gcPriceFrom(k,el.value);
       });
+    };
+    window.gcRefreshPrices=function(){
+      ['usd_mmbtu','eur_mwh','gbp_mwh','p_therm','usd_mscf','usd_btu'].forEach(k=>{
+        const el=document.getElementById('gc-px-'+k);if(el)el.value='';
+      });
+      const sout=document.getElementById('gc-spread-out');
+      if(sout){sout.textContent='--';sout.style.color='var(--b)';}
     };
   };
 
   // ── TAB 2: FLOW RATES ─────────────────────────────────────────────────────
   window.gcRenderFlow=function(el){
     el.innerHTML=`
-      <div style="font-size:11px;letter-spacing:.12em;color:var(--b);font-weight:700;margin-bottom:4px">FLOW RATE CALCULATOR</div>
-      <div style="font-size:9px;color:#3d5070;margin-bottom:20px">Enter any flow rate or volume — all others update · Cargo size adjustable</div>
-
-      <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end">
-        <div style="background:var(--bg2);border:1px solid rgba(77,158,245,.12);padding:10px 14px">
-          <div style="font-size:8px;color:#3d5070;letter-spacing:.1em;margin-bottom:4px">CARGO SIZE (m³)</div>
-          <input id="gc-fl-cargo" type="number" step="1000" value="174000"
-            style="width:120px;background:transparent;border:none;border-bottom:1px solid var(--b);color:var(--b);font-size:13px;font-family:inherit;padding:2px 0;outline:none"
-            oninput="gcFlowCalc()">
-        </div>
-        <div style="background:var(--bg2);border:1px solid rgba(77,158,245,.12);padding:10px 14px">
-          <div style="font-size:8px;color:#3d5070;letter-spacing:.1em;margin-bottom:4px">CBM FILL RATE (%)</div>
-          <input id="gc-fl-fill" type="number" step="0.5" value="98.5"
-            style="width:80px;background:transparent;border:none;border-bottom:1px solid var(--b);color:var(--b);font-size:13px;font-family:inherit;padding:2px 0;outline:none"
-            oninput="gcFlowCalc()">
-        </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+        <div style="font-size:11px;letter-spacing:.12em;color:var(--b);font-weight:700">FLOW RATE CALCULATOR</div>
+        <button onclick="gcRefreshFlow()" style="background:transparent;border:1px solid rgba(77,158,245,.35);color:var(--b);padding:5px 12px;font-family:inherit;font-size:8px;font-weight:600;letter-spacing:.1em;cursor:pointer">↺ REFRESH</button>
       </div>
+      <div style="font-size:9px;color:#3d5070;margin-bottom:20px">Enter any flow rate or volume — all others update · Cargo size adjustable</div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:20px">
         ${[
@@ -1127,10 +1144,7 @@ function renderGasConverter(container){
 
     window.gcFlowFrom=function(fromKey,val){
       const v=parseFloat(val);if(isNaN(v)||v<0)return;
-      const cargo_cbm=parseFloat(document.getElementById('gc-fl-cargo')?.value)||174000;
-      const fill=parseFloat(document.getElementById('gc-fl-fill')?.value)||98.5;
-      const cargo_vol=cargo_cbm*(fill/100); // usable CBM
-      const cargo_t=cargo_vol*0.435;        // tonnes per cargo
+      const cargo_t=174000*0.985*0.435;  // 174k cbm @ 98.5% fill = 74,429t per cargo
       // All → BCM/yr as base
       const toPer={
         bcmyr:    (x)=>x,
@@ -1159,6 +1173,11 @@ function renderGasConverter(container){
       ['bcmyr','mtpa','mcmday','mmscfd'].forEach(k=>{
         const el=document.getElementById('gc-fl-'+k);
         if(el&&el.value)gcFlowFrom(k,el.value);
+      });
+    };
+    window.gcRefreshFlow=function(){
+      ['bcmyr','mtpa','mcmday','mmscfd','tpday','cargosyr'].forEach(k=>{
+        const el=document.getElementById('gc-fl-'+k);if(el)el.value='';
       });
     };
   };
