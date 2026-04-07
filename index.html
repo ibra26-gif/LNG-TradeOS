@@ -767,7 +767,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     <button class="sh-stab active" id="tbtab-converter" onclick="tbTab('converter')">GAS CONVERTER</button>
     <button class="sh-stab" id="tbtab-gasspec" onclick="tbTab('gasspec')">GAS SPECIFICATIONS</button>
     <button class="sh-stab" id="tbtab-portcosts" onclick="tbTab('portcosts')">PORT COST DATABASE</button>
-    <button class="sh-stab" id="tbtab-paperbook" onclick="tbTab('paperbook')">PAPER BOOK</button>
+    <button class="sh-stab" onclick="shellNav('physical','freight')" style="color:#ffb74d;border-color:#ffb74d">↗ PAPER BOOK → FREIGHT</button>
   </div>
   <div id="tb-content"></div>
 </section>
@@ -2929,7 +2929,7 @@ const NM={
   trinidad:{bahiablanca:4543,guanabara:3175,quintero:6943,manzanillo:2914,zeebrugge:3984,rotterdam:4044,huelva:3383,southhook:3682,jebelali:10456,ainsukhna:5438,dahej:10173,portqasim:10027,tianjin:10012,tokyo:13800,gwangyang:9385,singapore:10944,maptaphut:11625,panigaglia:4450,livorno:4440,rovigo:5070,piombino:4340,revithoussa:5100,inkoo:5400,klaipeda:5200,swinoujscie:5000,aliaga:5750,krk:5050,ravenna:5000},
   oman:{bahiablanca:8450,guanabara:7949,quintero:9676,manzanillo:12022,zeebrugge:9857,rotterdam:9887,huelva:9176,southhook:9964,jebelali:348,ainsukhna:2497,dahej:738,portqasim:456,tianjin:5890,tokyo:6018,gwangyang:5557,singapore:3011,maptaphut:3712,panigaglia:10071,livorno:10049,rovigo:10852,piombino:10019,revithoussa:5900,inkoo:7100,klaipeda:6900,swinoujscie:6700,aliaga:5500,krk:5950,ravenna:5900}
 };
-const DEF_P={shipSize:174000,energyFactor:22.88,loadFactor:0.985,bogRate:0.0015,speedLaden:19.5,speedBallast:19.5,hfoLaden:90,hfoBallast:85,hfoPrice:550,lsmgoLaden:0,lsmgoBallast:0,lsmgoDischarge:8,pilotFuel:1,lsmgoPrice:750,cooldownDays:0.25,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,loadTimeDays:0.25,bufferDays:2,dischargeDays:0.25,heelVolume:3000,heelCost:0,co2Mgo:3.206,co2Hfo:3.114,etsCoverage:1.0,euaPrice:80.206,eurUsd:1.09,loadDate:''};
+const DEF_P={shipSize:174000,energyFactor:22.88,loadFactor:0.985,bogRate:0.0015,speedLaden:19.5,speedBallast:19.5,hfoLaden:90,hfoBallast:85,hfoPrice:550,lsmgoLaden:0,lsmgoBallast:0,lsmgoDischarge:8,pilotFuel:1,lsmgoPrice:750,cooldownDays:0.25,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,loadTimeDays:0.25,bufferDays:2,dischargeDays:0.25,heelVolume:3000,heelCost:0,co2Mgo:3.206,co2Hfo:3.114,etsCoverage:1.0,euaPrice:80.206,euaDec:{2026:80.206,2027:75.0,2028:70.0},eurUsd:1.09,loadDate:''};
 
 let F={blng:null,params:null,snaps:null,matrix:null,matrixTs:null,blngTs:null,extraD:null,posArr:null,repoArr:null,
   // Matrix section sub-tabs
@@ -3015,18 +3015,27 @@ function calcF(orig,disch,mi,blngOvr,paramsOvr,posOvr,repoOvr){
   const voyDays=nm/(p.speedLaden*24);
   const coolDays=p.cooldownEnabled?p.cooldownDays:0,gas=p.gasUpEnabled?p.gasUpDays:0;
   const totalDays=coolDays+gas+p.loadTimeDays+p.bufferDays+voyDays+p.dischargeDays;
-  const loaded=p.shipSize*p.energyFactor*p.loadFactor,estDisch=loaded*(1-p.bogRate*totalDays);
-  // Hire = hire days (transit + port time), Cooldown split out separately (matches Excel)
+  const loaded=p.shipSize*p.energyFactor*p.loadFactor;
+  // BOG: deducted linearly over total voyage days
+  const bogLoss=loaded*p.bogRate*totalDays;
+  const estDisch=loaded-bogLoss;
   const hireDays=totalDays-coolDays;
   const hire=rate*hireDays,cooldown=rate*coolDays;
   const pos=rate*posPct*hireDays,repo=rate*repoPct*hireDays;
   const hfo=(p.hfoLaden+p.hfoBallast)*voyDays*p.hfoPrice;
   const lsmgo=(p.lsmgoLaden+p.lsmgoBallast)*voyDays*p.lsmgoPrice+(p.lsmgoDischarge*p.dischargeDays+p.pilotFuel)*p.lsmgoPrice;
-  const port=sp.loadCost+dp.dischCost,heel=p.heelVolume*(p.heelCost||0);
+  const port=sp.loadCost+dp.dischCost;
+  const heel=p.heelVolume*(p.heelCost||0);
+  // EUA: use Dec contract for the delivery year
   let ets=0;
-  if(dp.euEts){const co2=(p.hfoLaden+p.hfoBallast)*voyDays*p.co2Hfo+(p.lsmgoLaden+p.lsmgoBallast)*voyDays*p.co2Mgo;ets=co2*p.etsCoverage*p.euaPrice*p.eurUsd;}
+  if(dp.euEts){
+    const delivYear=ML[mi]?2000+parseInt(ML[mi].slice(-2)):new Date().getFullYear();
+    const euaP=(p.euaDec&&p.euaDec[delivYear]!=null)?p.euaDec[delivYear]:(p.euaPrice||0);
+    const co2=(p.hfoLaden+p.hfoBallast)*voyDays*p.co2Hfo+(p.lsmgoLaden+p.lsmgoBallast)*voyDays*p.co2Mgo;
+    ets=co2*p.etsCoverage*euaP*p.eurUsd;
+  }
   const total=hire+cooldown+pos+repo+hfo+lsmgo+port+heel+ets;
-  return{freight:total/estDisch,total,hire,cooldown,pos,repo,hfo,lsmgo,port,heel,ets,totalDays,voyDays,hireDays,coolDays,estDisch,loaded,rate,nm,sp,dp,curve};
+  return{freight:total/estDisch,total,hire,cooldown,pos,repo,hfo,lsmgo,port,heel,ets,totalDays,voyDays,hireDays,coolDays,estDisch,bogLoss,loaded,rate,nm,sp,dp,curve};
 }
 
 // ── TOP-LEVEL RENDER ──────────────────────────────────────────────────────────
@@ -3052,18 +3061,22 @@ function renderFMain(){const b=document.getElementById('f-body');if(!b)return;b.
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION 1 — SINGLE VOYAGE CALCULATION
 // Local curves/params only — zero impact on the freight matrix
-// ══════════════════════════════════════════════════════════════════════════════
 function renderSV(){
-  const sp=SUPPLY.find(p=>p.id===F.svOrig)||SUPPLY[0];
+  const sp=allS().find(p=>p.id===F.svOrig)||SUPPLY[0];
   const curve=sp.curve;
   const dp=allD().find(p=>p.id===F.svDisch)||allD()[0];
-  const nm=NM[F.svOrig]?.[F.svDisch];
+  const nm=nmGet(F.svOrig,F.svDisch);
   const p=F.svParams;
+  if(!p.euaDec)p.euaDec={2026:80.206,2027:75.0,2028:70.0};
   const voyDays=nm?(nm/(p.speedLaden*24)).toFixed(2):'-';
   const coolDays=p.cooldownEnabled?p.cooldownDays:0;
   const totalDays=nm?(+voyDays+coolDays+(p.gasUpEnabled?p.gasUpDays:0)+p.loadTimeDays+p.bufferDays+p.dischargeDays).toFixed(2):'-';
   const loaded=p.shipSize*p.energyFactor*p.loadFactor;
-  const estDisch=nm?Math.round(loaded*(1-p.bogRate*+totalDays)):'-';
+  const bogLoss=nm?Math.round(loaded*p.bogRate*+totalDays):'-';
+  const estDisch=nm?Math.round(loaded-bogLoss):'-';
+  // Discharge date for selected pricing month
+  let dischDate='-';
+  if(nm&&F.svLoadDate){const d=new Date(F.svLoadDate);d.setDate(d.getDate()+Math.round(+totalDays));dischDate=d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
   const tableRows=ML.map((m,i)=>{
     const r=calcF(F.svOrig,F.svDisch,i,F.svBlng,F.svParams,F.svPosArr,F.svRepoArr);
     const isActive=i===F.svMi;
@@ -3090,10 +3103,13 @@ function renderSV(){
     <span style="font-size:10px;color:#8a9bb5">${l}</span>
     <input class="f-inp" type="number" step="${step}" style="width:90px;text-align:right" value="${F.svParams[k]}" onchange="F.svParams['${k}']=parseFloat(this.value)||0;renderFMain()">
   </div>`;
-  // pct variant: display ×100, store ÷100 (for bogRate, loadFactor, etsCoverage)
   const svpPct=(k,l,step='any')=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #0d1526">
     <span style="font-size:10px;color:#8a9bb5">${l}</span>
     <input class="f-inp" type="number" step="${step}" style="width:90px;text-align:right" value="${+(F.svParams[k]*100).toFixed(4)}" onchange="F.svParams['${k}']=parseFloat(this.value)/100||0;renderFMain()">
+  </div>`;
+  const svpEua=(yr)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #0d1526">
+    <span style="font-size:10px;color:#ffb74d">EUA Dec-${yr} (€/t)</span>
+    <input class="f-inp" type="number" step="0.5" style="width:90px;text-align:right;color:#ffb74d" value="${F.svParams.euaDec?.[yr]??''}" onchange="if(!F.svParams.euaDec)F.svParams.euaDec={};F.svParams.euaDec[${yr}]=parseFloat(this.value)||0;renderFMain()">
   </div>`;
   return`
   <div style="background:#071a2b;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:12px">
@@ -3131,20 +3147,23 @@ function renderSV(){
       </div>
     </div>
     <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px">
-      <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">FIXED ROUTE INPUTS (constant across all months)</div>
+      <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">VOYAGE DETAILS</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
         ${[
           ['Laden Distance (NM)',nm?nm.toLocaleString():'-','NM'],
-          ['Laden Transit Days',nm?voyDays:'-','days'],
-          ['Est. Discharge Qty (Mmbtu)',nm?estDisch.toLocaleString():'-','Mmbtu',true],
           ['Total Voyage Days',nm?totalDays:'-','days'],
+          ['Laden Transit Days',nm?voyDays:'-','days'],
+          ['Load Date',F.svLoadDate||'-',''],
           ['Load Port Cost ($)',sp.loadCost.toLocaleString(),'$'],
+          ['Est. Discharge Date',dischDate,''],
           ['Discharge Port Cost ($)',dp.dischCost.toLocaleString(),'$'],
           ['EU ETS Applicable',dp.euEts?'YES':'NO',''],
-          ['Ship Loaded (Mmbtu)',Math.round(loaded).toLocaleString(),'Mmbtu'],
+          ['Ship Loaded (Mmbtu)',nm?Math.round(loaded).toLocaleString():'-','Mmbtu'],
+          ['BOG Loss (Mmbtu)',nm?bogLoss.toLocaleString():'-','Mmbtu'],
+          ['Est. Discharge Qty (Mmbtu)',nm?estDisch.toLocaleString():'-','Mmbtu','hl'],
         ].map(([l,v,u,hl])=>`
           <div style="font-size:9px;color:#546e7a;padding:4px 0;border-bottom:1px solid #0d1526">${l}</div>
-          <div style="font-size:10px;padding:4px 0;border-bottom:1px solid #0d1526;text-align:right;font-weight:${hl?'700':'400'};color:${hl?'#4fc3f7':'#c8d6e5'}">${v} <span style="color:#3d5070;font-size:9px">${u}</span></div>
+          <div style="font-size:10px;padding:4px 0;border-bottom:1px solid #0d1526;text-align:right;font-weight:${hl?'700':'400'};color:${hl?'#4fc3f7':l.includes('BOG')?'#f44336':l.includes('Discharge Date')?'#81c784':'#c8d6e5'}">${v}${u?` <span style="color:#3d5070;font-size:9px">${u}</span>`:''}</div>
         `).join('')}
       </div>
     </div>
@@ -3171,6 +3190,7 @@ function renderSV(){
         ${svpPct('etsCoverage','EU ETS Coverage (%)',1)}
         ${svp('cooldownDays','Cooldown Days',0.25)}
         ${svp('heelVolume','Heel Retention (m3)',100)}
+        ${svp('heelCost','Heel Cost ($/m3)',0.5)}
       </div>
       <div>
         ${svp('speedLaden','Speed (knots)',0.5)}
@@ -3180,7 +3200,10 @@ function renderSV(){
         ${svp('pilotFuel','Pilot Fuel (tns)',0.5)}
         ${svp('lsmgoPrice','LSMGO Price ($/tn)',10)}
         ${svp('dischargeDays','Discharge Port Days',0.25)}
-        ${svp('euaPrice','EUA Price ($/tn)',1)}
+        ${svpEua(2026)}
+        ${svpEua(2027)}
+        ${svpEua(2028)}
+        ${svp('eurUsd','EUR/USD',0.01)}
         ${svp('co2Hfo','CO2 Factor HFO',0.001)}
         ${svp('co2Mgo','CO2 Factor LSMGO',0.001)}
       </div>
