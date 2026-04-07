@@ -4118,6 +4118,8 @@ function renderHistorical(){
             ? `<button class="f-btn on" onclick="fAuthGate(()=>loadFreightFromGmail())">📧 SCRAPE FROM GMAIL</button>
                <button class="f-btn" onclick="fAuthGate(()=>loadHistFromGDrive())">⬇ LOAD FROM DRIVE</button>`
             : `<span style="font-size:9px;color:#546e7a;padding:4px 8px;border:1px dashed #1e3a5f">📧 Gmail scrape — available in Claude.ai only</span>`}
+          <button class="f-btn on" onclick="document.getElementById('hist-xls-upload').click()">📊 BATCH UPLOAD EXCEL</button>
+          <input type="file" id="hist-xls-upload" accept=".xlsx,.xls" multiple style="display:none" onchange="parseHistExcel(this)">
           <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-img-upload').click())">📁 UPLOAD IMAGES</button>
           <input type="file" id="hist-img-upload" accept=".png,.jpg,.jpeg" multiple style="display:none" onchange="parseHistImages(this)">
         </div>`}
@@ -4459,7 +4461,135 @@ Rules:
   }
 }
 
-// ── Upload local PNG/JPG curve images → extract via vision → store in histCurves ──
+// ── Batch Excel upload → historical freight curves (no API needed) ────────────
+// Reads multiple OB LNG EOD Curve .xlsx files, extracts BLNG1/2/3 M+1→M+24
+// Date parsed from filename: "OB LNG EOD Curve DD.MM.YYYY.xlsx"
+async function parseHistExcel(el){
+  const files=[...el.files].filter(f=>f.name.match(/\.xlsx?$/i));
+  if(!files.length){alert('No Excel files selected.');el.value='';return;}
+  el.value='';
+
+  F.histLoading=true;
+  F.histProgress={total:files.length,done:0,current:'',errors:[]};
+  document.getElementById('f-hist-body').innerHTML=renderHistorical();
+
+  function parseDateFromName(name){
+    const m=name.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+    return m?`${m[3]}-${m[2]}-${m[1]}`:null;
+  }
+  function alignToML(blngArrays,isoDate){
+    const assessDate=new Date(isoDate);
+    const m1=new Date(assessDate.getFullYear(),assessDate.getMonth()+1,1);
+    const monthToIdx={};
+    for(let i=0;i<24;i++){
+      const d=new Date(m1.getFullYear(),m1.getMonth()+i,1);
+      const lbl=d.toLocaleString('en-GB',{month:'short'}).slice(0,3)+'-'+String(d.getFullYear()).slice(2);
+      monthToIdx[lbl]=i;
+    }
+    const pick=(arr,m)=>{const idx=monthToIdx[m];return(idx!=null&&arr[idx]!=null)?arr[idx]:null;};
+    return{
+      BLNG1:ML.map(m=>pick(blngArrays.BLNG1,m)),
+      BLNG2:ML.map(m=>pick(blngArrays.BLNG2,m)),
+      BLNG3:ML.map(m=>pick(blngArrays.BLNG3,m))
+    };
+  }
+
+  const results=[];
+  for(const file of files){
+    const isoDate=parseDateFromName(file.name);
+    if(!isoDate){
+      F.histProgress.errors.push(`${file.name}: cannot parse date from filename (need DD.MM.YYYY)`);
+      F.histProgress.done++;
+      continue;
+    }
+    F.histProgress.current=`Reading ${file.name} (${F.histProgress.done+1}/${F.histProgress.total})…`;
+    document.getElementById('f-hist-body').innerHTML=renderHistorical();
+
+    try{
+      const buf=await new Promise((res,rej)=>{
+        const r=new FileReader();
+        r.onload=e=>res(e.target.result);
+        r.onerror=()=>rej(new Error('Read failed'));
+        r.readAsArrayBuffer(file);
+      });
+
+      const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
+
+      // Try each sheet — look for one containing BLNG1/2/3 headers
+      let b1=[], b2=[], b3=[];
+      let found=false;
+      for(const shName of wb.SheetNames){
+        const ws=wb.Sheets[shName];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        // Find header row containing BLNG1, BLNG2, BLNG3
+        let hdrRow=-1, c1=-1, c2=-1, c3=-1;
+        for(let r=0;r<Math.min(rows.length,15);r++){
+          const h=(rows[r]||[]).map(x=>String(x).trim().toUpperCase());
+          const i1=h.findIndex(x=>x.includes('BLNG1'));
+          const i2=h.findIndex(x=>x.includes('BLNG2'));
+          const i3=h.findIndex(x=>x.includes('BLNG3'));
+          if(i1>=0||i2>=0||i3>=0){hdrRow=r;c1=i1;c2=i2;c3=i3;break;}
+        }
+        if(hdrRow<0)continue;
+
+        // Collect 24 monthly rows after header
+        // Look for rows with 174+N_M pattern or just sequential month rows
+        const pv=v=>{const n=parseFloat(String(v||'').replace(/[^0-9.\-]/g,''));return isNaN(n)?null:n;};
+        let monthCount=0;
+        for(let r=hdrRow+1;r<rows.length&&monthCount<24;r++){
+          const row=rows[r];
+          const label=String(row[0]||'').trim();
+          // Skip blank rows, quarterly, calendar year rows
+          if(!label||label.includes('CURQ')||label.includes('CAL')||label.includes('174CURQ')||
+             label.match(/Q[1-5]\s*\d{2}/)||label.match(/Cal\s*\d/))continue;
+          // Accept monthly rows: 174+N_M or just any row with values
+          if(label.includes('_M')||label.includes('CURMON')||monthCount<24){
+            if(label.includes('CURMON'))continue; // skip curmon
+            if(c1>=0)b1.push(pv(row[c1]));else b1.push(null);
+            if(c2>=0)b2.push(pv(row[c2]));else b2.push(null);
+            if(c3>=0)b3.push(pv(row[c3]));else b3.push(null);
+            monthCount++;
+          }
+        }
+        if(monthCount>0){found=true;break;}
+      }
+
+      if(!found||(!b1.some(v=>v!=null)&&!b2.some(v=>v!=null)&&!b3.some(v=>v!=null))){
+        F.histProgress.errors.push(`${file.name}: no BLNG data found in any sheet`);
+        F.histProgress.done++;
+        continue;
+      }
+
+      // Pad to 24
+      while(b1.length<24)b1.push(null);
+      while(b2.length<24)b2.push(null);
+      while(b3.length<24)b3.push(null);
+
+      const aligned=alignToML({BLNG1:b1,BLNG2:b2,BLNG3:b3},isoDate);
+      results.push({date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:aligned});
+    }catch(err){
+      F.histProgress.errors.push(`${file.name}: ${err.message}`);
+    }
+    F.histProgress.done++;
+  }
+
+  const existing=F.histCurves||[];
+  const existDates=new Set(existing.map(e=>e.date));
+  const merged=[...existing,...results.filter(r=>!existDates.has(r.date))];
+  merged.sort((a,b)=>a.date.localeCompare(b.date));
+  F.histCurves=merged;
+  fs('f_hist_curves',merged);
+  if(merged.length)F.histSelDate=merged.length-1;
+  F.histProgress.current='';
+
+  const errMsg=F.histProgress.errors.length
+    ?`\n⚠ ${F.histProgress.errors.length} skipped:\n${F.histProgress.errors.slice(0,8).join('\n')}`:'';
+  alert(`✓ Loaded ${results.length} curve(s) from ${files.length} Excel file(s).${errMsg}`);
+  F.histLoading=false;
+  document.getElementById('f-hist-body').innerHTML=renderHistorical();
+}
+
+
 async function parseHistImages(el){
   const files=[...el.files].filter(f=>f.name.match(/\.(png|jpg|jpeg)$/i));
   if(!files.length){alert('No PNG/JPG files selected.');el.value='';return;}
