@@ -2929,7 +2929,7 @@ const NM={
   trinidad:{bahiablanca:4543,guanabara:3175,quintero:6943,manzanillo:2914,zeebrugge:3984,rotterdam:4044,huelva:3383,southhook:3682,jebelali:10456,ainsukhna:5438,dahej:10173,portqasim:10027,tianjin:10012,tokyo:13800,gwangyang:9385,singapore:10944,maptaphut:11625,panigaglia:4450,livorno:4440,rovigo:5070,piombino:4340,revithoussa:5100,inkoo:5400,klaipeda:5200,swinoujscie:5000,aliaga:5750,krk:5050,ravenna:5000},
   oman:{bahiablanca:8450,guanabara:7949,quintero:9676,manzanillo:12022,zeebrugge:9857,rotterdam:9887,huelva:9176,southhook:9964,jebelali:348,ainsukhna:2497,dahej:738,portqasim:456,tianjin:5890,tokyo:6018,gwangyang:5557,singapore:3011,maptaphut:3712,panigaglia:10071,livorno:10049,rovigo:10852,piombino:10019,revithoussa:5900,inkoo:7100,klaipeda:6900,swinoujscie:6700,aliaga:5500,krk:5950,ravenna:5900}
 };
-const DEF_P={shipSize:174000,energyFactor:22.88,loadFactor:0.985,bogRate:0.0015,speedLaden:19.5,speedBallast:19.5,hfoLaden:90,hfoBallast:85,hfoPrice:550,lsmgoLaden:0,lsmgoBallast:0,lsmgoDischarge:8,pilotFuel:1,lsmgoPrice:750,cooldownDays:0.25,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,loadTimeDays:0.25,bufferDays:2,dischargeDays:0.25,heelVolume:3000,heelCost:0,co2Mgo:3.206,co2Hfo:3.114,etsCoverage:1.0,euaPrice:80.206,euaDec:{2026:80.206,2027:75.0,2028:70.0},eurUsd:1.09,loadDate:''};
+const DEF_P={shipSize:174000,energyFactor:22.88,loadFactor:98.5,bogRate:0.15,speedLaden:19.5,speedBallast:19.5,hfoLaden:90,hfoBallast:85,hfoPrice:550,lsmgoLaden:0,lsmgoBallast:0,lsmgoDischarge:8,pilotFuel:1,lsmgoPrice:750,cooldownDays:0.25,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,loadTimeDays:0.25,bufferDays:2,dischargeDays:0.25,heelVolume:3000,heelCost:0,co2Mgo:3.206,co2Hfo:3.114,etsCoverage:1.0,euaPrice:80.206,euaDec:{2026:80.206,2027:75.0,2028:70.0},eurUsd:1.09,loadDate:''};
 
 let F={blng:null,params:null,snaps:null,matrix:null,matrixTs:null,blngTs:null,extraD:null,posArr:null,repoArr:null,
   // Matrix section sub-tabs
@@ -2975,6 +2975,10 @@ const FMTABS=['FREIGHT CURVES','SHIP PARAMS','MATRIX','DIFFERENTIALS','HISTORICA
 function initFreight(){
   F.blng=fg('f_blng',JSON.parse(JSON.stringify(IB)));
   F.params={...DEF_P,...fg('f_params',{})};
+  // ── Migrate old stored values: bogRate and loadFactor were previously stored as fractions ──
+  if(F.params.bogRate<0.05)F.params.bogRate=F.params.bogRate*100; // 0.0015→0.15
+  if(F.params.loadFactor<5)F.params.loadFactor=F.params.loadFactor*100; // 0.985→98.5
+  if(F.params.etsCoverage<=1&&F.params.etsCoverage>0)F.params.etsCoverage=F.params.etsCoverage; // stays 0-1
   F.snaps=fg('f_snaps',[{date:'2026-04-02',label:'OB FFA 02/04/2026',blng:JSON.parse(JSON.stringify(IB))}]);
   F.matrix=fg('f_matrix',null);
   F.matrixTs=localStorage.getItem('f_matrix_ts')||null;
@@ -3015,9 +3019,9 @@ function calcF(orig,disch,mi,blngOvr,paramsOvr,posOvr,repoOvr){
   const voyDays=nm/(p.speedLaden*24);
   const coolDays=p.cooldownEnabled?p.cooldownDays:0,gas=p.gasUpEnabled?p.gasUpDays:0;
   const totalDays=coolDays+gas+p.loadTimeDays+p.bufferDays+voyDays+p.dischargeDays;
-  const loaded=p.shipSize*p.energyFactor*p.loadFactor;
+  const loaded=p.shipSize*p.energyFactor*(p.loadFactor/100);
   // BOG: deducted linearly over total voyage days
-  const bogLoss=loaded*p.bogRate*totalDays;
+  const bogLoss=loaded*(p.bogRate/100)*totalDays;
   const estDisch=loaded-bogLoss;
   const hireDays=totalDays-coolDays;
   const hire=rate*hireDays,cooldown=rate*coolDays;
@@ -3068,11 +3072,14 @@ function renderSV(){
   const nm=nmGet(F.svOrig,F.svDisch);
   const p=F.svParams;
   if(!p.euaDec)p.euaDec={2026:80.206,2027:75.0,2028:70.0};
+  // Migrate svParams if loaded from old localStorage (fraction → human values)
+  if(p.bogRate<0.05)p.bogRate=p.bogRate*100;
+  if(p.loadFactor<5)p.loadFactor=p.loadFactor*100;
   const voyDays=nm?(nm/(p.speedLaden*24)).toFixed(2):'-';
   const coolDays=p.cooldownEnabled?p.cooldownDays:0;
   const totalDays=nm?(+voyDays+coolDays+(p.gasUpEnabled?p.gasUpDays:0)+p.loadTimeDays+p.bufferDays+p.dischargeDays).toFixed(2):'-';
-  const loaded=p.shipSize*p.energyFactor*p.loadFactor;
-  const bogLoss=nm?Math.round(loaded*p.bogRate*+totalDays):'-';
+  const loaded=p.shipSize*p.energyFactor*(p.loadFactor/100);
+  const bogLoss=nm?Math.round(loaded*(p.bogRate/100)*+totalDays):0;
   const estDisch=nm?Math.round(loaded-bogLoss):'-';
   // Discharge date for selected pricing month
   let dischDate='-';
@@ -3181,20 +3188,20 @@ function renderSV(){
       <div>
         ${svp('shipSize','Ship Size (m3)',1000)}
         ${svp('energyFactor','Energy Factor (Mmbtu/m3)',0.01)}
-        ${svpPct('loadFactor','Load Factor (%)',0.1)}
+        ${svp('loadFactor','Load Factor (% of capacity)',0.1)}
         ${svp('hfoLaden','Laden HFO (tns/day)',1)}
         ${svp('lsmgoLaden','Laden LSMGO (tns/day)',0.5)}
         ${svp('lsmgoDischarge','Discharge LSMGO (t/d)',0.5)}
         ${svp('hfoPrice','HFO Price ($/tn)',10)}
         ${svp('loadTimeDays','Load Port Days',0.25)}
-        ${svpPct('etsCoverage','EU ETS Coverage (%)',1)}
+        ${svpPct('etsCoverage','EU ETS Coverage (0-1)',1)}
         ${svp('cooldownDays','Cooldown Days',0.25)}
         ${svp('heelVolume','Heel Retention (m3)',100)}
         ${svp('heelCost','Heel Cost ($/m3)',0.5)}
       </div>
       <div>
         ${svp('speedLaden','Speed (knots)',0.5)}
-        ${svpPct('bogRate','BOG Rate (% per day)',0.001)}
+        ${svp('bogRate','BOG Rate (%/day)',0.01)}
         ${svp('hfoBallast','Ballast HFO (tns/day)',1)}
         ${svp('lsmgoBallast','Ballast LSMGO (t/d)',0.5)}
         ${svp('pilotFuel','Pilot Fuel (tns)',0.5)}
@@ -3308,7 +3315,7 @@ function renderMatCurves(){
 }
 function renderMatParams(){
   const secs=[
-    {t:'VESSEL',f:[{k:'shipSize',l:'Ship Size (cbm)',s:1000},{k:'energyFactor',l:'Energy Factor (Mmbtu/m3)',s:0.01},{k:'loadFactor',l:'Load Factor (%)',s:0.1,pct:true},{k:'bogRate',l:'BOG Rate (% per day)',s:0.001,pct:true},{k:'speedLaden',l:'Speed Laden (kn)',s:0.5},{k:'speedBallast',l:'Speed Ballast (kn)',s:0.5}]},
+    {t:'VESSEL',f:[{k:'shipSize',l:'Ship Size (cbm)',s:1000},{k:'energyFactor',l:'Energy Factor (Mmbtu/m3)',s:0.01},{k:'loadFactor',l:'Load Factor (% capacity)',s:0.1},{k:'bogRate',l:'BOG Rate (%/day)',s:0.01},{k:'speedLaden',l:'Speed Laden (kn)',s:0.5},{k:'speedBallast',l:'Speed Ballast (kn)',s:0.5}]},
     {t:'FUEL CONSUMPTION (t/day)',f:[{k:'hfoLaden',l:'HFO Laden',s:1},{k:'hfoBallast',l:'HFO Ballast',s:1},{k:'lsmgoLaden',l:'LSMGO Laden',s:0.5},{k:'lsmgoBallast',l:'LSMGO Ballast',s:0.5},{k:'lsmgoDischarge',l:'LSMGO Discharge',s:0.5},{k:'pilotFuel',l:'Pilot Fuel (t/voy)',s:0.5}]},
     {t:'FUEL PRICES',f:[{k:'hfoPrice',l:'HFO ($/t)',s:10},{k:'lsmgoPrice',l:'LSMGO ($/t)',s:10}]},
     {t:'VOYAGE TIMES (days)',f:[{k:'cooldownDays',l:'Cooldown',s:0.05},{k:'loadTimeDays',l:'Load Time',s:0.05},{k:'bufferDays',l:'Buffer',s:0.5},{k:'dischargeDays',l:'Discharge',s:0.05}]},
