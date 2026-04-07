@@ -4464,28 +4464,42 @@ async function parseHistImages(el){
   const files=[...el.files].filter(f=>f.name.match(/\.(png|jpg|jpeg)$/i));
   if(!files.length){alert('No PNG/JPG files selected.');el.value='';return;}
 
-  // ── STEP 0: Read ALL files as base64 BEFORE touching the DOM ─────────────
-  // Critical: DOM re-render destroys the file input, invalidating File objects
+  // ── STEP 0: Read + compress ALL files BEFORE touching the DOM ────────────
+  // Resize to max 1200px wide — reduces payload 80%+ and keeps well under Vercel timeout
+  async function compressImage(file){
+    return new Promise((res,rej)=>{
+      const reader=new FileReader();
+      reader.onerror=()=>rej(new Error(`Cannot read ${file.name}`));
+      reader.onload=e=>{
+        const img=new Image();
+        img.onerror=()=>rej(new Error(`Cannot decode ${file.name}`));
+        img.onload=()=>{
+          const MAX=1200;
+          let {width:w,height:h}=img;
+          if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+          const canvas=document.createElement('canvas');
+          canvas.width=w;canvas.height=h;
+          canvas.getContext('2d').drawImage(img,0,0,w,h);
+          const dataUrl=canvas.toDataURL('image/jpeg',0.85);
+          res({name:file.name,type:'image/jpeg',base64:dataUrl.split(',')[1],w,h});
+        };
+        img.src=e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   let fileData;
   try{
-    fileData=await Promise.all(files.map(file=>new Promise((res,rej)=>{
-      const reader=new FileReader();
-      reader.onload=e=>res({
-        name:file.name,
-        type:file.type||'image/png',
-        base64:e.target.result.split(',')[1]
-      });
-      reader.onerror=()=>rej(new Error(`Cannot read ${file.name}`));
-      reader.readAsDataURL(file);
-    })));
+    fileData=await Promise.all(files.map(f=>compressImage(f)));
   }catch(readErr){
     alert('Failed to read file(s): '+readErr.message);
     el.value='';
     return;
   }
-  el.value=''; // clear input before any DOM changes
+  el.value='';
 
-  // ── NOW safe to manipulate DOM ────────────────────────────────────────────
+  // ── NOW safe to touch DOM ──────────────────────────────────────────────────
   F.histLoading=true;
   F.histProgress={total:fileData.length,done:0,current:'',errors:[]};
   document.getElementById('f-hist-body').innerHTML=renderHistorical();
@@ -4532,21 +4546,40 @@ async function parseHistImages(el){
           max_tokens:500,
           system:`Extract BLNG freight curve data from this OB FFA Rates table image. Return ONLY valid JSON:
 {"BLNG1":[v1,...,v24],"BLNG2":[v1,...,v24],"BLNG3":[v1,...,v24]}
-- Find columns BLNG1/BLNG2/BLNG3 by header label
-- Extract rows 174+1_M through 174+24_M (exactly 24 values per curve, in $/day)
-- Match by BLNG label number, NOT basin name (Atlantic/Pacific labels vary)
-- Empty cells → null. Arrays must have EXACTLY 24 elements.
-- EXCLUDE: CURMON row, quarterly rows, calendar year rows
-- Return ONLY the JSON object`,
+- Find columns BLNG1/BLNG2/BLNG3 by header label (not basin description)
+- Extract rows 174+1_M through 174+24_M only (exactly 24 values per curve, in $/day)
+- Empty cells = null. Arrays must have EXACTLY 24 elements.
+- EXCLUDE: CURMON, quarterly rows, calendar year rows
+- Return ONLY the JSON object, nothing else`,
           messages:[{role:'user',content:[
             {type:'image',source:{type:'base64',media_type:fd.type,data:fd.base64}},
-            {type:'text',text:`Extract BLNG1, BLNG2, BLNG3 M+1 to M+24 rates. Observation date: ${isoDate}. JSON only.`}
+            {type:'text',text:`Extract BLNG1/2/3 M+1 to M+24. Date: ${isoDate}. JSON only.`}
           ]}]
         })
       });
+
+      // Check HTTP status first
+      if(!resp.ok){
+        const errText=await resp.text();
+        throw new Error(`API error ${resp.status}: ${errText.slice(0,200)}`);
+      }
+
       const data=await resp.json();
-      const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-      const parsed=JSON.parse(text.replace(/```[a-z]*\n?/gi,'').trim());
+
+      // Check for Anthropic-level errors
+      if(data.error){
+        throw new Error(`Anthropic: ${data.error.message||JSON.stringify(data.error)}`);
+      }
+
+      // Check for Vercel timeout / empty content
+      if(!data.content||!data.content.length){
+        throw new Error(`Empty response — proxy may have timed out (${JSON.stringify(data).slice(0,100)})`);
+      }
+
+      const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').replace(/```[a-z]*\n?/gi,'').trim();
+      if(!text){throw new Error('No text in response');}
+
+      const parsed=JSON.parse(text);
       const hasData=(parsed.BLNG1||[]).some(v=>v!=null)||(parsed.BLNG2||[]).some(v=>v!=null)||(parsed.BLNG3||[]).some(v=>v!=null);
       if(!hasData){F.histProgress.errors.push(`${fd.name}: no BLNG data found`);F.histProgress.done++;continue;}
       results.push({date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:alignToML(parsed,isoDate)});
