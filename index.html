@@ -5668,12 +5668,14 @@ function cpGlobalArb(d){
   const BASIN_COL={ATL:'#4fc3f7',MEI:'#ffb74d',PAC:'#81c784'};
   const BASIN_NAME={ATL:'Atlantic basin',MEI:'MEI basin',PAC:'Pacific basin'};
 
-  function cellStyle(v){
-    if(v==null)return{bg:'#0a1628',fg:'#1e3a5f'};
-    if(v>=0.5) return{bg:'#1a5c28',fg:'#a8f0bc'};
-    if(v>=0.2) return{bg:'#2a7d30',fg:'#d0f7da'};
-    if(v>=0)   return{bg:'#0d2e15',fg:'#81c784'};
-    return{bg:'#2d0a0a',fg:'#ef9a9a'};
+  // Color by DESTINATION — not profitability
+  const DEST_STYLE={
+    eur:{bg:'#0d2545',fg:'#90caf9'},   // blue = Europe
+    mei:{bg:'#0d2e15',fg:'#a5d6a7'},   // green = MEI
+    asia:{bg:'#2d0f0f',fg:'#ef9a9a'},  // red = JKTC
+  };
+  function cellStyle(dk){
+    return DEST_STYLE[dk]||{bg:'#0a1628',fg:'#3d5070'};
   }
   function getBest(org){
     const cands=[];
@@ -5697,7 +5699,7 @@ function cpGlobalArb(d){
       ['eur','mei','asia'].forEach(dk=>{const arr=org.routes[dk];if(!arr||arr[i]==null)return;cands.push({dk,v:arr[i]});});
       if(!cands.length){rows+=`<td style="padding:2px"><div style="background:#0a1628;border-radius:5px;padding:5px 3px;text-align:center;color:#1e3a5f;font-size:10px">—</div></td>`;return;}
       const best=cands.reduce((a,b)=>b.v>a.v?b:a);
-      const cs=cellStyle(best.v);
+      const cs=cellStyle(best.dk);
       const des=best.dk==='eur'?d.des.nwe[i]:best.dk==='mei'?d.des.mei[i]:d.des.jktc[i];
       const frv=org.routes[best.dk][i];
       const idxv=idxArr[i];
@@ -5710,7 +5712,7 @@ function cpGlobalArb(d){
     rows+='</tr>';
   });
 
-  const legend=[['#1a5c28','#a8f0bc','> +0.5'],['#2a7d30','#d0f7da','+0.2 to +0.5'],['#0d2e15','#81c784','0 to +0.2'],['#2d0a0a','#ef9a9a','Loss']];
+  const legend=[['#0d2545','#90caf9','Europe'],['#0d2e15','#a5d6a7','MEI'],['#2d0f0f','#ef9a9a','JKTC']];
 
   return`
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
