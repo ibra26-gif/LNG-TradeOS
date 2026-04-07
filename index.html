@@ -4162,7 +4162,7 @@ async function loadPricesFromGmail(addMode=false){
     prog('Searching Gmail for OB LNG EOD Curve emails…');
 
     // ── STEP 1: List all matching emails ──────────────────────────────────
-    const listResp=await fetch('https://api.anthropic.com/v1/messages',{
+    const listResp=await fetch('/api/anthropic',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -4207,7 +4207,7 @@ Schema: [{"messageId":"...","subject":"...","date":"YYYY-MM-DD"}]
       prog(`Extracting prices ${idx+1}/${toProcess.length}: ${email.subject}…`);
 
       try{
-        const exResp=await fetch('https://api.anthropic.com/v1/messages',{
+        const exResp=await fetch('/api/anthropic',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
@@ -4325,7 +4325,7 @@ async function loadFreightFromGmail(){
 
   try{
     // ── STEP 1: Search Gmail for all OB LNG EOD Curve emails ────────────────
-    const listResp=await fetch('https://api.anthropic.com/v1/messages',{
+    const listResp=await fetch('/api/anthropic',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -4374,7 +4374,7 @@ Schema: [{"messageId":"...","subject":"...","date":"YYYY-MM-DD"}]
       document.getElementById('f-hist-body').innerHTML=renderHistorical();
 
       try{
-        const exResp=await fetch('https://api.anthropic.com/v1/messages',{
+        const exResp=await fetch('/api/anthropic',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
@@ -4515,7 +4515,7 @@ async function parseHistImages(el){
     document.getElementById('f-hist-body').innerHTML=renderHistorical();
 
     try{
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      const resp=await fetch('/api/anthropic',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
@@ -4577,7 +4577,7 @@ async function loadHistFromGDrive(){
 
   // ── Helper: extract BLNG curves from OB FFA Rates TABLE image (tabular, not chart) ──
   async function extractCurveFromImage(base64Data,mimeType,filename,isoDate){
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    const resp=await fetch('/api/anthropic',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -4630,7 +4630,7 @@ Rules:
     F.histProgress.current='Listing files in Google Drive…';
     document.getElementById('f-hist-body').innerHTML=renderHistorical();
 
-    const listResp=await fetch('https://api.anthropic.com/v1/messages',{
+    const listResp=await fetch('/api/anthropic',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -4665,7 +4665,7 @@ List ONLY image files (jpg, jpeg, png). No other text or markdown.`,
 
       try{
         // Download image as base64 via GDrive MCP
-        const dlResp=await fetch('https://api.anthropic.com/v1/messages',{
+        const dlResp=await fetch('/api/anthropic',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
