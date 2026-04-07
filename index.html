@@ -300,7 +300,6 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       <div class="mod-card" onclick="shellNav('toolbox','converter')"><span class="card-num">01</span><div class="card-ttl">Natural Gas Converter</div><div class="card-desc">Unit conversion across mmBtu, MWh, MCM, Bcm, MT LNG and all standard gas units</div><span class="s-tag tag-tb">TOOLBOX</span></div>
       <div class="mod-card" onclick="shellNav('toolbox','gasspec')"><span class="card-num">02</span><div class="card-ttl">Gas Specifications</div><div class="card-desc">GHV, NHV, Wobbe Index converter · ISO 13443:1996 · BTU/scf · Reference conditions</div><span class="s-tag tag-tb">TOOLBOX</span></div>
       <div class="mod-card" onclick="shellNav('toolbox','portcosts')"><span class="card-num">03</span><div class="card-ttl">Port Cost Database</div><div class="card-desc">130+ terminals — loading and discharge port costs for global LNG terminals</div><span class="s-tag tag-tb">TOOLBOX</span></div>
-      <div class="mod-card dim"><span class="card-num">04</span><div class="card-ttl">Paper Book</div><div class="card-desc">Financial derivatives position tracking and hedge book management</div><span class="s-tag tag-pv">VALUATION</span></div>
     </div>
   </div>
   <div class="sh-footer">
@@ -767,7 +766,6 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     <button class="sh-stab active" id="tbtab-converter" onclick="tbTab('converter')">GAS CONVERTER</button>
     <button class="sh-stab" id="tbtab-gasspec" onclick="tbTab('gasspec')">GAS SPECIFICATIONS</button>
     <button class="sh-stab" id="tbtab-portcosts" onclick="tbTab('portcosts')">PORT COST DATABASE</button>
-    <button class="sh-stab" onclick="shellNav('physical','freight')" style="color:#ffb74d;border-color:#ffb74d">↗ PAPER BOOK → FREIGHT</button>
   </div>
   <div id="tb-content"></div>
 </section>
@@ -807,8 +805,8 @@ const GA_T={lngbal:'S&D BALANCE',eugas:'EU GAS BALANCE',storage:'EU STORAGE',reg
 const GA_D={lngbal:'Global LNG supply and demand balance by exporting country and importing region',eugas:'Pipeline imports, domestic production, LNG flows and EU gas demand — seasonal views',storage:'EU and country storage levels, seasonal comparison and injection/withdrawal — GIE AGSI+',regas:'Terminal utilisation heatmap, tank stocks, sendout and country aggregate — GIE AGGI+',signposts:'LNG arrivals, hydro reservoir levels, nuclear availability and 2026 maintenance tracker'};
 const PV_T={single:'SINGLE DEAL VALUATION',strips:'STRIPS VALUATION',portfolio:'PORTFOLIO VALUATION'};
 const PV_D={single:'Full extrinsic and optionality valuation for individual LNG cargo contracts',strips:'Multi-cargo strip optionality decomposition',portfolio:'Aggregated P&L, exposure summary and blended optionality'};
-const TB_T={converter:'NATURAL GAS CONVERTER',gasspec:'GAS SPECIFICATIONS',portcosts:'PORT COST DATABASE',paperbook:'PAPER BOOK'};
-const TB_D={converter:'Unit conversion across mmBtu, MWh, GJ, Mcm, Bcm, MT LNG',gasspec:'LNG and natural gas quality specifications',portcosts:'130+ terminals — loading and discharge port costs',paperbook:'Financial derivatives position tracking'};
+const TB_T={converter:'NATURAL GAS CONVERTER',gasspec:'GAS SPECIFICATIONS',portcosts:'PORT COST DATABASE'};
+const TB_D={converter:'Unit conversion across mmBtu, MWh, GJ, Mcm, Bcm, MT LNG',gasspec:'LNG and natural gas quality specifications',portcosts:'130+ terminals — loading and discharge port costs'};
 
 function shellNav(sec,sub){
   document.querySelectorAll('.s-sec').forEach(s=>s.classList.remove('active'));
@@ -2883,10 +2881,11 @@ const SUPPLY=[
   {id:'nigeria',name:'Nigeria (Bonny LNG)',curve:'BLNG2',loadCost:1019874},
   {id:'angola',name:'Angola',curve:'BLNG2',loadCost:5025},
   {id:'qatar',name:'Qatar (Ras Laffan)',curve:'BLNG1',loadCost:200000},
-  {id:'australia_b',name:'Australia (Barrow Is.)',curve:'BLNG1',loadCost:150868},
+  {id:'oman',name:'Oman',curve:'BLNG1',loadCost:126637},
   {id:'indonesia',name:'Indonesia (Bontang)',curve:'BLNG1',loadCost:90113},
+  {id:'australia_b',name:'Australia (Barrow Is.)',curve:'BLNG1',loadCost:150868},
   {id:'australia_g',name:'Australia (Gladstone)',curve:'BLNG1',loadCost:202788},
-  {id:'oman',name:'Oman',curve:'BLNG1',loadCost:126637}
+
 ];
 const BASE_D=[
   {id:'rotterdam',name:'Gate Rotterdam',euEts:true,dischCost:126694,region:'Europe'},
@@ -2938,7 +2937,7 @@ const DEF_BASIN_P={
     speedLaden:16.5,speedBallast:16.5,
     hfoLaden:90,hfoBallast:85,lsmgoLaden:2,lsmgoBallast:2,lsmgoDischarge:5,pilotFuel:1,
     hfoPrice:550,lsmgoPrice:750,
-    loadTimeDays:1.0,dischargeDays:1.5,bufferDays:2,cooldownDays:0.5,cooldownEnabled:true,
+    loadTimeDays:1.0,dischargeDays:1.5,bufferDays:2,cooldownDays:0.5,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,
     heelVolume:3000,heelCost:0,
     co2Hfo:3.114,co2Mgo:3.206,etsCoverage:1.0,
     euaDec:{2026:80,2027:75,2028:70},eurUsd:1.09,
@@ -2949,7 +2948,7 @@ const DEF_BASIN_P={
     speedLaden:16.5,speedBallast:16.5,
     hfoLaden:90,hfoBallast:85,lsmgoLaden:2,lsmgoBallast:2,lsmgoDischarge:5,pilotFuel:1,
     hfoPrice:550,lsmgoPrice:750,
-    loadTimeDays:1.0,dischargeDays:1.5,bufferDays:2,cooldownDays:0.5,cooldownEnabled:true,
+    loadTimeDays:1.0,dischargeDays:1.5,bufferDays:2,cooldownDays:0.5,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,
     heelVolume:3000,heelCost:0,
     co2Hfo:3.114,co2Mgo:3.206,etsCoverage:0,
     euaDec:{2026:0,2027:0,2028:0},eurUsd:1.09,
@@ -2960,7 +2959,7 @@ const DEF_BASIN_P={
     speedLaden:16.5,speedBallast:16.5,
     hfoLaden:90,hfoBallast:85,lsmgoLaden:2,lsmgoBallast:2,lsmgoDischarge:5,pilotFuel:1,
     hfoPrice:550,lsmgoPrice:750,
-    loadTimeDays:1.0,dischargeDays:1.5,bufferDays:2,cooldownDays:0.5,cooldownEnabled:true,
+    loadTimeDays:1.0,dischargeDays:1.5,bufferDays:2,cooldownDays:0.5,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,
     heelVolume:3000,heelCost:0,
     co2Hfo:3.114,co2Mgo:3.206,etsCoverage:0,
     euaDec:{2026:0,2027:0,2028:0},eurUsd:1.09,
@@ -3051,7 +3050,9 @@ function initFreight(){
   F.matDrillCell=null;       // {origId, dischId, mi} for drill panel
   F.matPrevMatrix=fg('f_matrix_prev',null);
   F.matAudit=fg('f_mat_audit',null);
-  F.matOverrides=fg('f_mat_overrides',{});  // [origId][dischId][mi]=$/MMBtu
+  F.matOverrides=fg('f_mat_overrides',{});
+  F.validatedMatrix=fg('f_validated_matrix',null);
+  F.validatedAudit=fg('f_validated_audit',null);  // [origId][dischId][mi]=$/MMBtu
   // Historical Freight Curves (Google Drive loaded)
   F.histCurves=fg('f_hist_curves',[]);
   F.histView='forward';
@@ -3349,7 +3350,22 @@ function renderMatCurves(){
     <td style="padding:2px 3px"><input class="f-inp" style="width:56px;text-align:right;color:#4fc3f7" type="number" step="0.1" value="${F.posArr[c][i]||0}" onchange="F.posArr['${c}'][${i}]=parseFloat(this.value)||0;fSavePR()"></td>
     <td style="padding:2px 3px"><input class="f-inp" style="width:56px;text-align:right;color:#ffb74d" type="number" step="0.1" value="${F.repoArr[c][i]||0}" onchange="F.repoArr['${c}'][${i}]=parseFloat(this.value)||0;fSavePR()"></td>`).join('')}</tr>`).join('');
   const latestSnap=F.snaps.length?F.snaps[0]:null;
-  return`<div class="f-sec" style="font-size:11px;letter-spacing:2px;margin-bottom:10px">FORWARD FREIGHT CURVES — SAVED (feed the matrix)</div>
+  // ── History loader: pick observation date → populate active curve ──────
+  const histOpts=F.histCurves&&F.histCurves.length
+    ?[...F.histCurves].sort((a,b)=>b.date.localeCompare(a.date))
+    :[];
+  const histBar=histOpts.length?`
+    <div style="background:#071a2b;border:1px solid #4fc3f7;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:9px;color:#4fc3f7;font-weight:700;letter-spacing:1px">LOAD FROM HISTORY</span>
+      <select id="hist-curve-sel" class="f-sel" style="flex:1;min-width:200px">
+        ${histOpts.map((s,i)=>`<option value="${i}">${s.date} — ${s.label}</option>`).join('')}
+      </select>
+      <button class="f-btn on" onclick="loadHistCurveIntoActive()">LOAD →</button>
+      <span style="font-size:9px;color:#546e7a">${histOpts.length} observation date(s) in database · loads into active curve below</span>
+    </div>`
+    :`<div style="background:#070b14;border:1px dashed #1e3a5f;padding:6px 12px;margin-bottom:10px;font-size:9px;color:#3d5070">No historical curves loaded yet — go to HISTORICAL FREIGHT CURVES tab to import from Google Drive</div>`;
+  return`${histBar}
+  <div class="f-sec" style="font-size:11px;letter-spacing:2px;margin-bottom:10px">FORWARD FREIGHT CURVES — SAVED (feed the matrix)</div>
     <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px;margin-top:10px">
       <div><span class="f-lbl">SNAPSHOT DATE</span><input class="f-inp" style="width:140px" type="date" value="${F.snapDate}" onchange="F.snapDate=this.value"></div>
       <button class="f-btn" onclick="fAuthGate(()=>saveSnap())">SAVE SNAPSHOT</button>
@@ -3386,6 +3402,7 @@ function renderMatParams(){
     {k:'bogRate',       l:'BOG Rate (%/day)',             s:0.01,  t:'num'},
     {k:'speedLaden',    l:'Speed Laden (kn)',             s:0.5,   t:'num'},
     {k:'speedBallast',  l:'Speed Ballast (kn)',           s:0.5,   t:'num'},
+    {k:'gasUpDays',     l:'Gas Up Days',                  s:0.25,  t:'num'},
     null,// divider
     {k:'hfoLaden',      l:'Laden FO (t/day)',             s:1,     t:'num'},
     {k:'lsmgoLaden',    l:'Laden LSMGO (t/day)',          s:0.5,   t:'num'},
@@ -3427,6 +3444,20 @@ function renderMatParams(){
   const cellStyle='padding:3px 4px;border-bottom:1px solid #0d1526;';
   const inputStyle=(color)=>`width:100%;text-align:right;color:${color||'#c8d6e5'};background:transparent;border:none;font-family:IBM Plex Mono,monospace;font-size:10px;outline:none;`;
 
+  // ── Toggle rows: cooldown and gas-up per basin ────────────────────────────
+  const toggleRow=(key,label,trueLabel,falseLabel)=>`<tr style="background:#070b14">
+    <td style="${cellStyle}font-size:9px;color:#546e7a">${label}</td>
+    ${BASINS.map(b=>{
+      const on=F.matParams[b.key][key]===true;
+      return`<td style="${cellStyle}text-align:right">
+        <button style="padding:3px 10px;font-size:9px;font-family:IBM Plex Mono,monospace;cursor:pointer;border:1px solid ${on?'#4fc3f7':'#3d5070'};background:${on?'#0d1e36':'transparent'};color:${on?b.color:'#546e7a'}"
+          onclick="F.matParams['${b.key}']['${key}']=!F.matParams['${b.key}']['${key}'];fSaveMatParams();fMatTab(1)">
+          ${on?trueLabel:falseLabel}
+        </button>
+      </td>`;
+    }).join('')}
+  </tr>`;
+
   const headerRow=`<tr style="background:#070b14">
     <th style="padding:6px 8px;font-size:9px;color:#546e7a;text-align:left;font-weight:400;min-width:160px">PARAMETER</th>
     ${BASINS.map(b=>`<th style="padding:6px 8px;font-size:9px;color:${b.color};text-align:right;min-width:120px;letter-spacing:1px">${b.label}</th>`).join('')}
@@ -3461,7 +3492,12 @@ function renderMatParams(){
   <div style="overflow-x:auto">
   <table style="width:100%;border-collapse:collapse;font-family:IBM Plex Mono,monospace">
     <thead>${headerRow}</thead>
-    <tbody>${dataRows}</tbody>
+    <tbody>
+      ${toggleRow('cooldownEnabled','Cooldown','COOLDOWN ON','COOLDOWN OFF')}
+      ${toggleRow('gasUpEnabled','Gas Up','GAS UP ON','GAS UP OFF')}
+      <tr><td colspan="4" style="padding:4px 0;border-bottom:1px solid #1e3a5f;background:#070b14"></td></tr>
+      ${dataRows}
+    </tbody>
   </table>
   </div>
   <div style="margin-top:10px;color:#3d5070;font-size:9px;line-height:1.8">
@@ -3471,7 +3507,14 @@ function renderMatParams(){
 }
 function mpChange(curve,key,val){F.matParams[curve][key]=val;fSaveMatParams();}
 function mpChangeEua(curve,yr,val){if(!F.matParams[curve].euaDec)F.matParams[curve].euaDec={};F.matParams[curve].euaDec[yr]=val;fSaveMatParams();}
-function mpReset(){F.matParams={BLNG2:{...DEF_BASIN_P.BLNG2,euaDec:{...DEF_BASIN_P.BLNG2.euaDec}},BLNG3:{...DEF_BASIN_P.BLNG3,euaDec:{...DEF_BASIN_P.BLNG3.euaDec}},BLNG1:{...DEF_BASIN_P.BLNG1,euaDec:{...DEF_BASIN_P.BLNG1.euaDec}}};fSaveMatParams();fMatTab(1);}
+function mpReset(){
+  F.matParams={
+    BLNG2:{...DEF_BASIN_P.BLNG2,euaDec:{...DEF_BASIN_P.BLNG2.euaDec}},
+    BLNG3:{...DEF_BASIN_P.BLNG3,euaDec:{...DEF_BASIN_P.BLNG3.euaDec}},
+    BLNG1:{...DEF_BASIN_P.BLNG1,euaDec:{...DEF_BASIN_P.BLNG1.euaDec}}
+  };
+  fSaveMatParams();fMatTab(1);
+}
 function renderMatrix(){
   if(!F.matrix)return`
     <div style="background:#0a1628;border:1px dashed #1e3a5f;padding:32px;text-align:center">
@@ -3495,6 +3538,7 @@ function renderMatrix(){
       <span>BLNG2 M+1: <span style="color:#81c784">${b2} $/d</span></span>
       <span>BLNG3 M+1: <span style="color:#ffb74d">${b3} $/d</span></span>
       ${ovCount?`<span style="color:#ff9800">⚡ ${ovCount} override(s) active</span>`:''}
+      ${F.validatedAudit?`<span style="color:#4caf50;font-weight:700">✓ VALIDATED: ${new Date(F.validatedAudit.ts).toLocaleString('en-GB')}${F.validatedAudit.label?' — '+F.validatedAudit.label:''}</span>`:'<span style="color:#3d5070">No validated matrix</span>'}
     </div>`;
   }
   // ── SUB-NAV ───────────────────────────────────────────────────────────────
@@ -3678,11 +3722,16 @@ function matSnapshot(){
 function matStrip(){
   const sp=allS().find(p=>p.id===F.matStripOrig)||allS()[0];
   const dp=allD().find(p=>p.id===F.matStripDisch)||allD()[0];
+  const hasValidated=!!(F.validatedMatrix?.[sp.id]?.[dp.id]);
   const rows=ML.map((m,i)=>{
     const r=F.matrix?.[sp.id]?.[dp.id]?.[i];
     const ov=F.matOverrides?.[sp.id]?.[dp.id]?.[i];
-    if(!r)return`<tr><td style="color:#8a9bb5">${m}</td><td colspan="13" style="color:#3d5070;text-align:center">— no data —</td></tr>`;
+    const val=F.validatedMatrix?.[sp.id]?.[dp.id]?.[i];
+    if(!r)return`<tr><td style="color:#8a9bb5">${m}</td><td colspan="14" style="color:#3d5070;text-align:center">— no data —</td></tr>`;
     const $=v=>(v==null||v===0)?'0':v.toLocaleString(undefined,{maximumFractionDigits:0});
+    const liveFreight=ov!=null?ov:r.freight;
+    const valFreight=val?.freight;
+    const diff=valFreight!=null?liveFreight-valFreight:null;
     return`<tr style="background:${ov!=null?'#1a0d00':''}">
       <td style="color:#8a9bb5;white-space:nowrap">${m}</td>
       <td class="tr">${r.rate?.toLocaleString()}</td>
@@ -3698,9 +3747,24 @@ function matStrip(){
       <td class="tr" style="font-weight:600">${$(r.total)}</td>
       <td class="tr" style="color:${fCol(r.freight)};font-weight:700">${r.freight?.toFixed(4)}</td>
       <td class="tr" style="color:${ov!=null?'#ff9800':'#3d5070'}">${ov!=null?ov.toFixed(4):'—'}</td>
+      <td class="tr" style="color:${valFreight!=null?'#4caf50':'#3d5070'};border-left:2px solid #1e3a5f">${valFreight!=null?valFreight.toFixed(4):'—'}</td>
+      <td class="tr" style="color:${diff==null?'#3d5070':diff>0.01?'#f44336':diff<-0.01?'#4caf50':'#546e7a'}">${diff!=null?((diff>0?'+':'')+diff.toFixed(4)):'—'}</td>
     </tr>`;
   }).join('');
-  return`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
+
+  // Validated matrix info bar
+  const valBar=F.validatedAudit?`
+    <div style="background:#071a00;border:1px solid #4caf50;padding:6px 12px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="color:#4caf50;font-size:9px;font-weight:700;letter-spacing:1px">✓ VALIDATED MATRIX</span>
+      <span style="color:#546e7a;font-size:9px">Validated: ${new Date(F.validatedAudit.ts).toLocaleString('en-GB')}</span>
+      ${F.validatedAudit.label?`<span style="color:#8a9bb5;font-size:9px">${F.validatedAudit.label}</span>`:''}
+      <span style="flex:1"></span>
+      <button class="f-btn sm" style="color:#f44336;border-color:#f44336;font-size:9px"
+        onclick="fAuthGate(()=>{F.validatedMatrix=null;F.validatedAudit=null;fs('f_validated_matrix',null);fs('f_validated_audit',null);matRender()})">CLEAR VALIDATION</button>
+    </div>`:'';
+
+  return`
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
     <div><span class="f-lbl">ORIGIN</span><select class="f-sel" onchange="F.matStripOrig=this.value;matRender()">
       ${allS().map(p=>`<option value="${p.id}"${p.id===F.matStripOrig?' selected':''}>${p.name} (${p.curve})</option>`).join('')}
     </select></div>
@@ -3708,7 +3772,11 @@ function matStrip(){
       ${allD().map(p=>`<option value="${p.id}"${p.id===F.matStripDisch?' selected':''}>${p.name}</option>`).join('')}
     </select></div>
     <div style="font-size:9px;color:#546e7a;padding-bottom:6px">${F.matrix?.[sp.id]?.[dp.id]?.[0]?.nm?.toLocaleString()||'—'} NM · ${sp.curve}</div>
+    <span style="flex:1"></span>
+    <button class="f-btn on" style="background:#071a00;border-color:#4caf50;color:#4caf50"
+      onclick="fAuthGate(()=>validateMatrix())">✓ VALIDATE &amp; FREEZE MATRIX</button>
   </div>
+  ${valBar}
   <div style="overflow-x:auto"><table class="f-tbl"><thead><tr>
     <th>MONTH</th><th class="tr">RATE $/d</th><th class="tr">HIRE $</th>
     <th class="tr" style="color:#81c784">COOL $</th>
@@ -3718,9 +3786,28 @@ function matStrip(){
     <th class="tr" style="color:#ffb74d">ETS $</th>
     <th class="tr" style="color:#f44336">WAR/CANAL</th>
     <th class="tr" style="font-weight:700">TOTAL $</th>
-    <th class="tr" style="font-weight:700">MODEL $/MMBtu</th>
+    <th class="tr" style="font-weight:700">LIVE $/MMBtu</th>
     <th class="tr" style="color:#ff9800">OVR $/MMBtu</th>
-  </tr></thead><tbody>${rows}</tbody></table></div>`;
+    <th class="tr" style="color:#4caf50;border-left:2px solid #1e3a5f">VAL $/MMBtu</th>
+    <th class="tr" style="color:#546e7a">Δ vs VAL</th>
+  </tr></thead><tbody>${rows}</tbody></table></div>
+  ${!F.validatedAudit?'<div style="margin-top:8px;font-size:9px;color:#3d5070">No validated matrix yet. Sense-check the strip above then click VALIDATE & FREEZE to lock it in.</div>':''}`;
+}
+
+function validateMatrix(){
+  const label=prompt('Label for this validated matrix (e.g. "EOD 07-Apr-26 — signed off"):','EOD '+new Date().toLocaleDateString('en-GB'));
+  if(label===null)return; // cancelled
+  F.validatedMatrix=JSON.parse(JSON.stringify(F.matrix));
+  F.validatedAudit={
+    ts:new Date().toISOString(),
+    label:label||'',
+    blng:JSON.parse(JSON.stringify(F.blng)),
+    matParams:JSON.parse(JSON.stringify(F.matParams))
+  };
+  fs('f_validated_matrix',F.validatedMatrix);
+  fs('f_validated_audit',F.validatedAudit);
+  alert(`✓ Matrix validated and frozen.\nLabel: ${label||'(none)'}\nThis version is now locked. Future computations will not overwrite it.`);
+  matRender();
 }
 
 // ══ VIEW 3: DELTA ════════════════════════════════════════════════════════
@@ -3919,76 +4006,195 @@ function renderHistorical(){
     <span style="color:#4fc3f7;font-size:10px;letter-spacing:2px;font-weight:700">HISTORICAL FREIGHT CURVES</span>
     <span style="flex:1"></span>
     ${F.histLoading
-      ?`<span style="color:#ffb74d;font-size:9px;animation:pulse 1s infinite">⟳ LOADING FROM GOOGLE DRIVE…</span>`
+      ?`<span style="color:#ffb74d;font-size:9px">⟳ ${F.histProgress?.current||'Loading…'}</span>`
       :`<button class="f-btn on" onclick="fAuthGate(()=>loadHistFromGDrive())">⬇ LOAD FROM GOOGLE DRIVE</button>`}
-    ${hasCurves?`<button class="f-btn sm" onclick="fAuthGate(()=>{F.histCurves=[];fs('f_hist_curves',[]);document.getElementById('f-hist-body').innerHTML=renderHistorical()})">CLEAR</button>`:''}
+    ${hasCurves&&!F.histLoading?`<button class="f-btn sm" onclick="fAuthGate(()=>{F.histCurves=[];fs('f_hist_curves',[]);document.getElementById('f-hist-body').innerHTML=renderHistorical()})">CLEAR</button>`:''}
   </div>
+  ${F.histLoading&&F.histProgress?.total>0?`
+  <div style="background:#0a1628;border:1px solid #1e3a5f;padding:10px 14px;margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:9px;color:#ffb74d">${F.histProgress.current}</span>
+      <span style="font-size:9px;color:#546e7a">${F.histProgress.done}/${F.histProgress.total}</span>
+    </div>
+    <div style="background:#1e3a5f;height:4px;border-radius:2px">
+      <div style="background:#4fc3f7;height:4px;border-radius:2px;width:${Math.round(F.histProgress.done/F.histProgress.total*100)}%;transition:width .3s"></div>
+    </div>
+    ${F.histProgress.errors?.length?`<div style="color:#f44336;font-size:8px;margin-top:4px">⚠ ${F.histProgress.errors.length} error(s)</div>`:''}
+  </div>`:''}
   ${hasCurves
-    ?`<div style="background:#071a2b;border:1px solid #1e3a5f;padding:4px;display:inline-flex;gap:0;margin-bottom:14px;border-radius:2px">
-        <button class="f-tab${F.histView==='forward'?' active':''}" style="padding:6px 14px;font-size:9px;letter-spacing:1px" onclick="F.histView='forward';document.getElementById('f-hist-body').innerHTML=renderHistorical()">FORWARD CURVE BY DATE</button>
-        <button class="f-tab${F.histView==='historical'?' active':''}" style="padding:6px 14px;font-size:9px;letter-spacing:1px" onclick="F.histView='historical';document.getElementById('f-hist-body').innerHTML=renderHistorical()">HISTORICAL RATE BY MONTH</button>
+    ?`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="background:#071a2b;border:1px solid #1e3a5f;padding:4px;display:inline-flex;gap:0;border-radius:2px">
+          <button class="f-tab${F.histView==='forward'?' active':''}" style="padding:6px 14px;font-size:9px;letter-spacing:1px" onclick="F.histView='forward';document.getElementById('f-hist-body').innerHTML=renderHistorical()">FORWARD CURVE BY DATE</button>
+          <button class="f-tab${F.histView==='historical'?' active':''}" style="padding:6px 14px;font-size:9px;letter-spacing:1px" onclick="F.histView='historical';document.getElementById('f-hist-body').innerHTML=renderHistorical()">HISTORICAL RATE BY MONTH</button>
+        </div>
+        <span style="font-size:9px;color:#546e7a">${curves.length} observation dates in database</span>
       </div>
       ${F.histView==='forward'?fwdView():histView()}`
     :`<div style="background:#0a1628;border:1px dashed #1e3a5f;padding:32px;text-align:center">
         <div style="color:#546e7a;font-size:10px;letter-spacing:1px;margin-bottom:8px">NO HISTORICAL CURVES LOADED</div>
-        <div style="color:#3d5070;font-size:9px">Click "LOAD FROM GOOGLE DRIVE" to scrape the LNG Freight Curves folder</div>
+        <div style="color:#3d5070;font-size:9px">Click "LOAD FROM GOOGLE DRIVE" to scrape all images in the LNG Freight Curves folder</div>
       </div>`}`;
 }
 
 // ── Google Drive scraper: reads LNG Freight Curves folder via Anthropic API ──
 async function loadHistFromGDrive(){
   F.histLoading=true;
+  F.histProgress={total:0,done:0,current:'',errors:[]};
   document.getElementById('f-hist-body').innerHTML=renderHistorical();
-  try{
+
+  // ── Helper: parse date from OB_LNG_FFA_CURVE_DD_MM_YYYY or OB_LNG_FFA_Curve__DD_MM_YYYY ──
+  function parseDateFromName(name){
+    const mUs=name.match(/_0*(\d{1,2})_0*(\d{1,2})_(\d{4})\.(jpg|jpeg|png)/i);
+    if(mUs)return`${mUs[3]}-${mUs[2].padStart(2,'0')}-${mUs[1].padStart(2,'0')}`;
+    const mDot=name.match(/(\d{2})\.(\d{2})\.(\d{4})\.(jpg|jpeg|png)/i);
+    if(mDot)return`${mDot[3]}-${mDot[2]}-${mDot[1]}`;
+    return null;
+  }
+
+  // ── Helper: extract BLNG curves from OB FFA Rates TABLE image (tabular, not chart) ──
+  async function extractCurveFromImage(base64Data,mimeType,filename,isoDate){
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
-        max_tokens:8000,
-        system:`You are a data extraction assistant. Your ONLY output must be a valid JSON array — no preamble, no markdown, no explanation.
-The JSON array must follow this exact schema:
-[{"date":"YYYY-MM-DD","label":"string","blng":{"BLNG1":[24 numbers or nulls],"BLNG2":[24 numbers or nulls],"BLNG3":[24 numbers or nulls]}}]
-- date: the observation/EOD date of the curve file (ISO format)
-- label: a short human-readable label (e.g. "OB FFA 16/03/2026")
-- blng: BLNG1=Pacific, BLNG2=Atlantic, BLNG3=X-Basin rates in $/day for 24 consecutive forward months
-- If a value is missing or unavailable, use null
-- Sort array by date ascending
-- Return ONLY the JSON array. No other text whatsoever.`,
-        messages:[{role:'user',content:`Search Google Drive for a folder named "LNG Freight Curves". 
-List all files in it. For each file (Excel or CSV), download it and parse the BLNG freight curve data.
-Extract: the observation date (from filename or file date), and BLNG1/BLNG2/BLNG3 rates in $/day for each forward month (24 months).
-Return the complete dataset as a JSON array per the schema in your instructions.`}],
-        mcp_servers:[{type:'url',url:'https://gdrive.mcp.claude.com/mcp',name:'gdrive'}]
+        max_tokens:2000,
+        system:`You are extracting data from an OB FFA Rates table image. This is a TABULAR screenshot — read each numeric value precisely from the table cells.
+Your ONLY output must be a valid JSON object. No preamble, no markdown fences, no explanation.
+Required schema: {"BLNG1":[v1,...,v24],"BLNG2":[v1,...,v24],"BLNG3":[v1,...,v24]}
+Rules:
+- Locate the column HEADER labeled exactly "BLNG1" → extract rows 174+1_M through 174+24_M (24 values) into BLNG1 array
+- Locate the column HEADER labeled exactly "BLNG2" → extract those same 24 monthly rows into BLNG2 array
+- Locate the column HEADER labeled exactly "BLNG3" → extract into BLNG3 array
+- Match by BLNG LABEL (BLNG1/BLNG2/BLNG3), NOT by basin name (Atlantic/Pacific — those labels may vary between files)
+- Values are integers in $/day. Empty cells → null. Arrays must have EXACTLY 24 elements.
+- EXCLUDE: 174_CURMON row, quarterly rows (Q1/Q2/Q3/Q4), calendar year rows (Cal26/Cal27 etc)
+- Return ONLY the JSON object, nothing else`,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:mimeType,data:base64Data}},
+          {type:'text',text:`Extract BLNG1, BLNG2, BLNG3 M+1 to M+24 rates from this OB FFA Rates table. Assessment date: ${isoDate}. File: ${filename}. JSON only.`}
+        ]}]
       })
     });
     const data=await resp.json();
-    // Extract text from response — may be across multiple content blocks
-    const text=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-    // Strip any accidental markdown fences
-    const clean=text.replace(/```[a-z]*\n?/gi,'').trim();
-    const parsed=JSON.parse(clean);
-    if(!Array.isArray(parsed)||!parsed.length)throw new Error('No curve data returned');
-    // Validate & normalise each entry
-    const validated=parsed.filter(s=>s.date&&s.blng&&(s.blng.BLNG1||s.blng.BLNG2||s.blng.BLNG3)).map(s=>({
-      date:s.date,
-      label:s.label||`OB FFA ${s.date}`,
-      blng:{
-        BLNG1:(s.blng.BLNG1||Array(24).fill(null)).slice(0,24),
-        BLNG2:(s.blng.BLNG2||Array(24).fill(null)).slice(0,24),
-        BLNG3:(s.blng.BLNG3||Array(24).fill(null)).slice(0,24)
+    const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const clean=text.replace(/\`\`\`[a-z]*\n?/gi,'').trim();
+    return JSON.parse(clean);
+  }
+
+  // ── Helper: align 24 extracted values to platform ML month labels ─────────
+  // Extracted arrays are ordered M+1…M+24 starting from the assessment date's next month
+  function alignToML(extracted,isoDate){
+    const assessDate=new Date(isoDate);
+    const m1=new Date(assessDate.getFullYear(),assessDate.getMonth()+1,1);
+    const monthToIdx={};
+    for(let i=0;i<24;i++){
+      const d=new Date(m1.getFullYear(),m1.getMonth()+i,1);
+      const lbl=d.toLocaleString('en-GB',{month:'short'}).slice(0,3)+'-'+String(d.getFullYear()).slice(2);
+      monthToIdx[lbl]=i;
+    }
+    const pick=(arr,m)=>{const idx=monthToIdx[m];return(idx!=null&&arr[idx]!=null)?arr[idx]:null;};
+    return{
+      BLNG1:ML.map(m=>pick(extracted.BLNG1||[],m)),
+      BLNG2:ML.map(m=>pick(extracted.BLNG2||[],m)),
+      BLNG3:ML.map(m=>pick(extracted.BLNG3||[],m))
+    };
+  }
+
+  try{
+    // ── STEP 1: List all files in "LNG Freight Curves" folder ──────────────
+    F.histProgress.current='Listing files in Google Drive…';
+    document.getElementById('f-hist-body').innerHTML=renderHistorical();
+
+    const listResp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:4000,
+        system:`You are a Google Drive file lister. Your ONLY output is a valid JSON array.
+Each element: {"name":"filename.jpg","id":"gdrive_file_id","mimeType":"image/jpeg"}
+List ONLY image files (jpg, jpeg, png). No other text or markdown.`,
+        messages:[{role:'user',content:'Search Google Drive for the folder named "LNG Freight Curves" inside "LNG TradeOS Inputs". List all image files (jpg, jpeg, png) in that folder. Return only the JSON array with name, id, and mimeType for each file.'}],
+        mcp_servers:[{type:'url',url:'https://gdrive.mcp.claude.com/mcp',name:'gdrive'}]
+      })
+    });
+    const listData=await listResp.json();
+    const listText=(listData.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const listClean=listText.replace(/```[a-z]*\n?/gi,'').trim();
+    const fileList=JSON.parse(listClean);
+    if(!Array.isArray(fileList)||!fileList.length)throw new Error('No image files found in LNG Freight Curves folder');
+
+    // Filter to parseable dates only
+    const validFiles=fileList.filter(f=>parseDateFromName(f.name));
+    if(!validFiles.length)throw new Error('No files with recognisable date format (DD.MM.YYYY) found');
+
+    F.histProgress.total=validFiles.length;
+    F.histProgress.done=0;
+
+    // ── STEP 2: Process each image ──────────────────────────────────────────
+    const results=[];
+    for(const file of validFiles){
+      const isoDate=parseDateFromName(file.name);
+      F.histProgress.current=`Extracting ${file.name} (${F.histProgress.done+1}/${F.histProgress.total})…`;
+      document.getElementById('f-hist-body').innerHTML=renderHistorical();
+
+      try{
+        // Download image as base64 via GDrive MCP
+        const dlResp=await fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            model:'claude-sonnet-4-20250514',
+            max_tokens:500,
+            system:`Download the file and return ONLY a JSON object: {"base64":"<base64 string>","mimeType":"image/jpeg or image/png"}. No other text.`,
+            messages:[{role:'user',content:`Download the Google Drive file with ID "${file.id}" and return its base64-encoded content and MIME type as JSON.`}],
+            mcp_servers:[{type:'url',url:'https://gdrive.mcp.claude.com/mcp',name:'gdrive'}]
+          })
+        });
+        const dlData=await dlResp.json();
+        const dlText=(dlData.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+        const dlJson=JSON.parse(dlText.replace(/```[a-z]*\n?/gi,'').trim());
+
+        // Extract curve data from image using vision
+        const extracted=await extractCurveFromImage(dlJson.base64,dlJson.mimeType||file.mimeType,file.name,isoDate);
+        const aligned=alignToML(extracted,isoDate);
+
+        results.push({
+          date:isoDate,
+          label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,
+          blng:aligned
+        });
+      }catch(fileErr){
+        F.histProgress.errors.push(`${file.name}: ${fileErr.message}`);
       }
-    }));
-    F.histCurves=validated;
-    fs('f_hist_curves',validated);
-    F.histSelDate=0;
-    alert(`Loaded ${validated.length} curve snapshot(s) from Google Drive.`);
+      F.histProgress.done++;
+    }
+
+    if(!results.length)throw new Error('No curves successfully extracted. Check errors below.');
+
+    // Sort by date ascending, merge with existing (preserve manual entries)
+    const existing=F.histCurves||[];
+    const existingDates=new Set(existing.map(e=>e.date));
+    const merged=[...existing,...results.filter(r=>!existingDates.has(r.date))];
+    merged.sort((a,b)=>a.date.localeCompare(b.date));
+
+    F.histCurves=merged;
+    fs('f_hist_curves',merged);
+    F.histSelDate=merged.length-1; // default to most recent
+    F.histProgress.current='';
+
+    const errMsg=F.histProgress.errors.length?`\n⚠ ${F.histProgress.errors.length} file(s) failed:\n${F.histProgress.errors.join('\n')}`:'';
+    alert(`✓ Loaded ${results.length} curve(s) from Google Drive. Total in database: ${merged.length}.${errMsg}`);
+
   }catch(err){
+    F.histProgress.current='';
     alert('Failed to load from Google Drive: '+err.message);
   }finally{
     F.histLoading=false;
     document.getElementById('f-hist-body').innerHTML=renderHistorical();
   }
+}
 }
 // ── Persistent param helpers (Section 2 only) ────────────────────────────────
 function pChange(k,v){F.params[k]=v;fSaveParams(F.params);}
@@ -4040,6 +4246,19 @@ function parseSnapFile(el){
 }
 function saveSnap(){const d=F.snapDate,s=[{date:d,label:`OB FFA ${d}`,blng:JSON.parse(JSON.stringify(F.blng))},...F.snaps.filter(x=>x.date!==d)];F.snaps=s;fs('f_snaps',s);alert('Snapshot saved: '+d);}
 function loadSnapBtn(el){const date=el.dataset.snapdate;const s=F.snaps.find(x=>x.date===date);if(s){fSaveBlng(JSON.parse(JSON.stringify(s.blng)));fMatTab(0);}}
+function loadHistCurveIntoActive(){
+  const sel=document.getElementById('hist-curve-sel');
+  if(!sel)return;
+  const sorted=[...F.histCurves].sort((a,b)=>b.date.localeCompare(a.date));
+  const snap=sorted[+sel.value];
+  if(!snap){alert('No curve selected.');return;}
+  fSaveBlng(JSON.parse(JSON.stringify(snap.blng)));
+  // Save as snapshot too so it appears in historical snapshots list
+  const s=[{date:snap.date,label:snap.label,blng:snap.blng},...F.snaps.filter(x=>x.date!==snap.date)];
+  F.snaps=s;fs('f_snaps',s);
+  fMatTab(0);
+  alert(`Loaded: ${snap.label}\nCurve is now active. Review and click UPDATE MATRIX to recompute.`);
+}
 function parseBLNGcsv(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const lines=e.target.result.split('\n').map(l=>l.split(/[,\t]/));const h=lines[0]||[];let b1=-1,b2=-1,b3=-1;h.forEach((x,i)=>{const t=x.trim().toUpperCase();if(t.includes('BLNG1'))b1=i;if(t.includes('BLNG2'))b2=i;if(t.includes('BLNG3'))b3=i;});const nb=JSON.parse(JSON.stringify(IB));lines.slice(1).forEach((row,ri)=>{if(ri>=24)return;const pv=ci=>{const v=parseFloat((row[ci]||'').replace(/[^0-9.]/g,''));return isNaN(v)?null:v;};if(b1>=0)nb.BLNG1[ri]=pv(b1);if(b2>=0)nb.BLNG2[ri]=pv(b2);if(b3>=0)nb.BLNG3[ri]=pv(b3);});fSaveBlng(nb);fMatTab(0);alert('Curves loaded.');};r.readAsText(f);el.value='';}
 function parseBLNGxls(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const h=(rows[0]||[]).map(x=>String(x).trim().toUpperCase());let b1=-1,b2=-1,b3=-1;h.forEach((x,i)=>{if(x.includes('BLNG1'))b1=i;if(x.includes('BLNG2'))b2=i;if(x.includes('BLNG3'))b3=i;});const nb=JSON.parse(JSON.stringify(IB));rows.slice(1).forEach((row,ri)=>{if(ri>=24)return;const pv=ci=>{const v=parseFloat(String(row[ci]||'').replace(/[^0-9.]/g,''));return isNaN(v)?null:v;};if(b1>=0)nb.BLNG1[ri]=pv(b1);if(b2>=0)nb.BLNG2[ri]=pv(b2);if(b3>=0)nb.BLNG3[ri]=pv(b3);});fSaveBlng(nb);fMatTab(0);alert('Curves loaded from Excel.');}catch(err){alert('Error reading Excel file: '+err.message);}};r.readAsArrayBuffer(f);el.value='';}
 function computeMatrix(){
@@ -4065,20 +4284,6 @@ function computeMatrix(){
     matParams:JSON.parse(JSON.stringify(F.matParams))
   };
   fs('f_mat_audit',F.matAudit);
-}
-function matGetVal(origId,dischId,mi){
-  // Returns override if set, else matrix value
-  const ov=F.matOverrides?.[origId]?.[dischId]?.[mi];
-  if(ov!=null)return{freight:ov,overridden:true};
-  return F.matrix?.[origId]?.[dischId]?.[mi]||null;
-}
-function matSetOverride(origId,dischId,mi,val){
-  if(!F.matOverrides)F.matOverrides={};
-  if(!F.matOverrides[origId])F.matOverrides[origId]={};
-  if(!F.matOverrides[origId][dischId])F.matOverrides[origId][dischId]={};
-  if(val===null)delete F.matOverrides[origId][dischId][mi];
-  else F.matOverrides[origId][dischId][mi]=val;
-  fs('f_mat_overrides',F.matOverrides);
 }
 function toggleDiff(id){F.diffSel=F.diffSel.includes(id)?F.diffSel.filter(x=>x!==id):[...F.diffSel,id];fMatTab(3);}
 // ── PORT MANAGER ─────────────────────────────────────────────────────────────
