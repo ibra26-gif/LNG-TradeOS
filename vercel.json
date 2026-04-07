@@ -2,6 +2,15 @@
   "functions": {
     "api/drive.js": {
       "maxDuration": 30
+    },
+    "api/anthropic.js": {
+      "maxDuration": 30
+    },
+    "api/aggi.js": {
+      "maxDuration": 30
+    },
+    "api/entsog.js": {
+      "maxDuration": 30
     }
   }
 }
