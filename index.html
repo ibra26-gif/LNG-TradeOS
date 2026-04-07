@@ -328,6 +328,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" id="progfill"></div></div><div class="prog-txt" id="progtxt">Initialising...</div></div>
       <div id="parselog"></div>
       <button class="dz-btn" id="fallback-btn" style="display:none" onclick="showManualDrop()">LOAD FILES MANUALLY INSTEAD</button>
+      <button class="dz-btn" style="color:#4fc3f7;border-color:#1e3a5f;margin-top:8px" onclick="fAuthGate(()=>loadPricesFromGmail())">📧 SCRAPE FROM GMAIL</button>
     </div>
     <div id="dz-manual" style="display:none;flex-direction:column;align-items:center;gap:16px">
       <div class="dz" id="dz">
@@ -337,6 +338,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         <button class="dz-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">SELECT FILES</button>
         <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
       </div>
+      <button class="dz-btn" style="color:#4fc3f7;border-color:#1e3a5f" onclick="fAuthGate(()=>loadPricesFromGmail())">📧 SCRAPE FROM GMAIL INSTEAD</button>
       <div class="prog-wrap" id="progwrap" style="display:none"><div class="prog-bar"><div class="prog-fill" id="progfill2"></div></div><div class="prog-txt" id="progtxt2">Parsing...</div></div>
     </div>
   </div>
@@ -352,6 +354,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     <div class="sbar" id="sbar">
       <span class="sdot"></span><span id="stext"></span>
       <button class="sbtn" onclick="document.getElementById('fileInput2').click()" style="margin-left:auto">+ ADD FILES</button>
+      <button class="sbtn" style="color:#4fc3f7" onclick="fAuthGate(()=>loadPricesFromGmail(true))">📧 + GMAIL</button>
       <button class="sbtn" onclick="exportToExcel()" style="color:#22c55e">↓ EXPORT XLSX</button>
       <button class="sbtn red" id="clearCacheBtn">↺ CLEAR CACHE</button>
       <input type="file" id="fileInput2" multiple accept=".xlsx,.xls" style="display:none">
@@ -3114,7 +3117,7 @@ function renderFreight(){
   </div>
   <div class="f-subnav" style="padding:0;gap:0;border-bottom:2px solid #0a0f1e">
     <button class="f-tab${F.mainTab===0?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px;border-right:1px solid #1e3a5f" onclick="fMainTab(0)">① SINGLE VOYAGE CALCULATION</button>
-    <button class="f-tab${F.mainTab===1?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px" onclick="fMainTab(1)">② UPDATE FREIGHT MATRIX</button>
+    <button class="f-tab${F.mainTab===1?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px" onclick="fMainTab(1)">② UPDATE THE CURVES</button>
   </div>
   <div class="f-body" id="f-body"></div>`;
   renderFMain();
@@ -3323,7 +3326,7 @@ function renderSV(){
 }
 function svSyncFromSaved(){F.svBlng=JSON.parse(JSON.stringify(F.blng));F.svParams={...F.params};F.svPosArr=JSON.parse(JSON.stringify(F.posArr));F.svRepoArr=JSON.parse(JSON.stringify(F.repoArr));renderFMain();}
 // ══════════════════════════════════════════════════════════════════════════════
-// SECTION 2 — UPDATE FREIGHT MATRIX
+// SECTION 2 — UPDATE THE CURVES
 // Persistent curves/params — feeds cargo pricing section
 // ══════════════════════════════════════════════════════════════════════════════
 const FMAT_TABS=['FREIGHT CURVES','SHIP PARAMS','MATRIX','DIFFERENTIALS','HISTORICAL FREIGHT CURVES'];
@@ -4007,7 +4010,10 @@ function renderHistorical(){
     <span style="flex:1"></span>
     ${F.histLoading
       ?`<span style="color:#ffb74d;font-size:9px">⟳ ${F.histProgress?.current||'Loading…'}</span>`
-      :`<button class="f-btn on" onclick="fAuthGate(()=>loadHistFromGDrive())">⬇ LOAD FROM GOOGLE DRIVE</button>`}
+      :`<div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="f-btn on" onclick="fAuthGate(()=>loadFreightFromGmail())">📧 SCRAPE FROM GMAIL</button>
+          <button class="f-btn" onclick="fAuthGate(()=>loadHistFromGDrive())">⬇ LOAD FROM DRIVE</button>
+        </div>`}
     ${hasCurves&&!F.histLoading?`<button class="f-btn sm" onclick="fAuthGate(()=>{F.histCurves=[];fs('f_hist_curves',[]);document.getElementById('f-hist-body').innerHTML=renderHistorical()})">CLEAR</button>`:''}
   </div>
   ${F.histLoading&&F.histProgress?.total>0?`
@@ -4032,11 +4038,320 @@ function renderHistorical(){
       ${F.histView==='forward'?fwdView():histView()}`
     :`<div style="background:#0a1628;border:1px dashed #1e3a5f;padding:32px;text-align:center">
         <div style="color:#546e7a;font-size:10px;letter-spacing:1px;margin-bottom:8px">NO HISTORICAL CURVES LOADED</div>
-        <div style="color:#3d5070;font-size:9px">Click "LOAD FROM GOOGLE DRIVE" to scrape all images in the LNG Freight Curves folder</div>
+        <div style="color:#3d5070;font-size:9px">Click "SCRAPE FROM GMAIL" to load all OB LNG EOD Curve emails, or "LOAD FROM DRIVE" to load from the LNG Freight Curves folder</div>
       </div>`}`;
 }
 
 // ── Google Drive scraper: reads LNG Freight Curves folder via Anthropic API ──
+// ══ GMAIL LNG PRICE CURVE SCRAPER ════════════════════════════════════════
+// Reads OB LNG EOD Curve emails, extracts JKM/TTF/NBP/HH prices into financial module
+async function loadPricesFromGmail(addMode=false){
+  // Show progress in dropzone or alert
+  const logEl=document.getElementById('parselog');
+  const titleEl=document.getElementById('dz-auto-title');
+  const prog=(msg)=>{
+    console.log(msg);
+    if(logEl)logEl.innerHTML=`<div style="font-size:9px;color:#4fc3f7;letter-spacing:1px;text-align:center">${msg}</div>`;
+    if(titleEl&&!addMode)titleEl.textContent=msg;
+  };
+
+  function parseDateFromSubject(subj){
+    const m=subj.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+    return m?`${m[3]}-${m[2]}-${m[1]}`:null;
+  }
+
+  try{
+    prog('Searching Gmail for OB LNG EOD Curve emails…');
+
+    // ── STEP 1: List all matching emails ──────────────────────────────────
+    const listResp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:6000,
+        system:`Search Gmail and return ONLY a valid JSON array. No other text.
+Schema: [{"messageId":"...","subject":"...","date":"YYYY-MM-DD"}]
+- Search for emails matching: subject contains "OB LNG" AND ("Curve" OR "CURVE") AND has:attachment
+- Exclude forwarded emails (subject starts with Fwd: or Re:)
+- Extract date from DD.MM.YYYY pattern in subject
+- Include only emails where a date can be parsed
+- Sort by date ascending. Return ONLY the JSON array.`,
+        messages:[{role:'user',content:'Search Gmail for all OB LNG Curve emails with attachments. Return messageId, subject, and date as JSON array.'}],
+        mcp_servers:[{type:'url',url:'https://gmail.mcp.claude.com/mcp',name:'gmail'}]
+      })
+    });
+    const listData=await listResp.json();
+    const listText=(listData.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const emailList=JSON.parse(listText.replace(/```[a-z]*\n?/gi,'').trim());
+    if(!Array.isArray(emailList)||!emailList.length)throw new Error('No OB LNG EOD Curve emails found');
+
+    const valid=emailList.filter(e=>parseDateFromSubject(e.subject||''));
+    // Skip dates already in aD unless addMode=false (full reload)
+    const toProcess=addMode?valid.filter(e=>{
+      const iso=parseDateFromSubject(e.subject);
+      return iso&&!aD[iso];
+    }):valid;
+
+    if(!toProcess.length){
+      alert(`All ${valid.length} email(s) already loaded. Nothing new to import.`);
+      return;
+    }
+
+    prog(`Found ${valid.length} emails · processing ${toProcess.length} new…`);
+    let loaded=0,skipped=0;
+    const errors=[];
+
+    // ── STEP 2: Per email — extract JKM/TTF/NBP/HH monthly prices ─────────
+    for(let idx=0;idx<toProcess.length;idx++){
+      const email=toProcess[idx];
+      const isoDate=parseDateFromSubject(email.subject);
+      prog(`Extracting prices ${idx+1}/${toProcess.length}: ${email.subject}…`);
+
+      try{
+        const exResp=await fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            model:'claude-sonnet-4-20250514',
+            max_tokens:4000,
+            system:`Extract LNG price curve data from the Excel attachment in a Gmail message. Return ONLY valid JSON.
+Schema: {
+  "eurUsd": number,
+  "gbpUsd": number,
+  "prices": [
+    {"pk":"YYYY-MM","JKM":val_or_null,"TTF":val_or_null,"NBP":val_or_null,"HH":val_or_null,"Brent":val_or_null},
+    ...
+  ]
+}
+Rules:
+- Find the Gmail message ID: ${email.messageId}
+- Find the .xlsx attachment (name contains "OB LNG EOD Curve" or similar)
+- Extract EUR/USD and GBP/USD FX rates from the sheet (default 1.09 and 1.27 if not found)
+- Find the monthly price rows (M+1 through M+24):
+  - JKM: $/MMBtu as-is
+  - TTF: raw is in €/MWh → convert: value × 0.293071 × eurUsd = $/MMBtu
+  - NBP: raw is in p/therm → convert: value / 10 × gbpUsd = $/MMBtu
+  - HH: $/MMBtu as-is
+  - Brent: $/bbl as-is
+- pk = "YYYY-MM" format (e.g. "2026-05" for May-26)
+- Exactly 24 rows in chronological order M+1 through M+24
+- Use null for missing values. Return ONLY the JSON object.`,
+            messages:[{role:'user',content:`Read Gmail message ${email.messageId}, find the Excel attachment, extract JKM/TTF/NBP/HH monthly forward price curves M+1 to M+24. Subject: ${email.subject}. Return JSON only.`}],
+            mcp_servers:[{type:'url',url:'https://gmail.mcp.claude.com/mcp',name:'gmail'}]
+          })
+        });
+        const exData=await exResp.json();
+        const exText=(exData.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+        const parsed=JSON.parse(exText.replace(/```[a-z]*\n?/gi,'').trim());
+
+        const prices=parsed.prices||[];
+        const hasData=prices.some(p=>p.JKM!=null||p.TTF!=null||p.NBP!=null||p.HH!=null);
+        if(!hasData){
+          errors.push(`${email.subject}: no price data found — skipped`);
+          skipped++;
+          continue;
+        }
+
+        // Inject into aD in the financial module's format
+        const date=new Date(isoDate+'T12:00:00Z');
+        const rows=prices.map(p=>({
+          pk:p.pk,
+          JKM:p.JKM,
+          TTF:p.TTF,
+          NBP:p.NBP,
+          HH:p.HH,
+          Brent:p.Brent||null,
+          Dated:null,Slope:null,
+          SP_JT:(p.JKM!=null&&p.TTF!=null)?+(p.JKM-p.TTF).toFixed(4):null,
+          SP_JH:(p.JKM!=null&&p.HH!=null)?+(p.JKM-p.HH).toFixed(4):null,
+          SP_TH:(p.TTF!=null&&p.HH!=null)?+(p.TTF-p.HH).toFixed(4):null
+        })).filter(r=>r.pk);
+
+        aD[isoDate]={date,rows};
+        loaded++;
+      }catch(err){
+        errors.push(`${email.subject}: ${err.message}`);
+        skipped++;
+      }
+    }
+
+    if(!loaded)throw new Error('No price curves successfully extracted.');
+
+    // Rebuild sDates and persist
+    sDates=Object.keys(aD).sort();
+    sCache();
+
+    const errMsg=errors.length?`\n⚠ ${errors.length} skipped:\n${errors.slice(0,5).join('\n')}${errors.length>5?`\n...+${errors.length-5} more`:''}`:''
+    alert(`✓ Loaded ${loaded} new price curve(s) from Gmail.\nTotal in database: ${sDates.length} dates.${errMsg}`);
+
+    // Refresh financial trading UI
+    if(typeof showAnalyticsUI==='function'&&!addMode&&loaded>0)showAnalyticsUI();
+    if(typeof initUI==='function'&&!addMode&&loaded>0)initUI();
+    if(typeof rAdd==='function'&&(addMode||sDates.length>loaded))rAdd();
+
+  }catch(err){
+    alert('Gmail price scrape failed: '+err.message);
+    if(logEl)logEl.innerHTML='';
+  }finally{
+    if(titleEl&&!addMode)titleEl.textContent='OB LNG EOD CURVE FILES';
+    if(logEl)logEl.innerHTML='';
+  }
+}
+
+// ══ GMAIL FREIGHT CURVE SCRAPER ══════════════════════════════════════════
+// Reads all OB LNG EOD Curve emails, extracts Excel attachments, parses BLNG1/2/3
+async function loadFreightFromGmail(){
+  F.histLoading=true;
+  F.histProgress={total:0,done:0,current:'Searching Gmail for OB LNG EOD Curve emails…',errors:[]};
+  document.getElementById('f-hist-body').innerHTML=renderHistorical();
+
+  // ── Date from subject "OB LNG EOD Curve DD.MM.YYYY" ──────────────────────
+  function parseDateFromSubject(subj){
+    const m=subj.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+    return m?`${m[3]}-${m[2]}-${m[1]}`:null;
+  }
+
+  // ── Align 24 extracted values to platform ML month labels ─────────────────
+  function alignToML(arr24,isoDate){
+    const assessDate=new Date(isoDate);
+    const m1=new Date(assessDate.getFullYear(),assessDate.getMonth()+1,1);
+    const monthToIdx={};
+    for(let i=0;i<24;i++){
+      const d=new Date(m1.getFullYear(),m1.getMonth()+i,1);
+      const lbl=d.toLocaleString('en-GB',{month:'short'}).slice(0,3)+'-'+String(d.getFullYear()).slice(2);
+      monthToIdx[lbl]=i;
+    }
+    return ML.map(m=>{const idx=monthToIdx[m];return(idx!=null&&arr24[idx]!=null)?arr24[idx]:null;});
+  }
+
+  try{
+    // ── STEP 1: Search Gmail for all OB LNG EOD Curve emails ────────────────
+    const listResp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:6000,
+        system:`Search Gmail and return ONLY a valid JSON array of email objects. No other text.
+Schema: [{"messageId":"...","subject":"...","date":"YYYY-MM-DD"}]
+- Search for emails matching subject pattern: "OB LNG" AND ("Curve" OR "CURVE") AND has:attachment
+- This covers variants: "OB LNG EOD Curve", "OB LNG CURVE", "OBG LNG EOD CURVE" etc.
+- Exclude forwarded emails (subject starts with Fwd: or Re:)
+- Extract date from subject: find DD.MM.YYYY pattern → convert to YYYY-MM-DD
+- Only include emails where a date can be parsed from the subject
+- Return ALL results sorted by date ascending
+- Return ONLY the JSON array`,
+        messages:[{role:'user',content:'Search Gmail for all emails with subject containing "OB LNG" and "Curve" that have attachments. Return their messageId, subject, and parsed date as a JSON array.'}],
+        mcp_servers:[{type:'url',url:'https://gmail.mcp.claude.com/mcp',name:'gmail'}]
+      })
+    });
+    const listData=await listResp.json();
+    const listText=(listData.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const emailList=JSON.parse(listText.replace(/```[a-z]*\n?/gi,'').trim());
+    if(!Array.isArray(emailList)||!emailList.length)throw new Error('No OB LNG EOD Curve emails found');
+
+    // Filter to ones we can parse a date from
+    const valid=emailList.filter(e=>parseDateFromSubject(e.subject||''));
+    // Skip dates already in histCurves
+    const existing=new Set((F.histCurves||[]).map(c=>c.date));
+    const toProcess=valid.filter(e=>!existing.has(parseDateFromSubject(e.subject)));
+
+    F.histProgress.total=toProcess.length;
+    F.histProgress.current=`Found ${valid.length} emails · ${toProcess.length} new to process…`;
+    document.getElementById('f-hist-body').innerHTML=renderHistorical();
+
+    if(!toProcess.length){
+      alert(`All ${valid.length} email(s) already in database. Nothing new to import.`);
+      F.histLoading=false;
+      document.getElementById('f-hist-body').innerHTML=renderHistorical();
+      return;
+    }
+
+    // ── STEP 2: Per email — download Excel, parse BLNG1/2/3 ─────────────────
+    const results=[];
+    for(const email of toProcess){
+      const isoDate=parseDateFromSubject(email.subject);
+      F.histProgress.current=`Extracting ${email.subject} (${F.histProgress.done+1}/${F.histProgress.total})…`;
+      document.getElementById('f-hist-body').innerHTML=renderHistorical();
+
+      try{
+        const exResp=await fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            model:'claude-sonnet-4-20250514',
+            max_tokens:3000,
+            system:`You are extracting BLNG freight curve data from an OB LNG EOD Curve Excel file attached to a Gmail message.
+Return ONLY a valid JSON object. No preamble, no markdown, no explanation.
+Schema: {"BLNG1":[v1,...,v24],"BLNG2":[v1,...,v24],"BLNG3":[v1,...,v24]}
+Rules:
+- Find the Gmail message with ID: ${email.messageId}
+- Find the .xlsx attachment (filename contains "OB LNG EOD Curve" or "OB LNG EOD FFA Curve")
+- The Excel has a table with columns labeled BLNG1, BLNG2, BLNG3
+- Extract rows 174+1_M through 174+24_M (exactly 24 monthly values per curve)
+- Match columns by BLNG label, NOT by basin description (Atlantic/Pacific may vary)
+- Values are integers in $/day. Empty cells → null. Arrays must have EXACTLY 24 elements.
+- EXCLUDE: CURMON row, quarterly rows (Q1-Q5), calendar year rows (Cal26 etc)
+- Return ONLY the JSON object`,
+            messages:[{role:'user',content:`Read Gmail message ID "${email.messageId}", find the .xlsx attachment, extract BLNG1/BLNG2/BLNG3 monthly M+1 to M+24 values. Subject: ${email.subject}. Return JSON only.`}],
+            mcp_servers:[{type:'url',url:'https://gmail.mcp.claude.com/mcp',name:'gmail'}]
+          })
+        });
+        const exData=await exResp.json();
+        const exText=(exData.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+        const parsed=JSON.parse(exText.replace(/```[a-z]*\n?/gi,'').trim());
+
+        // Check if we got any actual curve data (some emails may not have BLNG curves)
+        const hasData=(parsed.BLNG1||[]).some(v=>v!=null)||
+                       (parsed.BLNG2||[]).some(v=>v!=null)||
+                       (parsed.BLNG3||[]).some(v=>v!=null);
+        if(!hasData){
+          F.histProgress.errors.push(`${email.subject}: no BLNG curve data found — skipped`);
+          F.histProgress.done++;
+          continue;
+        }
+
+        results.push({
+          date:isoDate,
+          label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,
+          blng:{
+            BLNG1:alignToML(parsed.BLNG1||Array(24).fill(null),isoDate),
+            BLNG2:alignToML(parsed.BLNG2||Array(24).fill(null),isoDate),
+            BLNG3:alignToML(parsed.BLNG3||Array(24).fill(null),isoDate)
+          }
+        });
+      }catch(fileErr){
+        F.histProgress.errors.push(`${email.subject}: ${fileErr.message}`);
+      }
+      F.histProgress.done++;
+    }
+
+    if(!results.length)throw new Error('No curves successfully extracted.');
+
+    // Merge with existing, sort by date
+    const merged=[...(F.histCurves||[]),...results].sort((a,b)=>a.date.localeCompare(b.date));
+    // Deduplicate by date (keep newer extraction)
+    const deduped=Object.values(Object.fromEntries(merged.map(c=>[c.date,c])));
+    deduped.sort((a,b)=>a.date.localeCompare(b.date));
+
+    F.histCurves=deduped;
+    fs('f_hist_curves',deduped);
+    F.histSelDate=deduped.length-1;
+    F.histProgress.current='';
+
+    const errMsg=F.histProgress.errors.length?`\n⚠ ${F.histProgress.errors.length} email(s) failed:\n${F.histProgress.errors.join('\n')}`:''
+    alert(`✓ Loaded ${results.length} new curve(s) from Gmail.\nTotal in database: ${deduped.length}.${errMsg}`);
+
+  }catch(err){
+    F.histProgress.current='';
+    alert('Gmail scrape failed: '+err.message);
+  }finally{
+    F.histLoading=false;
+    document.getElementById('f-hist-body').innerHTML=renderHistorical();
+  }
+}
+
 async function loadHistFromGDrive(){
   F.histLoading=true;
   F.histProgress={total:0,done:0,current:'',errors:[]};
