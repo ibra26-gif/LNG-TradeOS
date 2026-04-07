@@ -4120,6 +4120,9 @@ function renderHistorical(){
             : `<span style="font-size:9px;color:#546e7a;padding:4px 8px;border:1px dashed #1e3a5f">📧 Gmail scrape — available in Claude.ai only</span>`}
           <button class="f-btn on" onclick="document.getElementById('hist-xls-upload').click()">📊 BATCH UPLOAD EXCEL</button>
           <input type="file" id="hist-xls-upload" accept=".xlsx,.xls" multiple style="display:none" onchange="parseHistExcel(this)">
+          <button class="f-btn" onclick="document.getElementById('hist-json-upload').click()">⬆ IMPORT JSON</button>
+          <input type="file" id="hist-json-upload" accept=".json" style="display:none" onchange="importHistJson(this)">
+          <button class="f-btn" onclick="exportHistJson()">⬇ EXPORT JSON</button>
           <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-img-upload').click())">📁 UPLOAD IMAGES</button>
           <input type="file" id="hist-img-upload" accept=".png,.jpg,.jpeg" multiple style="display:none" onchange="parseHistImages(this)">
         </div>`}
@@ -4461,7 +4464,39 @@ Rules:
   }
 }
 
-// ── Batch Excel upload → historical freight curves (no API needed) ────────────
+function importHistJson(el){
+  const f=el.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      const arr=Array.isArray(data)?data:[data];
+      const valid=arr.filter(s=>s.date&&s.blng&&s.blng.BLNG1&&s.blng.BLNG2&&s.blng.BLNG3);
+      if(!valid.length){alert('No valid curve entries found in JSON file.');return;}
+      const existing=F.histCurves||[];
+      const existDates=new Set(existing.map(e=>e.date));
+      const merged=[...existing,...valid.filter(s=>!existDates.has(s.date))];
+      merged.sort((a,b)=>a.date.localeCompare(b.date));
+      F.histCurves=merged;
+      fs('f_hist_curves',merged);
+      F.histSelDate=merged.length-1;
+      alert(`✓ Imported ${valid.length} curve(s). Total in database: ${merged.length}.`);
+      fMatTab(4);
+    }catch(err){alert('Error reading JSON: '+err.message);}
+  };
+  r.readAsText(f);el.value='';
+}
+
+function exportHistJson(){
+  if(!F.histCurves||!F.histCurves.length){alert('No historical curves to export.');return;}
+  const blob=new Blob([JSON.stringify(F.histCurves,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`lng_freight_curves_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();URL.revokeObjectURL(a.href);
+}
+
+
 // Reads multiple OB LNG EOD Curve .xlsx files, extracts BLNG1/2/3 M+1→M+24
 // Date parsed from filename: "OB LNG EOD Curve DD.MM.YYYY.xlsx"
 async function parseHistExcel(el){
