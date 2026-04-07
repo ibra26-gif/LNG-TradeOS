@@ -4195,7 +4195,6 @@ List ONLY image files (jpg, jpeg, png). No other text or markdown.`,
     document.getElementById('f-hist-body').innerHTML=renderHistorical();
   }
 }
-}
 // ── Persistent param helpers (Section 2 only) ────────────────────────────────
 function pChange(k,v){F.params[k]=v;fSaveParams(F.params);}
 function blngChange(el){const c=el.dataset.blng,i=+el.dataset.i;F.blng[c][i]=el.value===''?null:+el.value;fSaveBlng(F.blng);}
