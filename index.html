@@ -4455,16 +4455,37 @@ async function parseHistImages(el){
   const files=[...el.files].filter(f=>f.name.match(/\.(png|jpg|jpeg)$/i));
   if(!files.length){alert('No PNG/JPG files selected.');el.value='';return;}
 
+  // ── STEP 0: Read ALL files as base64 BEFORE touching the DOM ─────────────
+  // Critical: DOM re-render destroys the file input, invalidating File objects
+  let fileData;
+  try{
+    fileData=await Promise.all(files.map(file=>new Promise((res,rej)=>{
+      const reader=new FileReader();
+      reader.onload=e=>res({
+        name:file.name,
+        type:file.type||'image/png',
+        base64:e.target.result.split(',')[1]
+      });
+      reader.onerror=()=>rej(new Error(`Cannot read ${file.name}`));
+      reader.readAsDataURL(file);
+    })));
+  }catch(readErr){
+    alert('Failed to read file(s): '+readErr.message);
+    el.value='';
+    return;
+  }
+  el.value=''; // clear input before any DOM changes
+
+  // ── NOW safe to manipulate DOM ────────────────────────────────────────────
   F.histLoading=true;
-  F.histProgress={total:files.length,done:0,current:'',errors:[]};
+  F.histProgress={total:fileData.length,done:0,current:'',errors:[]};
   document.getElementById('f-hist-body').innerHTML=renderHistorical();
 
   function parseDateFromName(name){
-    // Match DD.MM.YYYY with optional spaces: "OB LNG FFA Curve  04.02.2026.png"
     const m=name.match(/(\d{2})\.(\d{2})\.(\d{4})/);
     return m?`${m[3]}-${m[2]}-${m[1]}`:null;
   }
-  function alignToML(arr24,isoDate){
+  function alignToML(parsed,isoDate){
     const assessDate=new Date(isoDate);
     const m1=new Date(assessDate.getFullYear(),assessDate.getMonth()+1,1);
     const monthToIdx={};
@@ -4475,30 +4496,25 @@ async function parseHistImages(el){
     }
     const pick=(arr,m)=>{const idx=monthToIdx[m];return(idx!=null&&arr[idx]!=null)?arr[idx]:null;};
     return{
-      BLNG1:ML.map(m=>pick(arr24.BLNG1||[],m)),
-      BLNG2:ML.map(m=>pick(arr24.BLNG2||[],m)),
-      BLNG3:ML.map(m=>pick(arr24.BLNG3||[],m))
+      BLNG1:ML.map(m=>pick(parsed.BLNG1||[],m)),
+      BLNG2:ML.map(m=>pick(parsed.BLNG2||[],m)),
+      BLNG3:ML.map(m=>pick(parsed.BLNG3||[],m))
     };
   }
 
   const results=[];
-  for(const file of files){
-    const isoDate=parseDateFromName(file.name);
-    if(!isoDate){F.histProgress.errors.push(`${file.name}: cannot parse date from filename`);F.histProgress.done++;continue;}
+  for(const fd of fileData){
+    const isoDate=parseDateFromName(fd.name);
+    if(!isoDate){
+      F.histProgress.errors.push(`${fd.name}: cannot parse date from filename`);
+      F.histProgress.done++;
+      continue;
+    }
 
-    F.histProgress.current=`Extracting ${file.name} (${F.histProgress.done+1}/${F.histProgress.total})…`;
+    F.histProgress.current=`Extracting ${fd.name} (${F.histProgress.done+1}/${F.histProgress.total})…`;
     document.getElementById('f-hist-body').innerHTML=renderHistorical();
 
     try{
-      // Read file as base64
-      const base64=await new Promise((res,rej)=>{
-        const reader=new FileReader();
-        reader.onload=e=>res(e.target.result.split(',')[1]);
-        reader.onerror=rej;
-        reader.readAsDataURL(file);
-      });
-      const mimeType=file.type||'image/png';
-
       const resp=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -4507,16 +4523,15 @@ async function parseHistImages(el){
           max_tokens:2000,
           system:`Extract BLNG freight curve data from this OB FFA Rates table image. Return ONLY valid JSON:
 {"BLNG1":[v1,...,v24],"BLNG2":[v1,...,v24],"BLNG3":[v1,...,v24]}
-Rules:
 - Find columns BLNG1/BLNG2/BLNG3 by header label
-- Extract rows 174+1_M through 174+24_M (exactly 24 monthly values per curve, in $/day)
-- Match by BLNG label number, NOT basin name (Atlantic/Pacific labels vary between files)
+- Extract rows 174+1_M through 174+24_M (exactly 24 values per curve, in $/day)
+- Match by BLNG label number, NOT basin name (Atlantic/Pacific labels vary)
 - Empty cells → null. Arrays must have EXACTLY 24 elements.
 - EXCLUDE: CURMON row, quarterly rows, calendar year rows
 - Return ONLY the JSON object`,
           messages:[{role:'user',content:[
-            {type:'image',source:{type:'base64',media_type:mimeType,data:base64}},
-            {type:'text',text:`Extract BLNG1, BLNG2, BLNG3 M+1 to M+24 rates from this table. Observation date: ${isoDate}. JSON only.`}
+            {type:'image',source:{type:'base64',media_type:fd.type,data:fd.base64}},
+            {type:'text',text:`Extract BLNG1, BLNG2, BLNG3 M+1 to M+24 rates. Observation date: ${isoDate}. JSON only.`}
           ]}]
         })
       });
@@ -4524,16 +4539,14 @@ Rules:
       const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
       const parsed=JSON.parse(text.replace(/```[a-z]*\n?/gi,'').trim());
       const hasData=(parsed.BLNG1||[]).some(v=>v!=null)||(parsed.BLNG2||[]).some(v=>v!=null)||(parsed.BLNG3||[]).some(v=>v!=null);
-      if(!hasData){F.histProgress.errors.push(`${file.name}: no BLNG data found`);F.histProgress.done++;continue;}
-      const aligned=alignToML(parsed,isoDate);
-      results.push({date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:aligned});
+      if(!hasData){F.histProgress.errors.push(`${fd.name}: no BLNG data found`);F.histProgress.done++;continue;}
+      results.push({date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:alignToML(parsed,isoDate)});
     }catch(err){
-      F.histProgress.errors.push(`${file.name}: ${err.message}`);
+      F.histProgress.errors.push(`${fd.name}: ${err.message}`);
     }
     F.histProgress.done++;
   }
 
-  // Merge
   const existing=F.histCurves||[];
   const existDates=new Set(existing.map(e=>e.date));
   const merged=[...existing,...results.filter(r=>!existDates.has(r.date))];
@@ -4542,10 +4555,9 @@ Rules:
   fs('f_hist_curves',merged);
   F.histSelDate=merged.length-1;
   F.histProgress.current='';
-  const errMsg=F.histProgress.errors.length?`\n⚠ ${F.histProgress.errors.length} skipped: ${F.histProgress.errors.join('; ')}`:''
-  alert(`✓ Extracted ${results.length} curve(s) from ${files.length} image(s).${errMsg}`);
+  const errMsg=F.histProgress.errors.length?`\n⚠ ${F.histProgress.errors.length} skipped:\n${F.histProgress.errors.slice(0,5).join('\n')}`:''
+  alert(`✓ Extracted ${results.length} curve(s) from ${fileData.length} image(s).${errMsg}`);
   F.histLoading=false;
-  el.value='';
   document.getElementById('f-hist-body').innerHTML=renderHistorical();
 }
 
