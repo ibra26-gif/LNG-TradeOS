@@ -2931,6 +2931,43 @@ const NM={
 };
 const DEF_P={shipSize:174000,energyFactor:22.88,loadFactor:98.5,bogRate:0.15,speedLaden:19.5,speedBallast:19.5,hfoLaden:90,hfoBallast:85,hfoPrice:550,lsmgoLaden:0,lsmgoBallast:0,lsmgoDischarge:8,pilotFuel:1,lsmgoPrice:750,cooldownDays:0.25,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,loadTimeDays:0.25,bufferDays:2,dischargeDays:0.25,heelVolume:3000,heelCost:0,co2Mgo:3.206,co2Hfo:3.114,etsCoverage:1.0,euaPrice:80.206,euaDec:{2026:80.206,2027:75.0,2028:70.0},eurUsd:1.09,loadDate:''};
 
+// ── Per-basin matrix params (3 independent sets, one per rate curve) ──────────
+const DEF_BASIN_P={
+  BLNG2:{// ATLANTIC BASIN
+    shipSize:174000,energyFactor:22.88,loadFactor:98.5,bogRate:0.15,
+    speedLaden:16.5,speedBallast:16.5,
+    hfoLaden:90,hfoBallast:85,lsmgoLaden:2,lsmgoBallast:2,lsmgoDischarge:5,pilotFuel:1,
+    hfoPrice:550,lsmgoPrice:750,
+    loadTimeDays:1.0,dischargeDays:1.5,bufferDays:2,cooldownDays:0.5,cooldownEnabled:true,
+    heelVolume:3000,heelCost:0,
+    co2Hfo:3.114,co2Mgo:3.206,etsCoverage:1.0,
+    euaDec:{2026:80,2027:75,2028:70},eurUsd:1.09,
+    warRisk:0,suezCanal:0,panamaCanal:0
+  },
+  BLNG3:{// X-BASIN (Cross-Basin / Middle East routes)
+    shipSize:173000,energyFactor:22.88,loadFactor:98.5,bogRate:0.15,
+    speedLaden:16.5,speedBallast:16.5,
+    hfoLaden:90,hfoBallast:85,lsmgoLaden:2,lsmgoBallast:2,lsmgoDischarge:5,pilotFuel:1,
+    hfoPrice:550,lsmgoPrice:750,
+    loadTimeDays:1.0,dischargeDays:1.5,bufferDays:2,cooldownDays:0.5,cooldownEnabled:true,
+    heelVolume:3000,heelCost:0,
+    co2Hfo:3.114,co2Mgo:3.206,etsCoverage:0,
+    euaDec:{2026:0,2027:0,2028:0},eurUsd:1.09,
+    warRisk:250000,suezCanal:0,panamaCanal:0
+  },
+  BLNG1:{// PACIFIC BASIN
+    shipSize:173000,energyFactor:22.88,loadFactor:98.5,bogRate:0.15,
+    speedLaden:16.5,speedBallast:16.5,
+    hfoLaden:90,hfoBallast:85,lsmgoLaden:2,lsmgoBallast:2,lsmgoDischarge:5,pilotFuel:1,
+    hfoPrice:550,lsmgoPrice:750,
+    loadTimeDays:1.0,dischargeDays:1.5,bufferDays:2,cooldownDays:0.5,cooldownEnabled:true,
+    heelVolume:3000,heelCost:0,
+    co2Hfo:3.114,co2Mgo:3.206,etsCoverage:0,
+    euaDec:{2026:0,2027:0,2028:0},eurUsd:1.09,
+    warRisk:0,suezCanal:0,panamaCanal:0
+  }
+};
+
 let F={blng:null,params:null,snaps:null,matrix:null,matrixTs:null,blngTs:null,extraD:null,posArr:null,repoArr:null,
   // Matrix section sub-tabs
   matSubTab:0,
@@ -2948,6 +2985,7 @@ function fg(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}c
 function fs(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 function fSaveBlng(b){F.blng=b;const ts=new Date().toISOString();fs('f_blng',b);localStorage.setItem('f_blng_ts',ts);F.blngTs=ts;}
 function fSaveParams(p){F.params=p;fs('f_params',p);}
+function fSaveMatParams(){fs('f_mat_params',F.matParams);}
 function fSavePR(){fs('f_posArr',F.posArr);fs('f_repoArr',F.repoArr);}
 function allD(){return[...BASE_D,...(F.extraD||[])];}
 function allS(){return[...SUPPLY,...(F.extraS||[])];}
@@ -2976,9 +3014,18 @@ function initFreight(){
   F.blng=fg('f_blng',JSON.parse(JSON.stringify(IB)));
   F.params={...DEF_P,...fg('f_params',{})};
   // ── Migrate old stored values: bogRate and loadFactor were previously stored as fractions ──
-  if(F.params.bogRate<0.05)F.params.bogRate=F.params.bogRate*100; // 0.0015→0.15
-  if(F.params.loadFactor<5)F.params.loadFactor=F.params.loadFactor*100; // 0.985→98.5
-  if(F.params.etsCoverage<=1&&F.params.etsCoverage>0)F.params.etsCoverage=F.params.etsCoverage; // stays 0-1
+  if(F.params.bogRate<0.05)F.params.bogRate=F.params.bogRate*100;
+  if(F.params.loadFactor<5)F.params.loadFactor=F.params.loadFactor*100;
+  if(F.params.etsCoverage<=1&&F.params.etsCoverage>0)F.params.etsCoverage=F.params.etsCoverage;
+  // ── Per-basin matrix params ──────────────────────────────────────────────────
+  const savedMP=fg('f_mat_params',{});
+  F.matParams={
+    BLNG2:{...DEF_BASIN_P.BLNG2,...(savedMP.BLNG2||{})},
+    BLNG3:{...DEF_BASIN_P.BLNG3,...(savedMP.BLNG3||{})},
+    BLNG1:{...DEF_BASIN_P.BLNG1,...(savedMP.BLNG1||{})}
+  };
+  // Ensure euaDec object exists on each
+  ['BLNG1','BLNG2','BLNG3'].forEach(c=>{if(!F.matParams[c].euaDec)F.matParams[c].euaDec={...DEF_BASIN_P[c].euaDec};});
   F.snaps=fg('f_snaps',[{date:'2026-04-02',label:'OB FFA 02/04/2026',blng:JSON.parse(JSON.stringify(IB))}]);
   F.matrix=fg('f_matrix',null);
   F.matrixTs=localStorage.getItem('f_matrix_ts')||null;
@@ -2996,6 +3043,15 @@ function initFreight(){
   F.svRepoArr=JSON.parse(JSON.stringify(F.repoArr));
   F.mainTab=fg('f_mainTab',0);
   F.matSubTab=0;
+  // Matrix view state
+  F.matView='snapshot';      // snapshot | strip | delta | overrides
+  F.matSnapMonth=0;          // selected month index for snapshot
+  F.matStripOrig='sabine';   // strip view selectors
+  F.matStripDisch='rotterdam';
+  F.matDrillCell=null;       // {origId, dischId, mi} for drill panel
+  F.matPrevMatrix=fg('f_matrix_prev',null);
+  F.matAudit=fg('f_mat_audit',null);
+  F.matOverrides=fg('f_mat_overrides',{});  // [origId][dischId][mi]=$/MMBtu
   // Historical Freight Curves (Google Drive loaded)
   F.histCurves=fg('f_hist_curves',[]);
   F.histView='forward';
@@ -3015,7 +3071,7 @@ function calcF(orig,disch,mi,blngOvr,paramsOvr,posOvr,repoOvr){
   const curve=sp.curve,rate=blng[curve]?.[mi];if(!rate)return null;
   const pArr=posOvr||F.posArr,rArr=repoOvr||F.repoArr;
   const posPct=(pArr[curve]?.[mi]||0)/100,repoPct=(rArr[curve]?.[mi]||0)/100;
-  const p=paramsOvr||F.params;
+  const p=paramsOvr||(F.matParams?F.matParams[curve]:F.params)||F.params;
   const voyDays=nm/(p.speedLaden*24);
   const coolDays=p.cooldownEnabled?p.cooldownDays:0,gas=p.gasUpEnabled?p.gasUpDays:0;
   const totalDays=coolDays+gas+p.loadTimeDays+p.bufferDays+voyDays+p.dischargeDays;
@@ -3030,6 +3086,8 @@ function calcF(orig,disch,mi,blngOvr,paramsOvr,posOvr,repoOvr){
   const lsmgo=(p.lsmgoLaden+p.lsmgoBallast)*voyDays*p.lsmgoPrice+(p.lsmgoDischarge*p.dischargeDays+p.pilotFuel)*p.lsmgoPrice;
   const port=sp.loadCost+dp.dischCost;
   const heel=p.heelVolume*(p.heelCost||0);
+  const warRisk=(p.warRisk||0)*totalDays;
+  const canalCosts=(p.suezCanal||0)+(p.panamaCanal||0);
   // EUA: use Dec contract for the delivery year
   let ets=0;
   if(dp.euEts){
@@ -3038,8 +3096,8 @@ function calcF(orig,disch,mi,blngOvr,paramsOvr,posOvr,repoOvr){
     const co2=(p.hfoLaden+p.hfoBallast)*voyDays*p.co2Hfo+(p.lsmgoLaden+p.lsmgoBallast)*voyDays*p.co2Mgo;
     ets=co2*p.etsCoverage*euaP*p.eurUsd;
   }
-  const total=hire+cooldown+pos+repo+hfo+lsmgo+port+heel+ets;
-  return{freight:total/estDisch,total,hire,cooldown,pos,repo,hfo,lsmgo,port,heel,ets,totalDays,voyDays,hireDays,coolDays,estDisch,bogLoss,loaded,rate,nm,sp,dp,curve};
+  const total=hire+cooldown+pos+repo+hfo+lsmgo+port+heel+ets+warRisk+canalCosts;
+  return{freight:total/estDisch,total,hire,cooldown,pos,repo,hfo,lsmgo,port,heel,ets,warRisk,canalCosts,totalDays,voyDays,hireDays,coolDays,estDisch,bogLoss,loaded,rate,nm,sp,dp,curve};
 }
 
 // ── TOP-LEVEL RENDER ──────────────────────────────────────────────────────────
@@ -3161,8 +3219,8 @@ function renderSV(){
           ['Total Voyage Days',nm?totalDays:'-','days'],
           ['Laden Transit Days',nm?voyDays:'-','days'],
           ['Load Date',F.svLoadDate||'-',''],
-          ['Load Port Cost ($)',sp.loadCost.toLocaleString(),'$'],
           ['Est. Discharge Date',dischDate,''],
+          ['Load Port Cost ($)',sp.loadCost.toLocaleString(),'$'],
           ['Discharge Port Cost ($)',dp.dischCost.toLocaleString(),'$'],
           ['EU ETS Applicable',dp.euEts?'YES':'NO',''],
           ['Ship Loaded (Mmbtu)',nm?Math.round(loaded).toLocaleString():'-','Mmbtu'],
@@ -3314,43 +3372,432 @@ function renderMatCurves(){
     <div style="margin-top:14px"><button class="f-btn on" onclick="computeMatrix();fMatTab(2)">UPDATE MATRIX →</button></div>`;
 }
 function renderMatParams(){
-  const secs=[
-    {t:'VESSEL',f:[{k:'shipSize',l:'Ship Size (cbm)',s:1000},{k:'energyFactor',l:'Energy Factor (Mmbtu/m3)',s:0.01},{k:'loadFactor',l:'Load Factor (% capacity)',s:0.1},{k:'bogRate',l:'BOG Rate (%/day)',s:0.01},{k:'speedLaden',l:'Speed Laden (kn)',s:0.5},{k:'speedBallast',l:'Speed Ballast (kn)',s:0.5}]},
-    {t:'FUEL CONSUMPTION (t/day)',f:[{k:'hfoLaden',l:'HFO Laden',s:1},{k:'hfoBallast',l:'HFO Ballast',s:1},{k:'lsmgoLaden',l:'LSMGO Laden',s:0.5},{k:'lsmgoBallast',l:'LSMGO Ballast',s:0.5},{k:'lsmgoDischarge',l:'LSMGO Discharge',s:0.5},{k:'pilotFuel',l:'Pilot Fuel (t/voy)',s:0.5}]},
-    {t:'FUEL PRICES',f:[{k:'hfoPrice',l:'HFO ($/t)',s:10},{k:'lsmgoPrice',l:'LSMGO ($/t)',s:10}]},
-    {t:'VOYAGE TIMES (days)',f:[{k:'cooldownDays',l:'Cooldown',s:0.05},{k:'loadTimeDays',l:'Load Time',s:0.05},{k:'bufferDays',l:'Buffer',s:0.5},{k:'dischargeDays',l:'Discharge',s:0.05}]},
-    {t:'HEEL',f:[{k:'heelVolume',l:'Volume (m3)',s:100},{k:'heelCost',l:'Cost ($/m3)',s:0.5}]},
-    {t:'EU ETS',f:[{k:'co2Mgo',l:'CO2/t LSMGO',s:0.01},{k:'co2Hfo',l:'CO2/t HFO',s:0.01},{k:'etsCoverage',l:'Coverage (0-1)',s:0.05},{k:'euaPrice',l:'EUA ($/t)',s:1},{k:'eurUsd',l:'EUR/USD',s:0.01}]}
+  const BASINS=[
+    {key:'BLNG2',label:'BLNG2 — ATLANTIC',color:'#81c784'},
+    {key:'BLNG3',label:'BLNG3 — X-BASIN',color:'#ffb74d'},
+    {key:'BLNG1',label:'BLNG1 — PACIFIC',color:'#4fc3f7'}
   ];
-  return`<div class="f-sec">SHIP PARAMETERS — SAVED (feed the matrix)</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="f-btn${F.params.cooldownEnabled?' on':''}" onclick="pChange('cooldownEnabled',!F.params.cooldownEnabled);fMatTab(1)">COOLDOWN ${F.params.cooldownEnabled?'ON':'OFF'}</button>
-      <button class="f-btn${F.params.gasUpEnabled?' on':''}" onclick="pChange('gasUpEnabled',!F.params.gasUpEnabled);fMatTab(1)">GAS UP ${F.params.gasUpEnabled?'ON':'OFF'}</button>
+  // Field definitions: [key, label, step, type]
+  // type: 'num'=plain, 'pct'=×100 display, 'eua26/27/28'=euaDec sub-key
+  const FIELDS=[
+    {k:'shipSize',      l:'Ship Size (m3)',             s:1000,  t:'num'},
+    {k:'energyFactor',  l:'Energy Factor (Mmbtu/m3)',   s:0.01,  t:'num'},
+    {k:'loadFactor',    l:'Load Factor (% capacity)',    s:0.1,   t:'num'},
+    {k:'bogRate',       l:'BOG Rate (%/day)',             s:0.01,  t:'num'},
+    {k:'speedLaden',    l:'Speed Laden (kn)',             s:0.5,   t:'num'},
+    {k:'speedBallast',  l:'Speed Ballast (kn)',           s:0.5,   t:'num'},
+    null,// divider
+    {k:'hfoLaden',      l:'Laden FO (t/day)',             s:1,     t:'num'},
+    {k:'lsmgoLaden',    l:'Laden LSMGO (t/day)',          s:0.5,   t:'num'},
+    {k:'hfoBallast',    l:'Ballast FO (t/day)',           s:1,     t:'num'},
+    {k:'lsmgoBallast',  l:'Ballast LSMGO (t/day)',        s:0.5,   t:'num'},
+    {k:'lsmgoDischarge',l:'Discharge LSMGO (t/day)',      s:0.5,   t:'num'},
+    {k:'pilotFuel',     l:'Pilot Fuel (t/voy)',           s:0.5,   t:'num'},
+    {k:'hfoPrice',      l:'HFO Price ($/t)',              s:10,    t:'num'},
+    {k:'lsmgoPrice',    l:'LSMGO Price ($/t)',            s:10,    t:'num'},
+    null,
+    {k:'loadTimeDays',  l:'Load Port Days',              s:0.25,  t:'num'},
+    {k:'dischargeDays', l:'Discharge Port Days',         s:0.25,  t:'num'},
+    {k:'bufferDays',    l:'Buffer Days',                 s:0.5,   t:'num'},
+    {k:'cooldownDays',  l:'Cooldown Days',               s:0.25,  t:'num'},
+    {k:'heelVolume',    l:'Heel Retention (m3)',         s:100,   t:'num'},
+    {k:'heelCost',      l:'Heel Cost ($/m3)',            s:0.5,   t:'num'},
+    null,
+    {k:'co2Hfo',        l:'CO2 Factor HFO',              s:0.001, t:'num'},
+    {k:'co2Mgo',        l:'CO2 Factor LSMGO',            s:0.001, t:'num'},
+    {k:'etsCoverage',   l:'EU ETS Coverage (0–1)',       s:0.05,  t:'num'},
+    {k:'eua26',         l:'EUA Dec-26 (€/t)',            s:1,     t:'eua',yr:2026},
+    {k:'eua27',         l:'EUA Dec-27 (€/t)',            s:1,     t:'eua',yr:2027},
+    {k:'eua28',         l:'EUA Dec-28 (€/t)',            s:1,     t:'eua',yr:2028},
+    {k:'eurUsd',        l:'EUR/USD',                     s:0.01,  t:'num'},
+    null,
+    {k:'warRisk',       l:'War Risk Premium ($/day)',    s:10000, t:'num'},
+    {k:'suezCanal',     l:'Suez Canal Transit ($)',      s:10000, t:'num'},
+    {k:'panamaCanal',   l:'Panama Canal Transit ($)',    s:10000, t:'num'},
+  ];
+
+  const mp=f=>`onchange="mpChange('${f.key}','${f.k}',parseFloat(this.value)||0)"`;
+  const mpEua=f=>`onchange="mpChangeEua('${f.key}',${f.yr},parseFloat(this.value)||0)"`;
+
+  const getVal=(bp,f)=>{
+    if(f.t==='eua')return(bp.euaDec&&bp.euaDec[f.yr]!=null)?bp.euaDec[f.yr]:0;
+    return bp[f.k]??0;
+  };
+
+  const cellStyle='padding:3px 4px;border-bottom:1px solid #0d1526;';
+  const inputStyle=(color)=>`width:100%;text-align:right;color:${color||'#c8d6e5'};background:transparent;border:none;font-family:IBM Plex Mono,monospace;font-size:10px;outline:none;`;
+
+  const headerRow=`<tr style="background:#070b14">
+    <th style="padding:6px 8px;font-size:9px;color:#546e7a;text-align:left;font-weight:400;min-width:160px">PARAMETER</th>
+    ${BASINS.map(b=>`<th style="padding:6px 8px;font-size:9px;color:${b.color};text-align:right;min-width:120px;letter-spacing:1px">${b.label}</th>`).join('')}
+  </tr>`;
+
+  const dataRows=FIELDS.map(f=>{
+    if(!f)return`<tr><td colspan="4" style="padding:4px 0;border-bottom:1px solid #1e3a5f;background:#070b14"></td></tr>`;
+    return`<tr style="background:transparent">
+      <td style="${cellStyle}font-size:9px;color:#546e7a">${f.l}</td>
+      ${BASINS.map(b=>{
+        const bp=F.matParams[b.key];
+        const v=getVal(bp,f);
+        const onch=f.t==='eua'?`mpChangeEua('${b.key}',${f.yr},parseFloat(this.value)||0)`:
+                                `mpChange('${b.key}','${f.k}',parseFloat(this.value)||0)`;
+        const col=b.color;
+        return`<td style="${cellStyle}text-align:right">
+          <input type="number" step="${f.s}" value="${v}" style="${inputStyle(col)}"
+            onchange="${onch}" onfocus="this.style.background='#0d1e36'" onblur="this.style.background='transparent'">
+        </td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div class="f-sec" style="margin:0;border:0;padding:0">VESSEL &amp; COST PARAMETERS — per rate band (feeds matrix only)</div>
+    <div style="display:flex;gap:8px">
+      <button class="f-btn" onclick="mpReset()">RESET TO DEFAULTS</button>
+      <button class="f-btn on" onclick="computeMatrix();fMatTab(2)">UPDATE MATRIX →</button>
     </div>
-    ${secs.map(sec=>`<div style="margin-bottom:12px"><div class="f-sec">${sec.t}</div><div class="f-gauto">${sec.f.map(f=>{
-      const val=f.pct?(F.params[f.k]*100).toFixed(4):F.params[f.k];
-      const onch=f.pct?`pChange('${f.k}',parseFloat(this.value)/100||0)`:`pChange('${f.k}',parseFloat(this.value)||0)`;
-      return`<div><span class="f-lbl">${f.l}</span><input class="f-inp" type="number" step="${f.s}" value="${val}" onchange="${onch}"></div>`;
-    }).join('')}</div></div>`).join('')}
-    <div style="margin-top:6px"><button class="f-btn on" onclick="computeMatrix();fMatTab(2)">UPDATE MATRIX →</button></div>`;
+  </div>
+  <div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;font-family:IBM Plex Mono,monospace">
+    <thead>${headerRow}</thead>
+    <tbody>${dataRows}</tbody>
+  </table>
+  </div>
+  <div style="margin-top:10px;color:#3d5070;font-size:9px;line-height:1.8">
+    BLNG2 = Atlantic routes (EU ETS applies) · BLNG3 = Cross-Basin / Middle East (War Risk applies) · BLNG1 = Pacific routes<br>
+    Canal transit = fixed cost per voyage · War Risk = $/day × total voyage days · Cooldown always applied for matrix
+  </div>`;
 }
+function mpChange(curve,key,val){F.matParams[curve][key]=val;fSaveMatParams();}
+function mpChangeEua(curve,yr,val){if(!F.matParams[curve].euaDec)F.matParams[curve].euaDec={};F.matParams[curve].euaDec[yr]=val;fSaveMatParams();}
+function mpReset(){F.matParams={BLNG2:{...DEF_BASIN_P.BLNG2,euaDec:{...DEF_BASIN_P.BLNG2.euaDec}},BLNG3:{...DEF_BASIN_P.BLNG3,euaDec:{...DEF_BASIN_P.BLNG3.euaDec}},BLNG1:{...DEF_BASIN_P.BLNG1,euaDec:{...DEF_BASIN_P.BLNG1.euaDec}}};fSaveMatParams();fMatTab(1);}
 function renderMatrix(){
+  if(!F.matrix)return`
+    <div style="background:#0a1628;border:1px dashed #1e3a5f;padding:32px;text-align:center">
+      <div style="color:#546e7a;font-size:10px;letter-spacing:1px;margin-bottom:8px">NO MATRIX COMPUTED</div>
+      <div style="color:#3d5070;font-size:9px;margin-bottom:16px">Set your curves and params, then click UPDATE MATRIX</div>
+      <button class="f-btn on" onclick="computeMatrix();fMatTab(2)">COMPUTE MATRIX NOW</button>
+    </div>`;
   const stale=F.matrixTs&&F.blngTs&&F.blngTs>F.matrixTs;
-  const regions=[...new Set(allD().map(p=>p.region))];
-  const filtO=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);
-  const filtD=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);
-  let rows='';
-  if(F.matrix){filtO.forEach(sp=>{rows+=`<div style="margin-bottom:20px"><div style="color:#4fc3f7;font-size:10px;letter-spacing:2px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #1e3a5f">${sp.name.toUpperCase()} — ${sp.curve}</div><div style="overflow-x:auto"><table class="f-tbl"><thead><tr><th style="min-width:130px">DISCHARGE</th>${ML.map(m=>`<th class="tr" style="min-width:50px">${m}</th>`).join('')}</tr></thead><tbody>`;filtD.forEach(dp=>{const row=F.matrix[sp.id]&&F.matrix[sp.id][dp.id];rows+=`<tr><td style="font-size:10px">${dp.name}${dp.euEts?` <span class="f-badge-ets">ETS</span>`:''}</td>${ML.map((_,i)=>{const v=row&&row[i]?row[i].freight:null;return`<td class="tr" style="color:${fCol(v)}">${v?v.toFixed(3):'-'}</td>`;}).join('')}</tr>`;});rows+='</tbody></table></div></div>';});}
-  return`${stale?'<div class="f-warn" style="margin-bottom:10px">⚠ Curves or params updated — click UPDATE MATRIX to recompute.</div>':''}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
-      <div style="flex:1;min-width:120px"><span class="f-lbl">ORIGIN</span><select class="f-sel" onchange="F.fOrig=this.value;fMatTab(2)"><option value="all">ALL ORIGINS</option>${SUPPLY.map(p=>`<option value="${p.id}"${F.fOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>
-      <div style="flex:1;min-width:120px"><span class="f-lbl">REGION</span><select class="f-sel" onchange="F.fRegion=this.value;fMatTab(2)"><option value="all">ALL REGIONS</option>${regions.map(r=>`<option value="${r}"${F.fRegion===r?' selected':''}>${r}</option>`).join('')}</select></div>
-      <button class="f-btn on" onclick="computeMatrix();fMatTab(2)">UPDATE MATRIX</button>
-      ${F.matrix?'<button class="f-btn" onclick="exportMatrixCSV()">EXPORT CSV</button><button class="f-btn" onclick="exportMatrixXLS()">EXPORT EXCEL</button>':''}
-    </div>
-    ${F.matrixTs?`<div style="color:#546e7a;font-size:10px;margin-bottom:10px">Last computed: ${new Date(F.matrixTs).toLocaleString('en-GB')}</div>`:''}
-    ${!F.matrix?'<div style="color:#546e7a">No matrix yet — click UPDATE MATRIX.</div>':rows}`;
+  // ── AUDIT FOOTER ─────────────────────────────────────────────────────────
+  let auditBar='';
+  if(F.matAudit){
+    const t=new Date(F.matAudit.ts).toLocaleString('en-GB');
+    const b=F.matAudit.blng;
+    const b1=b.BLNG1?.[0]?.toLocaleString()||'—';
+    const b2=b.BLNG2?.[0]?.toLocaleString()||'—';
+    const b3=b.BLNG3?.[0]?.toLocaleString()||'—';
+    const ovCount=Object.values(F.matOverrides||{}).flatMap(o=>Object.values(o)).flatMap(o=>Object.keys(o)).length;
+    auditBar=`<div style="background:#070b14;border-top:1px solid #1e3a5f;padding:5px 14px;font-size:9px;color:#3d5070;display:flex;gap:16px;flex-wrap:wrap;margin-top:12px">
+      <span style="color:#546e7a">Computed: ${t}</span>
+      <span>BLNG1 M+1: <span style="color:#4fc3f7">${b1} $/d</span></span>
+      <span>BLNG2 M+1: <span style="color:#81c784">${b2} $/d</span></span>
+      <span>BLNG3 M+1: <span style="color:#ffb74d">${b3} $/d</span></span>
+      ${ovCount?`<span style="color:#ff9800">⚡ ${ovCount} override(s) active</span>`:''}
+    </div>`;
+  }
+  // ── SUB-NAV ───────────────────────────────────────────────────────────────
+  const views=['snapshot','strip','delta','overrides'];
+  const vLabels=['📊 SNAPSHOT','📈 STRIP','Δ DELTA','⚡ OVERRIDES'];
+  const subNav=`<div style="display:flex;gap:0;margin-bottom:12px;background:#070b14;border:1px solid #1e3a5f">
+    ${views.map((v,i)=>`<button style="padding:7px 16px;font-size:9px;letter-spacing:1px;border:none;border-right:1px solid #1e3a5f;cursor:pointer;font-family:IBM Plex Mono,monospace;background:${F.matView===v?'#0d1e36':'transparent'};color:${F.matView===v?'#4fc3f7':'#546e7a'}" onclick="F.matView='${v}';matRender()">${vLabels[i]}</button>`).join('')}
+    <span style="flex:1"></span>
+    <button class="f-btn on" style="margin:4px 8px;padding:4px 10px;font-size:9px" onclick="computeMatrix();fMatTab(2)">↻ UPDATE</button>
+    <button class="f-btn" style="margin:4px 4px;padding:4px 10px;font-size:9px" onclick="exportMatrixCSV()">CSV</button>
+    <button class="f-btn" style="margin:4px 4px;padding:4px 10px;font-size:9px" onclick="exportMatrixXLS()">XLS</button>
+  </div>`;
+  return`${stale?'<div class="f-warn" style="margin-bottom:8px">⚠ Curves or params updated since last computation.</div>':''}
+  ${subNav}<div id="mat-view-body">${matViewBody()}</div>${auditBar}`;
 }
+
+function matRender(){const el=document.getElementById('mat-view-body');if(el)el.innerHTML=matViewBody();}
+function matViewBody(){
+  if(F.matView==='snapshot')return matSnapshot();
+  if(F.matView==='strip')return matStrip();
+  if(F.matView==='delta')return matDelta();
+  if(F.matView==='overrides')return matOverridesView();
+  return'';
+}
+
+const MAT_REF={BLNG2:'rotterdam',BLNG3:'rotterdam',BLNG1:'tokyo'};
+const MAT_REF_NAME={BLNG2:'Gate Rotterdam',BLNG3:'Gate Rotterdam',BLNG1:'Tokyo Bay'};
+
+function heatCol(v,mn,mx){
+  if(v==null||isNaN(v))return'#1e3a5f';
+  if(v<0)return'#f44336';
+  const t=mx===mn?0.5:Math.max(0,Math.min(1,(v-mn)/(mx-mn)));
+  if(t<0.5){const r=Math.round(100+100*t*2),g=160;return`rgb(${r},${g},50)`;}
+  else{const r=180,g=Math.round(160*(1-(t-0.5)*2));return`rgb(${r},${g},50)`;}
+}
+
+function matGetVal(origId,dischId,mi){
+  const ov=F.matOverrides?.[origId]?.[dischId]?.[mi];
+  if(ov!=null)return{...F.matrix?.[origId]?.[dischId]?.[mi],freight:ov,overridden:true};
+  return F.matrix?.[origId]?.[dischId]?.[mi]||null;
+}
+function matSetOverride(origId,dischId,mi,val){
+  if(!F.matOverrides)F.matOverrides={};
+  if(!F.matOverrides[origId])F.matOverrides[origId]={};
+  if(!F.matOverrides[origId][dischId])F.matOverrides[origId][dischId]={};
+  if(val===null)delete F.matOverrides[origId][dischId][mi];
+  else F.matOverrides[origId][dischId][mi]=val;
+  fs('f_mat_overrides',F.matOverrides);
+}
+
+// ══ VIEW 1: SNAPSHOT HEATMAP ══════════════════════════════════════════════
+function matSnapshot(){
+  const mi=F.matSnapMonth;
+  const allOrigins=allS();
+  const allDischarge=allD();
+  const allVals=[];
+  allOrigins.forEach(sp=>allDischarge.forEach(dp=>{const cell=matGetVal(sp.id,dp.id,mi);if(cell&&cell.freight>0)allVals.push(cell.freight);}));
+  const mn=allVals.length?Math.min(...allVals):0;
+  const mx=allVals.length?Math.max(...allVals):5;
+  const groups={BLNG2:allOrigins.filter(s=>s.curve==='BLNG2'),BLNG3:allOrigins.filter(s=>s.curve==='BLNG3'),BLNG1:allOrigins.filter(s=>s.curve==='BLNG1')};
+
+  let drillHtml='';
+  if(F.matDrillCell){
+    const {origId,dischId,mi:dmi}=F.matDrillCell;
+    const r=F.matrix?.[origId]?.[dischId]?.[dmi];
+    const ov=F.matOverrides?.[origId]?.[dischId]?.[dmi];
+    const sp=allOrigins.find(p=>p.id===origId);
+    const dp=allDischarge.find(p=>p.id===dischId);
+    if(r){
+      const $=v=>(v==null||v===0)?'—':'$'+v.toLocaleString(undefined,{maximumFractionDigits:0});
+      const u=v=>v==null?'':v.toFixed(4);
+      const rows=[
+        ['Laden Distance',(r.nm?.toLocaleString()||'—')+' NM',''],
+        ['Total Voyage Days',(r.totalDays?.toFixed(2)||'—')+' d',''],
+        ['Ship Loaded',Math.round(r.loaded||0).toLocaleString()+' MMBtu',''],
+        ['BOG Loss',Math.round(r.bogLoss||0).toLocaleString()+' MMBtu',''],
+        ['Est. Discharge',Math.round(r.estDisch||0).toLocaleString()+' MMBtu',''],
+        null,
+        ['TC Hire Rate',r.rate?.toLocaleString()+' $/day',''],
+        ['Hire',$(r.hire),u(r.hire/r.estDisch)],
+        ['Cooldown',$(r.cooldown),u(r.cooldown/r.estDisch)],
+        ['Positioning',$(r.pos),u(r.pos/r.estDisch)],
+        ['Repositioning',$(r.repo),u(r.repo/r.estDisch)],
+        ['HFO Bunkers',$(r.hfo),u(r.hfo/r.estDisch)],
+        ['LSMGO Bunkers',$(r.lsmgo),u(r.lsmgo/r.estDisch)],
+        ['Port Costs',$(r.port),u(r.port/r.estDisch)],
+        ['EU ETS',$(r.ets),u(r.ets/r.estDisch)],
+        ['War Risk',$((r.warRisk||0)),u((r.warRisk||0)/r.estDisch)],
+        ['Canal Costs',$((r.canalCosts||0)),u((r.canalCosts||0)/r.estDisch)],
+        ['Heel',$(r.heel),u(r.heel/r.estDisch)],
+        null,
+        ['TOTAL',$(r.total),r.freight?.toFixed(4)+' $/MMBtu'],
+      ].map(row=>{
+        if(!row)return`<tr><td colspan="3" style="padding:2px 0;border-bottom:1px solid #1e3a5f"></td></tr>`;
+        const[l,v,u2]=row;
+        return`<tr><td style="font-size:9px;color:#546e7a;padding:2px 6px 2px 0;white-space:nowrap">${l}</td><td style="font-size:10px;color:#c8d6e5;text-align:right;padding:2px 10px 2px 0">${v}</td><td style="font-size:10px;color:#4fc3f7;text-align:right">${u2}</td></tr>`;
+      }).join('');
+      drillHtml=`<div style="background:#0a1628;border:1px solid #4fc3f7;padding:12px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div><div style="font-size:10px;color:#4fc3f7;font-weight:700">${sp?.name} → ${dp?.name}</div>
+          <div style="font-size:9px;color:#546e7a">${ML[dmi]} · ${sp?.curve}</div></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:12px;color:${fCol(r.freight)};font-weight:700">${r.freight?.toFixed(4)} $/MMBtu</span>
+            <button class="f-btn sm" onclick="F.matDrillCell=null;matRender()">✕ CLOSE</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <table style="font-family:IBM Plex Mono,monospace;border-collapse:collapse">${rows}</table>
+          <div style="min-width:160px;border-left:1px solid #1e3a5f;padding-left:14px">
+            <div style="font-size:9px;color:#ff9800;margin-bottom:8px;font-weight:700;letter-spacing:1px">⚡ FLAT RATE OVERRIDE</div>
+            <div style="font-size:9px;color:#546e7a;margin-bottom:4px">Override this cell's $/MMBtu:</div>
+            <input id="drill-ov-inp" class="f-inp" type="number" step="0.001" style="width:100%;margin-bottom:6px" placeholder="e.g. 1.250" value="${ov!=null?ov:''}">
+            <button class="f-btn on" style="width:100%;margin-bottom:4px;font-size:9px" onclick="fAuthGate(()=>{const v=parseFloat(document.getElementById('drill-ov-inp').value);matSetOverride('${origId}','${dischId}',${dmi},isNaN(v)?null:v);F.matDrillCell=null;matRender();})">SET OVERRIDE</button>
+            ${ov!=null?`<button class="f-btn" style="width:100%;font-size:9px;color:#f44336;border-color:#f44336" onclick="fAuthGate(()=>{matSetOverride('${origId}','${dischId}',${dmi},null);F.matDrillCell=null;matRender();})">CLEAR OVERRIDE</button>
+            <div style="font-size:9px;margin-top:8px;color:#546e7a">Model: <span style="color:#c8d6e5">${r.freight?.toFixed(4)}</span><br>Override: <span style="color:#ff9800">${ov.toFixed(4)}</span><br>Δ <span style="color:${ov>r.freight?'#f44336':'#4caf50'}">${(ov-r.freight)>0?'+':''}${(ov-r.freight).toFixed(4)}</span></div>`:''}
+          </div>
+        </div>
+      </div>`;
+    }
+  }
+
+  const portCols=allDischarge.map(dp=>`<th style="font-size:8px;white-space:nowrap;padding:2px 3px;color:#546e7a;writing-mode:vertical-rl;transform:rotate(180deg);height:80px;vertical-align:bottom;text-align:left">${dp.name}${dp.euEts?' 🌿':''}</th>`).join('');
+
+  const groupHtml=Object.entries(groups).filter(([,ports])=>ports.length).map(([curve,ports])=>{
+    const refId=MAT_REF[curve];
+    const refName=MAT_REF_NAME[curve];
+    const rows=ports.map(sp=>{
+      const refCell=F.matrix?.[sp.id]?.[refId]?.[mi];
+      const refVal=refCell?.freight;
+      return`<tr>
+        <td style="font-size:10px;white-space:nowrap;padding:3px 8px 3px 0;color:#c8d6e5;border-right:2px solid #1e3a5f;min-width:140px">${sp.name}</td>
+        ${allDischarge.map(dp=>{
+          const cell=matGetVal(sp.id,dp.id,mi);
+          const v=cell?.freight;
+          const isOv=cell?.overridden;
+          const isRef=dp.id===refId;
+          const bg=heatCol(v,mn,mx);
+          const diff=v!=null&&refVal!=null&&!isRef?v-refVal:null;
+          const anomaly=v==null?null:v<0?'🔴':v>5?'🟠':null;
+          return`<td style="padding:1px;cursor:pointer" onclick="F.matDrillCell={origId:'${sp.id}',dischId:'${dp.id}',mi:${mi}};matRender()">
+            <div style="background:${v!=null&&v>0?bg:'#0d1526'};padding:2px 3px;min-width:42px;border:${isRef?'1px solid #546e7a':isOv?'1px solid #ff9800':'1px solid transparent'};text-align:center">
+              <div style="font-size:9px;font-weight:700;color:${v<0?'#f44336':v>5?'#ff9800':'rgba(0,0,0,0.85)'}">${anomaly||(v!=null?v.toFixed(2):'—')}</div>
+              ${diff!=null?`<div style="font-size:7px;color:${diff>0?'rgba(180,0,0,0.9)':'rgba(0,100,0,0.9)'};font-weight:600">${diff>0?'+':''}${diff.toFixed(2)}</div>`:''}
+              ${isOv?`<div style="font-size:7px;color:#ff9800">⚡</div>`:''}
+            </div>
+          </td>`;
+        }).join('')}
+        <td style="font-size:8px;color:#3d5070;padding:3px 6px;white-space:nowrap;border-left:2px solid #1e3a5f">ref: ${refName}</td>
+      </tr>`;
+    }).join('');
+    return`<div style="margin-bottom:20px">
+      <div style="color:${BC[curve]};font-size:9px;letter-spacing:2px;font-weight:700;padding:4px 0;border-bottom:1px solid #1e3a5f;margin-bottom:6px">
+        ${curve} — ${curve==='BLNG2'?'ATLANTIC BASIN':curve==='BLNG1'?'PACIFIC BASIN':'CROSS-BASIN'} · differential vs ${refName}
+      </div>
+      <div style="overflow-x:auto"><table style="border-collapse:collapse;font-family:IBM Plex Mono,monospace">
+        <thead><tr><th style="min-width:140px"></th>${portCols}<th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+
+  return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <div><span class="f-lbl">DELIVERY MONTH</span>
+      <select class="f-sel" onchange="F.matSnapMonth=+this.value;F.matDrillCell=null;matRender()">
+        ${ML.map((m,i)=>`<option value="${i}"${i===mi?' selected':''}>${m}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;font-size:8px;color:#546e7a;flex-wrap:wrap">
+      <span style="background:rgb(100,160,50);padding:1px 8px;color:#000">LOW</span>
+      <span style="background:rgb(180,160,50);padding:1px 8px;color:#000">MID</span>
+      <span style="background:rgb(180,50,50);padding:1px 8px;color:#fff">HIGH</span>
+      <span>🟠 &gt;5.0 · 🔴 negative · ⚡ override · 🌿 ETS · small row = diff vs ref port</span>
+    </div>
+    <span style="flex:1"></span>
+    <span style="font-size:9px;color:#3d5070">Click any cell for full breakdown</span>
+  </div>
+  ${drillHtml}${groupHtml}`;
+}
+
+// ══ VIEW 2: STRIP ════════════════════════════════════════════════════════
+function matStrip(){
+  const sp=allS().find(p=>p.id===F.matStripOrig)||allS()[0];
+  const dp=allD().find(p=>p.id===F.matStripDisch)||allD()[0];
+  const rows=ML.map((m,i)=>{
+    const r=F.matrix?.[sp.id]?.[dp.id]?.[i];
+    const ov=F.matOverrides?.[sp.id]?.[dp.id]?.[i];
+    if(!r)return`<tr><td style="color:#8a9bb5">${m}</td><td colspan="13" style="color:#3d5070;text-align:center">— no data —</td></tr>`;
+    const $=v=>(v==null||v===0)?'0':v.toLocaleString(undefined,{maximumFractionDigits:0});
+    return`<tr style="background:${ov!=null?'#1a0d00':''}">
+      <td style="color:#8a9bb5;white-space:nowrap">${m}</td>
+      <td class="tr">${r.rate?.toLocaleString()}</td>
+      <td class="tr">${$(r.hire)}</td>
+      <td class="tr" style="color:#81c784">${$(r.cooldown)}</td>
+      <td class="tr" style="color:#4fc3f7">${$(r.pos)}</td>
+      <td class="tr" style="color:#ffb74d">${$(r.repo)}</td>
+      <td class="tr">${$(r.hfo)}</td>
+      <td class="tr">${$(r.lsmgo)}</td>
+      <td class="tr">${$(r.port)}</td>
+      <td class="tr" style="color:${r.ets?'#ffb74d':'#3d5070'}">${$(r.ets)}</td>
+      <td class="tr" style="color:${(r.warRisk||r.canalCosts)?'#f44336':'#3d5070'}">${$((r.warRisk||0)+(r.canalCosts||0))}</td>
+      <td class="tr" style="font-weight:600">${$(r.total)}</td>
+      <td class="tr" style="color:${fCol(r.freight)};font-weight:700">${r.freight?.toFixed(4)}</td>
+      <td class="tr" style="color:${ov!=null?'#ff9800':'#3d5070'}">${ov!=null?ov.toFixed(4):'—'}</td>
+    </tr>`;
+  }).join('');
+  return`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
+    <div><span class="f-lbl">ORIGIN</span><select class="f-sel" onchange="F.matStripOrig=this.value;matRender()">
+      ${allS().map(p=>`<option value="${p.id}"${p.id===F.matStripOrig?' selected':''}>${p.name} (${p.curve})</option>`).join('')}
+    </select></div>
+    <div><span class="f-lbl">DISCHARGE</span><select class="f-sel" onchange="F.matStripDisch=this.value;matRender()">
+      ${allD().map(p=>`<option value="${p.id}"${p.id===F.matStripDisch?' selected':''}>${p.name}</option>`).join('')}
+    </select></div>
+    <div style="font-size:9px;color:#546e7a;padding-bottom:6px">${F.matrix?.[sp.id]?.[dp.id]?.[0]?.nm?.toLocaleString()||'—'} NM · ${sp.curve}</div>
+  </div>
+  <div style="overflow-x:auto"><table class="f-tbl"><thead><tr>
+    <th>MONTH</th><th class="tr">RATE $/d</th><th class="tr">HIRE $</th>
+    <th class="tr" style="color:#81c784">COOL $</th>
+    <th class="tr" style="color:#4fc3f7">POS $</th>
+    <th class="tr" style="color:#ffb74d">REPO $</th>
+    <th class="tr">HFO $</th><th class="tr">LSMGO $</th><th class="tr">PORT $</th>
+    <th class="tr" style="color:#ffb74d">ETS $</th>
+    <th class="tr" style="color:#f44336">WAR/CANAL</th>
+    <th class="tr" style="font-weight:700">TOTAL $</th>
+    <th class="tr" style="font-weight:700">MODEL $/MMBtu</th>
+    <th class="tr" style="color:#ff9800">OVR $/MMBtu</th>
+  </tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// ══ VIEW 3: DELTA ════════════════════════════════════════════════════════
+function matDelta(){
+  if(!F.matPrevMatrix)return`<div style="color:#546e7a;padding:32px;text-align:center">No prior matrix — compute the matrix at least twice to see delta.</div>`;
+  const mi=F.matSnapMonth;
+  const allOrigins=allS();
+  const allDischarge=allD();
+  const THRESH=0.05;
+  const portCols=allDischarge.map(dp=>`<th style="font-size:8px;white-space:nowrap;padding:2px 3px;color:#546e7a;writing-mode:vertical-rl;transform:rotate(180deg);height:72px;vertical-align:bottom;text-align:left">${dp.name}</th>`).join('');
+  const groupHtml=Object.entries({BLNG2:allOrigins.filter(s=>s.curve==='BLNG2'),BLNG3:allOrigins.filter(s=>s.curve==='BLNG3'),BLNG1:allOrigins.filter(s=>s.curve==='BLNG1')}).filter(([,ports])=>ports.length).map(([curve,ports])=>{
+    const rows=ports.map(sp=>{
+      const cells=allDischarge.map(dp=>{
+        const cur=F.matrix?.[sp.id]?.[dp.id]?.[mi]?.freight;
+        const prv=F.matPrevMatrix?.[sp.id]?.[dp.id]?.[mi]?.freight;
+        const d=cur!=null&&prv!=null?cur-prv:null;
+        const big=d!=null&&Math.abs(d)>=THRESH;
+        return`<td class="tr" style="color:${d==null?'#3d5070':d>THRESH?'#f44336':d<-THRESH?'#4caf50':d===0?'#546e7a':'#8a9bb5'};font-weight:${big?'700':'400'};background:${big?'#0d1e36':''}">
+          ${d==null?'—':(d>0?'+':'')+d.toFixed(3)}</td>`;
+      }).join('');
+      return`<tr><td style="font-size:10px;color:#c8d6e5;white-space:nowrap;padding:2px 8px 2px 0;min-width:140px">${sp.name}</td>${cells}</tr>`;
+    }).join('');
+    return`<div style="margin-bottom:20px">
+      <div style="color:${BC[curve]};font-size:9px;letter-spacing:2px;font-weight:700;padding:4px 0;border-bottom:1px solid #1e3a5f;margin-bottom:6px">${curve} — Δ current vs prior · threshold ±${THRESH} $/MMBtu</div>
+      <div style="overflow-x:auto"><table style="border-collapse:collapse;font-family:IBM Plex Mono,monospace">
+        <thead><tr><th style="min-width:140px"></th>${portCols}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+  return`<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+    <div><span class="f-lbl">MONTH</span>
+      <select class="f-sel" onchange="F.matSnapMonth=+this.value;matRender()">
+        ${ML.map((m,i)=>`<option value="${i}"${i===mi?' selected':''}>${m}</option>`).join('')}
+      </select>
+    </div>
+    <div style="font-size:9px;color:#546e7a">🟢 cheaper · 🔴 more expensive · <strong>bold</strong> = change ≥ ±${THRESH} $/MMBtu</div>
+  </div>${groupHtml}`;
+}
+
+// ══ VIEW 4: OVERRIDES ════════════════════════════════════════════════════
+function matOverridesView(){
+  const allOrigins=allS(),allDischarge=allD();
+  const rows=[];
+  Object.entries(F.matOverrides||{}).forEach(([origId,dMap])=>{
+    const sp=allOrigins.find(p=>p.id===origId);
+    Object.entries(dMap).forEach(([dischId,miMap])=>{
+      const dp=allDischarge.find(p=>p.id===dischId);
+      Object.entries(miMap).forEach(([mi,ov])=>{
+        const model=F.matrix?.[origId]?.[dischId]?.[mi]?.freight;
+        rows.push(`<tr>
+          <td style="color:#c8d6e5;font-size:10px">${sp?.name||origId}</td>
+          <td style="color:#c8d6e5;font-size:10px">${dp?.name||dischId}</td>
+          <td style="color:#8a9bb5">${ML[+mi]||mi}</td>
+          <td class="tr" style="color:#546e7a">${model!=null?model.toFixed(4):'—'}</td>
+          <td class="tr" style="color:#ff9800;font-weight:700">${(+ov).toFixed(4)}</td>
+          <td class="tr" style="color:${model!=null?(ov>model?'#f44336':'#4caf50'):'#546e7a'}">${model!=null?((ov-model>0?'+':'')+(ov-model).toFixed(4)):'—'}</td>
+          <td style="text-align:center"><button class="f-btn sm" style="color:#f44336;border-color:#f44336;padding:2px 8px;font-size:9px"
+            onclick="fAuthGate(()=>{matSetOverride('${origId}','${dischId}',${mi},null);matRender()})">✕</button></td>
+        </tr>`);
+      });
+    });
+  });
+  return`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="f-sec" style="margin:0;border:0;padding:0">ACTIVE OVERRIDES (${rows.length})</div>
+    ${rows.length?`<button class="f-btn sm" style="color:#f44336;border-color:#f44336" onclick="fAuthGate(()=>{F.matOverrides={};fs('f_mat_overrides',{});matRender()})">CLEAR ALL</button>`:''}
+  </div>
+  ${rows.length?`<div style="overflow-x:auto"><table class="f-tbl"><thead><tr>
+    <th>ORIGIN</th><th>DISCHARGE</th><th>MONTH</th>
+    <th class="tr">MODEL $/MMBtu</th><th class="tr" style="color:#ff9800">OVR $/MMBtu</th>
+    <th class="tr">Δ</th><th></th>
+  </tr></thead><tbody>${rows.join('')}</tbody></table>
+  <div style="margin-top:8px;font-size:9px;color:#3d5070">Overrides applied in SNAPSHOT and STRIP views. Model values always preserved.</div></div>`
+  :`<div style="color:#546e7a;padding:32px;text-align:center;font-size:10px">No overrides set — click any cell in SNAPSHOT view.</div>`}`;
+}
+
+
 function renderDiff(){
   const base=ML.map((_,i)=>{const r=calcF(F.diffOrig,F.diffBase,i);return r?r.freight:null;});
   const selD=allD().filter(p=>F.diffSel.includes(p.id));
@@ -3595,7 +4042,44 @@ function saveSnap(){const d=F.snapDate,s=[{date:d,label:`OB FFA ${d}`,blng:JSON.
 function loadSnapBtn(el){const date=el.dataset.snapdate;const s=F.snaps.find(x=>x.date===date);if(s){fSaveBlng(JSON.parse(JSON.stringify(s.blng)));fMatTab(0);}}
 function parseBLNGcsv(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const lines=e.target.result.split('\n').map(l=>l.split(/[,\t]/));const h=lines[0]||[];let b1=-1,b2=-1,b3=-1;h.forEach((x,i)=>{const t=x.trim().toUpperCase();if(t.includes('BLNG1'))b1=i;if(t.includes('BLNG2'))b2=i;if(t.includes('BLNG3'))b3=i;});const nb=JSON.parse(JSON.stringify(IB));lines.slice(1).forEach((row,ri)=>{if(ri>=24)return;const pv=ci=>{const v=parseFloat((row[ci]||'').replace(/[^0-9.]/g,''));return isNaN(v)?null:v;};if(b1>=0)nb.BLNG1[ri]=pv(b1);if(b2>=0)nb.BLNG2[ri]=pv(b2);if(b3>=0)nb.BLNG3[ri]=pv(b3);});fSaveBlng(nb);fMatTab(0);alert('Curves loaded.');};r.readAsText(f);el.value='';}
 function parseBLNGxls(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const h=(rows[0]||[]).map(x=>String(x).trim().toUpperCase());let b1=-1,b2=-1,b3=-1;h.forEach((x,i)=>{if(x.includes('BLNG1'))b1=i;if(x.includes('BLNG2'))b2=i;if(x.includes('BLNG3'))b3=i;});const nb=JSON.parse(JSON.stringify(IB));rows.slice(1).forEach((row,ri)=>{if(ri>=24)return;const pv=ci=>{const v=parseFloat(String(row[ci]||'').replace(/[^0-9.]/g,''));return isNaN(v)?null:v;};if(b1>=0)nb.BLNG1[ri]=pv(b1);if(b2>=0)nb.BLNG2[ri]=pv(b2);if(b3>=0)nb.BLNG3[ri]=pv(b3);});fSaveBlng(nb);fMatTab(0);alert('Curves loaded from Excel.');}catch(err){alert('Error reading Excel file: '+err.message);}};r.readAsArrayBuffer(f);el.value='';}
-function computeMatrix(){const m={};SUPPLY.forEach(sp=>{m[sp.id]={};allD().forEach(dp=>{m[sp.id][dp.id]=ML.map((_,i)=>calcF(sp.id,dp.id,i));});});F.matrix=m;const ts=new Date().toISOString();F.matrixTs=ts;fs('f_matrix',m);localStorage.setItem('f_matrix_ts',ts);}
+function computeMatrix(){
+  // Save current as previous before overwriting
+  if(F.matrix)F.matPrevMatrix=JSON.parse(JSON.stringify(F.matrix));
+  fs('f_matrix_prev',F.matPrevMatrix);
+  // Compute fresh
+  const m={};
+  allS().forEach(sp=>{m[sp.id]={};allD().forEach(dp=>{m[sp.id][dp.id]=ML.map((_,i)=>calcF(sp.id,dp.id,i));});});
+  F.matrix=m;
+  const ts=new Date().toISOString();
+  F.matrixTs=ts;
+  fs('f_matrix',m);
+  localStorage.setItem('f_matrix_ts',ts);
+  // Audit snapshot — record curves and basin params at time of computation
+  F.matAudit={
+    ts,
+    blng:{
+      BLNG1:[...F.blng.BLNG1],
+      BLNG2:[...F.blng.BLNG2],
+      BLNG3:[...F.blng.BLNG3]
+    },
+    matParams:JSON.parse(JSON.stringify(F.matParams))
+  };
+  fs('f_mat_audit',F.matAudit);
+}
+function matGetVal(origId,dischId,mi){
+  // Returns override if set, else matrix value
+  const ov=F.matOverrides?.[origId]?.[dischId]?.[mi];
+  if(ov!=null)return{freight:ov,overridden:true};
+  return F.matrix?.[origId]?.[dischId]?.[mi]||null;
+}
+function matSetOverride(origId,dischId,mi,val){
+  if(!F.matOverrides)F.matOverrides={};
+  if(!F.matOverrides[origId])F.matOverrides[origId]={};
+  if(!F.matOverrides[origId][dischId])F.matOverrides[origId][dischId]={};
+  if(val===null)delete F.matOverrides[origId][dischId][mi];
+  else F.matOverrides[origId][dischId][mi]=val;
+  fs('f_mat_overrides',F.matOverrides);
+}
 function toggleDiff(id){F.diffSel=F.diffSel.includes(id)?F.diffSel.filter(x=>x!==id):[...F.diffSel,id];fMatTab(3);}
 // ── PORT MANAGER ─────────────────────────────────────────────────────────────
 let PM={tab:0,addForm:false};
