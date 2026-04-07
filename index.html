@@ -3062,6 +3062,7 @@ function initFreight(){
   F.histSelDate=0;
   F.histSelMonth=0;
   F.histSelMonthSpread=0;
+  F.histBlngSel=fg('f_hist_blng_sel',{BLNG1:true,BLNG2:true,BLNG3:true});
   F.histLoading=false;
   F.showExportMenu=false;
   renderFreight();
@@ -3935,22 +3936,14 @@ function renderHistorical(){
     const idx=Math.min(F.histSelDate,curves.length-1);
     const snap=curves[idx];
     const blng=snap.blng;
-    const hasPrice=typeof aD!=='undefined'&&aD&&aD[snap.date];
     const rows=ML.map((m,i)=>{
       const b1=blng.BLNG1?.[i],b2=blng.BLNG2?.[i],b3=blng.BLNG3?.[i];
-      const pr=getPriceRow(snap.date,i);
       const fmt=v=>v!=null?v.toLocaleString():'-';
-      const fp=v=>v!=null?v.toFixed(3):'-';
       return`<tr>
         <td style="color:#8a9bb5;white-space:nowrap">${m}</td>
         <td class="tr" style="color:${BC.BLNG1}">${fmt(b1)}</td>
         <td class="tr" style="color:${BC.BLNG2}">${fmt(b2)}</td>
         <td class="tr" style="color:${BC.BLNG3}">${fmt(b3)}</td>
-        ${hasPrice?`
-        <td class="tr" style="color:#4fc3f7;border-left:2px solid #1e3a5f">${fp(pr?.JKM)}</td>
-        <td class="tr" style="color:#81c784">${fp(pr?.TTF)}</td>
-        <td class="tr" style="color:#ffb74d">${fp(pr?.NBP)}</td>
-        <td class="tr" style="color:#c8d6e5">${fp(pr?.HH)}</td>`:''}
       </tr>`;
     }).join('');
     return`
@@ -3960,7 +3953,6 @@ function renderHistorical(){
           ${curves.map((s,i)=>`<option value="${i}"${i===idx?' selected':''}>${s.date} — ${s.label}</option>`).join('')}
         </select>
       </div>
-      ${hasPrice?'<span style="color:#4caf50;font-size:9px;padding-bottom:6px">✓ Price data available for this date</span>':'<span style="color:#546e7a;font-size:9px;padding-bottom:6px">No price data for this date — scrape from Gmail to add</span>'}
     </div>
     <div style="overflow-x:auto;margin-top:4px">
     <table class="f-tbl"><thead>
@@ -3969,141 +3961,116 @@ function renderHistorical(){
         <th class="tr" style="color:${BC.BLNG1}">BLNG1 $/day<br><span style="font-size:8px;color:#546e7a">PACIFIC</span></th>
         <th class="tr" style="color:${BC.BLNG2}">BLNG2 $/day<br><span style="font-size:8px;color:#546e7a">ATLANTIC</span></th>
         <th class="tr" style="color:${BC.BLNG3}">BLNG3 $/day<br><span style="font-size:8px;color:#546e7a">X-BASIN</span></th>
-        ${hasPrice?`
-        <th class="tr" style="color:#4fc3f7;border-left:2px solid #1e3a5f">JKM $/MMBtu</th>
-        <th class="tr" style="color:#81c784">TTF $/MMBtu</th>
-        <th class="tr" style="color:#ffb74d">NBP $/MMBtu</th>
-        <th class="tr" style="color:#c8d6e5">HH $/MMBtu</th>`:''}
       </tr>
     </thead><tbody>${rows}</tbody></table></div>`;
   }
 
-  // ── HISTORICAL RATE VIEW ──────────────────────────────────────────────────
   function histView(){
     if(!hasCurves)return'';
     const sorted=[...curves].sort((a,b)=>a.date.localeCompare(b.date));
     const n=sorted.length;
-    const W=600,H=120,PL=42,PR=10,PT=10,PB=20;
+    const mi=F.histSelMonth;
+    const mi2=F.histSelMonthSpread;
+    const sel=F.histBlngSel||{BLNG1:true,BLNG2:true,BLNG3:true};
 
-    // ── Shared SVG builder ───────────────────────────────────────────────
-    function mkSVG(series,label){
-      // series = [{values:[...n nullables], color, name}]
+    // ── SVG builder ───────────────────────────────────────────────────────
+    function mkSVG(series,W=600,H=110,PL=46,PR=10,PT=10,PB=20){
       const allVals=series.flatMap(s=>s.values.filter(v=>v!=null));
       if(allVals.length<2)return`<div style="color:#3d5070;font-size:9px;padding:14px 0">No data for this month</div>`;
       const mn=Math.min(...allVals),mx=Math.max(...allVals),rng=mx-mn||1;
       const xS=i=>PL+(W-PL-PR)/(n-1||1)*i;
       const yS=v=>H-PB-((v-mn)/rng)*(H-PT-PB);
-      // Zero line (for spread)
-      const zeroLine=mn<0&&mx>0?`<line x1="${PL}" x2="${W-PR}" y1="${yS(0).toFixed(1)}" y2="${yS(0).toFixed(1)}" stroke="#546e7a" stroke-width="0.8" stroke-dasharray="3,3"/>`:'';
-      const gridLines=[0,0.5,1].map(t=>{
-        const v=mn+t*rng;
-        const yFmt=Math.abs(v)>=1000?`${(v/1000).toFixed(1)}k`:(v>=0?'+':'')+v.toFixed(2);
-        return`<line x1="${PL}" x2="${W-PR}" y1="${yS(v).toFixed(1)}" y2="${yS(v).toFixed(1)}" stroke="#1e3a5f" stroke-width="0.5"/>
-          <text x="${PL-4}" y="${(yS(v)+3).toFixed(1)}" fill="#546e7a" font-size="7" text-anchor="end">${yFmt}</text>`;
-      }).join('');
-      const ticks=sorted.filter((_,i)=>i===0||i===n-1||i%Math.max(1,Math.floor(n/5))===0)
-        .map(s=>{const i=sorted.indexOf(s);return`<text x="${xS(i).toFixed(1)}" y="${H-3}" fill="#546e7a" font-size="7" text-anchor="middle">${s.date.slice(5)}</text>`;}).join('');
-      const polylines=series.map(s=>{
-        const pts=s.values.map((v,i)=>v!=null?`${xS(i).toFixed(1)},${yS(v).toFixed(1)}`:null).filter(Boolean);
-        return pts.length>1?`<polyline points="${pts.join(' ')}" fill="none" stroke="${s.color}" stroke-width="1.8" stroke-linejoin="round" opacity="0.9"/>`:'';
-      }).join('');
-      const legend=series.map((s,i)=>`<text x="${PL+i*120}" y="${PT-1}" fill="${s.color}" font-size="7">${s.name}</text>`).join('');
-      return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block" font-family="IBM Plex Mono,monospace">${gridLines}${zeroLine}${ticks}${polylines}${legend}</svg>`;
+      const zero=mn<0&&mx>0?`<line x1="${PL}" x2="${W-PR}" y1="${yS(0).toFixed(1)}" y2="${yS(0).toFixed(1)}" stroke="#546e7a" stroke-width="0.8" stroke-dasharray="3,3"/>`:'';
+      const grid=[0,0.5,1].map(t=>{const v=mn+t*rng;const yFmt=Math.abs(v)>=1000?`${(v/1000).toFixed(1)}k`:(v>=0?'+':'')+v.toFixed(2);return`<line x1="${PL}" x2="${W-PR}" y1="${yS(v).toFixed(1)}" y2="${yS(v).toFixed(1)}" stroke="#1e3a5f" stroke-width="0.5"/><text x="${PL-4}" y="${(yS(v)+3).toFixed(1)}" fill="#546e7a" font-size="7" text-anchor="end">${yFmt}</text>`;}).join('');
+      const ticks=sorted.filter((_,i)=>i===0||i===n-1||i%Math.max(1,Math.floor(n/5))===0).map(s=>{const i=sorted.indexOf(s);return`<text x="${xS(i).toFixed(1)}" y="${H-3}" fill="#546e7a" font-size="7" text-anchor="middle">${s.date.slice(5)}</text>`;}).join('');
+      const polys=series.map(s=>{const pts=s.values.map((v,i)=>v!=null?`${xS(i).toFixed(1)},${yS(v).toFixed(1)}`:null).filter(Boolean);return pts.length>1?`<polyline points="${pts.join(' ')}" fill="none" stroke="${s.color}" stroke-width="1.8" stroke-linejoin="round" opacity="0.9"/>`:'';}).join('');
+      const legend=series.map((s,i)=>`<text x="${PL+i*130}" y="${PT-1}" fill="${s.color}" font-size="7">${s.name}</text>`).join('');
+      return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block" font-family="IBM Plex Mono,monospace">${grid}${zero}${ticks}${polys}${legend}</svg>`;
     }
 
-    // ── Chart 1: BLNG Freight Rates ───────────────────────────────────────
-    const mi1=F.histSelMonth;
-    const blngSeries=[
-      {values:sorted.map(s=>s.blng.BLNG1?.[mi1]??null),color:BC.BLNG1,name:'BLNG1 Pacific'},
-      {values:sorted.map(s=>s.blng.BLNG2?.[mi1]??null),color:BC.BLNG2,name:'BLNG2 Atlantic'},
-      {values:sorted.map(s=>s.blng.BLNG3?.[mi1]??null),color:BC.BLNG3,name:'BLNG3 X-Basin'}
-    ];
+    // ── Pearson correlation ───────────────────────────────────────────────
+    function pearson(xs,ys){
+      const pairs=xs.map((x,i)=>[x,ys[i]]).filter(([a,b])=>a!=null&&b!=null);
+      if(pairs.length<3)return null;
+      const n=pairs.length;
+      const mx=pairs.reduce((s,[a])=>s+a,0)/n;
+      const my=pairs.reduce((s,[,b])=>s+b,0)/n;
+      const num=pairs.reduce((s,[a,b])=>s+(a-mx)*(b-my),0);
+      const den=Math.sqrt(pairs.reduce((s,[a])=>s+(a-mx)**2,0)*pairs.reduce((s,[,b])=>s+(b-my)**2,0));
+      return den?+(num/den).toFixed(3):null;
+    }
 
-    // ── Chart 2: JKM/TTF Spread ───────────────────────────────────────────
-    const mi2=F.histSelMonthSpread;
-    const hasAD=typeof aD!=='undefined'&&aD;
-    const spreadVals=sorted.map(s=>{
-      if(!hasAD||!aD[s.date])return null;
-      const pr=getPriceRow(s.date,mi2);
-      return pr?.SP_JT??null;
-    });
-    const spreadHasData=spreadVals.some(v=>v!=null);
+    // ── Get JKM-TTF spread values for each observation date ───────────────
+    function getSpreadVals(monthIdx){
+      return sorted.map(s=>{
+        if(typeof aD==='undefined'||!aD||!aD[s.date])return null;
+        const lbl=ML[monthIdx];if(!lbl)return null;
+        const parts=lbl.split('-');
+        const mon={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+        const pk=`20${parts[1]}-${mon[parts[0]]||'01'}`;
+        const row=(aD[s.date].rows||[]).find(r=>r.pk===pk);
+        return row?.SP_JT??null;
+      });
+    }
 
-    // ── Table: BLNG for chart 1 month ─────────────────────────────────────
-    const tableRows=sorted.map(s=>{
-      const b1=s.blng.BLNG1?.[mi1],b2=s.blng.BLNG2?.[mi1],b3=s.blng.BLNG3?.[mi1];
-      const fmt=v=>v!=null?v.toLocaleString():'-';
-      const chg=(key)=>{
-        const prev=sorted[sorted.indexOf(s)-1];
-        if(!prev||!prev.blng[key]?.[mi1]||!s.blng[key]?.[mi1])return'';
-        const d=s.blng[key][mi1]-prev.blng[key][mi1];
-        return d===0?'':d>0?`<span style="color:#f44336;font-size:8px"> +${d.toLocaleString()}</span>`:`<span style="color:#4caf50;font-size:8px"> ${d.toLocaleString()}</span>`;
-      };
-      return`<tr>
-        <td style="color:#8a9bb5;white-space:nowrap;font-size:9px">${s.date}</td>
-        <td class="tr" style="color:${BC.BLNG1};font-size:10px">${fmt(b1)}${chg('BLNG1')}</td>
-        <td class="tr" style="color:${BC.BLNG2};font-size:10px">${fmt(b2)}${chg('BLNG2')}</td>
-        <td class="tr" style="color:${BC.BLNG3};font-size:10px">${fmt(b3)}${chg('BLNG3')}</td>
-      </tr>`;
-    }).join('');
+    // ── BLNG curve selectors ───────────────────────────────────────────────
+    const blngToggle=(key,color)=>`<button style="padding:4px 10px;font-size:9px;font-family:IBM Plex Mono,monospace;cursor:pointer;border:1px solid ${sel[key]?color:'#3d5070'};background:${sel[key]?'#0d1e36':'transparent'};color:${sel[key]?color:'#546e7a'};border-radius:2px"
+      onclick="F.histBlngSel['${key}']=!F.histBlngSel['${key}'];fs('f_hist_blng_sel',F.histBlngSel);document.getElementById('f-hist-body').innerHTML=renderHistorical()">${key}</button>`;
 
-    const monthSel=(stateKey,val)=>`<select class="f-sel" style="min-width:90px" onchange="F.${stateKey}=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">
+    const activeSeries=['BLNG1','BLNG2','BLNG3'].filter(c=>sel[c]).map(c=>({
+      values:sorted.map(s=>s.blng[c]?.[mi]??null),
+      color:BC[c],name:`${c} ${ML[mi]}`
+    }));
+
+    // ── Spread data for chart 2 ────────────────────────────────────────────
+    const spreadVals=getSpreadVals(mi2);
+    const hasSpread=spreadVals.some(v=>v!=null);
+
+    // ── Correlation stats ──────────────────────────────────────────────────
+    let corrHtml='';
+    if(hasSpread&&activeSeries.length>0){
+      const corrLines=activeSeries.map(s=>{
+        const r=pearson(s.values,spreadVals);
+        if(r===null)return null;
+        const strength=Math.abs(r)>0.7?'strong':Math.abs(r)>0.4?'moderate':'weak';
+        const col=r>0.4?'#f44336':r<-0.4?'#4caf50':'#546e7a';
+        return`<span style="margin-right:16px;color:${col}">${s.name} vs JKM-TTF ${ML[mi2]}: r = <strong>${r}</strong> (${strength})</span>`;
+      }).filter(Boolean);
+      if(corrLines.length)corrHtml=`<div style="background:#070b14;border:1px solid #1e3a5f;padding:6px 12px;margin-bottom:10px;font-size:9px">${corrLines.join('')}</div>`;
+    }
+
+    const monthSel=(stateKey,val,label)=>`<div><span class="f-lbl">${label}</span><select class="f-sel" style="min-width:90px" onchange="F.${stateKey}=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">
       ${ML.map((m,i)=>`<option value="${i}"${i===val?' selected':''}>${m}</option>`).join('')}
-    </select>`;
+    </select></div>`;
 
     return`
-    <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px">
-
-      <!-- Chart 1 -->
-      <div style="flex:1;min-width:260px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="font-size:9px;color:#c8d6e5;letter-spacing:1px;font-weight:700">BLNG FREIGHT RATES $/day</span>
-          <span style="font-size:9px;color:#546e7a">contract</span>
-          ${monthSel('histSelMonth',mi1)}
-        </div>
-        ${mkSVG(blngSeries)}
-        <div style="overflow-x:auto;margin-top:8px">
-        <table class="f-tbl" style="font-size:9px"><thead>
-          <tr>
-            <th>DATE</th>
-            <th class="tr" style="color:${BC.BLNG1}">BLNG1</th>
-            <th class="tr" style="color:${BC.BLNG2}">BLNG2</th>
-            <th class="tr" style="color:${BC.BLNG3}">BLNG3</th>
-          </tr>
-        </thead><tbody>${tableRows}</tbody></table></div>
+    <!-- BLNG curve toggles -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px">
+        ${blngToggle('BLNG1',BC.BLNG1)}
+        ${blngToggle('BLNG2',BC.BLNG2)}
+        ${blngToggle('BLNG3',BC.BLNG3)}
       </div>
-
-      <!-- Chart 2 -->
-      <div style="flex:1;min-width:260px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="font-size:9px;color:#ffb74d;letter-spacing:1px;font-weight:700">JKM / TTF SPREAD $/MMBtu</span>
-          <span style="font-size:9px;color:#546e7a">contract</span>
-          ${monthSel('histSelMonthSpread',mi2)}
-        </div>
-        ${spreadHasData
-          ? mkSVG([{values:spreadVals,color:'#ffb74d',name:'JKM−TTF'}])
-          :`<div style="background:#0a1628;border:1px dashed #1e3a5f;padding:20px;text-align:center;font-size:9px;color:#3d5070">
-              No JKM/TTF spread data loaded.<br>
-              Go to <strong style="color:#546e7a">Financial Trading → Scrape from Gmail</strong> to populate.
-            </div>`}
-        ${spreadHasData?`
-        <div style="overflow-x:auto;margin-top:8px">
-        <table class="f-tbl" style="font-size:9px"><thead>
-          <tr><th>DATE</th><th class="tr" style="color:#ffb74d">JKM−TTF</th></tr>
-        </thead><tbody>
-          ${sorted.map((s,i)=>{
-            const v=spreadVals[i];
-            const prev=spreadVals[i-1];
-            const d=v!=null&&prev!=null?v-prev:null;
-            const chgEl=d==null?'':d>0?`<span style="color:#f44336;font-size:8px"> +${d.toFixed(3)}</span>`:`<span style="color:#4caf50;font-size:8px"> ${d.toFixed(3)}</span>`;
-            return`<tr><td style="color:#8a9bb5;font-size:9px;white-space:nowrap">${s.date}</td>
-              <td class="tr" style="color:${v!=null?'#ffb74d':'#3d5070'};font-size:10px">${v!=null?v.toFixed(3):'-'}${chgEl}</td></tr>`;
-          }).join('')}
-        </tbody></table></div>`:''}
-      </div>
-
+      ${monthSel('histSelMonth',mi,'FREIGHT CONTRACT')}
     </div>
-    <div style="font-size:8px;color:#3d5070;margin-top:4px">${n} observation dates · freight change vs prior date in colour · charts have independent month selectors</div>`;
+
+    <!-- Chart 1: BLNG rates -->
+    <div style="font-size:9px;color:#c8d6e5;letter-spacing:1px;font-weight:700;margin-bottom:4px">BLNG FREIGHT RATES $/day</div>
+    ${activeSeries.length>0?mkSVG(activeSeries):'<div style="color:#3d5070;font-size:9px;padding:14px 0">Select at least one BLNG curve above</div>'}
+
+    <!-- Chart 2: JKM/TTF Spread -->
+    <div style="display:flex;align-items:center;gap:10px;margin-top:16px;margin-bottom:4px;flex-wrap:wrap">
+      <div style="font-size:9px;color:#ffb74d;letter-spacing:1px;font-weight:700">JKM / TTF SPREAD $/MMBtu</div>
+      ${monthSel('histSelMonthSpread',mi2,'SPREAD CONTRACT')}
+    </div>
+    ${hasSpread?mkSVG([{values:spreadVals,color:'#ffb74d',name:`JKM−TTF ${ML[mi2]}`}])
+      :`<div style="background:#0a1628;border:1px dashed #1e3a5f;padding:16px;text-align:center;font-size:9px;color:#3d5070">
+          No JKM/TTF spread data — load price data via Financial Trading → file drop or Gmail scrape
+        </div>`}
+
+    <!-- Correlation -->
+    ${corrHtml}
+    <div style="font-size:8px;color:#3d5070;margin-top:6px">${n} observation dates · independent contract selectors · Pearson r: -1=inverse, 0=no link, +1=direct</div>`;
   }
 
   // ── MAIN RENDER ───────────────────────────────────────────────────────────
@@ -4117,12 +4084,12 @@ function renderHistorical(){
           ${MCP_AVAILABLE
             ? `<button class="f-btn on" onclick="fAuthGate(()=>loadFreightFromGmail())">📧 SCRAPE FROM GMAIL</button>
                <button class="f-btn" onclick="fAuthGate(()=>loadHistFromGDrive())">⬇ LOAD FROM DRIVE</button>`
-            : `<span style="font-size:9px;color:#546e7a;padding:4px 8px;border:1px dashed #1e3a5f">📧 Gmail scrape — available in Claude.ai only</span>`}
-          <button class="f-btn on" onclick="document.getElementById('hist-xls-upload').click()">📊 BATCH UPLOAD EXCEL</button>
+            : ''}
+          <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-xls-upload').click())">📊 UPLOAD EXCEL</button>
           <input type="file" id="hist-xls-upload" accept=".xlsx,.xls" multiple style="display:none" onchange="parseHistExcel(this)">
-          <button class="f-btn" onclick="document.getElementById('hist-json-upload').click()">⬆ IMPORT JSON</button>
+          <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-json-upload').click())">⬆ IMPORT JSON</button>
           <input type="file" id="hist-json-upload" accept=".json" style="display:none" onchange="importHistJson(this)">
-          <button class="f-btn" onclick="exportHistJson()">⬇ EXPORT JSON</button>
+          <button class="f-btn" onclick="fAuthGate(()=>exportHistJson())">⬇ EXPORT JSON</button>
           <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-img-upload').click())">📁 UPLOAD IMAGES</button>
           <input type="file" id="hist-img-upload" accept=".png,.jpg,.jpeg" multiple style="display:none" onchange="parseHistImages(this)">
         </div>`}
