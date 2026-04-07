@@ -5458,6 +5458,7 @@ function initCargo(){
   CP.liqFee=cpGet('cp_liqfee',Array(24).fill(0));
   CP.histSnaps=cpGet('cp_hist_snaps',[]);
   CP.hhSlope=cpGet('cp_hh_slope',1.15);
+  CP.globalArbIdx=cpGet('cp_global_arb_idx','TTF');
   CP.tab=0;renderCargo();
 }
 function renderCargo(){
@@ -5487,8 +5488,6 @@ function renderCargoTab(){const b=document.getElementById('cp-body');if(!b)retur
   else if(CP.tab===3)b.innerHTML=cpMEIArb(d);
   else if(CP.tab===4)b.innerHTML=cpPacificArb(d);
   else if(CP.tab===5)b.innerHTML=cpFrDiffBasis(d);
-  // init any dynamic components
-  if(CP.tab===1)setTimeout(()=>cpInitMap(d),100);
 }
 
 // ── Sync functions ─────────────────────────────────────────────────────────
@@ -5638,44 +5637,99 @@ function cpInitMap(d){
   });
 }
 function cpGlobalArb(d){
-  const m=CP.selMonth;
-  const orgs=[
-    {label:'Sabine Pass',basin:'ATLANTIC',nwe:d.sabNbNwe,jktc:d.sabNbJktc,mei:d.sabNbMei},
-    {label:'Trinidad',basin:'ATLANTIC',nwe:d.triNbNwe,jktc:d.triNbJktc,mei:d.triNbMei},
-    {label:'Angola',basin:'ATLANTIC',nwe:d.angNbNwe,jktc:d.angNbJktc,mei:d.angNbMei},
-    {label:'Nigeria',basin:'ATLANTIC',nwe:d.nigNbNwe,jktc:d.nigNbJktc,mei:d.nigNbMei},
-    {label:'Qatar',basin:'MEI',nwe:d.qatNbEur,jktc:d.qatNbAsia,mei:d.qatNbMei},
-    {label:'Oman',basin:'MEI',nwe:d.omnNbEur,jktc:d.omnNbAsia,mei:d.omnNbMei},
-    {label:'Barrow Is.',basin:'PACIFIC',nwe:null,jktc:d.abNbAsia,mei:null},
-    {label:'Gladstone',basin:'PACIFIC',nwe:null,jktc:d.agNbAsia,mei:null},
-    {label:'Bontang',basin:'PACIFIC',nwe:null,jktc:d.idxNbAsia,mei:null},
+  // ── FOB netback recomputed per selected index ────────────────────────────
+  const idx=CP.globalArbIdx||'TTF';
+  const idxArr=idx==='JKM'?CP.fp.JKM:idx==='HH'?CP.fp.HH:CP.fp.TTF;
+  const idxLbl=idx==='HH'?'HH flat':idx+' flat';
+  const fr=CP.freight;
+  // nb = DES - freight - index
+  function nb(desArr,frArr){return ML.map((_,i)=>frArr&&frArr[i]!=null?desArr[i]-frArr[i]-idxArr[i]:null);}
+  const ORGS=[
+    {id:'sabine', label:'Sabine Pass',basin:'ATL',col:'#4fc3f7',
+     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.des.jktc,fr.sabine_tokyo)}},
+    {id:'trinidad',label:'Trinidad',  basin:'ATL',col:'#4fc3f7',
+     routes:{eur:nb(d.des.nwe,fr.trinidad_gate),mei:nb(d.des.mei,fr.trinidad_dahej),asia:nb(d.des.jktc,fr.trinidad_tokyo)}},
+    {id:'angola', label:'Angola',     basin:'ATL',col:'#4fc3f7',
+     routes:{eur:nb(d.des.nwe,fr.angola_gate),mei:nb(d.des.mei,fr.angola_dahej),asia:nb(d.des.jktc,fr.angola_tokyo)}},
+    {id:'nigeria',label:'Nigeria',    basin:'ATL',col:'#4fc3f7',
+     routes:{eur:nb(d.des.nwe,fr.nigeria_gate),mei:nb(d.des.mei,fr.nigeria_dahej),asia:nb(d.des.jktc,fr.nigeria_tokyo)}},
+    {id:'qatar',  label:'Qatar',      basin:'MEI',col:'#ffb74d',
+     routes:{eur:nb(d.des.nwe,fr.qatar_gate),mei:nb(d.des.mei,fr.qatar_dahej),asia:nb(d.des.jktc,fr.qatar_tokyo)}},
+    {id:'oman',   label:'Oman',       basin:'MEI',col:'#ffb74d',
+     routes:{eur:nb(d.des.nwe,fr.oman_gate),mei:nb(d.des.mei,fr.oman_dahej),asia:nb(d.des.jktc,fr.oman_tokyo)}},
+    {id:'aus_b',  label:'Barrow Is.', basin:'PAC',col:'#81c784',
+     routes:{eur:null,mei:null,asia:nb(d.des.jktc,fr.australia_b_tokyo)}},
+    {id:'aus_g',  label:'Gladstone',  basin:'PAC',col:'#81c784',
+     routes:{eur:null,mei:null,asia:nb(d.des.jktc,fr.australia_g_tokyo)}},
+    {id:'bontang',label:'Bontang',    basin:'PAC',col:'#81c784',
+     routes:{eur:null,mei:null,asia:nb(d.des.jktc,fr.indonesia_tokyo)}},
   ];
-  const cell=(v)=>v!=null?`<td class="tr" style="color:${posCol(v)};font-weight:${Math.abs(v)>0.3?700:400}">${v>=0?'+':''}${fv(v)}</td>`:`<td class="tr" style="color:#1e3a5f">—</td>`;
+  const DEST_LABEL={eur:'Europe',mei:'MEI',asia:'JKTC'};
+  const BASIN_COL={ATL:'#4fc3f7',MEI:'#ffb74d',PAC:'#81c784'};
+  const BASIN_NAME={ATL:'Atlantic basin',MEI:'MEI basin',PAC:'Pacific basin'};
+
+  function cellStyle(v){
+    if(v==null)return{bg:'#0a1628',fg:'#1e3a5f'};
+    if(v>=0.5) return{bg:'#1a5c28',fg:'#a8f0bc'};
+    if(v>=0.2) return{bg:'#2a7d30',fg:'#d0f7da'};
+    if(v>=0)   return{bg:'#0d2e15',fg:'#81c784'};
+    return{bg:'#2d0a0a',fg:'#ef9a9a'};
+  }
+  function getBest(org){
+    const cands=[];
+    ['eur','mei','asia'].forEach(dk=>{const arr=org.routes[dk];if(!arr)return;const v=arr[i];if(v!=null)cands.push({dk,v});});
+    return cands.length?cands.reduce((a,b)=>b.v>a.v?b:a):null;
+  }
+
+  // Build heatmap rows (12 months)
+  const MONTHS12=ML.slice(0,12);
+  const idxBtns=['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x==='HH'?'HH':x}</button>`).join('');
+
+  let rows='';let lastBasin='';
+  ORGS.forEach(org=>{
+    if(org.basin!==lastBasin){
+      rows+=`<tr><td colspan="${MONTHS12.length+1}" style="padding:8px 8px 3px;font-size:9px;font-weight:700;letter-spacing:.1em;color:${BASIN_COL[org.basin]}">${BASIN_NAME[org.basin].toUpperCase()}</td></tr>`;
+      lastBasin=org.basin;
+    }
+    rows+=`<tr><td style="font-size:10px;padding:4px 8px;white-space:nowrap;color:#c8d6e5"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${BASIN_COL[org.basin]};margin-right:5px;vertical-align:middle"></span>${org.label}</td>`;
+    MONTHS12.forEach((_,i)=>{
+      const cands=[];
+      ['eur','mei','asia'].forEach(dk=>{const arr=org.routes[dk];if(!arr||arr[i]==null)return;cands.push({dk,v:arr[i]});});
+      if(!cands.length){rows+=`<td style="padding:2px"><div style="background:#0a1628;border-radius:5px;padding:5px 3px;text-align:center;color:#1e3a5f;font-size:10px">—</div></td>`;return;}
+      const best=cands.reduce((a,b)=>b.v>a.v?b:a);
+      const cs=cellStyle(best.v);
+      const des=best.dk==='eur'?d.des.nwe[i]:best.dk==='mei'?d.des.mei[i]:d.des.jktc[i];
+      const frv=org.routes[best.dk][i];
+      const idxv=idxArr[i];
+      const tooltip=`${org.label} → ${DEST_LABEL[best.dk]} (${ML[i]})\nDES: ${des.toFixed(3)}\nFreight: ${frv.toFixed(3)}\n${idxLbl}: ${idxv.toFixed(3)}\n= ${best.v>=0?'+':''}${best.v.toFixed(3)} $/MMBtu`;
+      rows+=`<td style="padding:2px"><div style="background:${cs.bg};border-radius:5px;padding:5px 3px;text-align:center;cursor:default;font-family:IBM Plex Mono,monospace" title="${tooltip}">
+        <div style="font-size:10px;font-weight:700;color:${cs.fg}">${DEST_LABEL[best.dk]}</div>
+        <div style="font-size:9px;color:${cs.fg};opacity:.75">${best.v>=0?'+':''}${best.v.toFixed(2)}</div>
+      </div></td>`;
+    });
+    rows+='</tr>';
+  });
+
+  const legend=[['#1a5c28','#a8f0bc','> +0.5'],['#2a7d30','#d0f7da','+0.2 to +0.5'],['#0d2e15','#81c784','0 to +0.2'],['#2d0a0a','#ef9a9a','Loss']];
+
   return`
-  <div class="f-sec" style="display:flex;align-items:center;justify-content:space-between">
-    <span>GLOBAL ARB DASHBOARD — ${ML[m]}</span>
-    <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>
+  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FOB NETBACK IN</span>
+    ${idxBtns}
+    <span style="flex:1"></span>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      ${legend.map(([bg,fg,lbl])=>`<div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#546e7a"><span style="display:inline-block;width:22px;height:12px;border-radius:3px;background:${bg}"></span>${lbl}</div>`).join('')}
+    </div>
   </div>
-  <div id="cp-arb-map" style="height:340px;width:100%;border:1px solid #1e3a5f;margin-bottom:16px;border-radius:2px"></div>
-  <div style="overflow-x:auto"><table class="f-tbl">
-    <thead><tr>
-      <th style="min-width:140px">ORIGIN</th><th>BASIN</th>
-      <th class="tr">→ NWE ($/MMBtu)</th><th class="tr">→ JKTC ($/MMBtu)</th><th class="tr">→ MEI ($/MMBtu)</th><th>BEST DEST</th>
-    </tr></thead>
-    <tbody>${orgs.map(o=>{
-      const vals=[o.nwe?.[m],o.jktc?.[m],o.mei?.[m]];
-      const dests=['NWE','JKTC','MEI'];
-      const validVals=vals.map((v,i)=>({v,i})).filter(x=>x.v!=null);
-      const best=validVals.length?validVals.reduce((a,b)=>b.v>a.v?b:a):{v:null,i:-1};
-      const basinCol={'ATLANTIC':'#4fc3f7','MEI':'#ffb74d','PACIFIC':'#81c784'};
-      return`<tr>
-        <td style="color:#c8d6e5;font-size:10px">${o.label}</td>
-        <td style="color:${basinCol[o.basin]||'#546e7a'};font-size:9px;font-weight:700">${o.basin}</td>
-        ${cell(o.nwe?.[m])}${cell(o.jktc?.[m])}${cell(o.mei?.[m])}
-        <td style="color:${best.v!=null&&best.v>0?'#4caf50':'#546e7a'};font-weight:700;font-size:9px">${best.i>=0?dests[best.i]+(best.v>0?' ✓':''):'-'}</td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table></div>
+  <div style="overflow-x:auto">
+    <table style="border-collapse:collapse;width:100%;min-width:700px">
+      <thead><tr>
+        <th style="text-align:left;font-size:9px;font-weight:500;color:#546e7a;padding:8px 8px 6px;min-width:120px;border-bottom:1px solid #1e3a5f">ORIGIN</th>
+        ${MONTHS12.map(m=>`<th style="font-size:9px;font-weight:500;color:#546e7a;padding:6px 2px;text-align:center;border-bottom:1px solid #1e3a5f;min-width:58px">${m}</th>`).join('')}
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>
   <style>.cp-popup .leaflet-popup-content-wrapper{background:#0d1e36;border:1px solid #1e3a5f;border-radius:2px;box-shadow:none}.cp-popup .leaflet-popup-tip{background:#0d1e36}.cp-tooltip{background:#070b14;border:1px solid #1e3a5f;color:#c8d6e5;font-family:IBM Plex Mono,monospace;font-size:10px;box-shadow:none}</style>`;
 }
 
