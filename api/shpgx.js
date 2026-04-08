@@ -215,8 +215,19 @@ export default async function handler(req, res) {
       });
       const html = await resp.text();
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      // Find and show table section + any <script> data calls
+      const tableIdx = html.indexOf('<table');
+      const tableEnd = html.lastIndexOf('</table>');
+      const tableSection = tableIdx > -1 ? html.slice(tableIdx, Math.min(tableEnd+8, tableIdx+6000)) : 'NO TABLE FOUND';
+      // Also check for ajax/fetch patterns
+      const ajaxHints = [];
+      const ajaxRx = /(fetch|\.ajax|\.get|\.post|XMLHttpRequest|url\s*[:=])\s*["'`]([^"'`]+)["'`]/gi;
+      let am;
+      while ((am = ajaxRx.exec(html)) !== null) ajaxHints.push(am[2]);
       return res.status(200).send(
-        `HTTP ${resp.status}\nURL: ${config.url}\nLength: ${html.length}\n\n` + html.slice(0, 8000)
+        `HTTP ${resp.status} | Length: ${html.length} | tableIdx: ${tableIdx}\n` +
+        `AJAX hints: ${[...new Set(ajaxHints)].slice(0,10).join(' | ')}\n\n` +
+        `TABLE SECTION:\n` + tableSection
       );
     } catch (e) {
       return res.status(500).json({ error: e.message });
