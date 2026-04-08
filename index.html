@@ -5402,7 +5402,7 @@ const CP_SEED_FR={
   });
 })();
 
-const CP_TABS=['PHYS DIFFERENTIALS','DES PRICES','GLOBAL ARB','ATLANTIC BASIN','MEI','PACIFIC BASIN','FOB NETBACK','FR DIFF vs BASIS'];
+const CP_TABS=['PHYS DIFFERENTIALS','DES PRICES','GLOBAL ARB','ATLANTIC BASIN','MEI','PACIFIC BASIN','FR DIFF vs BASIS'];
 let CP={fp:null,phys:null,freight:null,liqFee:null,histSnaps:null,tab:0,selMonth:0,indexMode:'TTF',hhSlope:1.15,coghMode:false,histSnapDate:new Date().toISOString().slice(0,10)};
 function cpGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
 function cpSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
@@ -5425,13 +5425,12 @@ function cpDerived(){
   CP.freight=freight; // write back so basin tabs (cpGlobalArb/Atlantic/MEI/Pacific) get clean values
   // ── Physical diffs ─────────────────────────────────────────────────────────
   const phyItaly=ML.map((_,i)=>phys.nwe[i]+(freight.sabine_rovigo?.[i]??freight.sabine_rotterdam[i]*1.21)-(freight.sabine_rotterdam[i]));
-  // MEI diff: Angola Dahej-Tokyo freight differential vs JKM
-  const phyMei=ML.map((_,i)=>freight.angola_dahej[i]-freight.angola_tokyo[i]);
   // Thailand diff: Angola Dahej - Angola MapTaPhut (via COGH)
   const phyThailand=ML.map((_,i)=>{const amt=freight.angola_maptaphut?.[i]??freight.angola_dahej[i]*1.233;return +(freight.angola_dahej[i]-amt).toFixed(3);});
   const ov=cpGet('cp_phys_ov',{});
   const termFr=(t,i)=>phys.nwe[i]+((freight['sabine_'+t]?.[i]??0)-(freight.sabine_rotterdam[i]));
   const withOv=(t,base,i)=>{const k=t+'_'+i;return ov[k]!=null?ov[k]:base;};
+  const phyMei    =ML.map((_,i)=>withOv('mei',    +(freight.angola_dahej[i]-freight.angola_tokyo[i]).toFixed(3),i));
   const phyKlaipeda=ML.map((_,i)=>withOv('klaipeda',termFr('klaipeda',i),i));
   const phyInkoo   =ML.map((_,i)=>withOv('inkoo',   termFr('inkoo',i),   i));
   const phyRev     =ML.map((_,i)=>withOv('rev',     termFr('rev',i),     i));
@@ -5519,7 +5518,7 @@ function cpDerived(){
     jkmTtf,frDiff,arbOpen,profEur,profAsia};
 }
 // ── Freight seed version: bump whenever seed curves change to force cache refresh ──
-const CP_FREIGHT_VER='v53_full_apr2026';
+const CP_FREIGHT_VER='v53_hh_apr2026';
 
 function cpMergeFreight(){
   const seed=JSON.parse(JSON.stringify(CP_SEED_FR));
@@ -5557,7 +5556,7 @@ function renderCargo(){
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">CARGO PRICING MODEL</span>
     <span style="flex:1"></span>
-    <span style="color:#3d5070;font-size:9px;letter-spacing:.08em;margin-right:8px">v53_full_apr2026</span><button class="f-btn sm" onclick="cpForceReset()" title="Wipe localStorage cache and reinitialise from seed" style="border-color:rgba(255,82,82,.3);color:#ef5350">⚠ RESET CACHE</button><button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading">↺ SYNC PRICES</button>
+    <span style="color:#3d5070;font-size:9px;letter-spacing:.08em;margin-right:8px">v53_hh_apr2026</span><button class="f-btn sm" onclick="cpForceReset()" title="Wipe localStorage cache and reinitialise from seed" style="border-color:rgba(255,82,82,.3);color:#ef5350">⚠ RESET CACHE</button><button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading">↺ SYNC PRICES</button>
     <button class="f-btn sm" onclick="cpSyncFreight()" title="Pull latest freight $/MMBtu from validated freight matrix">↺ SYNC FREIGHT</button>
   </div>
   <div class="f-subnav">${CP_TABS.map((t,i)=>`<button class="f-tab${CP.tab===i?' active':''}" onclick="cpTab(${i})">${t}</button>`).join('')}</div>
@@ -5831,7 +5830,7 @@ function cpGlobalArb(d){
   function cellStyle(dk){return DEST_STYLE[dk]||{bg:'#0a1628',fg:'#3d5070'};}
   // Build heatmap rows (12 months)
   const MONTHS12=ML.slice(0,12);
-  const idxBtns=['TTF','JKM'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x==='HH'?'HH':x}</button>`).join('');
+  const idxBtns=['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x==='HH'?'HH':x}</button>`).join('');
   const legend=[['#0d2545','#90caf9','Europe'],['#0d2e15','#a5d6a7','MEI'],['#2d0f0f','#ef9a9a','JKTC']];
 
   let rows='';let lastBasin='';
@@ -6018,7 +6017,7 @@ function cpBasinTab(cfg,d){
     return org.dtRoutes.map(dt=>({dt,nb:nbx(dt,i)})).filter(x=>x.nb!=null).sort((a,b)=>b.nb-a.nb);
   }
 
-  const idxBtns=['TTF','JKM'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x}</button>`).join('');
+  const idxBtns=['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x}</button>`).join('');
   const orgSel=`<select class="f-sel" onchange="CP.selBasinOrg=this.value;renderCargoTab()">${cfg.orgs.map(o=>`<option value="${o.id}"${selOrg.id===o.id?' selected':''}>${o.label}</option>`).join('')}</select>`;
   const legend=[['#0d2545','#90caf9','NWE/Eur'],['#1a2010','#d4e157','Ain Sukhna'],['#0d2e15','#a5d6a7','MEI'],['#2d0f0f','#ef9a9a','JKTC/Asia']]
     .map(([bg,fg,l])=>`<span style="display:flex;align-items:center;gap:3px"><span style="width:14px;height:9px;border-radius:2px;background:${bg};display:inline-block"></span><span style="color:${fg};font-size:9px">${l}</span></span>`).join('');
@@ -6290,111 +6289,33 @@ function cpPacificArb(d){
   return`<div class="f-sec">PACIFIC BASIN ARB</div>`+cpBasinTab(cfg,d);
 }
 
-function cpFobNetback(d){
-  const idx=CP.fobNbIdx||'TTF';
-  const sl=CP.hhSlope||1.15;
-  const idxArr=idx==='JKM'?CP.fp.JKM:CP.fp.TTF;
-  const idxLbl=idx+' flat';
-  const fr=d.freight;
-  const M12=ML.slice(0,12);
-  const ORGS=[
-    {id:'sabine',   label:'Sabine Pass',    col:'#4fc3f7', basin:'ATL',
-     routes:{eur:fr.sabine_rotterdam,  mei:fr.sabine_dahej,   asia:fr.sabine_tokyo,  ain:fr.sabine_ain,   thai:fr.sabine_maptaphut}},
-    {id:'trinidad', label:'Trinidad',       col:'#29b6f6', basin:'ATL',
-     routes:{eur:fr.trinidad_gate,     mei:fr.trinidad_dahej, asia:fr.trinidad_tokyo,ain:fr.trinidad_ain, thai:fr.trinidad_maptaphut}},
-    {id:'angola',   label:'Angola',         col:'#ff9800', basin:'ATL',
-     routes:{eur:fr.angola_gate,       mei:fr.angola_dahej,   asia:fr.angola_tokyo,  ain:fr.angola_ain,   thai:fr.angola_maptaphut}},
-    {id:'nigeria',  label:'Nigeria',        col:'#81c784', basin:'ATL',
-     routes:{eur:fr.nigeria_gate,      mei:fr.nigeria_dahej,  asia:fr.nigeria_tokyo, ain:fr.nigeria_ain,  thai:fr.nigeria_maptaphut}},
-    {id:'qatar',    label:'Qatar',          col:'#ffb74d', basin:'MEI',
-     routes:{eur:fr.qatar_gate,        mei:fr.qatar_dahej,    asia:fr.qatar_tokyo,   ain:fr.qatar_ain}},
-    {id:'oman',     label:'Oman',           col:'#ffa726', basin:'MEI',
-     routes:{eur:fr.oman_gate,         mei:fr.oman_dahej,     asia:fr.oman_tokyo,    ain:fr.oman_ain}},
-    {id:'aus_b',    label:'Barrow Is.',     col:'#66bb6a', basin:'PAC',
-     routes:{asia:fr.australia_b_tokyo,mei:ML.map((_,i)=>+(fr.australia_b_tokyo[i]*1.056).toFixed(3)),eur:ML.map((_,i)=>+(fr.australia_b_tokyo[i]*3.683).toFixed(3)),ain:fr.australia_b_ain}},
-    {id:'aus_g',    label:'Gladstone',      col:'#43a047', basin:'PAC',
-     routes:{asia:fr.australia_g_tokyo,mei:ML.map((_,i)=>+(fr.australia_g_tokyo[i]*1.720).toFixed(3)),eur:ML.map((_,i)=>+(fr.australia_g_tokyo[i]*3.538).toFixed(3)),ain:fr.australia_g_ain}},
-    {id:'bontang',  label:'Bontang',        col:'#a5d6a7', basin:'PAC',
-     routes:{asia:fr.indonesia_tokyo,  mei:ML.map((_,i)=>+(fr.indonesia_tokyo[i]*1.508).toFixed(3)),  eur:ML.map((_,i)=>+(fr.indonesia_tokyo[i]*5.122).toFixed(3)),  ain:fr.indonesia_ain}},
-  ];
-  // DES price per route key
-  function des(dk,i){
-    if(dk==='eur') return d.des.nwe[i];
-    if(dk==='mei') return d.des.mei[i];
-    if(dk==='asia')return d.des.jktc[i];
-    if(dk==='ain') return d.des.ain[i];
-    if(dk==='thai')return d.des.jktc[i];
-    return null;
-  }
-  // Best FOB netback for origin at month i
-  function bestNb(org,i){
-    let best=null;
-    Object.entries(org.routes).forEach(([dk,frArr])=>{
-      if(!frArr||frArr[i]==null)return;
-      const dv=des(dk,i); if(dv==null)return;
-      const nb=+(dv-frArr[i]-idxArr[i]).toFixed(3);
-      if(best===null||nb>best)best=nb;
-    });
-    return best;
-  }
-  // Color scale: green=positive, red=negative
-  function nbColor(v){
-    if(v==null)return{bg:'#0a1628',fg:'#3d5070'};
-    if(v>=0)return{bg:'#0d2e15',fg:'#a5d6a7'};
-    if(v>=-0.5)return{bg:'#1a1a10',fg:'#e6c96e'};
-    if(v>=-1.5)return{bg:'#1a1000',fg:'#ffb74d'};
-    return{bg:'#2d0f0f',fg:'#ef9a9a'};
-  }
-  const idxBtns=['TTF','JKM'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.fobNbIdx='${x}';renderCargoTab()">${x}</button>`).join('');
-  // Build heatmap
-  let rows='';
-  ORGS.forEach(org=>{
-    const bcol=org.col;
-    rows+=`<tr><td style="font-size:10px;padding:4px 8px;white-space:nowrap;color:${bcol};font-weight:700">${org.label}</td>`;
-    M12.forEach((_,i)=>{
-      const v=bestNb(org,i);
-      const c=nbColor(v);
-      rows+=`<td style="padding:2px"><div style="background:${c.bg};border-radius:4px;padding:5px 2px;text-align:center">
-        <div style="font-size:11px;font-weight:700;color:${c.fg}">${v!=null?(v>=0?'+':'')+v.toFixed(2):'—'}</div>
-      </div></td>`;
-    });
-    rows+='</tr>';
-  });
-  // Summary stats
-  const m=CP.selMonth??0;
-  let rankRows='';
-  const ranked=ORGS.map(org=>({label:org.label,col:org.col,v:bestNb(org,m)}))
-    .filter(x=>x.v!=null).sort((a,b)=>b.v-a.v);
-  const rmax=Math.max(...ranked.map(x=>Math.abs(x.v)),0.01);
-  ranked.forEach((x,i)=>{
-    const pct=Math.round(Math.abs(x.v)/rmax*100);
-    rankRows+=`<tr${i===0?' style="background:#0d1e36"':''}><td style="color:#546e7a;font-size:9px;padding:3px 4px;text-align:center">${i+1}</td>
-      <td style="color:${x.col};font-size:10px;padding:3px 4px">${x.label}</td>
-      <td style="padding:3px 4px"><div style="height:5px;border-radius:3px;background:#1e3a5f;width:150px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${x.col}"></div></div></td>
-      <td style="text-align:right;color:${x.col};font-size:12px;font-weight:${i===0?700:400};padding:3px 6px">${x.v>=0?'+':''}${x.v.toFixed(3)}</td>
-      <td style="font-size:8px;color:#3d5070;padding:3px 4px">${idxLbl}</td>
-    </tr>`;
-  });
-  return`
-  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:7px 14px;display:flex;align-items:center;gap:10px">
-    <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FOB NETBACK IN</span>${idxBtns}
-    <span style="color:#546e7a;font-size:9px;margin-left:12px">best destination per origin · 12-month strip</span>
-  </div>
-  <div style="overflow-x:auto;padding:8px 14px 0">
-    <table style="width:100%;border-collapse:collapse;min-width:900px">
-      <thead><tr>
-        <th style="text-align:left;color:#546e7a;font-size:9px;padding:3px 8px;font-weight:400">ORIGIN</th>
-        ${M12.map(mo=>`<th style="text-align:center;color:#546e7a;font-size:9px;padding:3px 4px;font-weight:400">${mo}</th>`).join('')}
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </div>
-  <div style="padding:8px 14px 4px;color:#546e7a;font-size:8px;letter-spacing:1px;margin-top:4px">RANKING — ${ML[m]}</div>
-  <div style="padding:0 14px 8px">
-    <table style="border-collapse:collapse">
-      <tbody>${rankRows}</tbody>
-    </table>
-  </div>`;
+function cpInitFrChart(id,labels,...datasets){
+  return`<script>
+  (function(){
+    function init(){
+      const el=document.getElementById('${id}');
+      if(!el||!window.Chart)return setTimeout(init,80);
+      if(el._chart)el._chart.destroy();
+      el._chart=new Chart(el,{
+        type:'line',
+        data:{
+          labels:${JSON.stringify(labels)},
+          datasets:${JSON.stringify(datasets)}
+        },
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{labels:{color:'#546e7a',font:{size:9,family:'IBM Plex Mono'},boxWidth:12}}},
+          scales:{
+            x:{ticks:{color:'#546e7a',font:{size:8}},grid:{color:'#1e3a5f'}},
+            y:{ticks:{color:'#546e7a',font:{size:8}},grid:{color:'#1e3a5f'},
+               title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:8}}}
+          }
+        }
+      });
+    }
+    setTimeout(init,60);
+  })();
+  <\/script>`;
 }
 
 function cpFrDiffBasis(d){
