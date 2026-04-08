@@ -198,6 +198,31 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // Debug mode: ?debug=1&series=truck — returns raw HTML to inspect SHPGX response
+  if (req.query.debug === '1') {
+    const key    = (req.query.series || 'truck').split(',')[0].trim();
+    const config = SERIES_CONFIG[key];
+    if (!config) return res.status(400).json({ error: 'unknown series' });
+    try {
+      const resp = await fetch(config.url, {
+        headers: {
+          'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+          'Accept':          'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          'Referer':         'https://www.shpgx.com/',
+        },
+        signal: AbortSignal.timeout(15000),
+      });
+      const html = await resp.text();
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.status(200).send(
+        `HTTP ${resp.status}\nURL: ${config.url}\nLength: ${html.length}\n\n` + html.slice(0, 8000)
+      );
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   const {
     series = 'truck,cld,exterm,diesel,cnp,pipe_spot',
     pages  = '3',
@@ -248,4 +273,3 @@ export default async function handler(req, res) {
     total_rows:   Object.values(rowCounts).reduce((s, n) => s + n, 0),
   });
 }
-
