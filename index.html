@@ -1363,6 +1363,27 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     // ── SHPGX CSV Data Store ──
     // Keyed by series id, holds parsed rows from uploaded CSVs
     const SHPGX = window.SHPGX_DATA = window.SHPGX_DATA || {};
+    const SHPGX_CACHE_KEY = 'lng_shpgx_v1';
+    const SHPGX_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours in ms
+
+    // ── localStorage cache helpers ──
+    function csWriteCache(data) {
+      try {
+        localStorage.setItem(SHPGX_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+      } catch(e) { /* storage full — ignore */ }
+    }
+    function csReadCache() {
+      try {
+        const raw = localStorage.getItem(SHPGX_CACHE_KEY);
+        if (!raw) return null;
+        const { ts, data } = JSON.parse(raw);
+        if (Date.now() - ts > SHPGX_CACHE_TTL) return null; // stale
+        return { data, age_ms: Date.now() - ts };
+      } catch(e) { return null; }
+    }
+    function csClearCache() {
+      try { localStorage.removeItem(SHPGX_CACHE_KEY); } catch(e) {}
+    }
 
     function parseShpgxCSV(text, key) {
       const lines = text.trim().split('\n').filter(l=>l.trim());
@@ -1426,6 +1447,101 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       })).filter(r=>!isNaN(r.value)&&r.value>0).sort((a,b)=>a.date-b.date);
     }
 
+    // ── API fetch: calls /api/shpgx Vercel function ──────────────────────────
+    const CS_API_SERIES = ['truck','cld','exterm','diesel','cnp','pipe_spot'];
+
+    function csSetStatus(msg, color) {
+      const el = document.getElementById('cs-shpgx-status');
+      if (el) { el.textContent = msg; el.style.color = color || '#dde4f0'; }
+    }
+
+    function csSetBtn(id, label, disabled) {
+      const btn = document.getElementById(id);
+      if (btn) { btn.textContent = label; btn.disabled = !!disabled; }
+    }
+
+    // Ingest a data payload (from API or cache) into SHPGX store
+    function csIngestPayload(payload) {
+      const { data } = payload;
+      for (const [key, seriesObj] of Object.entries(data || {})) {
+        if (!seriesObj?.rows?.length) continue;
+        // Normalise rows to the shape liveOrSim() expects
+        SHPGX[key] = seriesObj.rows.map(r => ({
+          date: r.date,
+          region: r.region || '',
+          grade: r.grade || '',
+          price_cny_kg:    seriesObj.unit === 'cny_kg'    ? r.value : undefined,
+          price_usd_mmbtu: seriesObj.unit === 'usd_mmbtu' ? r.value : undefined,
+          price_cny_tonne: seriesObj.unit === 'cny_tonne' ? r.value : undefined,
+          price_cny_m3:    seriesObj.unit === 'cny_m3'    ? r.value : undefined,
+        }));
+      }
+    }
+
+    // Format a cache age for display
+    function fmtAge(ms) {
+      const m = Math.round(ms / 60000);
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m / 60), rm = m % 60;
+      return `${h}h ${rm}m ago`;
+    }
+
+    // Main API fetch function
+    window.csFetchLive = async function(force) {
+      csSetBtn('cs-fetch-btn', '⟳ FETCHING...', true);
+      csSetStatus('Connecting to SHPGX via server proxy...', '#f59e0b');
+
+      try {
+        // 1. Try API fetch
+        const url = `/api/shpgx?series=${CS_API_SERIES.join(',')}&pages=3`;
+        const resp = await fetch(url, { signal: AbortSignal.timeout(30000) });
+        if (!resp.ok) throw new Error(`API returned ${resp.status}`);
+        const payload = await resp.json();
+
+        if (payload.errors && Object.keys(payload.errors).length) {
+          const errList = Object.entries(payload.errors).map(([k,v]) => `${k}: ${v}`).join('; ');
+          console.warn('[SHPGX] Partial errors:', errList);
+        }
+
+        csIngestPayload(payload);
+        csWriteCache(payload);
+
+        const loaded = Object.keys(SHPGX).filter(k => SHPGX[k]?.length);
+        const total  = loaded.reduce((s,k) => s + (SHPGX[k]?.length||0), 0);
+        csSetStatus(
+          `✓ LIVE — ${loaded.length} series · ${total} rows · fetched ${new Date(payload.fetched_at).toLocaleTimeString()}`,
+          '#34d399'
+        );
+        csSetBtn('cs-fetch-btn', '⟳ REFRESH', false);
+        csUpdateShpgxBadges('LIVE');
+        csRefreshActiveTab();
+
+      } catch(apiErr) {
+        // 2. API failed — try localStorage cache (even if stale)
+        let cached = null;
+        try { cached = JSON.parse(localStorage.getItem(SHPGX_CACHE_KEY)); } catch(e) {}
+        if (cached?.data) {
+          csIngestPayload(cached.data);
+          const age = cached.ts ? fmtAge(Date.now() - cached.ts) : '?';
+          csSetStatus(`⚠ API error — using cached data (${age})`, '#f59e0b');
+          csSetBtn('cs-fetch-btn', '⟳ RETRY', false);
+          csUpdateShpgxBadges('CACHED');
+          csRefreshActiveTab();
+        } else {
+          csSetStatus(`✗ API unavailable — using estimates (${apiErr.message.slice(0,60)})`, '#ef4444');
+          csSetBtn('cs-fetch-btn', '⟳ RETRY', false);
+        }
+      }
+    };
+
+    function csRefreshActiveTab() {
+      const activePane = document.querySelector('.cs-tab-pane.active');
+      if(activePane?.id==='cs-pane-0') csT1Update();
+      else if(activePane?.id==='cs-pane-1') csT2Update();
+      else if(activePane?.id==='cs-pane-2') csT3Update();
+      else if(activePane?.id==='cs-pane-3') csT4Update();
+    }
+
     function csInit() {
       // Sync USD/CNY inputs across tabs
       const main=document.getElementById('cs-usdcny');
@@ -1434,79 +1550,101 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         if(el&&main) el.value=main.value;
       });
 
-      // Render SHPGX data import zone if not already present
+      // Render data source bar if not already present
       if(!document.getElementById('cs-shpgx-import')) {
         const zone = document.createElement('div');
         zone.id = 'cs-shpgx-import';
         zone.style.cssText = 'margin-bottom:16px;border:1px solid rgba(77,158,245,0.13);padding:12px 16px;background:#0f1221';
         zone.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-            <div>
-              <div style="font-size:9px;letter-spacing:.15em;color:#6b7a99;margin-bottom:3px">SHPGX DATA FILES</div>
-              <div style="font-size:10px;color:#dde4f0" id="cs-shpgx-status">No data loaded · Charts using simulated estimates</div>
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:9px;letter-spacing:.15em;color:#6b7a99;margin-bottom:3px">SHPGX DATA SOURCE</div>
+              <div style="font-size:10px;color:#dde4f0" id="cs-shpgx-status">Checking cache...</div>
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <label style="padding:6px 14px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(77,158,245,0.3);color:#4d9ef5;cursor:pointer;background:rgba(77,158,245,0.07)">
-                ↑ LOAD SHPGX CSV FILES
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button id="cs-fetch-btn" onclick="csFetchLive(true)"
+                style="padding:6px 16px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(77,158,245,0.4);color:#4d9ef5;background:rgba(77,158,245,0.08);cursor:pointer;font-family:inherit">
+                ⟳ FETCH LIVE
+              </button>
+              <label style="padding:6px 12px;font-size:9px;letter-spacing:.08em;border:1px solid rgba(107,122,153,0.25);color:#6b7a99;cursor:pointer;background:transparent"
+                title="Manual fallback: load CSVs from SHPGX Extractor tool">
+                ↑ CSV
                 <input type="file" multiple accept=".csv" style="display:none" onchange="csLoadShpgxFiles(this.files)">
               </label>
-              <button onclick="csClearShpgx()" style="padding:6px 12px;font-size:9px;border:1px solid rgba(107,122,153,0.3);color:#6b7a99;background:transparent;cursor:pointer;font-family:inherit">CLEAR</button>
+              <button onclick="csClearShpgx()"
+                style="padding:6px 10px;font-size:9px;border:1px solid rgba(107,122,153,0.2);color:#4b5a72;background:transparent;cursor:pointer;font-family:inherit"
+                title="Clear all SHPGX data and cache">✕</button>
             </div>
           </div>
           <div id="cs-shpgx-badges" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
-          <div style="font-size:9px;color:#4b5a72;margin-top:6px">
-            Use the SHPGX Data Extractor tool to download CSVs from shpgx.com · Files are named automatically by series
-          </div>
         `;
         const pane0 = document.getElementById('cs-pane-0');
         if(pane0) pane0.insertBefore(zone, pane0.firstChild);
       }
 
-      csT1Update();
+      // Try localStorage cache first (instant), then background-refresh if stale
+      const cached = csReadCache();
+      if (cached) {
+        csIngestPayload(cached.data);
+        const loaded = Object.keys(SHPGX).filter(k=>SHPGX[k]?.length);
+        const total  = loaded.reduce((s,k)=>s+(SHPGX[k]?.length||0),0);
+        csSetStatus(
+          `✓ CACHED — ${loaded.length} series · ${total} rows · ${fmtAge(cached.age_ms)}`,
+          '#f59e0b'
+        );
+        csSetBtn('cs-fetch-btn','⟳ REFRESH',false);
+        csUpdateShpgxBadges('CACHED');
+        csT1Update();
+        // Silently refresh in background if cache is > 1h old
+        if (cached.age_ms > 3600000) setTimeout(() => csFetchLive(false), 2000);
+      } else {
+        // No cache — auto-fetch
+        csSetStatus('No cache · Auto-fetching live data...', '#6b7a99');
+        csT1Update(); // render with estimates while fetching
+        setTimeout(() => csFetchLive(false), 300);
+      }
     }
 
     window.csLoadShpgxFiles = async function(files) {
-      let loaded = 0, failed = 0;
       for(const file of files) {
         try {
           const {key, count} = await loadShpgxFile(file);
-          loaded++;
-          csUpdateShpgxBadges();
           csLog(`Loaded: ${file.name} → ${key} (${count} rows)`);
         } catch(e) {
-          failed++;
           csLog(`Failed: ${file.name} — ${e}`, true);
         }
       }
-      const status = document.getElementById('cs-shpgx-status');
-      const keys   = Object.keys(SHPGX).filter(k=>SHPGX[k]?.length);
-      if(status) status.textContent = keys.length
-        ? `${keys.length} series loaded · ${Object.values(SHPGX).reduce((s,r)=>s+(r?.length||0),0)} total rows · Last update: ${new Date().toLocaleTimeString()}`
-        : 'No data loaded · Charts using simulated estimates';
-      // Refresh whichever tab is visible
-      const activePane = document.querySelector('.cs-tab-pane.active');
-      if(activePane?.id==='cs-pane-0') csT1Update();
-      else if(activePane?.id==='cs-pane-1') csT2Update();
-      else if(activePane?.id==='cs-pane-2') csT3Update();
-      else if(activePane?.id==='cs-pane-3') csT4Update();
+      const keys  = Object.keys(SHPGX).filter(k=>SHPGX[k]?.length);
+      const total = keys.reduce((s,k)=>s+(SHPGX[k]?.length||0),0);
+      csSetStatus(`✓ CSV — ${keys.length} series · ${total} rows · ${new Date().toLocaleTimeString()}`, '#34d399');
+      csUpdateShpgxBadges('CSV');
+      csRefreshActiveTab();
     };
 
     window.csClearShpgx = function() {
       Object.keys(SHPGX).forEach(k=>delete SHPGX[k]);
+      csClearCache();
       csUpdateShpgxBadges();
-      const status = document.getElementById('cs-shpgx-status');
-      if(status) status.textContent = 'No data loaded · Charts using simulated estimates';
-      csT1Update();
+      csSetStatus('Cleared · Fetching fresh data...', '#6b7a99');
+      setTimeout(() => csFetchLive(true), 200);
     };
 
-    function csUpdateShpgxBadges() {
+    function csUpdateShpgxBadges(source) {
       const wrap = document.getElementById('cs-shpgx-badges');
       if(!wrap) return;
+      const src = source || 'EST';
+      const colors = {
+        LIVE:   { bg:'rgba(52,211,153,0.1)',  border:'rgba(52,211,153,0.3)',  text:'#34d399' },
+        CACHED: { bg:'rgba(245,158,11,0.08)', border:'rgba(245,158,11,0.25)', text:'#f59e0b' },
+        CSV:    { bg:'rgba(77,158,245,0.08)', border:'rgba(77,158,245,0.25)', text:'#4d9ef5' },
+        EST:    { bg:'rgba(107,122,153,0.07)',border:'rgba(107,122,153,0.2)', text:'#6b7a99' },
+      };
+      const c = colors[src] || colors.EST;
       wrap.innerHTML = Object.keys(SHPGX).filter(k=>SHPGX[k]?.length).map(k=>{
         const rows = SHPGX[k];
-        const first= rows[0]?.date||'', last=rows[rows.length-1]?.date||'';
-        return `<span style="font-size:9px;padding:2px 8px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);color:#34d399">
-          ${k.toUpperCase()} · ${rows.length} rows · ${first.slice(0,7)}→${last.slice(0,7)}
+        const first = rows[0]?.date||'', last = rows[rows.length-1]?.date||'';
+        return `<span style="font-size:9px;padding:2px 8px;background:${c.bg};border:1px solid ${c.border};color:${c.text}">
+          ★${src} ${k.toUpperCase()} · ${rows.length}r · ${first.slice(0,7)}→${last.slice(0,7)}
         </span>`;
       }).join('');
     }
