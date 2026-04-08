@@ -5346,9 +5346,11 @@ const CP_SEED_FR={
   angola_gate:[0.884,0.884,0.877,0.877,0.864,0.930,0.963,0.930,0.811,0.747,0.694,0.680,0.680,0.700,0.714,0.690,0.565,0.565,0.565,0.565,0.565,0.568,0.640,0.617],
   angola_tokyo:[1.820,1.820,1.660,1.512,1.486,1.620,1.686,1.620,1.419,1.245,1.191,1.151,1.164,1.218,1.191,0.939,0.939,0.939,0.939,0.939,0.939,0.939,1.115,1.068],
   angola_dahej:[1.164,1.164,1.061,0.967,0.949,1.035,1.078,1.035,0.907,0.795,0.761,0.735,0.744,0.778,0.761,0.601,0.601,0.601,0.601,0.601,0.601,0.601,0.714,0.683],
+  angola_maptaphut:[1.448,1.448,1.320,1.203,1.182,1.288,1.341,1.288,1.129,0.990,0.947,0.915,0.926,0.969,0.947,0.747,0.747,0.747,0.747,0.747,0.747,0.747,0.887,0.849],
   nigeria_gate:[1.046,1.046,1.040,1.040,1.029,1.087,1.117,1.087,0.982,0.925,0.878,0.866,0.866,0.884,0.896,0.875,0.764,0.764,0.764,0.764,0.764,0.767,0.831,0.810],
   nigeria_tokyo:[2.236,2.236,2.062,1.903,1.874,2.018,2.091,2.018,1.801,1.613,1.555,1.511,1.526,1.584,1.555,1.282,1.282,1.282,1.282,1.282,1.282,1.282,1.472,1.421],
   nigeria_dahej:[1.571,1.571,1.456,1.350,1.330,1.427,1.475,1.427,1.282,1.157,1.118,1.089,1.099,1.138,1.118,0.938,0.938,0.938,0.938,0.938,0.938,0.938,1.065,1.031],
+  nigeria_maptaphut:[1.812,1.812,1.671,1.542,1.519,1.635,1.695,1.635,1.460,1.307,1.260,1.225,1.237,1.284,1.260,1.039,1.039,1.039,1.039,1.039,1.039,1.039,1.193,1.152],
   trinidad_gate:[0.722,0.722,0.717,0.717,0.706,0.760,0.787,0.760,0.662,0.609,0.566,0.556,0.556,0.572,0.583,0.564,0.461,0.461,0.461,0.461,0.461,0.464,0.523,0.504],
   trinidad_tokyo:[2.516,2.516,2.316,2.131,2.098,2.276,2.363,2.276,2.031,1.821,1.756,1.707,1.724,1.793,1.756,1.434,1.434,1.434,1.434,1.434,1.434,1.434,1.645,1.579],
   trinidad_dahej:[1.871,1.871,1.736,1.610,1.587,1.698,1.755,1.698,1.527,1.390,1.348,1.317,1.328,1.377,1.348,1.110,1.110,1.110,1.110,1.110,1.110,1.110,1.277,1.232],
@@ -5541,8 +5543,8 @@ function cpSyncFreight(){
   // vm[supplyId][dischId][mi] = $/MMBtu
   const routeMap=[
     ['sabine','rotterdam','sabine_rotterdam'],['sabine','tokyo','sabine_tokyo'],['sabine','dahej','sabine_dahej'],['sabine','ainsukhna','sabine_ain'],
-    ['angola','rotterdam','angola_gate'],['angola','tokyo','angola_tokyo'],['angola','dahej','angola_dahej'],['angola','ainsukhna','angola_ain'],
-    ['nigeria','rotterdam','nigeria_gate'],['nigeria','tokyo','nigeria_tokyo'],['nigeria','dahej','nigeria_dahej'],['nigeria','ainsukhna','nigeria_ain'],
+    ['angola','rotterdam','angola_gate'],['angola','tokyo','angola_tokyo'],['angola','dahej','angola_dahej'],['angola','ainsukhna','angola_ain'],['angola','maptaphut','angola_maptaphut'],
+    ['nigeria','rotterdam','nigeria_gate'],['nigeria','tokyo','nigeria_tokyo'],['nigeria','dahej','nigeria_dahej'],['nigeria','ainsukhna','nigeria_ain'],['nigeria','maptaphut','nigeria_maptaphut'],
     ['trinidad','rotterdam','trinidad_gate'],['trinidad','tokyo','trinidad_tokyo'],['trinidad','dahej','trinidad_dahej'],['trinidad','ainsukhna','trinidad_ain'],
     ['qatar','rotterdam','qatar_gate'],['qatar','tokyo','qatar_tokyo'],['qatar','dahej','qatar_dahej'],['qatar','ainsukhna','qatar_ain'],
     ['oman','rotterdam','oman_gate'],['oman','tokyo','oman_tokyo'],['oman','dahej','oman_dahej'],['oman','ainsukhna','oman_ain'],
@@ -5578,7 +5580,7 @@ function cpPhysDiff(d){
     {k:'krk',      label:'KRK',          hub:'TTF',data:d.phyKrk,          computed:true, ovKey:'krk'},
     {k:'ain',      label:'Ain Sukhna',   hub:'TTF',data:d.phyAin,          computed:true, ovKey:'ain'},
     {k:'ali',      label:'Aliaga',       hub:'TTF',data:d.phyAli,          computed:true, ovKey:'ali'},
-    {k:'swino',    label:'Swinoujscie',  hub:'TTF',data:d.phySwino,        computed:true, ovKey:'swino',      grp:'SWINOUJSCIE'},
+    {k:'swino',    label:'Swinoujscie',  hub:'TTF',data:d.phySwino,        computed:true, ovKey:'swino',      grp:'POLAND'},
     {k:'klaipeda', label:'Klaipeda',     hub:'TTF',data:d.phyKlaipeda,     computed:true, ovKey:'klaipeda',   grp:'BALTIC TERMINALS'},
     {k:'inkoo',    label:'Inkoo',        hub:'TTF',data:d.phyInkoo,        computed:true, ovKey:'inkoo'},
     {k:'mei',      label:'DES MEI',      hub:'JKM',data:d.phyMei,          computed:true, ovKey:'mei',        grp:'ASIA'},
@@ -5629,7 +5631,7 @@ function cpDesPrices(d){
     {l:'Ain Sukhna',    h:'TTF', arr:d.des.ain,       col:'#ffb74d'},
     {l:'Aliaga',         h:'TTF', arr:d.des.ali,      col:'#ffb74d'},
     // Baltic group - teal
-    {l:'Swinoujscie',    h:'TTF', arr:d.des.swino,    col:'#80cbc4', grp:'SWINOUJSCIE'},
+    {l:'Swinoujscie',    h:'TTF', arr:d.des.swino,    col:'#80cbc4', grp:'POLAND'},
     {l:'Klaipeda',       h:'TTF', arr:d.des.klaipeda, col:'#26c6da', grp:'BALTIC TERMINALS'},
     {l:'Inkoo',          h:'TTF', arr:d.des.inkoo,    col:'#26c6da'},
     // Asia group
@@ -5739,23 +5741,23 @@ function cpGlobalArb(d){
   function nb(desArr,frArr){return ML.map((_,i)=>frArr&&frArr[i]!=null?desArr[i]-frArr[i]-idxArr[i]:null);}
   const ORGS=[
     {id:'sabine', label:'Sabine Pass',basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),ain:nb(d.des.ain,fr.sabine_ain),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.des.jktc,fr.sabine_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.des.jktc,fr.sabine_tokyo)}},
     {id:'trinidad',label:'Trinidad',  basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.trinidad_gate),ain:nb(d.des.ain,fr.trinidad_ain),mei:nb(d.des.mei,fr.trinidad_dahej),asia:nb(d.des.jktc,fr.trinidad_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.trinidad_gate),mei:nb(d.des.mei,fr.trinidad_dahej),asia:nb(d.des.jktc,fr.trinidad_tokyo)}},
     {id:'angola', label:'Angola',     basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.angola_gate),ain:nb(d.des.ain,fr.angola_ain),mei:nb(d.des.mei,fr.angola_dahej),asia:nb(d.des.jktc,fr.angola_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.angola_gate),mei:nb(d.des.mei,fr.angola_dahej),asia:nb(d.des.jktc,fr.angola_tokyo)}},
     {id:'nigeria',label:'Nigeria',    basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.nigeria_gate),ain:nb(d.des.ain,fr.nigeria_ain),mei:nb(d.des.mei,fr.nigeria_dahej),asia:nb(d.des.jktc,fr.nigeria_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.nigeria_gate),mei:nb(d.des.mei,fr.nigeria_dahej),asia:nb(d.des.jktc,fr.nigeria_tokyo)}},
     {id:'qatar',  label:'Qatar',      basin:'MEI',col:'#ffb74d',
-     routes:{eur:nb(d.des.nwe,fr.qatar_gate),ain:nb(d.des.ain,fr.qatar_ain),mei:nb(d.des.mei,fr.qatar_dahej),asia:nb(d.des.jktc,fr.qatar_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.qatar_gate),mei:nb(d.des.mei,fr.qatar_dahej),asia:nb(d.des.jktc,fr.qatar_tokyo)}},
     {id:'oman',   label:'Oman',       basin:'MEI',col:'#ffb74d',
-     routes:{eur:nb(d.des.nwe,fr.oman_gate),ain:nb(d.des.ain,fr.oman_ain),mei:nb(d.des.mei,fr.oman_dahej),asia:nb(d.des.jktc,fr.oman_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.oman_gate),mei:nb(d.des.mei,fr.oman_dahej),asia:nb(d.des.jktc,fr.oman_tokyo)}},
     {id:'aus_b',  label:'Barrow Is.', basin:'PAC',col:'#81c784',
-     routes:{ain:nb(d.des.ain,fr.australia_b_ain),asia:nb(d.des.jktc,fr.australia_b_tokyo)}},
+     routes:{asia:nb(d.des.jktc,fr.australia_b_tokyo)}},
     {id:'aus_g',  label:'Gladstone',  basin:'PAC',col:'#81c784',
-     routes:{ain:nb(d.des.ain,fr.australia_g_ain),asia:nb(d.des.jktc,fr.australia_g_tokyo)}},
+     routes:{asia:nb(d.des.jktc,fr.australia_g_tokyo)}},
     {id:'bontang',label:'Bontang',    basin:'PAC',col:'#81c784',
-     routes:{ain:nb(d.des.ain,fr.indonesia_ain),asia:nb(d.des.jktc,fr.indonesia_tokyo)}},
+     routes:{asia:nb(d.des.jktc,fr.indonesia_tokyo)}},
   ];
   const DEST_LABEL={eur:'Europe',ain:'Ain Sukhna',mei:'MEI',asia:'JKTC'};
   const BASIN_COL={ATL:'#4fc3f7',MEI:'#ffb74d',PAC:'#81c784'};
@@ -5771,7 +5773,7 @@ function cpGlobalArb(d){
   // Build heatmap rows (12 months)
   const MONTHS12=ML.slice(0,12);
   const idxBtns=['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x==='HH'?'HH':x}</button>`).join('');
-  const legend=[['#0d2545','#90caf9','Europe'],['#1a2010','#d4e157','Ain Sukhna'],['#0d2e15','#a5d6a7','MEI'],['#2d0f0f','#ef9a9a','JKTC']];
+  const legend=[['#0d2545','#90caf9','Europe'],['#0d2e15','#a5d6a7','MEI'],['#2d0f0f','#ef9a9a','JKTC']];
 
   let rows='';let lastBasin='';
   ORGS.forEach(org=>{
@@ -5782,7 +5784,7 @@ function cpGlobalArb(d){
     rows+=`<tr><td style="font-size:10px;padding:4px 8px;white-space:nowrap;color:#c8d6e5"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${BASIN_COL[org.basin]};margin-right:5px;vertical-align:middle"></span>${org.label}</td>`;
     MONTHS12.forEach((_,i)=>{
       const cands=[];
-      ['eur','ain','mei','asia'].forEach(dk=>{const arr=org.routes[dk];if(!arr||arr[i]==null)return;cands.push({dk,v:arr[i]});});
+      ['eur','mei','asia'].forEach(dk=>{const arr=org.routes[dk];if(!arr||arr[i]==null)return;cands.push({dk,v:arr[i]});});
       if(!cands.length){rows+=`<td style="padding:2px"><div style="background:#0a1628;border-radius:5px;padding:5px 3px;text-align:center;color:#1e3a5f;font-size:10px">—</div></td>`;return;}
       const best=cands.reduce((a,b)=>b.v>a.v?b:a);
       const cs=cellStyle(best.dk);
@@ -5810,7 +5812,7 @@ function cpGlobalArb(d){
   let rkHtml='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">';
   rkOrgs.forEach(oid=>{
     const routes=[];
-    ['eur','ain','mei','asia'].forEach(dk=>{
+    ['eur','mei','asia'].forEach(dk=>{
       const arr=ORGS.find(o=>o.id===oid)?.routes[dk];
       if(!arr||arr[selM]==null)return;
       routes.push({dk,v:arr[selM]});
@@ -5941,7 +5943,7 @@ function cpBasinTab(cfg, d){
   }
 
   const DEST_STYLE={eur:{bg:'#0d2545',fg:'#90caf9',lbl:'Europe'},ain:{bg:'#1a2010',fg:'#d4e157',lbl:'Ain Sukhna'},mei:{bg:'#0d2e15',fg:'#a5d6a7',lbl:'MEI'},asia:{bg:'#2d0f0f',fg:'#ef9a9a',lbl:'JKTC'}};
-  const legend=[['#0d2545','Europe'],['#1a2010','Ain Sukhna'],['#0d2e15','MEI'],['#2d0f0f','JKTC']].map(([bg,lbl])=>
+  const legend=[['#0d2545','Europe'],['#0d2e15','MEI'],['#2d0f0f','JKTC']].map(([bg,lbl])=>
     `<div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#546e7a"><span style="display:inline-block;width:20px;height:11px;border-radius:3px;background:${bg}"></span>${lbl}</div>`).join('');
   const idxBtns=['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x}</button>`).join('');
 
@@ -5965,30 +5967,26 @@ function cpBasinTab(cfg, d){
     hmRows+='</tr>';
   });
 
-  // ── 2. Route ranking ───────────────────────────────────────────────────────
-  let rkHtml='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:12px 0">';
-  cfg.orgs.forEach(org=>{
-    const routes=[];
-    Object.entries(org.hmRoutes).forEach(([dk,frArr])=>{
-      if(!frArr||frArr[m]==null)return;
-      const desArr=dk==='eur'?d.des.nwe:dk==='ain'?d.des.ain:dk==='mei'?d.des.mei:d.des.jktc;
-      routes.push({dk,v:+(desArr[m]-frArr[m]-idxA[m]).toFixed(3),lbl:DEST_STYLE[dk].lbl,col:DEST_STYLE[dk].fg});
-    });
-    if(!routes.length)return;
-    routes.sort((a,b)=>b.v-a.v);
-    const maxV=Math.max(...routes.map(r=>Math.abs(r.v)),0.01);
-    rkHtml+=`<div style="background:#0a1628;border:0.5px solid #1e3a5f;border-radius:8px;padding:9px 11px">
-      <div style="font-size:10px;font-weight:700;color:#c8d6e5;margin-bottom:8px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${org.col};margin-right:5px;vertical-align:middle"></span>${org.label}</div>`;
-    routes.forEach((r,i)=>{
-      const pct=Math.round((Math.abs(r.v)/maxV)*100);
-      rkHtml+=`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:0.5px solid #0d1526">
-        <span style="font-size:10px;min-width:13px;${i===0?'color:#c8d6e5;font-weight:500':'color:#546e7a'}">${i+1}</span>
-        <span style="font-size:11px;font-weight:500;flex:1;color:${r.col}">${r.lbl}</span>
-        <div style="flex:1;height:3px;border-radius:2px;background:#1e3a5f;overflow:hidden"><div style="width:${pct}%;height:100%;border-radius:2px;background:${r.col}"></div></div>
-        <span style="font-size:11px;font-weight:500;min-width:50px;text-align:right;color:${r.col}">${r.v>=0?'+':''}${r.v.toFixed(3)}</span>
-      </div>`;
-    });
-    rkHtml+='</div>';
+  // ── 2. Route ranking — selected origin only (controlled by orgSel dropdown) ──
+  const rkRoutes=[];
+  Object.entries(selOrg.hmRoutes).forEach(([dk,frArr])=>{
+    if(!frArr||frArr[m]==null)return;
+    const desArr=dk==='eur'?d.des.nwe:dk==='ain'?d.des.ain:dk==='mei'?d.des.mei:d.des.jktc;
+    rkRoutes.push({dk,v:+(desArr[m]-frArr[m]-idxA[m]).toFixed(3),lbl:DEST_STYLE[dk].lbl,col:DEST_STYLE[dk].fg});
+  });
+  rkRoutes.sort((a,b)=>b.v-a.v);
+  const rkMaxV=Math.max(...rkRoutes.map(r=>Math.abs(r.v)),0.01);
+  let rkHtml='<div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px">';
+  rkRoutes.forEach((r,i)=>{
+    const pct=Math.round((Math.abs(r.v)/rkMaxV)*100);
+    const isFirst=i===0;
+    rkHtml+=`<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:${isFirst?r.col+'18':'#0a1628'};border:0.5px solid ${isFirst?r.col+'55':'#1e3a5f'};border-radius:6px">
+      <span style="font-size:13px;font-weight:700;min-width:18px;color:${isFirst?r.col:'#546e7a'}">${i+1}</span>
+      <span style="font-size:11px;font-weight:${isFirst?700:400};flex:0 0 110px;color:${r.col}">${r.lbl}</span>
+      <div style="flex:1;height:5px;border-radius:3px;background:#1e3a5f;overflow:hidden"><div style="width:${pct}%;height:100%;border-radius:3px;background:${r.col};opacity:${isFirst?1:0.6}"></div></div>
+      <span style="font-size:13px;font-weight:${isFirst?700:400};min-width:60px;text-align:right;color:${r.col}">${r.v>=0?'+':''}${r.v.toFixed(3)}</span>
+      <span style="font-size:8px;color:#3d5070;min-width:30px">${idxLbl}</span>
+    </div>`;
   });
   rkHtml+='</div>';
 
@@ -6024,6 +6022,7 @@ function cpBasinTab(cfg, d){
   return`
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:7px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FOB NETBACK IN</span>${idxBtns}
+    <span style="color:#546e7a;font-size:9px;letter-spacing:1px;margin-left:10px">SUPPLY SOURCE</span>${orgSel}
     <span style="flex:1"></span>${legend}
   </div>
 
@@ -6037,8 +6036,11 @@ function cpBasinTab(cfg, d){
   </table></div>
 
   <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;margin-top:14px;display:flex;align-items:center;gap:8px">
-    <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">ROUTE RANKING —</span>
-    <span style="color:#c8d6e5;font-size:9px;font-weight:700">${ML[m]}</span>
+    <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">ROUTE RANKING</span>
+    <span style="color:#3d5070;font-size:9px">—</span>
+    <span style="color:#c8d6e5;font-size:9px;font-weight:700">${selOrg.label}</span>
+    <span style="color:#3d5070;font-size:9px">·</span>
+    <span style="color:#4fc3f7;font-size:9px">${ML[m]}</span>
     <span style="flex:1"></span>
     <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>
   </div>
@@ -6046,7 +6048,7 @@ function cpBasinTab(cfg, d){
 
   <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;margin-top:4px;display:flex;align-items:center;gap:8px">
     <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">DETAILED CALCULATION — sorted best→worst</span>
-    <span style="flex:1"></span>${orgSel}
+    <span style="color:#3d5070;font-size:9px;margin-left:4px">${selOrg.label} · ${ML[m]}</span>
   </div>
   <div style="overflow-x:auto;padding:0 0 8px"><table class="f-tbl"><thead><tr>
     <th style="min-width:20px">#</th><th style="min-width:140px">TERMINAL</th>
@@ -6064,7 +6066,7 @@ function cpAtlanticArb(d){
 
   const cfg={orgs:[
     {id:'sabine',label:'Sabine Pass',col:'#4fc3f7',
-     hmRoutes:{eur:fr.sabine_rotterdam,ain:fr.sabine_ain,mei:fr.sabine_dahej,asia:fr.sabine_tokyo},
+     hmRoutes:{eur:fr.sabine_rotterdam,mei:fr.sabine_dahej,asia:fr.sabine_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.sabine_rotterdam},
        {label:'Iberia',hub:'TTF',arr:d.des.iberia,frArr:subFr(fr.sabine_rotterdam,'sabine_klaipeda')},
@@ -6081,7 +6083,7 @@ function cpAtlanticArb(d){
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.sabine_tokyo},
      ]},
     {id:'trinidad',label:'Trinidad',col:'#29b6f6',
-     hmRoutes:{eur:fr.trinidad_gate,ain:fr.trinidad_ain,mei:fr.trinidad_dahej,asia:fr.trinidad_tokyo},
+     hmRoutes:{eur:fr.trinidad_gate,mei:fr.trinidad_dahej,asia:fr.trinidad_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.trinidad_gate},
        {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(fr.trinidad_gate,'sabine_rev')},
@@ -6091,7 +6093,7 @@ function cpAtlanticArb(d){
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.trinidad_tokyo},
      ]},
     {id:'angola',label:'Angola',col:'#ff9800',
-     hmRoutes:{eur:fr.angola_gate,ain:fr.angola_ain,mei:fr.angola_dahej,asia:fr.angola_tokyo},
+     hmRoutes:{eur:fr.angola_gate,mei:fr.angola_dahej,asia:fr.angola_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.angola_gate},
        {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(fr.angola_gate,'sabine_rev')},
@@ -6099,9 +6101,10 @@ function cpAtlanticArb(d){
        {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.angola_gate,'sabine_ain')},
        {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.angola_dahej},
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.angola_tokyo},
+       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.thailand,frArr:fr.angola_maptaphut},
      ]},
     {id:'nigeria',label:'Nigeria',col:'#81c784',
-     hmRoutes:{eur:fr.nigeria_gate,ain:fr.nigeria_ain,mei:fr.nigeria_dahej,asia:fr.nigeria_tokyo},
+     hmRoutes:{eur:fr.nigeria_gate,mei:fr.nigeria_dahej,asia:fr.nigeria_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.nigeria_gate},
        {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(fr.nigeria_gate,'sabine_rev')},
@@ -6109,6 +6112,7 @@ function cpAtlanticArb(d){
        {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.nigeria_gate,'sabine_ain')},
        {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.nigeria_dahej},
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.nigeria_tokyo},
+       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.thailand,frArr:fr.nigeria_maptaphut},
      ]},
   ]};
   return`<div class="f-sec">ATLANTIC BASIN ARB</div>`+cpBasinTab(cfg,d);
@@ -6125,7 +6129,7 @@ function cpMEIArb(d){
 
   const cfg={orgs:[
     {id:'qatar',label:'Qatar (Ras Laffan)',col:'#ffb74d',
-     hmRoutes:{eur:qGateFr,ain:fr.qatar_ain,mei:fr.qatar_dahej,asia:fr.qatar_tokyo},
+     hmRoutes:{eur:qGateFr,mei:fr.qatar_dahej,asia:fr.qatar_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:qGateFr},
        {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(qGateFr,'sabine_rev')},
@@ -6137,7 +6141,7 @@ function cpMEIArb(d){
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.qatar_tokyo},
      ]},
     {id:'oman',label:'Oman (Sur LNG)',col:'#ff9800',
-     hmRoutes:{eur:oGateFr,ain:fr.oman_ain,mei:fr.oman_dahej,asia:fr.oman_tokyo},
+     hmRoutes:{eur:oGateFr,mei:fr.oman_dahej,asia:fr.oman_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:oGateFr},
        {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(oGateFr,'sabine_rev')},
@@ -6188,7 +6192,7 @@ function cpPacificArb(d){
 
   const cfg={orgs:[
     {id:'aus_b',label:'Barrow Island (Aus)',col:'#81c784',
-     hmRoutes:{eur:pac_b_gate,ain:fr.australia_b_ain,asia:fr.australia_b_tokyo},
+     hmRoutes:{eur:pac_b_gate,asia:fr.australia_b_tokyo},
      dtRoutes:[
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_b_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_b_thai},
@@ -6197,7 +6201,7 @@ function cpPacificArb(d){
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:pac_b_gate},
      ]},
     {id:'aus_g',label:'Gladstone (Aus)',col:'#66bb6a',
-     hmRoutes:{eur:pac_g_gate,ain:fr.australia_g_ain,asia:fr.australia_g_tokyo},
+     hmRoutes:{eur:pac_g_gate,asia:fr.australia_g_tokyo},
      dtRoutes:[
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_g_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_g_thai},
@@ -6206,7 +6210,7 @@ function cpPacificArb(d){
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:pac_g_gate},
      ]},
     {id:'bontang',label:'Bontang (Indonesia)',col:'#a5d6a7',
-     hmRoutes:{eur:pac_id_gate,ain:fr.indonesia_ain,asia:fr.indonesia_tokyo},
+     hmRoutes:{eur:pac_id_gate,asia:fr.indonesia_tokyo},
      dtRoutes:[
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.indonesia_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_id_thai},
