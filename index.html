@@ -977,7 +977,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
     // ── TAB 2: TRUCK vs JKM & LT ──
     function csT2Update() {
-      if(!window.aD||!window.sDates||!sDates.length){
+      if(!window.aD||!Object.keys(window.aD).length||!window.sDates||!window.sDates.length){
         const sig=document.getElementById('cs-t2-signal');
         if(sig){sig.className='cs-signal lt-only';sig.textContent='LOAD EOD FILES IN FINANCIAL TRADING TO ENABLE JKM & LT SERIES';}
         return;
@@ -7693,6 +7693,9 @@ const INST={};INSTS.forEach(i=>INST[i.k]=i);
 const CI=['JKM','TTF','HH','NBP','Brent','Dated'];
 const CN={BRENT:['BRT SW','Brent SW'],TTF:['TTF FT','TTF'],EURUSD:['EUR USD','EURUSD'],GBPUSD:['GBP USD','GBPUSD'],NBP:['NBP FT','NBP'],HH:['HHUB FT','HH'],DATED:['Outright Dated','Dated Brent'],JKM:['JKM'],SLOPE:['Brent JKM','Slope']};
 const aD={};let sDates=[];
+// Expose to window so cross-module checks (window.aD, window.sDates) work
+Object.defineProperty(window,'aD',{get:()=>aD,configurable:true});
+Object.defineProperty(window,'sDates',{get:()=>sDates,configurable:true});
 let hChart=null,rc10=null,rc20=null,rc30=null,fcChart=null,seaChart=null,spChart=null,spLegsChart=null,gasChart=null;
 const $id=id=>document.getElementById(id);
 function getPK(v){let d=null;if(v instanceof Date)d=v;else if(typeof v==='number'&&v>40000&&v<70000)d=new Date(Math.round((v-25569)*86400)*1000);else return null;const y=d.getUTCFullYear(),m=d.getUTCMonth();if(y<2020||y>2040)return null;return`${y}-${String(m+1).padStart(2,'0')}`;}
