@@ -5428,7 +5428,7 @@ function cpDerived(){
   const phyRev     =ML.map((_,i)=>withOv('rev',     termFr('rev',i),     i));
   const phyKrk     =ML.map((_,i)=>withOv('krk',     termFr('krk',i),     i));
   const phyAin     =ML.map((_,i)=>withOv('ain',     termFr('ain',i)+0.50,i));
-  const phyAli     =ML.map((_,i)=>withOv('ali',     termFr('ali',i)+0.50,i));
+  const phyAli     =ML.map((_,i)=>withOv('ali',     termFr('ali',i),     i)); // no premium — Turkish terminal
   const phySwino   =ML.map((_,i)=>withOv('swino',   termFr('swinoujscie',i)+0.02,i)); // +$0.02: ice/pilotage premium
   // ── DES absolute prices ────────────────────────────────────────────────────
   const des={
