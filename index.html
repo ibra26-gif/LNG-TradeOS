@@ -5712,15 +5712,10 @@ function cpGlobalArb(d){
   function cellStyle(dk){
     return DEST_STYLE[dk]||{bg:'#0a1628',fg:'#3d5070'};
   }
-  function getBest(org){
-    const cands=[];
-    ['eur','mei','asia'].forEach(dk=>{const arr=org.routes[dk];if(!arr)return;const v=arr[i];if(v!=null)cands.push({dk,v});});
-    return cands.length?cands.reduce((a,b)=>b.v>a.v?b:a):null;
-  }
-
   // Build heatmap rows (12 months)
   const MONTHS12=ML.slice(0,12);
   const idxBtns=['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x==='HH'?'HH':x}</button>`).join('');
+  const legend=[['#0d2545','#90caf9','Europe'],['#0d2e15','#a5d6a7','MEI'],['#2d0f0f','#ef9a9a','JKTC']];
 
   let rows='';let lastBasin='';
   ORGS.forEach(org=>{
