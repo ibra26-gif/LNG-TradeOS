@@ -5492,7 +5492,7 @@ function cpDerived(){
     jkmTtf,frDiff,arbOpen,profEur,profAsia};
 }
 // ── Freight seed version: bump whenever seed curves change to force cache refresh ──
-const CP_FREIGHT_VER='v53_nm_fullshape_apr2026';
+const CP_FREIGHT_VER='v53_final_apr2026';
 
 function cpMergeFreight(){
   const seed=JSON.parse(JSON.stringify(CP_SEED_FR));
@@ -5530,7 +5530,7 @@ function renderCargo(){
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">CARGO PRICING MODEL</span>
     <span style="flex:1"></span>
-    <span style="color:#3d5070;font-size:9px;letter-spacing:.08em;margin-right:8px">v53_ain_final</span><button class="f-btn sm" onclick="cpForceReset()" title="Wipe localStorage cache and reinitialise from seed" style="border-color:rgba(255,82,82,.3);color:#ef5350">⚠ RESET CACHE</button><button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading">↺ SYNC PRICES</button>
+    <span style="color:#3d5070;font-size:9px;letter-spacing:.08em;margin-right:8px">v53_final_apr2026</span><button class="f-btn sm" onclick="cpForceReset()" title="Wipe localStorage cache and reinitialise from seed" style="border-color:rgba(255,82,82,.3);color:#ef5350">⚠ RESET CACHE</button><button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading">↺ SYNC PRICES</button>
     <button class="f-btn sm" onclick="cpSyncFreight()" title="Pull latest freight $/MMBtu from validated freight matrix">↺ SYNC FREIGHT</button>
   </div>
   <div class="f-subnav">${CP_TABS.map((t,i)=>`<button class="f-tab${CP.tab===i?' active':''}" onclick="cpTab(${i})">${t}</button>`).join('')}</div>
@@ -5957,7 +5957,7 @@ function cpSignalStrip(label, spreadArr, frDiffArr, signalDir){
 function cpBasinTab(cfg,d){
   const idx=CP.globalArbIdx||'TTF';
   const sl=CP.hhSlope||1.15;
-  const idxA=idx==='JKM'?d.fp.JKM:idx==='HH'?d.fp.HH.map(v=>+(v*sl).toFixed(3)):d.fp.TTF;
+  const idxA=idx==='JKM'?CP.fp.JKM:idx==='HH'?CP.fp.HH.map(v=>+(v*sl).toFixed(3)):CP.fp.TTF;
   const idxLbl=idx==='HH'?'HH flat':idx+' flat';
   const fr=d.freight;
   const m=CP.selMonth||1;
