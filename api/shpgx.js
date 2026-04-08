@@ -216,33 +216,42 @@ export default async function handler(req, res) {
         return res.status(200).send('No data-ajax-url found in HTML\n' + html.slice(15000));
       }
       const base = 'https://www.shpgx.com' + ajaxPath;
-      const hdrs = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json, text/javascript, */*; q=0.01',
-        'X-Requested-With': 'XMLHttpRequest',
-        'Referer': config.url,
-        'Origin': 'https://www.shpgx.com',
+      const commonHdrs = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'zh-CN,zh;q=0.9',
       };
+
+      // Step 1: get session cookie from the HTML page
+      let cookieHeader = '';
+      try {
+        const pageR = await fetch(config.url, { headers: { ...commonHdrs, Accept: 'text/html' }, signal: AbortSignal.timeout(8000) });
+        const setCookie = pageR.headers.get('set-cookie') || '';
+        cookieHeader = setCookie.split(',').map(c => c.split(';')[0].trim()).filter(Boolean).join('; ');
+      } catch(e) {}
+
+      // Step 2: try JSON endpoint with session cookie + multiple param styles
       const variants = [
-        { label: 'GET no params',           url: base,                                        method:'GET',  body:null },
-        { label: 'GET pageNum=1',           url: base+'?pageNum=1&pageSize=25',               method:'GET',  body:null },
-        { label: 'GET page=1',              url: base+'?page=1&rows=25',                      method:'GET',  body:null },
-        { label: 'POST draw/start/length',  url: base,                                        method:'POST', body:'draw=1&start=0&length=25' },
-        { label: 'POST pageNum',            url: base,                                        method:'POST', body:'pageNum=1&pageSize=25' },
+        { label: 'GET no params + cookie',         url: base,                          method:'GET',  body:null },
+        { label: 'GET draw=1 + cookie',            url: base+'?draw=1&start=0&length=25', method:'GET', body:null },
+        { label: 'POST DataTables + cookie',       url: base,                          method:'POST', body:'draw=1&start=0&length=25&columns%5B0%5D%5Bdata%5D=price_date' },
+        { label: 'allorigins proxy GET',           url: 'https://api.allorigins.win/raw?url='+encodeURIComponent(base), method:'GET', body:null },
+        { label: 'allorigins proxy GET draw',      url: 'https://api.allorigins.win/raw?url='+encodeURIComponent(base+'?draw=1&start=0&length=25'), method:'GET', body:null },
       ];
-      const results = [];
+      const results = [`Base: ${base}`, `Cookie: ${cookieHeader||'(none)'}`, ''];
       for (const v of variants) {
         try {
-          const opts = { method: v.method, headers: { ...hdrs }, signal: AbortSignal.timeout(8000) };
+          const opts = { method: v.method, signal: AbortSignal.timeout(10000),
+            headers: { ...commonHdrs, 'Accept': 'application/json, */*', 'X-Requested-With': 'XMLHttpRequest',
+              'Referer': 'https://www.shpgx.com/', ...(cookieHeader?{'Cookie':cookieHeader}:{}) } };
           if (v.body) { opts.body = v.body; opts.headers['Content-Type'] = 'application/x-www-form-urlencoded'; }
           const r = await fetch(v.url, opts);
           const txt = await r.text();
-          results.push(`[${v.label}] HTTP ${r.status}: ${txt.slice(0,300)}`);
-        } catch(e) { results.push(`[${v.label}] ERROR: ${e.message}`); }
+          results.push(`[${v.label}]\nHTTP ${r.status} | ${txt.slice(0,400)}`);
+        } catch(e) { results.push(`[${v.label}]\nERROR: ${e.message}`); }
       }
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      return res.status(200).send(`Base URL: ${base}\n\n` + results.join('\n\n---\n\n'));
+      return res.status(200).send(results.join('\n\n---\n\n'));
     } catch(e) {
       return res.status(500).json({ error: e.message });
     }
