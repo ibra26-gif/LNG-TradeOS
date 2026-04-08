@@ -5548,7 +5548,7 @@ function renderCargo(){
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">CARGO PRICING MODEL</span>
     <span style="flex:1"></span>
-    <button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading">↺ SYNC PRICES</button>
+    <span style="color:#3d5070;font-size:9px;letter-spacing:.08em;margin-right:8px">v53_ain_final</span><button class="f-btn sm" onclick="cpForceReset()" title="Wipe localStorage cache and reinitialise from seed" style="border-color:rgba(255,82,82,.3);color:#ef5350">⚠ RESET CACHE</button><button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading">↺ SYNC PRICES</button>
     <button class="f-btn sm" onclick="cpSyncFreight()" title="Pull latest freight $/MMBtu from validated freight matrix">↺ SYNC FREIGHT</button>
   </div>
   <div class="f-subnav">${CP_TABS.map((t,i)=>`<button class="f-tab${CP.tab===i?' active':''}" onclick="cpTab(${i})">${t}</button>`).join('')}</div>
@@ -6385,6 +6385,12 @@ function cpFrDiffBasis(d){
 
 
 // ── Utility functions ────────────────────────────────────────────────────────
+function cpForceReset(){
+  ['cp_fp','cp_phys','cp_freight','cp_freight_ver','cp_phys_ov','cp_liqfee',
+   'cp_hist_snaps','cp_global_arb_idx','cp_cogh_mode','cp_hh_slope'
+  ].forEach(k=>localStorage.removeItem(k));
+  alert('Cache cleared — reinitialising...');initCargo();
+}
 function cpSetPhys(k,i,v){CP.phys[k][i]=+v;cpSet('cp_phys',CP.phys);renderCargoTab();}
 function cpSetOv(t,i,v){const ov=cpGet('cp_phys_ov',{});ov[t+'_'+i]=+v;cpSet('cp_phys_ov',ov);renderCargoTab();}
 function cpResetOv(t,i){const ov=cpGet('cp_phys_ov',{});delete ov[t+'_'+i];cpSet('cp_phys_ov',ov);renderCargoTab();}
