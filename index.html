@@ -5466,12 +5466,6 @@ function renderCargo(){
   wrap.innerHTML=`
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">CARGO PRICING MODEL</span>
-    <div style="display:flex;align-items:center;gap:6px">
-      <span style="color:#546e7a;font-size:9px">HH SLOPE</span>
-      <input class="f-inp" type="number" step="0.1" style="width:60px;text-align:center" value="${Math.round(CP.hhSlope*1000)/10}"
-        onchange="CP.hhSlope=Math.round(parseFloat(this.value)*10)/1000||1.15;cpSet('cp_hh_slope',CP.hhSlope);renderCargoTab()">
-      <span style="color:#546e7a;font-size:9px">%</span>
-    </div>
     <span style="flex:1"></span>
     <button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading">↺ SYNC PRICES</button>
     <button class="f-btn sm" onclick="cpSyncFreight()" title="Pull latest freight $/MMBtu from validated freight matrix">↺ SYNC FREIGHT</button>
@@ -5808,6 +5802,63 @@ function cpGlobalArb(d){
 }
 
 
+// ── Shared helpers ──────────────────────────────────────────────────────────
+function cpJkmTtfRow(label){
+  // JKM/TTF spread from loaded price curves
+  const spread=ML.slice(0,12).map((_,i)=>CP.fp.JKM[i]!=null&&CP.fp.TTF[i]!=null?+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3):null);
+  const cells=spread.map(v=>v!=null
+    ?`<td style="text-align:center;font-size:10px;font-weight:500;color:${v>=0?'#facc15':'#fb923c'};padding:3px 2px">${v>=0?'+':''}${v.toFixed(3)}</td>`
+    :`<td style="text-align:center;color:#1e3a5f;font-size:10px">—</td>`
+  ).join('');
+  return`<tr style="border-top:1px solid #1e3a5f;background:#050c14"><td style="font-size:9px;padding:4px 8px;color:#facc15;font-weight:700;white-space:nowrap">JKM−TTF</td>${cells}</tr>`;
+}
+
+// Compact freight diff vs basis signal strip
+function cpSignalStrip(label, spreadArr, frDiffArr, signalDir){
+  // signalDir: 'asia' = positive signal means go Asia, 'europe' = positive signal means go Europe
+  const m=CP.selMonth;
+  const signal=spreadArr.map((s,i)=>s!=null&&frDiffArr[i]!=null?+(s-frDiffArr[i]).toFixed(3):null);
+  const sv=signal[m],spv=spreadArr[m],fdv=frDiffArr[m];
+  if(sv==null)return'';
+  const asiaOpen = signalDir==='europe'? sv<0 : sv>0;
+  const sigCol=asiaOpen?'#4ade80':'#f87171';
+  const sigLbl=asiaOpen?'ASIA ARB OPEN':'EUROPE PREFERRED';
+
+  const stripRows=`
+    <tr><td style="color:#facc15;font-size:9px">Spread</td>${spreadArr.slice(0,12).map(v=>v!=null?`<td style="text-align:center;color:#facc15;font-size:10px">${v>=0?'+':''}${v.toFixed(3)}</td>`:`<td>—</td>`).join('')}</tr>
+    <tr><td style="color:#fb923c;font-size:9px">Fr Diff</td>${frDiffArr.slice(0,12).map(v=>v!=null?`<td style="text-align:center;color:#fb923c;font-size:10px">${v>=0?'+':''}${v.toFixed(3)}</td>`:`<td>—</td>`).join('')}</tr>
+    <tr style="background:#050c14"><td style="color:#4ade80;font-size:9px;font-weight:700">Signal</td>${signal.slice(0,12).map((v,i)=>v!=null?`<td style="text-align:center;font-size:10px;font-weight:500;color:${(signalDir==='europe'?v<0:v>0)?'#4ade80':'#f87171'}">${v>=0?'+':''}${v.toFixed(3)}</td>`:`<td>—</td>`).join('')}</tr>
+    <tr><td style="color:#546e7a;font-size:9px">Direction</td>${signal.slice(0,12).map((v,i)=>{if(v==null)return`<td>—</td>`;const open=signalDir==='europe'?v<0:v>0;return`<td><span style="background:${open?'#0d2e15':'#2d0f0f'};color:${open?'#4ade80':'#f87171'};border-radius:3px;padding:1px 4px;font-size:8px;font-weight:700">${open?'ASIA':'EUR'}</span></td>`;}).join('')}</tr>`;
+
+  return`
+  <div style="background:#070b14;border-top:1px solid #1e3a5f;padding:6px 14px;margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">${label}</span>
+    <span style="flex:1"></span>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="background:#111827;border-radius:6px;padding:6px 10px;min-width:110px">
+        <div style="font-size:9px;color:#546e7a;margin-bottom:2px">Spread</div>
+        <div style="font-size:14px;font-weight:500;color:#facc15">${spv>=0?'+':''}${spv.toFixed(3)}</div>
+      </div>
+      <div style="background:#111827;border-radius:6px;padding:6px 10px;min-width:110px">
+        <div style="font-size:9px;color:#546e7a;margin-bottom:2px">Fr Diff</div>
+        <div style="font-size:14px;font-weight:500;color:#fb923c">${fdv>=0?'+':''}${fdv.toFixed(3)}</div>
+      </div>
+      <div style="background:#111827;border:1px solid ${sigCol};border-radius:6px;padding:6px 10px;min-width:130px">
+        <div style="font-size:9px;color:#546e7a;margin-bottom:2px">Net signal — ${ML[m]}</div>
+        <div style="font-size:14px;font-weight:500;color:${sigCol}">${sv>=0?'+':''}${sv.toFixed(3)}</div>
+        <div style="font-size:9px;font-weight:700;color:${sigCol};margin-top:2px">${sigLbl}</div>
+      </div>
+    </div>
+  </div>
+  <div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:600px">
+    <thead><tr>
+      <th style="text-align:left;font-size:9px;color:#546e7a;padding:5px 8px;min-width:110px;border-bottom:0.5px solid #1e3a5f">METRIC</th>
+      ${ML.slice(0,12).map((mo,i)=>`<th style="font-size:9px;color:${i===m?'#c8d6e5':'#546e7a'};padding:4px 2px;text-align:center;border-bottom:${i===m?'2px solid #c8d6e5':'0.5px solid #1e3a5f'};min-width:52px">${mo}</th>`).join('')}
+    </tr></thead>
+    <tbody>${stripRows}</tbody>
+  </table></div>`;
+}
+
 // ── Shared: build heatmap + ranking + details for a basin ───────────────────
 function cpBasinTab(cfg, d){
   const idx = CP.globalArbIdx||'TTF';
@@ -5818,23 +5869,19 @@ function cpBasinTab(cfg, d){
   const m = CP.selMonth;
   const MONTHS12 = ML.slice(0,12);
 
-  // nb for heatmap/ranking uses selected index
-  function nbIdx(desArr, frArr){
-    return ML.map((_,i)=>frArr&&frArr[i]!=null ? desArr[i]-frArr[i]-idxA[i] : null);
-  }
-  // nb for details uses per-destination index (TTF for Europe, JKM for MEI/Asia)
-  function nbDes(des, frArr, i){
-    if(!frArr||frArr[i]==null)return null;
-    const idxV = des.hub==='TTF'?CP.fp.TTF[i]:des.hub==='JKM'?CP.fp.JKM[i]:(sl*CP.fp.HH[i]);
-    return des.arr[i]-frArr[i]-idxV;
+  function nbIdx(desArr, frArr){ return ML.map((_,i)=>frArr&&frArr[i]!=null?desArr[i]-frArr[i]-idxA[i]:null); }
+  function nbDes(dt, i){
+    if(!dt.frArr||dt.frArr[i]==null||dt.arr[i]==null)return null;
+    const idxV = dt.hub==='TTF'?CP.fp.TTF[i]:dt.hub==='JKM'?CP.fp.JKM[i]:(sl*CP.fp.HH[i]);
+    return +(dt.arr[i]-dt.frArr[i]-idxV).toFixed(3);
   }
 
   const DEST_STYLE={eur:{bg:'#0d2545',fg:'#90caf9',lbl:'Europe'},mei:{bg:'#0d2e15',fg:'#a5d6a7',lbl:'MEI'},asia:{bg:'#2d0f0f',fg:'#ef9a9a',lbl:'JKTC'}};
+  const legend=[['#0d2545','Europe'],['#0d2e15','MEI'],['#2d0f0f','JKTC']].map(([bg,lbl])=>
+    `<div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#546e7a"><span style="display:inline-block;width:20px;height:11px;border-radius:3px;background:${bg}"></span>${lbl}</div>`).join('');
+  const idxBtns=['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x}</button>`).join('');
 
   // ── 1. Heatmap ─────────────────────────────────────────────────────────────
-  const idxBtns = ['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x}</button>`).join('');
-  const legend = [['#0d2545','Europe'],['#0d2e15','MEI'],['#2d0f0f','JKTC']].map(([bg,lbl])=>`<div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#546e7a"><span style="display:inline-block;width:20px;height:11px;border-radius:3px;background:${bg}"></span>${lbl}</div>`).join('');
-
   let hmRows='';
   cfg.orgs.forEach(org=>{
     hmRows+=`<tr><td style="font-size:10px;padding:4px 8px;white-space:nowrap;color:#c8d6e5"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${org.col};margin-right:5px;vertical-align:middle"></span>${org.label}</td>`;
@@ -5844,10 +5891,9 @@ function cpBasinTab(cfg, d){
       if(!cands.length){hmRows+=`<td><div style="background:#0a1628;border-radius:4px;padding:5px 2px;text-align:center;color:#1e3a5f;font-size:9px;min-width:48px">—</div></td>`;return;}
       const best=cands.reduce((a,b)=>b.v>a.v?b:a);
       const DS=DEST_STYLE[best.dk];
-      const isSel=i===m;
-      hmRows+=`<td style="padding:2px"><div style="background:${DS.bg};border-radius:4px;padding:5px 2px;text-align:center;cursor:pointer;min-width:48px;border:${isSel?'2px solid #c8d6e5':'2px solid transparent'}"
+      hmRows+=`<td style="padding:2px"><div style="background:${DS.bg};border-radius:4px;padding:5px 2px;text-align:center;cursor:pointer;min-width:48px;border:${i===m?'2px solid #c8d6e5':'2px solid transparent'}"
         onclick="CP.selMonth=${i};renderCargoTab()"
-        title="${org.label} → ${DS.lbl} (${ML[i]})\n${idx}: ${best.v>=0?'+':''}${best.v.toFixed(3)}">
+        title="${org.label} → ${DS.lbl} (${ML[i]})\n${best.v>=0?'+':''}${best.v.toFixed(3)} $/MMBtu">
         <div style="font-size:10px;font-weight:700;color:${DS.fg}">${DS.lbl}</div>
         <div style="font-size:9px;color:${DS.fg};opacity:.7">${best.v>=0?'+':''}${best.v.toFixed(2)}</div>
       </div></td>`;
@@ -5862,7 +5908,7 @@ function cpBasinTab(cfg, d){
     Object.entries(org.hmRoutes).forEach(([dk,frArr])=>{
       if(!frArr||frArr[m]==null)return;
       const desArr=dk==='eur'?d.des.nwe:dk==='mei'?d.des.mei:d.des.jktc;
-      routes.push({dk,v:desArr[m]-frArr[m]-idxA[m],lbl:DEST_STYLE[dk].lbl,col:DEST_STYLE[dk].fg});
+      routes.push({dk,v:+(desArr[m]-frArr[m]-idxA[m]).toFixed(3),lbl:DEST_STYLE[dk].lbl,col:DEST_STYLE[dk].fg});
     });
     if(!routes.length)return;
     routes.sort((a,b)=>b.v-a.v);
@@ -5882,21 +5928,33 @@ function cpBasinTab(cfg, d){
   });
   rkHtml+='</div>';
 
-  // ── 3. Detailed calculation ────────────────────────────────────────────────
-  const selOrg = cfg.orgs.find(o=>o.id===CP.selBasinOrg)||cfg.orgs[0];
-  const orgSel = `<select class="f-sel" onchange="CP.selBasinOrg=this.value;renderCargoTab()">${cfg.orgs.map(o=>`<option value="${o.id}"${(CP.selBasinOrg||cfg.orgs[0].id)===o.id?' selected':''}>${o.label}</option>`).join('')}</select>`;
+  // ── 3. Detailed calculation (sorted by netback) ────────────────────────────
+  const selOrg=cfg.orgs.find(o=>o.id===(CP.selBasinOrg||cfg.orgs[0].id))||cfg.orgs[0];
+  const orgSel=`<select class="f-sel" onchange="CP.selBasinOrg=this.value;renderCargoTab()">${cfg.orgs.map(o=>`<option value="${o.id}"${selOrg.id===o.id?' selected':''}>${o.label}</option>`).join('')}</select>`;
+
+  // Compute netbacks and sort best→worst
+  const dtWithNb=selOrg.dtRoutes.map(dt=>{
+    const v=nbDes(dt,m);
+    return{...dt,nb:v};
+  }).sort((a,b)=>{
+    if(a.nb==null&&b.nb==null)return 0;
+    if(a.nb==null)return 1;
+    if(b.nb==null)return-1;
+    return b.nb-a.nb;
+  });
+
   let dtRows='';
-  selOrg.dtRoutes.forEach(dt=>{
-    const v=nbDes(dt,dt.frArr,m);
-    const col=dt.hub==='TTF'?'#26c6da':dt.hub==='JKM'?'#ab47bc':dt.hub==='HH'?'#4fc3f7':'#c8d6e5';
+  dtWithNb.forEach((dt,rank)=>{
+    const col=dt.hub==='TTF'?'#26c6da':dt.hub==='JKM'?'#ab47bc':'#c8d6e5';
     const idxV=dt.hub==='TTF'?CP.fp.TTF[m]:dt.hub==='JKM'?CP.fp.JKM[m]:(sl*CP.fp.HH[m]);
-    dtRows+=`<tr${dt.divider?` style="border-top:1px solid #1e3a5f"`:''}>
-      <td style="color:${col};font-size:10px">${dt.label}</td>
-      <td style="text-align:right;color:#c8d6e5">${dt.arr[m]!=null?fv(dt.arr[m]):'-'}</td>
-      <td style="text-align:right;color:#546e7a">${dt.frArr&&dt.frArr[m]!=null?'− '+fv(dt.frArr[m]):'—'}</td>
-      <td style="text-align:right;color:#546e7a">− ${fv(idxV)}</td>
-      <td style="text-align:right;color:${col};font-weight:500">${v!=null?(v>=0?'+':'')+fv(v):'—'}</td>
-    </tr>`;
+    dtRows+=`<tr${rank===0?` style="background:#0d1e36"`:''}>`+
+      `<td style="color:#546e7a;font-size:9px;padding:3px 4px;min-width:14px;text-align:center">${rank+1}</td>`+
+      `<td style="color:${col};font-size:10px">${dt.label}</td>`+
+      `<td style="text-align:right;color:#c8d6e5">${dt.arr[m]!=null?fv(dt.arr[m]):'-'}</td>`+
+      `<td style="text-align:right;color:#546e7a">${dt.frArr&&dt.frArr[m]!=null?'− '+fv(dt.frArr[m]):'—'}</td>`+
+      `<td style="text-align:right;color:#546e7a">− ${fv(idxV)}</td>`+
+      `<td style="text-align:right;color:${col};font-weight:${rank===0?700:400}">${dt.nb!=null?(dt.nb>=0?'+':'')+fv(dt.nb):'—'}</td>`+
+      `</tr>`;
   });
 
   return`
@@ -5911,7 +5969,7 @@ function cpBasinTab(cfg, d){
       <th style="text-align:left;font-size:9px;color:#546e7a;padding:6px 8px;min-width:130px;border-bottom:1px solid #1e3a5f">ORIGIN</th>
       ${MONTHS12.map((mo,i)=>`<th style="font-size:9px;color:${i===m?'#c8d6e5':'#546e7a'};padding:4px 2px;text-align:center;border-bottom:${i===m?'2px solid #c8d6e5':'1px solid #1e3a5f'};min-width:54px">${mo}</th>`).join('')}
     </tr></thead>
-    <tbody>${hmRows}</tbody>
+    <tbody>${hmRows}${cpJkmTtfRow()}</tbody>
   </table></div>
 
   <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;margin-top:14px;display:flex;align-items:center;gap:8px">
@@ -5923,99 +5981,110 @@ function cpBasinTab(cfg, d){
   ${rkHtml}
 
   <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;margin-top:4px;display:flex;align-items:center;gap:8px">
-    <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">DETAILED CALCULATION —</span>
-    <span style="color:#c8d6e5;font-size:9px;font-weight:700">${ML[m]}</span>
+    <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">DETAILED CALCULATION — sorted best→worst</span>
     <span style="flex:1"></span>${orgSel}
   </div>
   <div style="overflow-x:auto;padding:0 0 8px"><table class="f-tbl"><thead><tr>
-    <th style="min-width:140px">TERMINAL</th>
+    <th style="min-width:20px">#</th><th style="min-width:140px">TERMINAL</th>
     <th class="tr">DES price</th><th class="tr">Freight</th><th class="tr">${idxLbl}</th>
     <th class="tr">FOB netback</th>
-  </tr></thead><tbody>${dtRows}</tbody></table></div>`;
+  </tr></thead><tbody>${dtRows}</tbody></table></div>
+  ${cfg.signalHtml||''}`;
 }
 
-// ── Tab 3 (was 2): Atlantic Basin Arb ───────────────────────────────────────
+// ── Tab 3: Atlantic Basin Arb ───────────────────────────────────────────────
 function cpAtlanticArb(d){
   if(!CP.selBasinOrg||!['sabine','trinidad','angola','nigeria'].includes(CP.selBasinOrg))CP.selBasinOrg='sabine';
   const fr=CP.freight;
-  // Sub-terminal freight for non-Sabine origins: base gate + Sabine differential
   function subFr(gateFr,subKey){return ML.map((_,i)=>{const gv=gateFr[i];const diff=(fr[subKey]?.[i]??0)-(fr.sabine_rotterdam[i]??0);return gv!=null?gv+diff:null;});}
-  const cfg={
-    orgs:[
-      {id:'sabine',  label:'Sabine Pass', col:'#4fc3f7',
-       hmRoutes:{eur:fr.sabine_rotterdam,mei:fr.sabine_dahej,asia:fr.sabine_tokyo},
-       dtRoutes:[
-         {label:'NWE (Gate Rotterdam)',hub:'TTF',arr:d.des.nwe, frArr:fr.sabine_rotterdam},
-         {label:'Iberia',             hub:'TTF',arr:d.des.iberia,frArr:fr.sabine_huelva??fr.sabine_rotterdam},
-         {label:'UK Terminals',       hub:'TTF',arr:d.des.uk,  frArr:fr.sabine_rotterdam},
-         {label:'DES Italy',          hub:'TTF',arr:d.des.italy,frArr:fr.sabine_rovigo??fr.sabine_rotterdam},
-         {label:'Klaipeda',           hub:'TTF',arr:d.des.klaipeda,frArr:fr.sabine_klaipeda},
-         {label:'Inkoo',              hub:'TTF',arr:d.des.inkoo,frArr:fr.sabine_inkoo},
-         {label:'Revithoussa',        hub:'TTF',arr:d.des.rev, frArr:fr.sabine_rev},
-         {label:'KRK',                hub:'TTF',arr:d.des.krk, frArr:fr.sabine_krk},
-         {label:'Ain Sukhna',         hub:'TTF',arr:d.des.ain, frArr:fr.sabine_ain},
-         {label:'Aliaga',             hub:'TTF',arr:d.des.ali, frArr:fr.sabine_ali},
-         {label:'MEI (Dahej)',         hub:'JKM',arr:d.des.mei, frArr:fr.sabine_dahej,divider:true},
-         {label:'JKTC',               hub:'JKM',arr:d.des.jktc,frArr:fr.sabine_tokyo},
-       ]},
-      {id:'trinidad',label:'Trinidad',    col:'#29b6f6',
-       hmRoutes:{eur:fr.trinidad_gate,mei:fr.trinidad_dahej,asia:fr.trinidad_tokyo},
-       dtRoutes:[
-         {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.trinidad_gate},
-         {label:'Klaipeda',  hub:'TTF',arr:d.des.klaipeda,frArr:subFr(fr.trinidad_gate,'sabine_klaipeda')},
-         {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.trinidad_gate,'sabine_ain')},
-         {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.trinidad_dahej,divider:true},
-         {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.trinidad_tokyo},
-       ]},
-      {id:'angola',  label:'Angola',      col:'#ff9800',
-       hmRoutes:{eur:fr.angola_gate,mei:fr.angola_dahej,asia:fr.angola_tokyo},
-       dtRoutes:[
-         {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.angola_gate},
-         {label:'Klaipeda',  hub:'TTF',arr:d.des.klaipeda,frArr:subFr(fr.angola_gate,'sabine_klaipeda')},
-         {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.angola_gate,'sabine_ain')},
-         {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.angola_dahej,divider:true},
-         {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.angola_tokyo},
-       ]},
-      {id:'nigeria', label:'Nigeria',     col:'#81c784',
-       hmRoutes:{eur:fr.nigeria_gate,mei:fr.nigeria_dahej,asia:fr.nigeria_tokyo},
-       dtRoutes:[
-         {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.nigeria_gate},
-         {label:'Klaipeda',  hub:'TTF',arr:d.des.klaipeda,frArr:subFr(fr.nigeria_gate,'sabine_klaipeda')},
-         {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.nigeria_gate,'sabine_ain')},
-         {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.nigeria_dahej,divider:true},
-         {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.nigeria_tokyo},
-       ]},
-    ]
-  };
+
+  const spread=ML.slice(0,12).map((_,i)=>+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3));
+  const frDiff=ML.slice(0,12).map((_,i)=>fr.sabine_tokyo[i]!=null&&fr.sabine_rotterdam[i]!=null?+(fr.sabine_tokyo[i]-fr.sabine_rotterdam[i]).toFixed(3):null);
+  const signalHtml=cpSignalStrip('FREIGHT DIFF vs BASIS — JKM−TTF vs Sabine (Tokyo−Gate)',spread,frDiff,'asia');
+
+  const cfg={signalHtml,orgs:[
+    {id:'sabine',label:'Sabine Pass',col:'#4fc3f7',
+     hmRoutes:{eur:fr.sabine_rotterdam,mei:fr.sabine_dahej,asia:fr.sabine_tokyo},
+     dtRoutes:[
+       {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.sabine_rotterdam},
+       {label:'Iberia',hub:'TTF',arr:d.des.iberia,frArr:subFr(fr.sabine_rotterdam,'sabine_klaipeda')},
+       {label:'UK Terminals',hub:'TTF',arr:d.des.uk,frArr:fr.sabine_rotterdam},
+       {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:fr.sabine_rovigo??subFr(fr.sabine_rotterdam,'sabine_rev')},
+       {label:'Klaipeda',hub:'TTF',arr:d.des.klaipeda,frArr:fr.sabine_klaipeda},
+       {label:'Inkoo',hub:'TTF',arr:d.des.inkoo,frArr:fr.sabine_inkoo},
+       {label:'Revithoussa',hub:'TTF',arr:d.des.rev,frArr:fr.sabine_rev},
+       {label:'KRK',hub:'TTF',arr:d.des.krk,frArr:fr.sabine_krk},
+       {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.sabine_ain},
+       {label:'Aliaga',hub:'TTF',arr:d.des.ali,frArr:fr.sabine_ali},
+       {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:fr.sabine_dahej},
+       {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.sabine_tokyo},
+     ]},
+    {id:'trinidad',label:'Trinidad',col:'#29b6f6',
+     hmRoutes:{eur:fr.trinidad_gate,mei:fr.trinidad_dahej,asia:fr.trinidad_tokyo},
+     dtRoutes:[
+       {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.trinidad_gate},
+       {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(fr.trinidad_gate,'sabine_rev')},
+       {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.trinidad_gate,'sabine_ain')},
+       {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.trinidad_dahej},
+       {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.trinidad_tokyo},
+     ]},
+    {id:'angola',label:'Angola',col:'#ff9800',
+     hmRoutes:{eur:fr.angola_gate,mei:fr.angola_dahej,asia:fr.angola_tokyo},
+     dtRoutes:[
+       {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.angola_gate},
+       {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(fr.angola_gate,'sabine_rev')},
+       {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.angola_gate,'sabine_ain')},
+       {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.angola_dahej},
+       {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.angola_tokyo},
+     ]},
+    {id:'nigeria',label:'Nigeria',col:'#81c784',
+     hmRoutes:{eur:fr.nigeria_gate,mei:fr.nigeria_dahej,asia:fr.nigeria_tokyo},
+     dtRoutes:[
+       {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.nigeria_gate},
+       {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(fr.nigeria_gate,'sabine_rev')},
+       {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.nigeria_gate,'sabine_ain')},
+       {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.nigeria_dahej},
+       {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.nigeria_tokyo},
+     ]},
+  ]};
   return`<div class="f-sec">ATLANTIC BASIN ARB</div>`+cpBasinTab(cfg,d);
 }
 
-// ── Tab 4 (was 3): MEI Arb ───────────────────────────────────────────────────
+// ── Tab 4: MEI Arb ───────────────────────────────────────────────────────────
 function cpMEIArb(d){
   if(!CP.selBasinOrg||!['qatar','oman'].includes(CP.selBasinOrg))CP.selBasinOrg='qatar';
   const fr=CP.freight;
-  const cfg={
-    orgs:[
-      {id:'qatar',label:'Qatar (Ras Laffan)',col:'#ffb74d',
-       hmRoutes:{eur:fr.qatar_gate,mei:fr.qatar_dahej,asia:fr.qatar_tokyo},
-       dtRoutes:[
-         {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.qatar_gate},
-         {label:'Revithoussa',hub:'TTF',arr:d.des.rev,frArr:fr.qatar_gate},
-         {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.qatar_gate},
-         {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:fr.qatar_dahej,divider:true},
-         {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.qatar_tokyo},
-       ]},
-      {id:'oman',label:'Oman (Sur LNG)',col:'#ff9800',
-       hmRoutes:{eur:fr.oman_gate,mei:fr.oman_dahej,asia:fr.oman_tokyo},
-       dtRoutes:[
-         {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.oman_gate},
-         {label:'Revithoussa',hub:'TTF',arr:d.des.rev,frArr:fr.oman_gate},
-         {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.oman_gate},
-         {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:fr.oman_dahej,divider:true},
-         {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.oman_tokyo},
-       ]},
-    ]
-  };
+  function subFr(gateFr,subKey){return ML.map((_,i)=>{const gv=gateFr[i];const diff=(fr[subKey]?.[i]??0)-(fr.sabine_rotterdam[i]??0);return gv!=null?gv+diff:null;});}
+
+  // MEI signal: JKM−TTF vs Gate−Tokyo (Qatar going west = Gate cheaper, so positive signal = go East)
+  const spread=ML.slice(0,12).map((_,i)=>+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3));
+  const frDiff=ML.slice(0,12).map((_,i)=>fr.qatar_gate[i]!=null&&fr.qatar_tokyo[i]!=null?+(fr.qatar_gate[i]-fr.qatar_tokyo[i]).toFixed(3):null);
+  const signalHtml=cpSignalStrip('FREIGHT DIFF vs BASIS — JKM−TTF vs Qatar (Gate−Tokyo)',spread,frDiff,'asia');
+
+  const cfg={signalHtml,orgs:[
+    {id:'qatar',label:'Qatar (Ras Laffan)',col:'#ffb74d',
+     hmRoutes:{eur:fr.qatar_gate,mei:fr.qatar_dahej,asia:fr.qatar_tokyo},
+     dtRoutes:[
+       {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.qatar_gate},
+       {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(fr.qatar_gate,'sabine_rev')},
+       {label:'Iberia (Spain)',hub:'TTF',arr:d.des.iberia,frArr:subFr(fr.qatar_gate,'sabine_ain')},
+       {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.qatar_gate},
+       {label:'Revithoussa',hub:'TTF',arr:d.des.rev,frArr:subFr(fr.qatar_gate,'sabine_rev')},
+       {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:fr.qatar_dahej},
+       {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.qatar_tokyo},
+     ]},
+    {id:'oman',label:'Oman (Sur LNG)',col:'#ff9800',
+     hmRoutes:{eur:fr.oman_gate,mei:fr.oman_dahej,asia:fr.oman_tokyo},
+     dtRoutes:[
+       {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.oman_gate},
+       {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(fr.oman_gate,'sabine_rev')},
+       {label:'Iberia (Spain)',hub:'TTF',arr:d.des.iberia,frArr:subFr(fr.oman_gate,'sabine_ain')},
+       {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.oman_gate},
+       {label:'Revithoussa',hub:'TTF',arr:d.des.rev,frArr:subFr(fr.oman_gate,'sabine_rev')},
+       {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:fr.oman_dahej},
+       {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.oman_tokyo},
+     ]},
+  ]};
   return`<div class="f-sec">MEI BASIN ARB</div>
   <div style="background:#0a1628;border:1px solid #1e3a5f;padding:10px;margin-bottom:14px">
     <div style="color:#546e7a;font-size:9px;margin-bottom:8px;font-weight:700;letter-spacing:1px">DES MEI DIFFERENTIAL — Angola Dahej−Tokyo ($/MMBtu)</div>
@@ -6024,30 +6093,70 @@ function cpMEIArb(d){
     </tr></thead><tbody>
       <tr><td style="color:#546e7a;font-size:9px">Angola→Dahej</td>${fr.angola_dahej.slice(0,12).map(v=>`<td class="tr" style="color:#546e7a">${fv(v)}</td>`).join('')}</tr>
       <tr><td style="color:#546e7a;font-size:9px">Angola→Tokyo</td>${fr.angola_tokyo.slice(0,12).map(v=>`<td class="tr" style="color:#546e7a">${fv(v)}</td>`).join('')}</tr>
-      <tr style="background:#0d1526"><td style="color:#ff9800;font-weight:700">MEI Diff = Dahej−Tokyo</td>${d.phyMei.slice(0,12).map(v=>`<td class="tr" style="color:#ff9800;font-weight:700">${fv(v)}</td>`).join('')}</tr>
+      <tr style="background:#0d1526"><td style="color:#ff9800;font-weight:700">MEI Diff</td>${d.phyMei.slice(0,12).map(v=>`<td class="tr" style="color:#ff9800;font-weight:700">${fv(v)}</td>`).join('')}</tr>
       <tr><td style="color:#ab47bc;font-weight:700">DES MEI = JKM + Diff</td>${d.des.mei.slice(0,12).map(v=>`<td class="tr" style="color:#ab47bc">${fv(v)}</td>`).join('')}</tr>
     </tbody></table></div>
   </div>`+cpBasinTab(cfg,d);
 }
 
-// ── Tab 5 (was 4): Pacific Basin Arb ────────────────────────────────────────
+// ── Tab 5: Pacific Basin Arb ─────────────────────────────────────────────────
 function cpPacificArb(d){
   if(!CP.selBasinOrg||!['aus_b','aus_g','bontang'].includes(CP.selBasinOrg))CP.selBasinOrg='aus_b';
   const fr=CP.freight;
-  const cfg={
-    orgs:[
-      {id:'aus_b',  label:'Barrow Island (Aus)',col:'#81c784',
-       hmRoutes:{asia:fr.australia_b_tokyo},
-       dtRoutes:[{label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_b_tokyo}]},
-      {id:'aus_g',  label:'Gladstone (Aus)',    col:'#66bb6a',
-       hmRoutes:{asia:fr.australia_g_tokyo},
-       dtRoutes:[{label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_g_tokyo}]},
-      {id:'bontang',label:'Bontang (Indonesia)',col:'#a5d6a7',
-       hmRoutes:{asia:fr.indonesia_tokyo},
-       dtRoutes:[{label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.indonesia_tokyo}]},
-    ]
-  };
-  return`<div class="f-sec">PACIFIC BASIN ARB — JKM cost base</div>`+cpBasinTab(cfg,d);
+  // Pacific sub-terminal freight: base JKTC + distance differential approximation
+  // Thailand (Map Ta Phut) ≈ 500 NM closer than Tokyo from Australia
+  // Singapore ≈ 2000 NM closer than Tokyo from Australia
+  // Dahej ≈ similar to Barrow→Dahej via direct route
+  function pacFr(tokyoFr, factorAdj){return ML.map((_,i)=>tokyoFr[i]!=null?+(tokyoFr[i]*factorAdj).toFixed(3):null);}
+  const pac_b_thai   =pacFr(fr.australia_b_tokyo,0.95);
+  const pac_b_sing   =pacFr(fr.australia_b_tokyo,0.85);
+  const pac_b_dahej  =pacFr(fr.australia_b_tokyo,1.20);
+  const pac_g_thai   =pacFr(fr.australia_g_tokyo,0.95);
+  const pac_g_sing   =pacFr(fr.australia_g_tokyo,0.88);
+  const pac_g_dahej  =pacFr(fr.australia_g_tokyo,1.25);
+  const pac_id_thai  =pacFr(fr.indonesia_tokyo,0.80);
+  const pac_id_sing  =pacFr(fr.indonesia_tokyo,0.65);
+  const pac_id_dahej =pacFr(fr.indonesia_tokyo,1.10);
+  // Pacific→Gate (Europe): very long haul ~14,000 NM
+  const pac_b_gate   =pacFr(fr.australia_b_tokyo,3.50);
+  const pac_g_gate   =pacFr(fr.australia_g_tokyo,3.30);
+  const pac_id_gate  =pacFr(fr.indonesia_tokyo,3.20);
+
+  // Pacific signal: TTF−JKM vs (Gate−JKTC extra freight) — positive = go to Europe
+  const spread=ML.slice(0,12).map((_,i)=>+(CP.fp.TTF[i]-CP.fp.JKM[i]).toFixed(3));// TTF-JKM (positive = Europe richer)
+  const frDiff=ML.slice(0,12).map((_,i)=>pac_b_gate[i]!=null&&fr.australia_b_tokyo[i]!=null?+(pac_b_gate[i]-fr.australia_b_tokyo[i]).toFixed(3):null);
+  const signalHtml=cpSignalStrip('FREIGHT DIFF vs BASIS — TTF−JKM vs Barrow (Gate−JKTC extra cost)',spread,frDiff,'europe');
+
+  const cfg={signalHtml,orgs:[
+    {id:'aus_b',label:'Barrow Island (Aus)',col:'#81c784',
+     hmRoutes:{eur:pac_b_gate,asia:fr.australia_b_tokyo},
+     dtRoutes:[
+       {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_b_tokyo},
+       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_b_thai},
+       {label:'Singapore',hub:'JKM',arr:d.des.jktc,frArr:pac_b_sing},
+       {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:pac_b_dahej},
+       {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:pac_b_gate},
+     ]},
+    {id:'aus_g',label:'Gladstone (Aus)',col:'#66bb6a',
+     hmRoutes:{eur:pac_g_gate,asia:fr.australia_g_tokyo},
+     dtRoutes:[
+       {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_g_tokyo},
+       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_g_thai},
+       {label:'Singapore',hub:'JKM',arr:d.des.jktc,frArr:pac_g_sing},
+       {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:pac_g_dahej},
+       {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:pac_g_gate},
+     ]},
+    {id:'bontang',label:'Bontang (Indonesia)',col:'#a5d6a7',
+     hmRoutes:{eur:pac_id_gate,asia:fr.indonesia_tokyo},
+     dtRoutes:[
+       {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.indonesia_tokyo},
+       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_id_thai},
+       {label:'Singapore',hub:'JKM',arr:d.des.jktc,frArr:pac_id_sing},
+       {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:pac_id_dahej},
+       {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:pac_id_gate},
+     ]},
+  ]};
+  return`<div class="f-sec">PACIFIC BASIN ARB</div>`+cpBasinTab(cfg,d);
 }
 
 
