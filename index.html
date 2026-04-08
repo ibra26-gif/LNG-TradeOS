@@ -5340,58 +5340,40 @@ const CP_SEED_PRICES={
 };
 const CP_SEED_PHYS={nwe:Array(24).fill(-0.40),iberia:Array(24).fill(-0.35),uk:Array(24).fill(-0.80),jktc:[0.05,0.05,0.05,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10]};
 const CP_SEED_FR={
-  sabine_rotterdam:[0.942,0.942,0.935,0.935,0.922,0.989,1.022,0.989,0.869,0.804,0.751,0.738,0.738,0.758,0.771,0.748,0.622,0.622,0.622,0.622,0.622,0.624,0.697,0.674],
-  sabine_tokyo:[3.078,3.078,2.810,2.565,2.520,2.743,2.854,2.743,2.408,2.119,2.029,1.962,1.985,2.074,2.029,1.608,1.608,1.608,1.608,1.608,1.608,1.608,1.900,1.821],
-    // sabine_dahej: NM-derived (2.5447x gate)
-  sabine_dahej:[2.397, 2.397, 2.379, 2.379, 2.346, 2.517, 2.601, 2.517, 2.211, 2.046, 1.911, 1.878, 1.878, 1.929, 1.962, 1.903, 1.583, 1.583, 1.583, 1.583, 1.583, 1.588, 1.774, 1.715],
-  angola_gate:[0.884,0.884,0.877,0.877,0.864,0.930,0.963,0.930,0.811,0.747,0.694,0.680,0.680,0.700,0.714,0.690,0.565,0.565,0.565,0.565,0.565,0.568,0.640,0.617],
-    angola_tokyo:[1.765, 1.765, 1.751, 1.751, 1.725, 1.856, 1.922, 1.856, 1.619, 1.491, 1.385, 1.357, 1.357, 1.397, 1.425, 1.377, 1.128, 1.128, 1.128, 1.128, 1.128, 1.134, 1.278, 1.232],
-  angola_dahej:[1.164,1.164,1.061,0.967,0.949,1.035,1.078,1.035,0.907,0.795,0.761,0.735,0.744,0.778,0.761,0.601,0.601,0.601,0.601,0.601,0.601,0.601,0.714,0.683],
-    angola_maptaphut:[1.403, 1.403, 1.392, 1.392, 1.372, 1.477, 1.529, 1.477, 1.288, 1.186, 1.102, 1.08, 1.08, 1.111, 1.134, 1.095, 0.897, 0.897, 0.897, 0.897, 0.897, 0.902, 1.016, 0.98],
-  nigeria_gate:[1.046,1.046,1.040,1.040,1.029,1.087,1.117,1.087,0.982,0.925,0.878,0.866,0.866,0.884,0.896,0.875,0.764,0.764,0.764,0.764,0.764,0.767,0.831,0.810],
-    nigeria_tokyo:[2.547, 2.547, 2.532, 2.532, 2.506, 2.647, 2.72, 2.647, 2.391, 2.252, 2.138, 2.109, 2.109, 2.153, 2.182, 2.131, 1.86, 1.86, 1.86, 1.86, 1.86, 1.868, 2.023, 1.972],    nigeria_dahej:[1.71, 1.71, 1.7, 1.7, 1.682, 1.777, 1.826, 1.777, 1.605, 1.512, 1.435, 1.416, 1.416, 1.445, 1.465, 1.431, 1.249, 1.249, 1.249, 1.249, 1.249, 1.254, 1.359, 1.324],
-    nigeria_maptaphut:[2.064, 2.064, 2.052, 2.052, 2.031, 2.145, 2.204, 2.145, 1.938, 1.825, 1.733, 1.709, 1.709, 1.744, 1.768, 1.727, 1.508, 1.508, 1.508, 1.508, 1.508, 1.514, 1.64, 1.598],
-  trinidad_gate:[0.722,0.722,0.717,0.717,0.706,0.760,0.787,0.760,0.662,0.609,0.566,0.556,0.556,0.572,0.583,0.564,0.461,0.461,0.461,0.461,0.461,0.464,0.523,0.504],
-  // trinidad_tokyo: rescaled to CoGH 14,600nm (was Panama 13,800nm, ×1.0580)
-  trinidad_tokyo:[2.662,2.662,2.450,2.255,2.220,2.408,2.500,2.408,2.149,1.927,1.858,1.806,1.824,1.897,1.858,1.517,1.517,1.517,1.517,1.517,1.517,1.517,1.740,1.671],
-    // trinidad_dahej: NM-derived (2.7448x gate)
-  trinidad_dahej:[1.982, 1.982, 1.968, 1.968, 1.938, 2.086, 2.16, 2.086, 1.817, 1.672, 1.554, 1.526, 1.526, 1.57, 1.6, 1.548, 1.265, 1.265, 1.265, 1.265, 1.265, 1.274, 1.436, 1.383],
-  // qatar_gate: rescaled to CoGH 13,600nm (was Suez 11,550nm, ×1.1775)
-  qatar_gate:[2.586,2.586,2.379,2.188,2.155,2.326,2.411,2.326,2.069,1.844,1.773,1.724,1.742,1.810,1.773,1.452,1.452,1.452,1.452,1.452,1.452,1.452,1.677,1.611],  // qatar_tokyo: NM-derived (0.4835x gate)
-  qatar_tokyo:[1.25, 1.25, 1.15, 1.058, 1.042, 1.125, 1.166, 1.125, 1.0, 0.892, 0.857, 0.834, 0.842, 0.875, 0.857, 0.702, 0.702, 0.702, 0.702, 0.702, 0.702, 0.702, 0.811, 0.779],  // qatar_dahej: NM-derived (0.0941x gate)
-  qatar_dahej:[0.243, 0.243, 0.224, 0.206, 0.203, 0.219, 0.227, 0.219, 0.195, 0.174, 0.167, 0.162, 0.164, 0.17, 0.167, 0.137, 0.137, 0.137, 0.137, 0.137, 0.137, 0.137, 0.158, 0.152],
-  // oman_gate: rescaled to CoGH 12,100nm (was Suez 9,887nm, ×1.2238)
-  oman_gate:[2.437,2.437,2.242,2.063,2.032,2.193,2.274,2.193,1.951,1.739,1.674,1.626,1.642,1.707,1.674,1.369,1.369,1.369,1.369,1.369,1.369,1.369,1.582,1.520],  // oman_tokyo: NM-derived (0.4974x gate)
-  oman_tokyo:[1.212, 1.212, 1.115, 1.026, 1.011, 1.091, 1.131, 1.091, 0.97, 0.865, 0.833, 0.809, 0.817, 0.849, 0.833, 0.681, 0.681, 0.681, 0.681, 0.681, 0.681, 0.681, 0.787, 0.756],  // oman_dahej: NM-derived (0.0610x gate)
-  oman_dahej:[0.149, 0.149, 0.137, 0.126, 0.124, 0.134, 0.139, 0.134, 0.119, 0.106, 0.102, 0.099, 0.1, 0.104, 0.102, 0.083, 0.083, 0.083, 0.083, 0.083, 0.083, 0.083, 0.096, 0.093],
-  australia_b_tokyo:[0.240,0.240,0.225,0.207,0.203,0.218,0.226,0.218,0.192,0.170,0.163,0.159,0.160,0.167,0.163,0.131,0.131,0.131,0.131,0.131,0.131,0.131,0.152,0.146],
-  australia_g_tokyo:[0.242,0.242,0.227,0.209,0.205,0.220,0.228,0.220,0.194,0.172,0.165,0.161,0.162,0.169,0.165,0.133,0.133,0.133,0.133,0.133,0.133,0.133,0.153,0.147],
-  indonesia_tokyo:[0.165,0.165,0.155,0.143,0.140,0.150,0.155,0.150,0.131,0.116,0.111,0.108,0.109,0.114,0.111,0.090,0.090,0.090,0.090,0.090,0.090,0.090,0.104,0.100],
+    sabine_rotterdam:[0.942, 0.942, 0.935, 0.935, 0.922, 0.989, 1.022, 0.989, 0.869, 0.804, 0.751, 0.738, 0.738, 0.758, 0.771, 0.748, 0.622, 0.622, 0.622, 0.622, 0.622, 0.624, 0.697, 0.674],
+    sabine_tokyo:[3.053, 3.053, 3.03, 3.03, 2.988, 3.205, 3.312, 3.205, 2.816, 2.605, 2.434, 2.392, 2.392, 2.456, 2.498, 2.424, 2.016, 2.016, 2.016, 2.016, 2.016, 2.022, 2.259, 2.184],
+      sabine_dahej:[2.397, 2.397, 2.379, 2.379, 2.346, 2.517, 2.601, 2.517, 2.211, 2.046, 1.911, 1.878, 1.878, 1.929, 1.962, 1.903, 1.583, 1.583, 1.583, 1.583, 1.583, 1.588, 1.774, 1.715],
+    angola_gate:[0.884, 0.884, 0.877, 0.877, 0.864, 0.93, 0.963, 0.93, 0.811, 0.747, 0.694, 0.68, 0.68, 0.7, 0.714, 0.69, 0.565, 0.565, 0.565, 0.565, 0.565, 0.568, 0.64, 0.617],
+      angola_tokyo:[1.765, 1.765, 1.751, 1.751, 1.725, 1.856, 1.922, 1.856, 1.619, 1.491, 1.385, 1.357, 1.357, 1.397, 1.425, 1.377, 1.128, 1.128, 1.128, 1.128, 1.128, 1.134, 1.278, 1.232],
+    angola_dahej:[1.139, 1.139, 1.13, 1.13, 1.113, 1.198, 1.24, 1.198, 1.045, 0.962, 0.894, 0.876, 0.876, 0.902, 0.92, 0.889, 0.728, 0.728, 0.728, 0.728, 0.728, 0.732, 0.824, 0.795],
+      angola_maptaphut:[1.403, 1.403, 1.392, 1.392, 1.372, 1.477, 1.529, 1.477, 1.288, 1.186, 1.102, 1.08, 1.08, 1.111, 1.134, 1.095, 0.897, 0.897, 0.897, 0.897, 0.897, 0.902, 1.016, 0.98],
+    nigeria_gate:[1.046, 1.046, 1.04, 1.04, 1.029, 1.087, 1.117, 1.087, 0.982, 0.925, 0.878, 0.866, 0.866, 0.884, 0.896, 0.875, 0.764, 0.764, 0.764, 0.764, 0.764, 0.767, 0.831, 0.81],
+      nigeria_tokyo:[2.547, 2.547, 2.532, 2.532, 2.506, 2.647, 2.72, 2.647, 2.391, 2.252, 2.138, 2.109, 2.109, 2.153, 2.182, 2.131, 1.86, 1.86, 1.86, 1.86, 1.86, 1.868, 2.023, 1.972],      nigeria_dahej:[1.71, 1.71, 1.7, 1.7, 1.682, 1.777, 1.826, 1.777, 1.605, 1.512, 1.435, 1.416, 1.416, 1.445, 1.465, 1.431, 1.249, 1.249, 1.249, 1.249, 1.249, 1.254, 1.359, 1.324],
+      nigeria_maptaphut:[2.064, 2.064, 2.052, 2.052, 2.031, 2.145, 2.204, 2.145, 1.938, 1.825, 1.733, 1.709, 1.709, 1.744, 1.768, 1.727, 1.508, 1.508, 1.508, 1.508, 1.508, 1.514, 1.64, 1.598],
+    trinidad_gate:[0.722, 0.722, 0.717, 0.717, 0.706, 0.76, 0.787, 0.76, 0.662, 0.609, 0.566, 0.556, 0.556, 0.572, 0.583, 0.564, 0.461, 0.461, 0.461, 0.461, 0.461, 0.464, 0.523, 0.504],
+    trinidad_tokyo:[2.607, 2.607, 2.589, 2.589, 2.549, 2.744, 2.841, 2.744, 2.39, 2.199, 2.043, 2.007, 2.007, 2.065, 2.105, 2.036, 1.664, 1.664, 1.664, 1.664, 1.664, 1.675, 1.888, 1.82],
+      trinidad_dahej:[1.982, 1.982, 1.968, 1.968, 1.938, 2.086, 2.16, 2.086, 1.817, 1.672, 1.554, 1.526, 1.526, 1.57, 1.6, 1.548, 1.265, 1.265, 1.265, 1.265, 1.265, 1.274, 1.436, 1.383],
+    qatar_gate:[2.586, 2.586, 2.379, 2.188, 2.155, 2.326, 2.411, 2.326, 2.069, 1.844, 1.773, 1.724, 1.742, 1.81, 1.773, 1.452, 1.452, 1.452, 1.452, 1.452, 1.452, 1.452, 1.677, 1.611],    qatar_tokyo:[1.25, 1.25, 1.15, 1.058, 1.042, 1.125, 1.166, 1.125, 1.0, 0.892, 0.857, 0.834, 0.842, 0.875, 0.857, 0.702, 0.702, 0.702, 0.702, 0.702, 0.702, 0.702, 0.811, 0.779],    qatar_dahej:[0.243, 0.243, 0.224, 0.206, 0.203, 0.219, 0.227, 0.219, 0.195, 0.174, 0.167, 0.162, 0.164, 0.17, 0.167, 0.137, 0.137, 0.137, 0.137, 0.137, 0.137, 0.137, 0.158, 0.152],
+    oman_gate:[2.437, 2.437, 2.242, 2.063, 2.032, 2.193, 2.274, 2.193, 1.951, 1.739, 1.674, 1.626, 1.642, 1.707, 1.674, 1.369, 1.369, 1.369, 1.369, 1.369, 1.369, 1.369, 1.582, 1.52],    oman_tokyo:[1.212, 1.212, 1.115, 1.026, 1.011, 1.091, 1.131, 1.091, 0.97, 0.865, 0.833, 0.809, 0.817, 0.849, 0.833, 0.681, 0.681, 0.681, 0.681, 0.681, 0.681, 0.681, 0.787, 0.756],    oman_dahej:[0.149, 0.149, 0.137, 0.126, 0.124, 0.134, 0.139, 0.134, 0.119, 0.106, 0.102, 0.099, 0.1, 0.104, 0.102, 0.083, 0.083, 0.083, 0.083, 0.083, 0.083, 0.083, 0.096, 0.093],
+    australia_b_tokyo:[0.24, 0.24, 0.225, 0.207, 0.203, 0.218, 0.226, 0.218, 0.192, 0.17, 0.163, 0.159, 0.16, 0.167, 0.163, 0.131, 0.131, 0.131, 0.131, 0.131, 0.131, 0.131, 0.152, 0.146],
+    australia_g_tokyo:[0.242, 0.242, 0.227, 0.209, 0.205, 0.22, 0.228, 0.22, 0.194, 0.172, 0.165, 0.161, 0.162, 0.169, 0.165, 0.133, 0.133, 0.133, 0.133, 0.133, 0.133, 0.133, 0.153, 0.147],
+    indonesia_tokyo:[0.165, 0.165, 0.155, 0.143, 0.14, 0.15, 0.155, 0.15, 0.131, 0.116, 0.111, 0.108, 0.109, 0.114, 0.111, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.104, 0.1],
   // ── Ain Sukhna freight curves — CoGH routing, NM-ratio derived (Apr-2026) ──
-  // sabine_ain: Med/Suez routing 6,767nm (Ain Sukhna = Med terminal, not CoGH)
-  sabine_ain:[1.267,1.267,1.258,1.258,1.240,1.331,1.375,1.331,1.169,1.082,1.010,0.993,0.993,1.020,1.037,1.006,0.837,0.837,0.837,0.837,0.837,0.839,0.938,0.907],
-  // trinidad_ain: Med/Suez routing 5,438nm
-  trinidad_ain:[0.971,0.971,0.964,0.964,0.949,1.022,1.058,1.022,0.890,0.819,0.761,0.748,0.748,0.769,0.784,0.758,0.620,0.620,0.620,0.620,0.620,0.624,0.703,0.678],
-  // angola_ain: Med/Suez routing 5,950nm
-  angola_ain:[1.050,1.050,1.042,1.042,1.027,1.105,1.144,1.105,0.964,0.888,0.825,0.808,0.808,0.832,0.848,0.820,0.671,0.671,0.671,0.671,0.671,0.675,0.760,0.733],
-  // nigeria_ain: Med/Suez routing 5,374nm
-  nigeria_ain:[1.268,1.268,1.261,1.261,1.248,1.318,1.354,1.318,1.191,1.122,1.065,1.050,1.050,1.072,1.086,1.061,0.926,0.926,0.926,0.926,0.926,0.930,1.008,0.982],
-  // qatar_ain: CoGH west 14,500nm (CoGH→Atlantic→Gibraltar→Med→Suez)
-  qatar_ain:[2.757, 2.757, 2.536, 2.333, 2.298, 2.48, 2.571, 2.48, 2.206, 1.966, 1.89, 1.838, 1.857, 1.93, 1.89, 1.548, 1.548, 1.548, 1.548, 1.548, 1.548, 1.548, 1.788, 1.718],
-  // oman_ain: CoGH west 13,000nm (CoGH→Atlantic→Gibraltar→Med→Suez)
-  oman_ain:[2.618, 2.618, 2.409, 2.216, 2.183, 2.356, 2.443, 2.356, 2.096, 1.868, 1.799, 1.747, 1.764, 1.834, 1.799, 1.471, 1.471, 1.471, 1.471, 1.471, 1.471, 1.471, 1.7, 1.633],
-  // australia_b_ain: CoGH west 14,850nm (Red Sea blocked)
-  australia_b_ain:[0.941, 0.941, 0.882, 0.811, 0.796, 0.855, 0.886, 0.855, 0.753, 0.666, 0.639, 0.624, 0.627, 0.655, 0.639, 0.513, 0.513, 0.513, 0.513, 0.513, 0.513, 0.513, 0.596, 0.573],
-  // australia_g_ain: CoGH west 14,266nm (Red Sea blocked)
-  australia_g_ain:[0.914, 0.914, 0.857, 0.789, 0.774, 0.83, 0.861, 0.83, 0.732, 0.65, 0.623, 0.608, 0.612, 0.638, 0.623, 0.503, 0.503, 0.503, 0.503, 0.503, 0.503, 0.503, 0.577, 0.555],
-  // indonesia_ain: CoGH west 14,150nm (Red Sea blocked)
-  indonesia_ain:[0.902, 0.902, 0.848, 0.782, 0.766, 0.82, 0.848, 0.82, 0.717, 0.634, 0.608, 0.591, 0.596, 0.624, 0.608, 0.492, 0.492, 0.492, 0.492, 0.492, 0.492, 0.492, 0.569, 0.547],
-    sabine_klaipeda:[1.105, 1.105, 1.097, 1.097, 1.081, 1.16, 1.199, 1.16, 1.019, 0.943, 0.881, 0.866, 0.866, 0.889, 0.904, 0.877, 0.73, 0.73, 0.73, 0.73, 0.73, 0.732, 0.818, 0.791],
-    sabine_inkoo:[1.142, 1.142, 1.134, 1.134, 1.118, 1.199, 1.239, 1.199, 1.054, 0.975, 0.911, 0.895, 0.895, 0.919, 0.935, 0.907, 0.754, 0.754, 0.754, 0.754, 0.754, 0.757, 0.845, 0.817],
-  sabine_swinoujscie:[1.067,1.067,1.060,1.060,1.045,1.121,1.158,1.121,0.985,0.911,0.851,0.836,0.836,0.859,0.874,0.848,0.705,0.705,0.705,0.705,0.705,0.707,0.790,0.764],
-  sabine_rev:[1.09,1.09,1.083,1.083,1.07,1.137,1.17,1.137,1.017,0.952,0.899,0.886,0.886,0.906,0.919,0.896,0.77,0.77,0.77,0.77,0.77,0.772,0.845,0.822],
-  sabine_krk:[1.1,1.1,1.093,1.093,1.08,1.147,1.18,1.147,1.027,0.962,0.909,0.896,0.896,0.916,0.929,0.906,0.78,0.78,0.78,0.78,0.78,0.782,0.855,0.832],
-    sabine_ali:[1.208, 1.208, 1.199, 1.199, 1.182, 1.268, 1.311, 1.268, 1.114, 1.031, 0.963, 0.946, 0.946, 0.972, 0.989, 0.959, 0.798, 0.798, 0.798, 0.798, 0.798, 0.8, 0.894, 0.864],
+    sabine_ain:[1.267, 1.267, 1.258, 1.258, 1.24, 1.331, 1.375, 1.331, 1.169, 1.082, 1.01, 0.993, 0.993, 1.02, 1.037, 1.006, 0.837, 0.837, 0.837, 0.837, 0.837, 0.839, 0.938, 0.907],
+    trinidad_ain:[0.971, 0.971, 0.964, 0.964, 0.949, 1.022, 1.058, 1.022, 0.89, 0.819, 0.761, 0.748, 0.748, 0.769, 0.784, 0.758, 0.62, 0.62, 0.62, 0.62, 0.62, 0.624, 0.703, 0.678],
+    angola_ain:[1.05, 1.05, 1.042, 1.042, 1.027, 1.105, 1.144, 1.105, 0.964, 0.888, 0.825, 0.808, 0.808, 0.832, 0.848, 0.82, 0.671, 0.671, 0.671, 0.671, 0.671, 0.675, 0.76, 0.733],
+    nigeria_ain:[1.268, 1.268, 1.261, 1.261, 1.248, 1.318, 1.354, 1.318, 1.191, 1.122, 1.065, 1.05, 1.05, 1.072, 1.086, 1.061, 0.926, 0.926, 0.926, 0.926, 0.926, 0.93, 1.008, 0.982],
+    qatar_ain:[2.757, 2.757, 2.536, 2.333, 2.298, 2.48, 2.571, 2.48, 2.206, 1.966, 1.89, 1.838, 1.857, 1.93, 1.89, 1.548, 1.548, 1.548, 1.548, 1.548, 1.548, 1.548, 1.788, 1.718],
+    oman_ain:[2.618, 2.618, 2.409, 2.216, 2.183, 2.356, 2.443, 2.356, 2.096, 1.868, 1.799, 1.747, 1.764, 1.834, 1.799, 1.471, 1.471, 1.471, 1.471, 1.471, 1.471, 1.471, 1.7, 1.633],
+    australia_b_ain:[0.941, 0.941, 0.882, 0.811, 0.796, 0.855, 0.886, 0.855, 0.753, 0.666, 0.639, 0.623, 0.627, 0.655, 0.639, 0.514, 0.514, 0.514, 0.514, 0.514, 0.514, 0.514, 0.596, 0.572],
+    australia_g_ain:[0.914, 0.914, 0.857, 0.789, 0.774, 0.831, 0.861, 0.831, 0.733, 0.649, 0.623, 0.608, 0.612, 0.638, 0.623, 0.502, 0.502, 0.502, 0.502, 0.502, 0.502, 0.502, 0.578, 0.555],
+    indonesia_ain:[0.902, 0.902, 0.848, 0.782, 0.766, 0.82, 0.848, 0.82, 0.717, 0.634, 0.607, 0.591, 0.596, 0.624, 0.607, 0.492, 0.492, 0.492, 0.492, 0.492, 0.492, 0.492, 0.569, 0.547],
+      sabine_klaipeda:[1.105, 1.105, 1.097, 1.097, 1.081, 1.16, 1.199, 1.16, 1.019, 0.943, 0.881, 0.866, 0.866, 0.889, 0.904, 0.877, 0.73, 0.73, 0.73, 0.73, 0.73, 0.732, 0.818, 0.791],
+      sabine_inkoo:[1.142, 1.142, 1.134, 1.134, 1.118, 1.199, 1.239, 1.199, 1.054, 0.975, 0.911, 0.895, 0.895, 0.919, 0.935, 0.907, 0.754, 0.754, 0.754, 0.754, 0.754, 0.757, 0.845, 0.817],
+    sabine_swinoujscie:[1.067, 1.067, 1.06, 1.06, 1.045, 1.121, 1.158, 1.121, 0.985, 0.911, 0.851, 0.836, 0.836, 0.859, 0.874, 0.848, 0.705, 0.705, 0.705, 0.705, 0.705, 0.707, 0.79, 0.764],
+    sabine_rev:[1.086, 1.086, 1.078, 1.078, 1.063, 1.14, 1.178, 1.14, 1.002, 0.927, 0.866, 0.851, 0.851, 0.874, 0.889, 0.863, 0.717, 0.717, 0.717, 0.717, 0.717, 0.72, 0.804, 0.777],
+    sabine_krk:[1.077, 1.077, 1.069, 1.069, 1.054, 1.131, 1.168, 1.131, 0.993, 0.919, 0.858, 0.844, 0.844, 0.867, 0.881, 0.855, 0.711, 0.711, 0.711, 0.711, 0.711, 0.713, 0.797, 0.77],
+      sabine_ali:[1.208, 1.208, 1.199, 1.199, 1.182, 1.268, 1.311, 1.268, 1.114, 1.031, 0.963, 0.946, 0.946, 0.972, 0.989, 0.959, 0.798, 0.798, 0.798, 0.798, 0.798, 0.8, 0.894, 0.864],
 };
 const CP_TABS=['PHYS DIFFERENTIALS','DES PRICES','GLOBAL ARB','ATLANTIC BASIN','MEI','PACIFIC BASIN','FR DIFF vs BASIS'];
 let CP={fp:null,phys:null,freight:null,liqFee:null,histSnaps:null,tab:0,selMonth:1,indexMode:'TTF',hhSlope:1.15,coghMode:false,histSnapDate:new Date().toISOString().slice(0,10)};
@@ -5510,7 +5492,7 @@ function cpDerived(){
     jkmTtf,frDiff,arbOpen,profEur,profAsia};
 }
 // ── Freight seed version: bump whenever seed curves change to force cache refresh ──
-const CP_FREIGHT_VER='v53_nm_consistent_apr2026';
+const CP_FREIGHT_VER='v53_nm_fullshape_apr2026';
 
 function cpMergeFreight(){
   const seed=JSON.parse(JSON.stringify(CP_SEED_FR));
@@ -5785,33 +5767,33 @@ function cpGlobalArb(d){
   function nb(desArr,frArr){return ML.map((_,i)=>frArr&&frArr[i]!=null?desArr[i]-frArr[i]-idxArr[i]:null);}
   const ORGS=[
     {id:'sabine', label:'Sabine Pass',basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.des.jktc,fr.sabine_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),ain:nb(d.des.ain,fr.sabine_ain),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.des.jktc,fr.sabine_tokyo)}},
     {id:'trinidad',label:'Trinidad',  basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.trinidad_gate),mei:nb(d.des.mei,fr.trinidad_dahej),asia:nb(d.des.jktc,fr.trinidad_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.trinidad_gate),ain:nb(d.des.ain,fr.trinidad_ain),mei:nb(d.des.mei,fr.trinidad_dahej),asia:nb(d.des.jktc,fr.trinidad_tokyo)}},
     {id:'angola', label:'Angola',     basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.angola_gate),mei:nb(d.des.mei,fr.angola_dahej),asia:nb(d.des.jktc,fr.angola_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.angola_gate),ain:nb(d.des.ain,fr.angola_ain),mei:nb(d.des.mei,fr.angola_dahej),asia:nb(d.des.jktc,fr.angola_tokyo)}},
     {id:'nigeria',label:'Nigeria',    basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.nigeria_gate),mei:nb(d.des.mei,fr.nigeria_dahej),asia:nb(d.des.jktc,fr.nigeria_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.nigeria_gate),ain:nb(d.des.ain,fr.nigeria_ain),mei:nb(d.des.mei,fr.nigeria_dahej),asia:nb(d.des.jktc,fr.nigeria_tokyo)}},
     {id:'qatar',  label:'Qatar',      basin:'MEI',col:'#ffb74d',
-     routes:{eur:nb(d.des.nwe,fr.qatar_gate),mei:nb(d.des.mei,fr.qatar_dahej),asia:nb(d.des.jktc,fr.qatar_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.qatar_gate),ain:nb(d.des.ain,fr.qatar_ain),mei:nb(d.des.mei,fr.qatar_dahej),asia:nb(d.des.jktc,fr.qatar_tokyo)}},
     {id:'oman',   label:'Oman',       basin:'MEI',col:'#ffb74d',
-     routes:{eur:nb(d.des.nwe,fr.oman_gate),mei:nb(d.des.mei,fr.oman_dahej),asia:nb(d.des.jktc,fr.oman_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.oman_gate),ain:nb(d.des.ain,fr.oman_ain),mei:nb(d.des.mei,fr.oman_dahej),asia:nb(d.des.jktc,fr.oman_tokyo)}},
     {id:'aus_b',  label:'Barrow Is.', basin:'PAC',col:'#81c784',
-     routes:{asia:nb(d.des.jktc,fr.australia_b_tokyo)}},
+     routes:{asia:nb(d.des.jktc,fr.australia_b_tokyo),mei:nb(d.des.mei,fr.australia_b_ain),eur:nb(d.des.nwe,ML.map((_,i)=>fr.australia_b_tokyo[i]*3.683))}},
     {id:'aus_g',  label:'Gladstone',  basin:'PAC',col:'#81c784',
-     routes:{asia:nb(d.des.jktc,fr.australia_g_tokyo)}},
+     routes:{asia:nb(d.des.jktc,fr.australia_g_tokyo),mei:nb(d.des.mei,fr.australia_g_ain),eur:nb(d.des.nwe,ML.map((_,i)=>fr.australia_g_tokyo[i]*3.538))}},
     {id:'bontang',label:'Bontang',    basin:'PAC',col:'#81c784',
-     routes:{asia:nb(d.des.jktc,fr.indonesia_tokyo)}},
+     routes:{asia:nb(d.des.jktc,fr.indonesia_tokyo),mei:nb(d.des.mei,fr.indonesia_ain),eur:nb(d.des.nwe,ML.map((_,i)=>fr.indonesia_tokyo[i]*5.122))}},
   ];
   const DEST_LABEL={eur:'Europe',ain:'Ain Sukhna',mei:'MEI',asia:'JKTC'};
   const BASIN_COL={ATL:'#4fc3f7',MEI:'#ffb74d',PAC:'#81c784'};
   const BASIN_NAME={ATL:'Atlantic basin',MEI:'MEI basin',PAC:'Pacific basin'};
 
   const DEST_STYLE={
-    eur:{bg:'#0d2545',fg:'#90caf9'},
-    ain:{bg:'#1a2010',fg:'#d4e157'},
-    mei:{bg:'#0d2e15',fg:'#a5d6a7'},
-    asia:{bg:'#2d0f0f',fg:'#ef9a9a'},
+    eur:{bg:'#0d2545',fg:'#90caf9',lbl:'NWE Gate'},
+    ain:{bg:'#1a2010',fg:'#d4e157',lbl:'Ain Sukhna'},
+    mei:{bg:'#0d2e15',fg:'#a5d6a7',lbl:'MEI Dahej'},
+    asia:{bg:'#2d0f0f',fg:'#ef9a9a',lbl:'JKTC'},
   };
   function cellStyle(dk){return DEST_STYLE[dk]||{bg:'#0a1628',fg:'#3d5070'};}
   // Build heatmap rows (12 months)
@@ -5835,9 +5817,9 @@ function cpGlobalArb(d){
       const des=best.dk==='eur'?d.des.nwe[i]:best.dk==='ain'?d.des.ain[i]:best.dk==='mei'?d.des.mei[i]:d.des.jktc[i];
       const frv=org.routes[best.dk][i];
       const idxv=idxArr[i];
-      const tooltip=`${org.label} → ${DEST_LABEL[best.dk]} (${ML[i]})\nDES: ${des.toFixed(3)}\nFreight: ${frv.toFixed(3)}\n${idxLbl}: ${idxv.toFixed(3)}\n= ${best.v>=0?'+':''}${best.v.toFixed(3)} $/MMBtu`;
+      const tooltip=`${org.label} → ${DS.lbl} (${ML[i]})\nDES: ${des.toFixed(3)}\nFreight: ${frv.toFixed(3)}\n${idxLbl}: ${idxv.toFixed(3)}\n= ${best.v>=0?'+':''}${best.v.toFixed(3)} $/MMBtu`;
       rows+=`<td style="padding:2px"><div style="background:${cs.bg};border-radius:5px;padding:5px 3px;text-align:center;cursor:default;font-family:IBM Plex Mono,monospace" title="${tooltip}">
-        <div style="font-size:10px;font-weight:700;color:${cs.fg}">${DEST_LABEL[best.dk]}</div>
+        <div style="font-size:10px;font-weight:700;color:${cs.fg}">${DS.lbl}</div>
         <div style="font-size:9px;color:${cs.fg};opacity:.75">${best.v>=0?'+':''}${best.v.toFixed(2)}</div>
       </div></td>`;
     });
@@ -5970,143 +5952,153 @@ function cpSignalStrip(label, spreadArr, frDiffArr, signalDir){
 }
 
 // ── Shared: build heatmap + ranking + details for a basin ───────────────────
-function cpBasinTab(cfg, d){
-  const idx = CP.globalArbIdx||'TTF';
-  const idxA = idx==='JKM'?CP.fp.JKM:idx==='HH'?CP.fp.HH:CP.fp.TTF;
-  const idxLbl = idx==='HH'?'HH flat':idx+' flat';
-  const sl = CP.hhSlope||1.15;
-  const fr=d.freight;
-  const m = CP.selMonth;
-  const MONTHS12 = ML.slice(0,12);
 
-  function nbIdx(desArr, frArr){ return ML.map((_,i)=>frArr&&frArr[i]!=null?desArr[i]-frArr[i]-idxA[i]:null); }
-  function nbDes(dt, i){
+// ── Shared basin tab ─────────────────────────────────────────────────────────
+function cpBasinTab(cfg,d){
+  const idx=CP.globalArbIdx||'TTF';
+  const sl=CP.hhSlope||1.15;
+  const idxA=idx==='JKM'?d.fp.JKM:idx==='HH'?d.fp.HH.map(v=>+(v*sl).toFixed(3)):d.fp.TTF;
+  const idxLbl=idx==='HH'?'HH flat':idx+' flat';
+  const fr=d.freight;
+  const m=CP.selMonth||1;
+  const M12=ML.slice(0,12);
+  const selOrg=cfg.orgs.find(o=>o.id===(CP.selBasinOrg||cfg.orgs[0].id))||cfg.orgs[0];
+
+  function nbx(dt,i){
     if(!dt.frArr||dt.frArr[i]==null||dt.arr[i]==null)return null;
-    const idxV = dt.hub==='TTF'?CP.fp.TTF[i]:dt.hub==='JKM'?CP.fp.JKM[i]:(sl*CP.fp.HH[i]);
-    return +(dt.arr[i]-dt.frArr[i]-idxV).toFixed(3);
+    return +(dt.arr[i]-dt.frArr[i]-idxA[i]).toFixed(3);
+  }
+  function ts(lbl){
+    if(lbl==='Ain Sukhna')return{bg:'#1a2010',fg:'#d4e157'};
+    if(lbl.includes('Dahej')||lbl.includes('MEI'))return{bg:'#0d2e15',fg:'#a5d6a7'};
+    if(lbl==='JKTC'||lbl==='JKTC (Tokyo)'||lbl.includes('Thailand')||lbl==='Singapore')return{bg:'#2d0f0f',fg:'#ef9a9a'};
+    return{bg:'#0d2545',fg:'#90caf9'};
+  }
+  function sl2(lbl){return({'NWE (Gate)':'NWE Gate','UK Terminals':'UK','DES Italy':'Italy',
+    'Revithoussa':'Rev','MEI (Dahej)':'MEI Dahej','JKTC (Tokyo)':'JKTC',
+    'Thailand (Map Ta Phut)':'Thailand','Swinoujscie':'Swino','Klaipeda':'Klaipeda'}[lbl]||lbl);}
+  function bestAt(org,i){
+    return org.dtRoutes.map(dt=>({dt,nb:nbx(dt,i)})).filter(x=>x.nb!=null).sort((a,b)=>b.nb-a.nb)[0]||null;
+  }
+  function ranked(org,i){
+    return org.dtRoutes.map(dt=>({dt,nb:nbx(dt,i)})).filter(x=>x.nb!=null).sort((a,b)=>b.nb-a.nb);
   }
 
-  const DEST_STYLE={eur:{bg:'#0d2545',fg:'#90caf9',lbl:'Europe'},ain:{bg:'#1a2010',fg:'#d4e157',lbl:'Ain Sukhna'},mei:{bg:'#0d2e15',fg:'#a5d6a7',lbl:'MEI'},asia:{bg:'#2d0f0f',fg:'#ef9a9a',lbl:'JKTC'}};
-  // selOrg and orgSel defined early — used in route ranking, top bar and detail section
-  const selOrg=cfg.orgs.find(o=>o.id===(CP.selBasinOrg||cfg.orgs[0].id))||cfg.orgs[0];
-  const orgSel=`<select class="f-sel" onchange="CP.selBasinOrg=this.value;renderCargoTab()">${cfg.orgs.map(o=>`<option value="${o.id}"${selOrg.id===o.id?' selected':''}>${o.label}</option>`).join('')}</select>`;
-  const legend=[['#0d2545','Europe'],['#0d2e15','MEI'],['#2d0f0f','JKTC']].map(([bg,lbl])=>
-    `<div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#546e7a"><span style="display:inline-block;width:20px;height:11px;border-radius:3px;background:${bg}"></span>${lbl}</div>`).join('');
   const idxBtns=['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x}</button>`).join('');
+  const orgSel=`<select class="f-sel" onchange="CP.selBasinOrg=this.value;renderCargoTab()">${cfg.orgs.map(o=>`<option value="${o.id}"${selOrg.id===o.id?' selected':''}>${o.label}</option>`).join('')}</select>`;
+  const legend=[['#0d2545','#90caf9','NWE/Eur'],['#1a2010','#d4e157','Ain Sukhna'],['#0d2e15','#a5d6a7','MEI'],['#2d0f0f','#ef9a9a','JKTC/Asia']]
+    .map(([bg,fg,l])=>`<span style="display:flex;align-items:center;gap:3px"><span style="width:14px;height:9px;border-radius:2px;background:${bg};display:inline-block"></span><span style="color:${fg};font-size:9px">${l}</span></span>`).join('');
 
-  // ── 1. Heatmap ─────────────────────────────────────────────────────────────
+  // ── Best destination card ─────────────────────────────────────────────────
+  const top=ranked(selOrg,m);
+  const best=top[0]||null;
+  const runners=top.slice(1,4);
+  const bestCard=best?`
+  <div style="margin:8px 0 0;border:1px solid #1a3a6a;background:#080e1c;border-radius:5px;padding:9px 14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <span style="color:#ffd54f;font-size:16px;line-height:1">★</span>
+    <div>
+      <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px;margin-bottom:3px">BEST DESTINATION — ${selOrg.label} · ${ML[m]}</div>
+      <div style="display:flex;align-items:baseline;gap:5px">
+        <span style="color:${ts(best.dt.label).fg};font-size:15px;font-weight:700">${best.dt.label}</span>
+        <span style="color:${ts(best.dt.label).fg};font-size:12px">${best.nb>=0?'+':''}${best.nb.toFixed(3)}</span>
+        <span style="color:#546e7a;font-size:9px">$/MMBtu ${idxLbl}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;margin-left:auto">${runners.map((x,i)=>`
+      <div style="text-align:right">
+        <div style="color:#546e7a;font-size:8px">${['2ND','3RD','4TH'][i]}</div>
+        <div style="color:#90a4ae;font-size:9px">${sl2(x.dt.label)}</div>
+        <div style="color:#4fc3f7;font-size:11px">${x.nb>=0?'+':''}${x.nb.toFixed(3)}</div>
+      </div>`).join('')}</div>
+  </div>`
+  :`<div style="margin:8px 0 0;background:#080e1c;border:1px solid #1e3a5f;border-radius:5px;padding:8px 14px;color:#546e7a;font-size:9px">No freight data — use SYNC FREIGHT to populate</div>`;
+
+  // ── Heatmap (actual best terminal per cell from dtRoutes) ─────────────────
   let hmRows='';
   cfg.orgs.forEach(org=>{
     hmRows+=`<tr><td style="font-size:10px;padding:4px 8px;white-space:nowrap;color:#c8d6e5"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${org.col};margin-right:5px;vertical-align:middle"></span>${org.label}</td>`;
-    MONTHS12.forEach((_,i)=>{
-      const cands=[];
-      Object.entries(org.hmRoutes).forEach(([dk,frArr])=>{if(!frArr)return;const desArr=dk==='eur'?d.des.nwe:dk==='ain'?d.des.ain:dk==='mei'?d.des.mei:d.des.jktc;const v=desArr[i]-frArr[i]-idxA[i];cands.push({dk,v});});
-      if(!cands.length){hmRows+=`<td><div style="background:#0a1628;border-radius:4px;padding:5px 2px;text-align:center;color:#1e3a5f;font-size:9px;min-width:48px">—</div></td>`;return;}
-      const best=cands.reduce((a,b)=>b.v>a.v?b:a);
-      const DS=DEST_STYLE[best.dk];
-      hmRows+=`<td style="padding:2px"><div style="background:${DS.bg};border-radius:4px;padding:5px 2px;text-align:center;cursor:pointer;min-width:48px;border:${i===m?'2px solid #c8d6e5':'2px solid transparent'}"
+    M12.forEach((_,i)=>{
+      const b=bestAt(org,i);
+      if(!b){hmRows+=`<td><div style="background:#0a1628;border-radius:4px;padding:5px 2px;text-align:center;color:#1e3a5f;font-size:9px;min-width:52px">—</div></td>`;return;}
+      const st=ts(b.dt.label);
+      hmRows+=`<td style="padding:2px"><div style="background:${st.bg};border-radius:4px;padding:5px 2px;text-align:center;cursor:pointer;min-width:52px;border:${i===m?'2px solid #c8d6e5':'2px solid transparent'}"
         onclick="CP.selMonth=${i};renderCargoTab()"
-        title="${org.label} → ${DS.lbl} (${ML[i]})\n${best.v>=0?'+':''}${best.v.toFixed(3)} $/MMBtu">
-        <div style="font-size:10px;font-weight:700;color:${DS.fg}">${DS.lbl}</div>
-        <div style="font-size:9px;color:${DS.fg};opacity:.7">${best.v>=0?'+':''}${best.v.toFixed(2)}</div>
+        title="${org.label} → ${b.dt.label} (${ML[i]})\n${b.nb>=0?'+':''}${b.nb.toFixed(3)} $/MMBtu ${idxLbl}">
+        <div style="font-size:10px;font-weight:700;color:${st.fg}">${sl2(b.dt.label)}</div>
+        <div style="font-size:8px;color:${st.fg};opacity:.75">${b.nb>=0?'+':''}${b.nb.toFixed(2)}</div>
       </div></td>`;
     });
     hmRows+='</tr>';
   });
 
-  // ── 2. Route ranking — selected origin only (controlled by orgSel dropdown) ──
-  const rkRoutes=[];
-  Object.entries(selOrg.hmRoutes).forEach(([dk,frArr])=>{
-    if(!frArr||frArr[m]==null)return;
-    const desArr=dk==='eur'?d.des.nwe:dk==='ain'?d.des.ain:dk==='mei'?d.des.mei:d.des.jktc;
-    rkRoutes.push({dk,v:+(desArr[m]-frArr[m]-idxA[m]).toFixed(3),lbl:DEST_STYLE[dk].lbl,col:DEST_STYLE[dk].fg});
-  });
-  rkRoutes.sort((a,b)=>b.v-a.v);
-  const rkMaxV=Math.max(...rkRoutes.map(r=>Math.abs(r.v)),0.01);
-  let rkHtml='<div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px">';
-  rkRoutes.forEach((r,i)=>{
-    const pct=Math.round((Math.abs(r.v)/rkMaxV)*100);
-    const isFirst=i===0;
-    rkHtml+=`<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:${isFirst?r.col+'18':'#0a1628'};border:0.5px solid ${isFirst?r.col+'55':'#1e3a5f'};border-radius:6px">
-      <span style="font-size:13px;font-weight:700;min-width:18px;color:${isFirst?r.col:'#546e7a'}">${i+1}</span>
-      <span style="font-size:11px;font-weight:${isFirst?700:400};flex:0 0 110px;color:${r.col}">${r.lbl}</span>
-      <div style="flex:1;height:5px;border-radius:3px;background:#1e3a5f;overflow:hidden"><div style="width:${pct}%;height:100%;border-radius:3px;background:${r.col};opacity:${isFirst?1:0.6}"></div></div>
-      <span style="font-size:13px;font-weight:${isFirst?700:400};min-width:60px;text-align:right;color:${r.col}">${r.v>=0?'+':''}${r.v.toFixed(3)}</span>
-      <span style="font-size:8px;color:#3d5070;min-width:30px">${idxLbl}</span>
+  // ── Route ranking — all dtRoutes sorted best→worst ────────────────────────
+  const rkMax=Math.max(...top.map(x=>Math.abs(x.nb)),0.01);
+  let rkHtml='<div style="padding:8px 14px;display:flex;flex-direction:column;gap:5px">';
+  top.forEach((x,i)=>{
+    const st=ts(x.dt.label);const pct=Math.round(Math.abs(x.nb)/rkMax*100);const isTop=i===0;
+    rkHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${isTop?st.bg+'99':'#0a1628'};border:0.5px solid ${isTop?st.fg+'66':'#1e3a5f'};border-radius:5px">
+      <span style="font-size:12px;font-weight:700;min-width:16px;color:${isTop?st.fg:'#546e7a'}">${i+1}</span>
+      <span style="font-size:10px;font-weight:${isTop?700:400};flex:0 0 145px;color:${st.fg}">${x.dt.label}</span>
+      <div style="flex:1;height:5px;border-radius:3px;background:#1e3a5f;overflow:hidden"><div style="width:${pct}%;height:100%;border-radius:3px;background:${st.fg};opacity:${isTop?1:.5}"></div></div>
+      <span style="font-size:12px;font-weight:${isTop?700:400};min-width:58px;text-align:right;color:${st.fg}">${x.nb>=0?'+':''}${x.nb.toFixed(3)}</span>
+      <span style="font-size:8px;color:#3d5070;min-width:50px">${idxLbl}</span>
     </div>`;
   });
   rkHtml+='</div>';
 
-  // ── 3. Detailed calculation (sorted by netback) ────────────────────────────
-  // Compute netbacks and sort best→worst
-  const dtWithNb=selOrg.dtRoutes.map(dt=>{
-    const v=nbDes(dt,m);
-    return{...dt,nb:v};
-  }).sort((a,b)=>{
-    if(a.nb==null&&b.nb==null)return 0;
-    if(a.nb==null)return 1;
-    if(b.nb==null)return-1;
-    return b.nb-a.nb;
-  });
-
+  // ── Detailed calculation ───────────────────────────────────────────────────
   let dtRows='';
-  dtWithNb.forEach((dt,rank)=>{
-    const col=dt.hub==='TTF'?'#26c6da':dt.hub==='JKM'?'#ab47bc':'#c8d6e5';
-    const idxV=dt.hub==='TTF'?CP.fp.TTF[m]:dt.hub==='JKM'?CP.fp.JKM[m]:(sl*CP.fp.HH[m]);
-    dtRows+=`<tr${rank===0?` style="background:#0d1e36"`:''}>`+
-      `<td style="color:#546e7a;font-size:9px;padding:3px 4px;min-width:14px;text-align:center">${rank+1}</td>`+
-      `<td style="color:${col};font-size:10px">${dt.label}</td>`+
-      `<td style="text-align:right;color:#c8d6e5">${dt.arr[m]!=null?fv(dt.arr[m]):'-'}</td>`+
-      `<td style="text-align:right;color:#546e7a">${dt.frArr&&dt.frArr[m]!=null?'− '+fv(dt.frArr[m]):'—'}</td>`+
-      `<td style="text-align:right;color:#546e7a">− ${fv(idxV)}</td>`+
-      `<td style="text-align:right;color:${col};font-weight:${rank===0?700:400}">${dt.nb!=null?(dt.nb>=0?'+':'')+fv(dt.nb):'—'}</td>`+
-      `</tr>`;
+  top.forEach((x,rank)=>{
+    const st=ts(x.dt.label);const idxV=idxA[m];
+    dtRows+=`<tr${rank===0?' style="background:#0d1e36"':''}>
+      <td style="color:#546e7a;font-size:9px;padding:3px 4px;text-align:center">${rank+1}</td>
+      <td style="color:${st.fg};font-size:10px">${x.dt.label}</td>
+      <td style="text-align:right;color:#c8d6e5">${x.dt.arr[m]!=null?fv(x.dt.arr[m]):'-'}</td>
+      <td style="text-align:right;color:#546e7a">${x.dt.frArr&&x.dt.frArr[m]!=null?'− '+fv(x.dt.frArr[m]):'—'}</td>
+      <td style="text-align:right;color:#546e7a">− ${fv(idxV)}</td>
+      <td style="text-align:right;color:${st.fg};font-weight:${rank===0?700:400}">${x.nb!=null?(x.nb>=0?'+':'')+fv(x.nb):'—'}</td>
+    </tr>`;
   });
 
   return`
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:7px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FOB NETBACK IN</span>${idxBtns}
-    <span style="flex:1"></span>${legend}
+    <span style="flex:1"></span><div style="display:flex;gap:8px;align-items:center">${legend}</div>
   </div>
-
-  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:4px 14px 6px;font-size:9px;font-weight:700;color:#546e7a;letter-spacing:1px">ARB HEATMAP</div>
+  <div style="padding:0 14px">${bestCard}</div>
+  <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:5px 14px;font-size:8px;font-weight:700;color:#546e7a;letter-spacing:1.2px;margin-top:10px">ARB HEATMAP</div>
   <div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:600px">
     <thead><tr>
-      <th style="text-align:left;font-size:9px;color:#546e7a;padding:6px 8px;min-width:130px;border-bottom:1px solid #1e3a5f">ORIGIN</th>
-      ${MONTHS12.map((mo,i)=>`<th style="font-size:9px;color:${i===m?'#c8d6e5':'#546e7a'};padding:4px 2px;text-align:center;border-bottom:${i===m?'2px solid #c8d6e5':'1px solid #1e3a5f'};min-width:54px">${mo}</th>`).join('')}
+      <th style="text-align:left;font-size:9px;color:#546e7a;padding:5px 8px;min-width:135px;border-bottom:1px solid #1e3a5f">ORIGIN</th>
+      ${M12.map((mo,i)=>`<th style="font-size:9px;color:${i===m?'#c8d6e5':'#546e7a'};padding:4px 2px;text-align:center;border-bottom:${i===m?'2px solid #c8d6e5':'1px solid #1e3a5f'};min-width:56px">${mo}</th>`).join('')}
     </tr></thead>
     <tbody>${hmRows}${cpJkmTtfRow()}</tbody>
   </table></div>
-
   <div style="background:#080e1c;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">SUPPLY SOURCE</span>${orgSel}
-    <span style="color:#1e3a5f;font-size:12px">│</span>
+    <span style="color:#1e3a5f;font-size:14px">│</span>
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">MONTH</span>
     <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>
   </div>
-
-  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:6px 14px;margin-top:0;display:flex;align-items:center;gap:8px">
+  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:8px">
     <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">ROUTE RANKING</span>
-    <span style="color:#3d5070;font-size:9px">—</span>
+    <span style="color:#3d5070">—</span>
     <span style="color:#c8d6e5;font-size:9px;font-weight:700">${selOrg.label}</span>
-    <span style="color:#3d5070;font-size:9px">·</span>
+    <span style="color:#3d5070">·</span>
     <span style="color:#4fc3f7;font-size:9px">${ML[m]}</span>
   </div>
   ${rkHtml}
-
   <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;margin-top:4px;display:flex;align-items:center;gap:8px">
     <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">DETAILED CALCULATION — sorted best→worst</span>
     <span style="color:#3d5070;font-size:9px;margin-left:4px">${selOrg.label} · ${ML[m]}</span>
   </div>
-  <div style="overflow-x:auto;padding:0 0 8px"><table class="f-tbl"><thead><tr>
-    <th style="min-width:20px">#</th><th style="min-width:140px">TERMINAL</th>
-    <th class="tr">DES price</th><th class="tr">Freight</th><th class="tr">${idxLbl}</th>
-    <th class="tr">FOB netback</th>
-  </tr></thead><tbody>${dtRows}</tbody></table></div>
-  ${cfg.signalHtml||''}`;
+  <div style="overflow-x:auto;padding:0 0 10px"><table class="f-tbl"><thead><tr>
+    <th style="min-width:20px">#</th><th style="min-width:145px">TERMINAL</th>
+    <th class="tr">DES price</th><th class="tr">Freight</th><th class="tr">${idxLbl}</th><th class="tr">FOB netback</th>
+  </tr></thead><tbody>${dtRows}</tbody></table></div>`;
 }
 
-// ── Tab 3: Atlantic Basin Arb ───────────────────────────────────────────────
+
 function cpAtlanticArb(d){
   if(!CP.selBasinOrg||!['sabine','trinidad','angola','nigeria'].includes(CP.selBasinOrg))CP.selBasinOrg='sabine';
   const fr=d.freight;
