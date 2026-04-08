@@ -1570,24 +1570,28 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
             <div style="flex:1;min-width:200px">
               <div style="font-size:9px;letter-spacing:.15em;color:#6b7a99;margin-bottom:3px">SHPGX DATA SOURCE</div>
-              <div style="font-size:10px;color:#dde4f0" id="cs-shpgx-status">Checking cache...</div>
+              <div style="font-size:10px;color:#dde4f0" id="cs-shpgx-status">No data · Upload CSVs from SHPGX Extractor</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <button id="cs-fetch-btn" onclick="csFetchLive(true)"
-                style="padding:6px 16px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(77,158,245,0.4);color:#4d9ef5;background:rgba(77,158,245,0.08);cursor:pointer;font-family:inherit">
-                ⟳ FETCH LIVE
-              </button>
-              <label style="padding:6px 12px;font-size:9px;letter-spacing:.08em;border:1px solid rgba(107,122,153,0.25);color:#6b7a99;cursor:pointer;background:transparent"
-                title="Manual fallback: load CSVs from SHPGX Extractor tool">
-                ↑ CSV
+              <label id="cs-csv-label" style="padding:6px 16px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(77,158,245,0.4);color:#4d9ef5;background:rgba(77,158,245,0.08);cursor:pointer;font-family:inherit;display:inline-block"
+                title="Select CSV files exported from SHPGX Extractor tool">
+                ↑ LOAD CSVs
                 <input type="file" multiple accept=".csv" style="display:none" onchange="csLoadShpgxFiles(this.files)">
               </label>
               <button onclick="csClearShpgx()"
                 style="padding:6px 10px;font-size:9px;border:1px solid rgba(107,122,153,0.2);color:#4b5a72;background:transparent;cursor:pointer;font-family:inherit"
-                title="Clear all SHPGX data and cache">✕</button>
+                title="Clear all SHPGX data">✕</button>
             </div>
           </div>
           <div id="cs-shpgx-badges" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+          <!-- Drag-and-drop zone -->
+          <div id="cs-drop-zone" style="margin-top:10px;border:1px dashed rgba(77,158,245,0.2);padding:10px 16px;text-align:center;font-size:9px;color:#4b5a72;cursor:pointer;transition:all .2s"
+            onclick="document.querySelector('#cs-csv-label input').click()"
+            ondragover="event.preventDefault();this.style.borderColor='rgba(77,158,245,0.6)';this.style.color='#4d9ef5'"
+            ondragleave="this.style.borderColor='rgba(77,158,245,0.2)';this.style.color='#4b5a72'"
+            ondrop="event.preventDefault();this.style.borderColor='rgba(77,158,245,0.2)';this.style.color='#4b5a72';csLoadShpgxFiles(event.dataTransfer.files)">
+            DRAG &amp; DROP CSV FILES HERE — or click LOAD CSVs above · Files from SHPGX Extractor (shpgx_scraper.html) slot in automatically
+          </div>
         `;
         const pane0 = document.getElementById('cs-pane-0');
         if(pane0) pane0.insertBefore(zone, pane0.firstChild);
@@ -1600,19 +1604,14 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         const loaded = Object.keys(SHPGX).filter(k=>SHPGX[k]?.length);
         const total  = loaded.reduce((s,k)=>s+(SHPGX[k]?.length||0),0);
         csSetStatus(
-          `✓ CACHED — ${loaded.length} series · ${total} rows · ${fmtAge(cached.age_ms)}`,
-          '#f59e0b'
+          `✓ ${loaded.length} series · ${total} rows · loaded ${fmtAge(cached.age_ms)}`,
+          '#34d399'
         );
-        csSetBtn('cs-fetch-btn','⟳ REFRESH',false);
-        csUpdateShpgxBadges('CACHED');
+        csUpdateShpgxBadges('CSV');
         csT1Update();
-        // Silently refresh in background if cache is > 1h old
-        if (cached.age_ms > 3600000) setTimeout(() => csFetchLive(false), 2000);
       } else {
-        // No cache — auto-fetch
-        csSetStatus('No cache · Auto-fetching live data...', '#6b7a99');
-        csT1Update(); // render with estimates while fetching
-        setTimeout(() => csFetchLive(false), 300);
+        csSetStatus('No data · Upload CSVs from SHPGX Extractor to load real prices', '#6b7a99');
+        csT1Update();
       }
     }
 
@@ -1636,8 +1635,8 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       Object.keys(SHPGX).forEach(k=>delete SHPGX[k]);
       csClearCache();
       csUpdateShpgxBadges();
-      csSetStatus('Cleared · Fetching fresh data...', '#6b7a99');
-      setTimeout(() => csFetchLive(true), 200);
+      csSetStatus('Cleared · Upload CSVs from SHPGX Extractor to reload', '#6b7a99');
+      csRefreshActiveTab();
     };
 
     function csUpdateShpgxBadges(source) {
