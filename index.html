@@ -5500,7 +5500,7 @@ function cpDerived(){
   const arbOpen   =ML.map((_,i)=>jkmTtf[i]>frDiff[i]);// Asia arb open when spread > extra freight
   const profEur   =sabNbNwe;
   const profAsia  =sabNbJktc;
-  return{des,phyItaly,phyKlaipeda,phyInkoo,phyRev,phyKrk,phyAin,phyAli,phySwino,phyMei,phyThailand,usgcFob,
+  return{des,freight,phyItaly,phyKlaipeda,phyInkoo,phyRev,phyKrk,phyAin,phyAli,phySwino,phyMei,phyThailand,usgcFob,
     sabNbNwe,sabNbJktc,sabNbMei,sabNbAin,
     triNbNwe,triNbJktc,triNbMei,triNbAin,
     angNbNwe,angNbJktc,angNbMei,angNbAin,
@@ -5781,7 +5781,7 @@ function cpGlobalArb(d){
   const idx=CP.globalArbIdx||'TTF';
   const idxArr=idx==='JKM'?CP.fp.JKM:idx==='HH'?CP.fp.HH:CP.fp.TTF;
   const idxLbl=idx==='HH'?'HH flat':idx+' flat';
-  const fr=CP.freight;
+  const fr=d.freight;
   // nb = DES - freight - index
   function nb(desArr,frArr){return ML.map((_,i)=>frArr&&frArr[i]!=null?desArr[i]-frArr[i]-idxArr[i]:null);}
   const ORGS=[
@@ -5976,7 +5976,7 @@ function cpBasinTab(cfg, d){
   const idxA = idx==='JKM'?CP.fp.JKM:idx==='HH'?CP.fp.HH:CP.fp.TTF;
   const idxLbl = idx==='HH'?'HH flat':idx+' flat';
   const sl = CP.hhSlope||1.15;
-  const fr = CP.freight;
+  const fr=d.freight;
   const m = CP.selMonth;
   const MONTHS12 = ML.slice(0,12);
 
@@ -6110,7 +6110,7 @@ function cpBasinTab(cfg, d){
 // ── Tab 3: Atlantic Basin Arb ───────────────────────────────────────────────
 function cpAtlanticArb(d){
   if(!CP.selBasinOrg||!['sabine','trinidad','angola','nigeria'].includes(CP.selBasinOrg))CP.selBasinOrg='sabine';
-  const fr=CP.freight;
+  const fr=d.freight;
   function subFr(gateFr,subKey){return ML.map((_,i)=>{const gv=gateFr[i];const diff=(fr[subKey]?.[i]??0)-(fr.sabine_rotterdam[i]??0);return gv!=null?gv+diff:null;});}
 
   const cfg={orgs:[
@@ -6170,7 +6170,7 @@ function cpAtlanticArb(d){
 // ── Tab 4: MEI Arb ───────────────────────────────────────────────────────────
 function cpMEIArb(d){
   if(!CP.selBasinOrg||!['qatar','oman'].includes(CP.selBasinOrg))CP.selBasinOrg='qatar';
-  const fr=CP.freight;
+  const fr=d.freight;
   // NM database uses CoGH routing for Qatar/Oman→Europe. No Suez toggle needed.
   const qGateFr=fr.qatar_gate;
   const oGateFr=fr.oman_gate;
@@ -6218,7 +6218,7 @@ function cpMEIArb(d){
 // ── Tab 5: Pacific Basin Arb ─────────────────────────────────────────────────
 function cpPacificArb(d){
   if(!CP.selBasinOrg||!['aus_b','aus_g','bontang'].includes(CP.selBasinOrg))CP.selBasinOrg='aus_b';
-  const fr=CP.freight;
+  const fr=d.freight;
   // Pacific sub-terminal freight: base JKTC + distance differential approximation
   // Thailand (Map Ta Phut) ≈ 500 NM closer than Tokyo from Australia
   // Singapore ≈ 2000 NM closer than Tokyo from Australia
@@ -6284,7 +6284,7 @@ function cpInitFrChart(id,labels,ds1,ds2,ds3){
 }
 // ── Tab 6: FR Diff vs Basis ──────────────────────────────────────────────────
 function cpFrDiffBasis(d){
-  const fr=CP.freight;
+  const fr=d.freight;
   const m=CP.selMonth;
   const cogh=CP.coghMode||false;
 
