@@ -895,33 +895,44 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       const wfLabels = ['CLD Import','+ Regas','Ex-Terminal','+ Freight','+ VAT','+ Other','Truck Retail'];
       const ext_usd2 = extermToUSD(latEXT, usdcny);
       const truck_usd2 = truckToUSD(latTruck, usdcny);
-      // Waterfall: base values for stacked bar (floating bars)
-      const bases =  [0,        latCLD,  ext_usd2,  ext_usd2,               ext_usd2+freight_usd, ext_usd2+freight_usd+vat_usd, 0];
-      const values = [latCLD, ext_usd2-latCLD, 0, freight_usd, vat_usd, other_usd, truck_usd2];
+      const f = ext_usd2+freight_usd, fv = f+vat_usd, fvo = fv+other_usd;
+      // Floating bars: each entry is [base, top] — Chart.js renders bar between those two x values
+      const wfData = [
+        [0,       latCLD  ],   // CLD Import
+        [latCLD,  ext_usd2],   // + Regas spread
+        [0,       ext_usd2],   // Ex-Terminal (full level bar)
+        [ext_usd2,f        ],  // + Freight
+        [f,       fv       ],  // + VAT 9%
+        [fv,      fvo      ],  // + Other costs
+        [0,       truck_usd2], // Truck Retail (full level bar)
+      ];
       const barColors = ['#4d9ef5','#1D9E75','#4d9ef5','#f59e0b','#ef5350','#9b59b6','#34d399'];
+      const wfNames  = ['CLD import','Regas / terminal spread','Ex-terminal level','Road freight','VAT 9%','Other costs','Truck retail'];
 
-      // Build waterfall as horizontal bar with floating segments
       mkChart('cs-wf-canvas',{
         type:'bar',
         data:{
           labels:wfLabels,
-          datasets:[
-            {label:'Base (hidden)',data:bases,backgroundColor:'transparent',borderColor:'transparent',borderWidth:0},
-            {label:'Value',data:values,backgroundColor:barColors,borderWidth:0}
-          ]
+          datasets:[{
+            label:'Value',
+            data:wfData,
+            backgroundColor:barColors,
+            borderWidth:0,
+            borderSkipped:false
+          }]
         },
         options:{
           ...CD, indexAxis:'y',
           plugins:{...CD.plugins, legend:{display:false},
             tooltip:{...CD.plugins?.tooltip,callbacks:{label:(ctx)=>{
-              if(ctx.datasetIndex===0)return null;
-              const v=ctx.raw; if(!v)return null;
-              return` ${wfLabels[ctx.dataIndex]}: $${v.toFixed(3)}/MMBtu`;
+              const v=ctx.raw; if(!v||!Array.isArray(v))return null;
+              const width=+(v[1]-v[0]).toFixed(3);
+              return` ${wfNames[ctx.dataIndex]}: $${width}/MMBtu  (${v[0].toFixed(2)}→${v[1].toFixed(2)})`;
             }}}
           },
           scales:{
-            x:{stacked:true,ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},callback:v=>'$'+v.toFixed(1)},grid:{color:'#0f1824'},title:{display:true,text:'$/MMBtu',color:'#4b5a72',font:{size:9}}},
-            y:{stacked:true,ticks:{color:'#8a9bb5',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}
+            x:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},callback:v=>'$'+v.toFixed(1)},grid:{color:'#0f1824'},title:{display:true,text:'$/MMBtu',color:'#4b5a72',font:{size:9}}},
+            y:{ticks:{color:'#8a9bb5',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}
           }
         }
       });
@@ -1439,7 +1450,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
     // Patch TRUCK_CNY, CLD_USD, etc. to use real data when loaded
     function liveOrSim(key, simData) {
-      if(!SHPGX[key]?.length) return simData;
+      if(!SHPGX[key]?.length) return typeof simData==='function'?simData():simData;
       return SHPGX[key].map(r=>({
         date: new Date(r.date.slice(0,10)),
         dateStr: r.date.slice(0,10),
