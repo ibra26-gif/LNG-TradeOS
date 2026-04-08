@@ -5403,8 +5403,17 @@ function fvi(v,d=3){return v!=null&&!isNaN(v)?v.toFixed(d):'0.000';}
 function posCol(v){return v>0.05?'#4caf50':v<-0.05?'#ef4444':'#c8d6e5';}
 
 function cpDerived(){
-  const{fp,phys,freight}=CP;
+  const{fp,phys}=CP;
   const sl=CP.hhSlope||1.15;
+  // ── Bulletproof freight: per-element fallback to seed, every render ─────────
+  const _cfr=CP.freight||{};
+  const freight={};
+  Object.keys(CP_SEED_FR).forEach(k=>{
+    const src=_cfr[k];const sd=CP_SEED_FR[k];
+    if(Array.isArray(src)&&src.some(v=>v!=null&&!isNaN(v)))
+      freight[k]=src.map((v,i)=>(v!=null&&!isNaN(v))?v:sd[i]);
+    else freight[k]=sd.slice();
+  });
   // ── Physical diffs ─────────────────────────────────────────────────────────
   const phyItaly=ML.map((_,i)=>phys.nwe[i]+(freight.sabine_rovigo?.[i]??freight.sabine_rotterdam[i]*1.21)-(freight.sabine_rotterdam[i]));
   // MEI diff: Angola Dahej-Tokyo freight differential vs JKM
