@@ -215,22 +215,34 @@ export default async function handler(req, res) {
       if (!ajaxPath) {
         return res.status(200).send('No data-ajax-url found in HTML\n' + html.slice(15000));
       }
-      const jsonUrl = 'https://www.shpgx.com' + ajaxPath + '?draw=1&start=0&length=25';
-      const jsonResp = await fetch(jsonUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0',
-          'Accept': 'application/json, text/javascript, */*',
-          'X-Requested-With': 'XMLHttpRequest',
-          'Referer': config.url,
-        },
-        signal: AbortSignal.timeout(10000),
-      });
-      const raw = await jsonResp.text();
+      const base = 'https://www.shpgx.com' + ajaxPath;
+      const hdrs = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Referer': config.url,
+        'Origin': 'https://www.shpgx.com',
+      };
+      const variants = [
+        { label: 'GET no params',           url: base,                                        method:'GET',  body:null },
+        { label: 'GET pageNum=1',           url: base+'?pageNum=1&pageSize=25',               method:'GET',  body:null },
+        { label: 'GET page=1',              url: base+'?page=1&rows=25',                      method:'GET',  body:null },
+        { label: 'POST draw/start/length',  url: base,                                        method:'POST', body:'draw=1&start=0&length=25' },
+        { label: 'POST pageNum',            url: base,                                        method:'POST', body:'pageNum=1&pageSize=25' },
+      ];
+      const results = [];
+      for (const v of variants) {
+        try {
+          const opts = { method: v.method, headers: { ...hdrs }, signal: AbortSignal.timeout(8000) };
+          if (v.body) { opts.body = v.body; opts.headers['Content-Type'] = 'application/x-www-form-urlencoded'; }
+          const r = await fetch(v.url, opts);
+          const txt = await r.text();
+          results.push(`[${v.label}] HTTP ${r.status}: ${txt.slice(0,300)}`);
+        } catch(e) { results.push(`[${v.label}] ERROR: ${e.message}`); }
+      }
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      return res.status(200).send(
-        `JSON endpoint: ${jsonUrl}\nHTTP: ${jsonResp.status}\n\n` + raw.slice(0, 5000)
-      );
+      return res.status(200).send(`Base URL: ${base}\n\n` + results.join('\n\n---\n\n'));
     } catch(e) {
       return res.status(500).json({ error: e.message });
     }
