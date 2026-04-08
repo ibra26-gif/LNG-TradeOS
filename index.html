@@ -281,7 +281,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
   <div class="mod-group">
     <div class="group-hdr"><div class="group-icon">⬡</div><div><div class="group-ttl">GAS &amp; LNG ANALYTICS</div><div class="group-sub">EU gas balance, storage, regas utilisation, pipeline flows and market signposts</div></div></div>
     <div class="cards-grid">
-      <div class="mod-card" onclick="shellNav('gasanalytics','lngbal')"><span class="card-num">01</span><div class="card-ttl">S&amp;D Balance</div><div class="card-desc">Global LNG supply and demand balance, liquefaction capacity and demand forecasts by basin</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
+      <div class="mod-card" onclick="shellNav('gasanalytics','lngbal')"><span class="card-num">01</span><div class="card-ttl">LNG Balance</div><div class="card-desc">China gas price chain, LNG truck vs JKM &amp; LT contracts, LNG vs diesel spread and China supply stack</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','eugas')"><span class="card-num">02</span><div class="card-ttl">EU Gas Balance</div><div class="card-desc">Pipeline imports, domestic production, LNG imports and demand — seasonal and monthly views</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','storage')"><span class="card-num">03</span><div class="card-ttl">EU Storage</div><div class="card-desc">EU &amp; country storage levels, seasonal comparison, injection/withdrawal flows — GIE AGSI+</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','regas')"><span class="card-num">04</span><div class="card-ttl">LNG Regas Terminals</div><div class="card-desc">Utilisation heatmap, tank stocks, sendout seasonal and country aggregate — GIE AGGI+</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
@@ -426,22 +426,1109 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
   <!-- Main tabs -->
   <div class="ga-maintabs">
-    <button class="gmtab active" id="gmtab-lngbal" onclick="gaMainTab('lngbal',this)">S&amp;D BALANCE</button>
+    <button class="gmtab active" id="gmtab-lngbal" onclick="gaMainTab('lngbal',this)">LNG BALANCE</button>
     <button class="gmtab" id="gmtab-eugas"  onclick="gaMainTab('eugas',this)">EU GAS BALANCE</button>
     <button class="gmtab" id="gmtab-storage" onclick="gaMainTab('storage',this)">EU STORAGE</button>
     <button class="gmtab" id="gmtab-regas"  onclick="gaMainTab('regas',this)">LNG REGAS</button>
     <button class="gmtab" id="gmtab-signposts" onclick="gaMainTab('signposts',this)">SIGNPOSTS</button>
   </div>
 
-  <!-- TAB 1: S&D BALANCE (placeholder) -->
+  <!-- TAB 1: CHINA SIGNPOSTS -->
   <div id="ga-tab-lngbal" class="ga-tab-sec active">
-    <div class="ga-under-const">
-      <div class="ga-uc-icon">⬡</div>
-      <div class="ga-uc-title">GLOBAL LNG S&amp;D BALANCE</div>
-      <div class="ga-uc-sub">Full global supply-demand balance by exporting country and importing region, with historical and LNG TradeOS™ forecast views, terminal drill-downs, and unit conversion.</div>
-      <div class="ga-uc-box">MODULE IN DEVELOPMENT — BUILD v2.0</div>
+    <style>
+      .cs-tabs{display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px;overflow-x:auto}
+      .cs-tab{padding:10px 18px;font-size:10px;letter-spacing:.1em;color:#6b7a99;cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;white-space:nowrap;transition:all .2s}
+      .cs-tab:hover{color:#dde4f0}.cs-tab.active{color:#4d9ef5;border-bottom-color:#4d9ef5}
+      .cs-tab-pane{display:none}.cs-tab-pane.active{display:block}
+      .cs-hdr{font-size:10px;letter-spacing:.15em;color:#6b7a99;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(77,158,245,0.1)}
+      .cs-metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:18px}
+      .cs-mc{background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:11px 13px}
+      .cs-mc-lbl{font-size:9px;letter-spacing:.1em;color:#6b7a99;margin-bottom:5px}
+      .cs-mc-val{font-size:18px;font-weight:500;color:#f0f4ff}
+      .cs-mc-sub{font-size:9px;color:#6b7a99;margin-top:3px}
+      .cs-mc-chg{font-size:10px;margin-top:2px}
+      .cs-mc-chg.pos{color:#34d399}.cs-mc-chg.neg{color:#f87171}.cs-mc-chg.neu{color:#6b7a99}
+      .cs-chart-wrap{position:relative;width:100%;margin-bottom:22px}
+      .cs-ctrl-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+      .cs-ctrl-grp{display:flex;flex-direction:column;gap:3px}
+      .cs-ctrl-lbl{font-size:9px;letter-spacing:.1em;color:#6b7a99}
+      .cs-ctrl-row select,.cs-ctrl-row input[type=number],.cs-ctrl-row input[type=range]{background:#0f1221;border:1px solid rgba(77,158,245,0.15);color:#dde4f0;font-family:inherit;font-size:10px;padding:5px 8px;outline:none}
+      .cs-ctrl-row input[type=range]{padding:4px 0;width:120px;accent-color:#4d9ef5}
+      .cs-rng-btns{display:flex;gap:0}
+      .cs-rng-btn{padding:5px 10px;font-size:9px;letter-spacing:.08em;border:1px solid rgba(77,158,245,0.15);background:transparent;color:#6b7a99;cursor:pointer;font-family:inherit}
+      .cs-rng-btn.active{background:rgba(77,158,245,0.1);color:#4d9ef5;border-color:#4d9ef5}
+      .cs-signal{padding:8px 16px;font-size:10px;letter-spacing:.1em;margin-bottom:16px;border-left:3px solid}
+      .cs-signal.spot-open{border-color:#34d399;background:rgba(52,211,153,0.07);color:#34d399}
+      .cs-signal.lt-only{border-color:#f59e0b;background:rgba(245,158,11,0.07);color:#f59e0b}
+      .cs-signal.no-demand{border-color:#f87171;background:rgba(248,113,113,0.07);color:#f87171}
+      .cs-src{font-size:9px;color:#4b5a72;margin-top:6px;text-align:right}
+      .cs-est-badge{display:inline-block;font-size:8px;letter-spacing:.1em;padding:2px 6px;background:rgba(245,158,11,0.1);color:#f59e0b;border:1px solid rgba(245,158,11,0.2);margin-left:6px}
+      .cs-waterfall-wrap{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:20px}
+      .cs-wf-chart{flex:1;min-width:280px}
+      .cs-wf-legend{display:flex;flex-direction:column;gap:6px;justify-content:center;min-width:180px}
+      .cs-wf-item{display:flex;align-items:center;gap:8px;font-size:10px;color:#8a9bb5}
+      .cs-wf-swatch{width:12px;height:12px;flex-shrink:0}
+      .cs-divider{font-size:9px;letter-spacing:.15em;color:#4b5a72;margin:18px 0 12px;padding-bottom:6px;border-bottom:1px solid rgba(77,158,245,0.07)}
+    </style>
+
+    <!-- China Signposts sub-tabs -->
+    <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS &amp; LNG ANALYTICS · CHINA SIGNPOSTS</div>
+    <div class="cs-tabs">
+      <button class="cs-tab active" onclick="csTab(0,this)">CHINA GAS PRICE CHAIN</button>
+      <button class="cs-tab" onclick="csTab(1,this)">LNG TRUCK vs JKM &amp; LT</button>
+      <button class="cs-tab" onclick="csTab(2,this)">LNG vs DIESEL SPREAD</button>
+      <button class="cs-tab" onclick="csTab(3,this)">CHINA SUPPLY STACK</button>
     </div>
-  </div>
+
+    <!-- ── TAB 1: CHINA GAS PRICE CHAIN ── -->
+    <div id="cs-pane-0" class="cs-tab-pane active">
+      <div class="cs-ctrl-row">
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">REGION</div>
+          <select id="cs-t1-region" onchange="csT1Update()">
+            <option value="north">North China 华北</option>
+            <option value="east">East China 华东</option>
+            <option value="south">South China 华南</option>
+          </select>
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">USD/CNY</div>
+          <input type="number" id="cs-usdcny" value="7.25" step="0.01" style="width:80px" onchange="csT1Update();csT2Update();csT3Update();csT4Update()">
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">HAUL DISTANCE (KM) — <span id="cs-dist-val">300</span></div>
+          <input type="range" id="cs-dist" min="100" max="600" value="300" step="50" oninput="document.getElementById('cs-dist-val').textContent=this.value;csT1Update()">
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">OTHER COSTS (¥/KG)</div>
+          <input type="number" id="cs-other-cost" value="0.20" step="0.01" style="width:70px" onchange="csT1Update()">
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">PERIOD</div>
+          <div class="cs-rng-btns" id="cs-t1-rng">
+            <button class="cs-rng-btn" onclick="csSetRng('t1','1M',this)">1M</button>
+            <button class="cs-rng-btn active" onclick="csSetRng('t1','3M',this)">3M</button>
+            <button class="cs-rng-btn" onclick="csSetRng('t1','6M',this)">6M</button>
+            <button class="cs-rng-btn" onclick="csSetRng('t1','1Y',this)">1Y</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric cards -->
+      <div class="cs-metric-row" id="cs-t1-metrics"></div>
+
+      <!-- View A: Waterfall -->
+      <div class="cs-divider">VIEW A — PRICE BUILD SNAPSHOT (LATEST) <span class="cs-est-badge">SHPGX ESTIMATE</span></div>
+      <div class="cs-waterfall-wrap">
+        <div class="cs-wf-chart" style="height:320px;position:relative"><canvas id="cs-wf-canvas"></canvas></div>
+        <div class="cs-wf-legend" id="cs-wf-legend"></div>
+      </div>
+      <div class="cs-src">Source: SHPGX (estimated) · CLD, ex-terminal, ex-factory, truck retail · Freight: Longzhong benchmark · VAT: 9%</div>
+
+      <!-- View B: Stack over time -->
+      <div class="cs-divider" style="margin-top:24px">VIEW B — PRICE STACK OVER TIME <span class="cs-est-badge">SHPGX ESTIMATE</span></div>
+      <div class="cs-chart-wrap" style="height:280px"><canvas id="cs-t1-hist-canvas"></canvas></div>
+      <div class="cs-src">Source: SHPGX (estimated) · CLD import price, ex-terminal price, truck retail — all $/MMBtu · Shaded bands = margin at each stage</div>
+    </div>
+
+    <!-- ── TAB 2: TRUCK vs JKM & LT ── -->
+    <div id="cs-pane-1" class="cs-tab-pane">
+      <div class="cs-ctrl-row">
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">USD/CNY</div>
+          <input type="number" id="cs-t2-usdcny" value="7.25" step="0.01" style="width:80px" onchange="csT2Update()">
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">PERIOD</div>
+          <div class="cs-rng-btns" id="cs-t2-rng">
+            <button class="cs-rng-btn" onclick="csSetRng('t2','1M',this)">1M</button>
+            <button class="cs-rng-btn active" onclick="csSetRng('t2','3M',this)">3M</button>
+            <button class="cs-rng-btn" onclick="csSetRng('t2','6M',this)">6M</button>
+            <button class="cs-rng-btn" onclick="csSetRng('t2','1Y',this)">1Y</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="cs-t2-signal" class="cs-signal lt-only">LOADING SIGNAL...</div>
+
+      <div class="cs-divider">LNG TRUCK RETAIL ($/MMBTU) vs JKM ROLLING M+1 &amp; LT CONTRACTS <span class="cs-est-badge">TRUCK: SHPGX ESTIMATE</span></div>
+      <div class="cs-chart-wrap" style="height:320px"><canvas id="cs-t2-canvas"></canvas></div>
+      <div class="cs-src">Source: SHPGX North China truck retail (estimated) · JKM M+1 rolling (EOD, rolls 16th) · LT 11% &amp; 14% × Brent 3M avg · $/MMBtu</div>
+
+      <div class="cs-divider" style="margin-top:20px">REGIME INTERPRETATION</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:10px">
+        <div style="background:rgba(248,113,113,0.07);border:1px solid rgba(248,113,113,0.2);padding:10px 12px;color:#f87171">
+          <div style="font-size:9px;letter-spacing:.1em;margin-bottom:5px">TRUCK &lt; JKM</div>
+          No spot LNG demand from China — inland market cannot absorb import cost
+        </div>
+        <div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);padding:10px 12px;color:#f59e0b">
+          <div style="font-size:9px;letter-spacing:.1em;margin-bottom:5px">JKM &lt; TRUCK &lt; LT</div>
+          Max LT contracted volumes — spot uneconomic, LT contracts clearing the market
+        </div>
+        <div style="background:rgba(52,211,153,0.07);border:1px solid rgba(52,211,153,0.2);padding:10px 12px;color:#34d399">
+          <div style="font-size:9px;letter-spacing:.1em;margin-bottom:5px">TRUCK &gt; LT &gt; JKM</div>
+          Spot market opens — truck demand can absorb both LT and spot cargoes
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 3: LNG vs DIESEL ── -->
+    <div id="cs-pane-2" class="cs-tab-pane">
+      <div class="cs-ctrl-row">
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">USD/CNY</div>
+          <input type="number" id="cs-t3-usdcny" value="7.25" step="0.01" style="width:80px" onchange="csT3Update()">
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">PERIOD</div>
+          <div class="cs-rng-btns" id="cs-t3-rng">
+            <button class="cs-rng-btn" onclick="csSetRng('t3','1M',this)">1M</button>
+            <button class="cs-rng-btn active" onclick="csSetRng('t3','3M',this)">3M</button>
+            <button class="cs-rng-btn" onclick="csSetRng('t3','6M',this)">6M</button>
+            <button class="cs-rng-btn" onclick="csSetRng('t3','1Y',this)">1Y</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cs-metric-row" id="cs-t3-metrics"></div>
+
+      <div class="cs-divider">LNG TRUCK vs DIESEL — ENERGY EQUIVALENT ($/MMBTU) <span class="cs-est-badge">SHPGX ESTIMATE</span></div>
+      <div class="cs-chart-wrap" style="height:300px"><canvas id="cs-t3-canvas"></canvas></div>
+      <div class="cs-src">Source: SHPGX truck retail (estimated) &amp; diesel wholesale (estimated) · Diesel: 40.4 MMBtu/tonne · Green shading = LNG cheaper (fleet switching supported)</div>
+    </div>
+
+    <!-- ── TAB 4: CHINA SUPPLY STACK ── -->
+    <div id="cs-pane-3" class="cs-tab-pane">
+
+      <div class="cs-ctrl-row">
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">USD/CNY</div>
+          <input type="number" id="cs-t4-usdcny" value="7.25" step="0.01" style="width:80px" onchange="csT4Update()">
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">CNP REGIONS</div>
+          <select id="cs-t4-region" onchange="csT4Update()">
+            <option value="national">National only</option>
+            <option value="all">All regions</option>
+          </select>
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">PERIOD</div>
+          <div class="cs-rng-btns" id="cs-t4-rng">
+            <button class="cs-rng-btn" onclick="csSetRng('t4','6M',this)">6M</button>
+            <button class="cs-rng-btn active" onclick="csSetRng('t4','1Y',this)">1Y</button>
+            <button class="cs-rng-btn" onclick="csSetRng('t4','ALL',this)">ALL</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Demand signal + metric cards -->
+      <div id="cs-t4-signal" class="cs-signal lt-only" style="margin-bottom:14px">LOADING...</div>
+      <div class="cs-metric-row" id="cs-t4-metrics"></div>
+
+      <!-- Stack legend -->
+      <div class="cs-divider">CHINA GAS SUPPLY STACK — MONTHLY · $/MMBTU <span class="cs-est-badge">DOMESTIC: SHPGX ESTIMATE</span></div>
+
+      <!-- Stack layer legend -->
+      <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:12px;font-size:9px;letter-spacing:.08em;color:#6b7a99">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:6px;background:rgba(107,122,153,0.18);border:1px dashed #3d5070;display:inline-block"></span>DOMESTIC PRODUCTION COST RANGE</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#3d5070;display:inline-block;border-top:2px dashed #3d5070"></span>NDRC CITY GATE REF (2017)</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#81c784;display:inline-block"></span>CNP OPEN MARKET ★EST</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#34d399;display:inline-block"></span>PIPELINE SPOT ★EST</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#f59e0b;display:inline-block;border-top:2px dashed #f59e0b"></span>NDRC 36-CITY INDUSTRIAL</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#4d9ef5;display:inline-block"></span>JKM SETTLEMENT AVG</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#ef5350;display:inline-block;border-top:2px dashed #ef5350"></span>LT 14% BRENT</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#ce93d8;display:inline-block;border-top:2px dashed #ce93d8"></span>LT 11% BRENT</span>
+      </div>
+
+      <div class="cs-chart-wrap" style="height:380px"><canvas id="cs-t4-canvas"></canvas></div>
+
+      <!-- Stack interpretation -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:14px;font-size:10px">
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px">
+          <div style="font-size:9px;letter-spacing:.1em;color:#6b7a99;margin-bottom:4px">PRODUCTION COST FLOOR</div>
+          <div style="color:#dde4f0">$3–8/MMBtu — conventional Sichuan/Ordos ($3–5) to ultra-deep shale Tarim ($5–8). Below this, domestic supply is uneconomic.</div>
+        </div>
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px">
+          <div style="font-size:9px;letter-spacing:.1em;color:#6b7a99;margin-bottom:4px">LNG DEMAND SIGNAL</div>
+          <div style="color:#dde4f0">JKM below CNP → LNG imports competitive → more spot demand potential. JKM above CNP → domestic gas preferred, LNG demand softens.</div>
+        </div>
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px">
+          <div style="font-size:9px;letter-spacing:.1em;color:#6b7a99;margin-bottom:4px">END-USER CEILING</div>
+          <div style="color:#dde4f0">NDRC 36-city industrial avg (~$13/MMBtu) = what industry actually pays. Gap vs CNP is the distribution margin absorbed by city gas companies.</div>
+        </div>
+      </div>
+
+      <div class="cs-src" style="margin-top:10px">
+        Sources: SHPGX — CNP open market &amp; pipeline spot (estimated, ¥/m³ → $/MMBtu @ 0.0373 MMBtu/m³) · NDRC/CEIC — 36-city industrial avg (Nov 2025: ¥3.58/m³) · NDRC city gate benchmark (2017 ref) · Production cost: EIA/IEEFA estimates · JKM settlement (16th→15th determination, EOD files) · LT 11% &amp; 14% × Brent 3M avg (ICE Brent, EOD files) · All series monthly
+      </div>
+    </div>
+
+  </div><!-- end ga-tab-lngbal -->
+
+
+  <script>
+  (function(){
+    /* ═══════════════════════════════════════════════
+       CHINA SIGNPOSTS MODULE — LNG TradeOS™ v54
+       Reads from: aD, sDates, rPK, CD (global)
+    ═══════════════════════════════════════════════ */
+
+    // ── State ──
+    const CS = {
+      ranges: { t1:'3M', t2:'3M', t3:'3M', t4:'1Y' },
+      charts: {},
+      usdcny: () => parseFloat(document.getElementById('cs-usdcny')?.value||7.25)
+    };
+
+    // ── Helpers ──
+    function csTab(idx, btn) {
+      document.querySelectorAll('.cs-tab').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.cs-tab-pane').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('cs-pane-'+idx).classList.add('active');
+      setTimeout(()=>{ if(idx===0)csT1Update(); else if(idx===1)csT2Update(); else if(idx===2)csT3Update(); else csT4Update(); },50);
+    }
+    window.csTab = csTab;
+
+    function csSetRng(tab, rng, btn) {
+      document.querySelectorAll('#cs-'+tab+'-rng .cs-rng-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      CS.ranges[tab] = rng;
+      if(tab==='t1')csT1Update(); else if(tab==='t2')csT2Update(); else if(tab==='t3')csT3Update(); else csT4Update();
+    }
+    window.csSetRng = csSetRng;
+
+    // Filter sDates by period
+    function filterDates(rng) {
+      if(!window.sDates||!sDates.length) return [];
+      const all = sDates.slice();
+      if(rng==='ALL') return all;
+      const days = {t1:{},t2:{},t3:{},t4:{}}; // handled below
+      const daysMap = {'1M':30,'3M':90,'6M':180,'1Y':365};
+      const d = daysMap[rng]||90;
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-d);
+      return all.filter(ds=>new Date(ds)>=cutoff);
+    }
+
+    // Get M+1 JKM series with 16th-roll logic (Tab2 daily)
+    // Before 16th: M+1; from 16th: M+2 (so comparing to next delivery month)
+    function getJKMRolling(dates) {
+      return dates.map(ds=>{
+        const d = aD[ds]?.date; if(!d) return null;
+        const tenor = d.getDate()>=16 ? 2 : 1;
+        const pk = rPK(d, tenor);
+        const row = (aD[ds].rows||[]).find(r=>r.pk===pk);
+        return row?.JKM??null;
+      });
+    }
+
+    // Get Brent 3M rolling average (for LT formula)
+    function getBrent3MAvg(dates) {
+      // Build lookup of all Brent M+1 values by date string
+      const bMap = {};
+      (window.sDates||[]).forEach(ds=>{ const d=aD[ds]?.date; if(!d)return; const pk=rPK(d,1); const row=(aD[ds].rows||[]).find(r=>r.pk===pk); if(row?.Brent!=null) bMap[ds]=row.Brent; });
+      const allDs = Object.keys(bMap).sort();
+      return dates.map(ds=>{
+        const cutoff = new Date(ds); cutoff.setDate(cutoff.getDate()-90);
+        const window3M = allDs.filter(d=>new Date(d)>=cutoff&&new Date(d)<=new Date(ds));
+        if(!window3M.length) return null;
+        const avg = window3M.reduce((s,d)=>s+bMap[d],0)/window3M.length;
+        return +avg.toFixed(4);
+      });
+    }
+
+    // JKM monthly settlement: avg M+1 closes from 16th of M-2 to 15th of M-1
+    function getJKMMonthlySettlement() {
+      if(!window.sDates||!sDates.length) return [];
+      // Group daily M+1 by settlement month
+      // For delivery month M: avg closes where date ∈ [16th of M-2, 15th of M-1]
+      const bMap = {}; // date→JKM M+1
+      sDates.forEach(ds=>{ const d=aD[ds]?.date; if(!d)return; const pk=rPK(d,1); const row=(aD[ds].rows||[]).find(r=>r.pk===pk); if(row?.JKM!=null) bMap[ds]=row.JKM; });
+      // Find range of months
+      const first = new Date(sDates[0]), last = new Date(sDates[sDates.length-1]);
+      const months = [];
+      let cur = new Date(first.getFullYear(), first.getMonth()+2, 1); // start from M+2 to have enough history
+      while(cur <= new Date(last.getFullYear(), last.getMonth()+1, 1)) {
+        // Determination period: 16th of (cur month - 2) to 15th of (cur month - 1)
+        const startD = new Date(cur.getFullYear(), cur.getMonth()-2, 16);
+        const endD   = new Date(cur.getFullYear(), cur.getMonth()-1, 15);
+        const relevant = Object.keys(bMap).filter(ds=>{ const d=new Date(ds); return d>=startD&&d<=endD; });
+        if(relevant.length>=5) { // at least 5 observations
+          const avg = relevant.reduce((s,d)=>s+bMap[d],0)/relevant.length;
+          months.push({ month: new Date(cur), label: cur.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}), JKM: +avg.toFixed(3) });
+        }
+        cur.setMonth(cur.getMonth()+1);
+      }
+      return months;
+    }
+
+    // Brent 3M avg by delivery month for LT formula (monthly Tab4)
+    function getBrentMonthlyLT() {
+      if(!window.sDates||!sDates.length) return {};
+      const bMap = {};
+      sDates.forEach(ds=>{ const d=aD[ds]?.date; if(!d)return; const pk=rPK(d,1); const row=(aD[ds].rows||[]).find(r=>r.pk===pk); if(row?.Brent!=null) bMap[ds]=row.Brent; });
+      const first=new Date(sDates[0]), last=new Date(sDates[sDates.length-1]);
+      const result = {};
+      let cur=new Date(first.getFullYear(), first.getMonth()+3, 1);
+      while(cur<=new Date(last.getFullYear(), last.getMonth()+1,1)) {
+        // For delivery month M: avg Brent over [M-3 months]
+        const s=new Date(cur.getFullYear(),cur.getMonth()-3,1);
+        const e=new Date(cur.getFullYear(),cur.getMonth(),0); // last day of M-1
+        const rel=Object.keys(bMap).filter(ds=>{const d=new Date(ds);return d>=s&&d<=e;});
+        if(rel.length>=10){
+          const avg=rel.reduce((s,d)=>s+bMap[d],0)/rel.length;
+          result[cur.toISOString().slice(0,7)]=+avg.toFixed(4);
+        }
+        cur.setMonth(cur.getMonth()+1);
+      }
+      return result;
+    }
+
+    // ── SHPGX Simulated Data (Phase 1 — realistic estimates) ──
+    function genShpgxSeries(startDays, config) {
+      // Generate realistic daily series going back startDays
+      const out = [];
+      const today = new Date();
+      let val = config.base + (Math.random()-0.5)*config.spread;
+      for(let i=startDays; i>=0; i--) {
+        const d = new Date(today); d.setDate(d.getDate()-i);
+        if(d.getDay()===0||d.getDay()===6) continue; // weekdays only
+        val += (Math.random()-0.48)*config.drift;
+        val = Math.max(config.min, Math.min(config.max, val));
+        out.push({ date: d, dateStr: d.toISOString().slice(0,10), value: +val.toFixed(3) });
+      }
+      return out;
+    }
+
+    // North China truck retail ¥/kg → realistic seasonal pattern
+    const TRUCK_CNY = genShpgxSeries(400, {base:5.0, spread:0.4, drift:0.05, min:3.8, max:6.2});
+    const CLD_USD   = genShpgxSeries(400, {base:14.2, spread:1.0, drift:0.12, min:10, max:18});
+    const EXTERM_CNY_T = genShpgxSeries(400, {base:4600, spread:300, drift:40, min:3800, max:5500}); // ¥/tonne
+    const DIESEL_CNY_T = genShpgxSeries(400, {base:8200, spread:300, drift:30, min:6800, max:9500}); // ¥/tonne
+
+    // Pipeline gas ¥/m³ (monthly - simulated)
+    function genPipelineMonthly() {
+      const out = [];
+      const today = new Date();
+      // Spot pipeline weekly → monthly avg simulation
+      const spotBase = 2.1, cnpNational = 2.05;
+      const regions = ['National','North','East','South','Central'];
+      const offsets = [0, 0.05, 0.10, 0.15, -0.05];
+      for(let m=14; m>=0; m--) {
+        const d = new Date(today.getFullYear(), today.getMonth()-m, 1);
+        const row = { month: d, label: d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}) };
+        const drift = (Math.random()-0.49)*0.05;
+        regions.forEach((r,i)=>{ row[r] = +(cnpNational + offsets[i] + drift + Math.sin(m/3)*0.1).toFixed(3); });
+        row.spot = +(spotBase + drift*1.5 + Math.sin(m/2)*0.15).toFixed(3);
+        out.push(row);
+      }
+      return out;
+    }
+
+    // Convert truck ¥/kg → $/MMBtu
+    function truckToUSD(cny_kg, usdcny) { return +(cny_kg*1000/(52*usdcny)).toFixed(3); }
+    // Convert ¥/m³ → $/MMBtu (1 m³ nat gas ≈ 0.0373 MMBtu)
+    function pipeToUSD(cny_m3, usdcny) { return +(cny_m3/(0.0373*usdcny)).toFixed(3); }
+    // Convert diesel ¥/tonne → $/MMBtu (40.4 MMBtu/tonne)
+    function dieselToUSD(cny_t, usdcny) { return +(cny_t/(40.4*usdcny)).toFixed(3); }
+    // Ex-terminal ¥/tonne → $/MMBtu (52 MMBtu/tonne LNG)
+    function extermToUSD(cny_t, usdcny) { return +(cny_t/(52*usdcny)).toFixed(3); }
+
+    function filterByRng(arr, rng) {
+      if(rng==='ALL') return arr;
+      const daysMap={'1M':30,'3M':90,'6M':180,'1Y':365};
+      const d=daysMap[rng]||90;
+      const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-d);
+      return arr.filter(r=>(r.date||r.month)>=cutoff);
+    }
+
+    function mkChart(id, config) {
+      const el=document.getElementById(id); if(!el)return null;
+      if(CS.charts[id])CS.charts[id].destroy();
+      CS.charts[id]=new Chart(el,config);
+      return CS.charts[id];
+    }
+
+    // ── TAB 1: PRICE CHAIN ──
+    function csT1Update() {
+      const usdcny = parseFloat(document.getElementById('cs-usdcny')?.value||7.25);
+      const dist   = parseInt(document.getElementById('cs-dist')?.value||300);
+      const other  = parseFloat(document.getElementById('cs-other-cost')?.value||0.20);
+      const rng    = CS.ranges.t1;
+
+      // Use real SHPGX data if loaded, else simulated
+      const truckData = liveOrSim('truck', ()=>TRUCK_CNY);
+      const cldData   = liveOrSim('cld',   ()=>CLD_USD);
+      const extData   = liveOrSim('exterm',()=>EXTERM_CNY_T);
+      const latTruck = truckData[truckData.length-1]?.value||5.0;
+      const latCLD   = cldData[cldData.length-1]?.value||14.0;
+      const latEXT   = extData[extData.length-1]?.value||4600;
+
+      // Cost stack
+      const vat = 0.09;
+      const freight_cny_kg = (dist * 0.70) / 1000; // 0.70 ¥/tonne-km → ¥/kg
+      const freight_usd = truckToUSD(freight_cny_kg, usdcny);
+      const other_usd   = truckToUSD(other, usdcny);
+      const vat_on_truck = latTruck * vat / (1+vat);
+      const vat_usd     = truckToUSD(vat_on_truck, usdcny);
+      const regas_usd   = extermToUSD(latEXT, usdcny) - latCLD;
+      const inland_margin = truckToUSD(latTruck/(1+vat), usdcny) - other_usd - freight_usd - extermToUSD(latEXT,usdcny);
+
+      // Metric cards
+      const metrics = document.getElementById('cs-t1-metrics');
+      if(metrics) {
+        const truck_usd = truckToUSD(latTruck, usdcny);
+        const ext_usd   = extermToUSD(latEXT, usdcny);
+        const margin    = truckToUSD(latTruck/(1+vat),usdcny)-other_usd-freight_usd-latCLD;
+        metrics.innerHTML = [
+          {lbl:'CLD IMPORT',val:latCLD.toFixed(2),sub:'$/MMBtu · LATEST',chg:null},
+          {lbl:'EX-TERMINAL',val:ext_usd.toFixed(2),sub:'$/MMBtu · LATEST',chg:null},
+          {lbl:'TRUCK RETAIL',val:truck_usd.toFixed(2),sub:'$/MMBtu ('+latTruck.toFixed(2)+'¥/kg)',chg:null},
+          {lbl:'REGAS SPREAD',val:(ext_usd-latCLD).toFixed(2),sub:'$/MMBtu · CLD→TERMINAL',chg:null},
+          {lbl:'INLAND SPREAD',val:(truck_usd-ext_usd).toFixed(2),sub:'$/MMBtu · TERMINAL→TRUCK',chg:null},
+          {lbl:'BREAKEVEN PROC',val:(truckToUSD(latTruck/(1+vat),usdcny)-other_usd-freight_usd).toFixed(2),sub:'$/MMBtu · MAX PROCUREMENT',chg:null},
+        ].map(m=>`<div class="cs-mc"><div class="cs-mc-lbl">${m.lbl}</div><div class="cs-mc-val">${m.val}</div><div class="cs-mc-sub">${m.sub}</div></div>`).join('');
+      }
+
+      // View A: Waterfall chart
+      const wfLabels = ['CLD Import','+ Regas','Ex-Terminal','+ Freight','+ VAT','+ Other','Truck Retail'];
+      const ext_usd2 = extermToUSD(latEXT, usdcny);
+      const truck_usd2 = truckToUSD(latTruck, usdcny);
+      // Waterfall: base values for stacked bar (floating bars)
+      const bases =  [0,        latCLD,  ext_usd2,  ext_usd2,               ext_usd2+freight_usd, ext_usd2+freight_usd+vat_usd, 0];
+      const values = [latCLD, ext_usd2-latCLD, 0, freight_usd, vat_usd, other_usd, truck_usd2];
+      const barColors = ['#4d9ef5','#1D9E75','#4d9ef5','#f59e0b','#ef5350','#9b59b6','#34d399'];
+
+      // Build waterfall as horizontal bar with floating segments
+      mkChart('cs-wf-canvas',{
+        type:'bar',
+        data:{
+          labels:wfLabels,
+          datasets:[
+            {label:'Base (hidden)',data:bases,backgroundColor:'transparent',borderColor:'transparent',borderWidth:0},
+            {label:'Value',data:values,backgroundColor:barColors,borderWidth:0}
+          ]
+        },
+        options:{
+          ...CD, indexAxis:'y',
+          plugins:{...CD.plugins, legend:{display:false},
+            tooltip:{...CD.plugins?.tooltip,callbacks:{label:(ctx)=>{
+              if(ctx.datasetIndex===0)return null;
+              const v=ctx.raw; if(!v)return null;
+              return` ${wfLabels[ctx.dataIndex]}: $${v.toFixed(3)}/MMBtu`;
+            }}}
+          },
+          scales:{
+            x:{stacked:true,ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},callback:v=>'$'+v.toFixed(1)},grid:{color:'#0f1824'},title:{display:true,text:'$/MMBtu',color:'#4b5a72',font:{size:9}}},
+            y:{stacked:true,ticks:{color:'#8a9bb5',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}
+          }
+        }
+      });
+
+      // Waterfall legend
+      const leg = document.getElementById('cs-wf-legend');
+      if(leg) {
+        const items=[
+          {col:'#4d9ef5',lbl:'CLD import price'},
+          {col:'#1D9E75',lbl:'Regas / terminal spread'},
+          {col:'#f59e0b',lbl:'Road freight ('+dist+'km × ¥0.70/tkm)'},
+          {col:'#ef5350',lbl:'VAT 9%'},
+          {col:'#9b59b6',lbl:'Other costs (¥'+other+'/kg)'},
+          {col:'#34d399',lbl:'Truck retail (ex-VAT)'},
+        ];
+        leg.innerHTML=items.map(i=>`<div class="cs-wf-item"><div class="cs-wf-swatch" style="background:${i.col}"></div>${i.lbl}</div>`).join('');
+      }
+
+      // View B: Stack over time
+      const filtered = filterByRng(truckData, rng);
+      const cldFiltered = filterByRng(cldData, rng);
+      const extFiltered = filterByRng(extData, rng);
+      const labels = filtered.map(r=>r.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}));
+      const truckUSD = filtered.map(r=>truckToUSD(r.value,usdcny));
+      const cldAligned = filtered.map(r=>{ const m=cldFiltered.find(x=>x.dateStr===r.dateStr); return m?m.value:null; });
+      const extAligned  = filtered.map(r=>{ const m=extFiltered.find(x=>x.dateStr===r.dateStr); return m?extermToUSD(m.value,usdcny):null; });
+
+      mkChart('cs-t1-hist-canvas',{
+        type:'line',
+        data:{labels,datasets:[
+          {label:'Truck retail',data:truckUSD,borderColor:'#34d399',backgroundColor:'rgba(52,211,153,0.08)',fill:false,borderWidth:2,pointRadius:0,tension:.3,spanGaps:true},
+          {label:'Ex-terminal',data:extAligned,borderColor:'#4d9ef5',backgroundColor:'rgba(77,158,245,0.08)',fill:false,borderWidth:1.5,pointRadius:0,tension:.3,spanGaps:true},
+          {label:'CLD import',data:cldAligned,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.08)',fill:false,borderWidth:1.5,pointRadius:0,tension:.3,spanGaps:true},
+        ]},
+        options:{...CD,scales:{
+          x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:14}},
+          y:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},callback:v=>'$'+v.toFixed(1)},grid:{color:'#0f1824'},title:{display:true,text:'$/MMBtu',color:'#4b5a72',font:{size:9}}}
+        }}
+      });
+    }
+    window.csT1Update = csT1Update;
+
+    // ── TAB 2: TRUCK vs JKM & LT ──
+    function csT2Update() {
+      if(!window.aD||!window.sDates||!sDates.length){
+        const sig=document.getElementById('cs-t2-signal');
+        if(sig){sig.className='cs-signal lt-only';sig.textContent='LOAD EOD FILES IN FINANCIAL TRADING TO ENABLE JKM & LT SERIES';}
+        return;
+      }
+      const usdcny = parseFloat(document.getElementById('cs-t2-usdcny')?.value||7.25);
+      const rng = CS.ranges.t2;
+      const daysMap={'1M':30,'3M':90,'6M':180,'1Y':365};
+      const days=daysMap[rng]||90;
+      const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-days);
+      const filtDs=sDates.filter(ds=>new Date(ds)>=cutoff);
+
+      const labels = filtDs.map(ds=>aD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+      const jkmRolling = getJKMRolling(filtDs);
+      const brent3M    = getBrent3MAvg(filtDs);
+      const lt11 = brent3M.map(b=>b!=null?+(b*0.11).toFixed(3):null);
+      const lt14 = brent3M.map(b=>b!=null?+(b*0.14).toFixed(3):null);
+
+      // Align truck to filtDs dates
+      const truckAligned = filtDs.map(ds=>{
+        const dsDate=ds.slice(0,10);
+        const _tD=liveOrSim("truck",()=>TRUCK_CNY);const m=_tD.find(x=>x.dateStr===dsDate);
+        return m?truckToUSD(m.value,usdcny):null;
+      });
+
+      // Determine current regime
+      const latTruck=truckAligned.filter(v=>v!=null).slice(-1)[0];
+      const latJKM=jkmRolling.filter(v=>v!=null).slice(-1)[0];
+      const latLT14=lt14.filter(v=>v!=null).slice(-1)[0];
+      const latLT11=lt11.filter(v=>v!=null).slice(-1)[0];
+      const sig=document.getElementById('cs-t2-signal');
+      if(sig&&latTruck&&latJKM){
+        if(latTruck>latLT14&&latLT14>latJKM){
+          sig.className='cs-signal spot-open';
+          sig.textContent=`SPOT MARKET OPEN — Truck $${latTruck.toFixed(2)} > LT14% $${latLT14?.toFixed(2)} > JKM $${latJKM.toFixed(2)} · China demand can absorb spot cargoes`;
+        } else if(latJKM<latTruck&&latTruck<=(latLT14||999)){
+          sig.className='cs-signal lt-only';
+          sig.textContent=`LT CONTRACTS CLEARING — JKM $${latJKM.toFixed(2)} < Truck $${latTruck.toFixed(2)} < LT14% $${latLT14?.toFixed(2)} · Spot uneconomic, LT volumes preferred`;
+        } else {
+          sig.className='cs-signal no-demand';
+          sig.textContent=`NO SPOT DEMAND — Truck $${latTruck.toFixed(2)} < JKM $${latJKM.toFixed(2)} · Inland market cannot absorb imported LNG at current prices`;
+        }
+      }
+
+      // Regime shading via annotation-style fill datasets
+      mkChart('cs-t2-canvas',{
+        type:'line',
+        data:{labels,datasets:[
+          {label:'LT 14% Brent',data:lt14,borderColor:'#ef5350',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:.3,spanGaps:true,order:4},
+          {label:'LT 11% Brent',data:lt11,borderColor:'#ce93d8',backgroundColor:'transparent',borderWidth:1.5,borderDash:[3,3],pointRadius:0,tension:.3,spanGaps:true,order:3},
+          {label:'JKM M+1 (rolling)',data:jkmRolling,borderColor:'#4d9ef5',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true,order:2},
+          {label:'Truck retail N.China ★EST',data:truckAligned,borderColor:'#34d399',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true,order:1},
+        ]},
+        options:{...CD,scales:{
+          x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:16}},
+          y:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},callback:v=>'$'+v.toFixed(1)},grid:{color:'#0f1824'},title:{display:true,text:'$/MMBtu',color:'#4b5a72',font:{size:9}}}
+        }}
+      });
+    }
+    window.csT2Update = csT2Update;
+
+    // ── TAB 3: LNG vs DIESEL ──
+    function csT3Update() {
+      const usdcny = parseFloat(document.getElementById('cs-t3-usdcny')?.value||7.25);
+      const rng = CS.ranges.t3;
+      const filtTruck  = filterByRng(liveOrSim("truck",()=>TRUCK_CNY), rng);
+      const filtDiesel = filterByRng(liveOrSim("diesel",()=>DIESEL_CNY_T), rng);
+      const labels     = filtTruck.map(r=>r.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}));
+      const truckUSD   = filtTruck.map(r=>truckToUSD(r.value,usdcny));
+      const dieselAligned = filtTruck.map(r=>{ const m=filtDiesel.find(x=>x.dateStr===r.dateStr); return m?dieselToUSD(m.value,usdcny):null; });
+      const spread = truckUSD.map((v,i)=>dieselAligned[i]!=null?+(v-dieselAligned[i]).toFixed(3):null);
+
+      // Metric cards
+      const latSpread = spread.filter(v=>v!=null).slice(-1)[0];
+      const avgSpread = spread.filter(v=>v!=null).reduce((s,v)=>s+v,0)/spread.filter(v=>v!=null).length;
+      const daysLNGCheaper = spread.filter(v=>v!=null&&v<0).length;
+      const mEl = document.getElementById('cs-t3-metrics');
+      if(mEl) {
+        mEl.innerHTML=[
+          {lbl:'CURRENT SPREAD',val:(latSpread>=0?'+':'')+latSpread?.toFixed(2)||'—',sub:'LNG minus diesel ($/MMBtu)',cls:latSpread<0?'pos':'neg'},
+          {lbl:'PERIOD AVERAGE',val:(avgSpread>=0?'+':'')+avgSpread.toFixed(2),sub:'LNG minus diesel avg',cls:avgSpread<0?'pos':'neg'},
+          {lbl:'LNG CHEAPER DAYS',val:daysLNGCheaper,sub:'Days LNG < diesel in period',cls:'neu'},
+        ].map(m=>`<div class="cs-mc"><div class="cs-mc-lbl">${m.lbl}</div><div class="cs-mc-val cs-mc-chg ${m.cls}">${m.val}</div><div class="cs-mc-sub">${m.sub}</div></div>`).join('');
+      }
+
+      mkChart('cs-t3-canvas',{
+        type:'line',
+        data:{labels,datasets:[
+          {label:'Diesel (energy equiv) ★EST',data:dieselAligned,borderColor:'#f59e0b',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true},
+          {label:'LNG truck retail ★EST',data:truckUSD,borderColor:'#4d9ef5',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true},
+          {label:'Spread (LNG−Diesel)',data:spread,borderColor:'#6b7a99',backgroundColor:spread.map(v=>v!=null&&v<0?'rgba(52,211,153,0.15)':'rgba(248,113,113,0.15)'),borderWidth:1,pointRadius:0,tension:.3,spanGaps:true,yAxisID:'y2',type:'bar'},
+        ]},
+        options:{...CD,scales:{
+          x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:16}},
+          y:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},callback:v=>'$'+v.toFixed(1)},grid:{color:'#0f1824'},title:{display:true,text:'$/MMBtu',color:'#4b5a72',font:{size:9}}},
+          y2:{position:'right',ticks:{color:'#6b7a99',font:{size:9,family:'IBM Plex Mono'},callback:v=>(v>=0?'+':'')+v.toFixed(2)},grid:{display:false},title:{display:true,text:'Spread',color:'#4b5a72',font:{size:9}}}
+        }}
+      });
+    }
+    window.csT3Update = csT3Update;
+
+    // ── TAB 4: PIPELINE GAS (MONTHLY) ──
+    function csT4Update() {
+      const usdcny  = parseFloat(document.getElementById('cs-t4-usdcny')?.value||7.25);
+      const rng     = CS.ranges.t4;
+      const showReg = document.getElementById('cs-t4-region')?.value==='all';
+      const daysMap = {'6M':180,'1Y':365,'ALL':9999};
+      const days    = daysMap[rng]||365;
+      const cutoff  = new Date(); cutoff.setDate(cutoff.getDate()-days);
+
+      // ── Simulated domestic series (monthly) ──
+      const pipeData = genPipelineMonthly();
+      const filtPipe = pipeData.filter(r=>r.month>=cutoff);
+      const labels   = filtPipe.map(r=>r.label);
+      const n        = labels.length;
+
+      // ── EOD-powered series ──
+      let jkmMonthly=[]; let brentLT={};
+      if(window.aD&&window.sDates&&sDates.length){
+        jkmMonthly = getJKMMonthlySettlement();
+        brentLT    = getBrentMonthlyLT();
+      }
+      const filtJKM = jkmMonthly.filter(m=>m.month>=cutoff);
+
+      const align = (arr, keyFn) => filtPipe.map(r=>{
+        const mk = r.month.toISOString().slice(0,7);
+        const m  = arr.find(j=>j.month.toISOString().slice(0,7)===mk);
+        return m ? keyFn(m) : null;
+      });
+      const alignBrent = slope => filtPipe.map(r=>{
+        const b = brentLT[r.month.toISOString().slice(0,7)];
+        return b ? +(b*slope).toFixed(3) : null;
+      });
+
+      const jkmA  = align(filtJKM, m=>m.JKM);
+      const lt14A = alignBrent(0.14);
+      const lt11A = alignBrent(0.11);
+
+      // Domestic series in $/MMBtu
+      const cnpA    = filtPipe.map(r=>pipeToUSD(r.National, usdcny));
+      const spotA   = filtPipe.map(r=>pipeToUSD(r.spot,     usdcny));
+
+      // NDRC 36-city industrial avg: ¥3.58/m³ Nov 2025 — use as flat reference
+      // We simulate slight monthly variation around the known value
+      const ndrcInd = filtPipe.map((r,i)=>{
+        const base = 3.58 + Math.sin(i/3)*0.04 + (Math.random()-0.5)*0.02;
+        return +pipeToUSD(+base.toFixed(3), usdcny).toFixed(3);
+      });
+
+      // Static reference lines (same value every month)
+      const ndrcGate = filtPipe.map(()=>+(7.0).toFixed(1));   // NDRC city gate ~$7
+      const prodFloorLow  = filtPipe.map(()=>3.0);            // production cost floor low
+      const prodFloorHigh = filtPipe.map(()=>8.0);            // production cost floor high
+
+      // ── Demand signal ──
+      const latJKM = jkmA.filter(v=>v!=null).slice(-1)[0];
+      const latCNP = cnpA.filter(v=>v!=null).slice(-1)[0];
+      const latLT14= lt14A.filter(v=>v!=null).slice(-1)[0];
+      const sig    = document.getElementById('cs-t4-signal');
+      if(sig){
+        if(latJKM!=null && latCNP!=null){
+          if(latJKM < latCNP){
+            sig.className='cs-signal spot-open';
+            sig.textContent=`LNG IMPORT DEMAND SUPPORTED — JKM $${latJKM.toFixed(2)} < CNP $${latCNP.toFixed(2)}/MMBtu · Imported LNG competitive vs domestic gas · Spot demand potential elevated`;
+          } else if(latJKM < (latLT14||999)){
+            sig.className='cs-signal lt-only';
+            sig.textContent=`LNG DEMAND SOFTENING — JKM $${latJKM.toFixed(2)} > CNP $${latCNP.toFixed(2)}/MMBtu · Domestic gas cheaper than spot LNG · Buyers prefer domestic supply`;
+          } else {
+            sig.className='cs-signal no-demand';
+            sig.textContent=`NO SPOT LNG DEMAND — JKM $${latJKM.toFixed(2)} well above domestic gas $${latCNP.toFixed(2)}/MMBtu · Spot imports uncompetitive vs domestic supply`;
+          }
+        } else {
+          sig.className='cs-signal lt-only';
+          sig.textContent='LOAD EOD FILES IN FINANCIAL TRADING TO ENABLE JKM & LT SERIES';
+        }
+      }
+
+      // ── Metric cards ──
+      const mEl = document.getElementById('cs-t4-metrics');
+      if(mEl){
+        const spread = (a,b)=>(a!=null&&b!=null)?+(a-b).toFixed(2):null;
+        const jkm_cnp  = spread(latJKM, latCNP);
+        const lt14_cnp = spread(latLT14, latCNP);
+        const lt11_cnp = spread(alignBrent(0.11).filter(v=>v!=null).slice(-1)[0], latCNP);
+        const latNdrc  = ndrcInd.slice(-1)[0];
+        const dist_margin = spread(latNdrc, latCNP);
+
+        const card = (lbl,val,sub,signal)=>{
+          const v   = val!=null?(val>=0?'+':'')+val.toFixed(2):'—';
+          const cls = val==null?'neu':val<0?'pos':'neg'; // <0 = JKM below CNP = good for LNG demand
+          return `<div class="cs-mc"><div class="cs-mc-lbl">${lbl}</div><div class="cs-mc-val cs-mc-chg ${signal||cls}">${v}</div><div class="cs-mc-sub">${sub}</div></div>`;
+        };
+        mEl.innerHTML =
+          card('JKM vs CNP',      jkm_cnp,  'JKM settlement − CNP ($/MMBtu) · neg = LNG demand potential') +
+          card('LT 14% vs CNP',   lt14_cnp, 'LT 14% Brent − CNP ($/MMBtu)') +
+          card('LT 11% vs CNP',   lt11_cnp, 'LT 11% Brent − CNP ($/MMBtu)') +
+          `<div class="cs-mc"><div class="cs-mc-lbl">DISTRIB MARGIN</div><div class="cs-mc-val" style="color:#f0f4ff">${dist_margin!=null?'+'+dist_margin.toFixed(2):'—'}</div><div class="cs-mc-sub">Industrial end-user − CNP (city gas co. margin)</div></div>` +
+          `<div class="cs-mc"><div class="cs-mc-lbl">CNP OPEN MKT</div><div class="cs-mc-val" style="color:#81c784">${latCNP!=null?'$'+latCNP.toFixed(2):'—'}</div><div class="cs-mc-sub">$/MMBtu · domestic supply benchmark ★EST</div></div>` +
+          `<div class="cs-mc"><div class="cs-mc-lbl">JKM SETTLEMENT</div><div class="cs-mc-val" style="color:#4d9ef5">${latJKM!=null?'$'+latJKM.toFixed(2):'—'}</div><div class="cs-mc-sub">$/MMBtu · monthly avg (16th→15th)</div></div>`;
+      }
+
+      // ── Build datasets ──
+      // Order: production cost band (fill between), then lines bottom to top
+      const datasets = [
+        // Production cost band — rendered as two filled lines
+        {
+          label:'Prod. cost ceiling ($8)',
+          data: prodFloorHigh,
+          borderColor:'transparent',
+          backgroundColor:'rgba(107,122,153,0.13)',
+          borderWidth:0,
+          pointRadius:0,
+          fill:'+1',  // fill down to next dataset
+          tension:0,
+          spanGaps:true,
+          order:10
+        },
+        {
+          label:'Prod. cost floor ($3)',
+          data: prodFloorLow,
+          borderColor:'rgba(107,122,153,0.25)',
+          backgroundColor:'rgba(107,122,153,0.13)',
+          borderWidth:1,
+          borderDash:[2,4],
+          pointRadius:0,
+          fill:false,
+          tension:0,
+          spanGaps:true,
+          order:10
+        },
+        // NDRC city gate static reference
+        {
+          label:'NDRC city gate ref (~$7)',
+          data: ndrcGate,
+          borderColor:'#3d5070',
+          backgroundColor:'transparent',
+          borderWidth:1.5,
+          borderDash:[6,4],
+          pointRadius:0,
+          tension:0,
+          spanGaps:true,
+          order:8
+        },
+        // CNP open market
+        {
+          label:'CNP open market ★EST',
+          data: cnpA,
+          borderColor:'#81c784',
+          backgroundColor:'transparent',
+          borderWidth:2,
+          pointRadius:3,
+          pointBackgroundColor:'#81c784',
+          tension:.3,
+          spanGaps:true,
+          order:6
+        },
+        // Pipeline spot
+        {
+          label:'Pipeline spot ★EST',
+          data: spotA,
+          borderColor:'#34d399',
+          backgroundColor:'transparent',
+          borderWidth:2,
+          borderDash:[4,2],
+          pointRadius:2,
+          tension:.3,
+          spanGaps:true,
+          order:6
+        },
+        // NDRC 36-city industrial avg (end-user ceiling)
+        {
+          label:'NDRC 36-city industrial avg',
+          data: ndrcInd,
+          borderColor:'#f59e0b',
+          backgroundColor:'rgba(245,158,11,0.06)',
+          borderWidth:1.5,
+          borderDash:[5,3],
+          pointRadius:2,
+          tension:.3,
+          spanGaps:true,
+          fill:false,
+          order:5
+        },
+        // JKM settlement
+        {
+          label:'JKM settlement (monthly avg)',
+          data: jkmA,
+          borderColor:'#4d9ef5',
+          backgroundColor:'rgba(77,158,245,0.08)',
+          borderWidth:2.5,
+          pointRadius:4,
+          pointBackgroundColor:'#4d9ef5',
+          tension:.3,
+          spanGaps:true,
+          fill:false,
+          order:2
+        },
+        // LT 14%
+        {
+          label:'LT 14% Brent',
+          data: lt14A,
+          borderColor:'#ef5350',
+          backgroundColor:'transparent',
+          borderWidth:1.5,
+          borderDash:[5,3],
+          pointRadius:3,
+          pointBackgroundColor:'#ef5350',
+          tension:.3,
+          spanGaps:true,
+          order:3
+        },
+        // LT 11%
+        {
+          label:'LT 11% Brent',
+          data: lt11A,
+          borderColor:'#ce93d8',
+          backgroundColor:'transparent',
+          borderWidth:1.5,
+          borderDash:[3,3],
+          pointRadius:3,
+          pointBackgroundColor:'#ce93d8',
+          tension:.3,
+          spanGaps:true,
+          order:4
+        },
+      ];
+
+      // Optional regional CNP breakdown
+      if(showReg){
+        const regColors=['#ffb74d','#4fc3f7','#f48fb1','#80cbc4'];
+        ['North','East','South','Central'].forEach((reg,i)=>{
+          datasets.push({
+            label:`CNP ${reg} ★EST`,
+            data:filtPipe.map(r=>pipeToUSD(r[reg],usdcny)),
+            borderColor:regColors[i],
+            backgroundColor:'transparent',
+            borderWidth:1,
+            borderDash:[1,3],
+            pointRadius:1,
+            tension:.3,
+            spanGaps:true,
+            order:7
+          });
+        });
+      }
+
+      mkChart('cs-t4-canvas',{
+        type:'line',
+        data:{labels,datasets},
+        options:{
+          ...CD,
+          plugins:{
+            ...CD.plugins,
+            legend:{
+              display:true,
+              position:'top',
+              align:'start',
+              labels:{
+                color:'#5a6882',
+                font:{size:9,family:'IBM Plex Mono'},
+                boxWidth:20,
+                boxHeight:2,
+                padding:10,
+                filter: item => !item.text.includes('ceiling') && !item.text.includes('floor')
+              }
+            },
+            tooltip:{
+              ...CD.plugins?.tooltip,
+              callbacks:{
+                label: ctx=>{
+                  if(ctx.raw==null) return null;
+                  return ` ${ctx.dataset.label}: $${Number(ctx.raw).toFixed(2)}/MMBtu`;
+                }
+              }
+            }
+          },
+          scales:{
+            x:{
+              ...CD.scales.x,
+              ticks:{...CD.scales.x.ticks, maxRotation:45, autoSkip:true, maxTicksLimit:16}
+            },
+            y:{
+              min:0,
+              ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},callback:v=>'$'+v.toFixed(0)},
+              grid:{color:'#0f1824'},
+              title:{display:true,text:'$/MMBtu',color:'#4b5a72',font:{size:9,family:'IBM Plex Mono'}}
+            }
+          }
+        }
+      });
+    }
+    window.csT4Update = csT4Update;
+
+    // ── Init on load ──
+    // ── SHPGX CSV Data Store ──
+    // Keyed by series id, holds parsed rows from uploaded CSVs
+    const SHPGX = window.SHPGX_DATA = window.SHPGX_DATA || {};
+
+    function parseShpgxCSV(text, key) {
+      const lines = text.trim().split('\n').filter(l=>l.trim());
+      if(lines.length < 2) return [];
+      const headers = lines[0].split(',').map(h=>h.replace(/"/g,'').trim());
+      const rows = [];
+      for(let i=1; i<lines.length; i++) {
+        const cells = lines[i].match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g)||lines[i].split(',');
+        const row   = {};
+        headers.forEach((h,j) => { row[h] = (cells[j]||'').replace(/^"|"$/g,'').trim(); });
+        if(row.date && /\d{4}/.test(row.date)) rows.push(row);
+      }
+      return rows;
+    }
+
+    function loadShpgxFile(file) {
+      return new Promise((res,rej) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const text = e.target.result;
+          // Detect series from filename
+          const name = file.name.toLowerCase();
+          let key = null;
+          if(name.includes('truck')&&!name.includes('city')) key='truck';
+          else if(name.includes('truck')&&name.includes('city'))  key='truck_city';
+          else if(name.includes('cld'))    key='cld';
+          else if(name.includes('exterm')) key='exterm';
+          else if(name.includes('exfact')) key='exfactory';
+          else if(name.includes('diesel')) key='diesel';
+          else if(name.includes('cnp'))    key='cnp';
+          else if(name.includes('pipe'))   key='pipe_spot';
+          if(!key) { rej('Cannot detect series from filename: '+file.name); return; }
+          const rows = parseShpgxCSV(text, key);
+          SHPGX[key] = rows;
+          res({ key, rows, count: rows.length });
+        };
+        reader.onerror = ()=>rej('Read error');
+        reader.readAsText(file);
+      });
+    }
+
+    // Override simulated data getters to use real data when available
+    function getShpgxSeries(key, fallbackFn, dateFn) {
+      if(SHPGX[key]?.length) return SHPGX[key].map(r=>({
+        date: new Date(r.date),
+        dateStr: r.date.slice(0,10),
+        value: parseFloat(r.price_cny_kg||r.price_usd_mmbtu||r.price_cny_tonne||r.price_cny_m3||0),
+        region: r.region||'',
+        raw: r
+      })).filter(r=>!isNaN(r.value)&&r.value>0);
+      return fallbackFn();
+    }
+
+    // Patch TRUCK_CNY, CLD_USD, etc. to use real data when loaded
+    function liveOrSim(key, simData) {
+      if(!SHPGX[key]?.length) return simData;
+      return SHPGX[key].map(r=>({
+        date: new Date(r.date.slice(0,10)),
+        dateStr: r.date.slice(0,10),
+        value: parseFloat(r.price_cny_kg||r.price_usd_mmbtu||r.price_cny_tonne||r.price_cny_m3||0)
+      })).filter(r=>!isNaN(r.value)&&r.value>0).sort((a,b)=>a.date-b.date);
+    }
+
+    function csInit() {
+      // Sync USD/CNY inputs across tabs
+      const main=document.getElementById('cs-usdcny');
+      ['cs-t2-usdcny','cs-t3-usdcny','cs-t4-usdcny'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el&&main) el.value=main.value;
+      });
+
+      // Render SHPGX data import zone if not already present
+      if(!document.getElementById('cs-shpgx-import')) {
+        const zone = document.createElement('div');
+        zone.id = 'cs-shpgx-import';
+        zone.style.cssText = 'margin-bottom:16px;border:1px solid rgba(77,158,245,0.13);padding:12px 16px;background:#0f1221';
+        zone.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div>
+              <div style="font-size:9px;letter-spacing:.15em;color:#6b7a99;margin-bottom:3px">SHPGX DATA FILES</div>
+              <div style="font-size:10px;color:#dde4f0" id="cs-shpgx-status">No data loaded · Charts using simulated estimates</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <label style="padding:6px 14px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(77,158,245,0.3);color:#4d9ef5;cursor:pointer;background:rgba(77,158,245,0.07)">
+                ↑ LOAD SHPGX CSV FILES
+                <input type="file" multiple accept=".csv" style="display:none" onchange="csLoadShpgxFiles(this.files)">
+              </label>
+              <button onclick="csClearShpgx()" style="padding:6px 12px;font-size:9px;border:1px solid rgba(107,122,153,0.3);color:#6b7a99;background:transparent;cursor:pointer;font-family:inherit">CLEAR</button>
+            </div>
+          </div>
+          <div id="cs-shpgx-badges" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+          <div style="font-size:9px;color:#4b5a72;margin-top:6px">
+            Use the SHPGX Data Extractor tool to download CSVs from shpgx.com · Files are named automatically by series
+          </div>
+        `;
+        const pane0 = document.getElementById('cs-pane-0');
+        if(pane0) pane0.insertBefore(zone, pane0.firstChild);
+      }
+
+      csT1Update();
+    }
+
+    window.csLoadShpgxFiles = async function(files) {
+      let loaded = 0, failed = 0;
+      for(const file of files) {
+        try {
+          const {key, count} = await loadShpgxFile(file);
+          loaded++;
+          csUpdateShpgxBadges();
+          csLog(`Loaded: ${file.name} → ${key} (${count} rows)`);
+        } catch(e) {
+          failed++;
+          csLog(`Failed: ${file.name} — ${e}`, true);
+        }
+      }
+      const status = document.getElementById('cs-shpgx-status');
+      const keys   = Object.keys(SHPGX).filter(k=>SHPGX[k]?.length);
+      if(status) status.textContent = keys.length
+        ? `${keys.length} series loaded · ${Object.values(SHPGX).reduce((s,r)=>s+(r?.length||0),0)} total rows · Last update: ${new Date().toLocaleTimeString()}`
+        : 'No data loaded · Charts using simulated estimates';
+      // Refresh whichever tab is visible
+      const activePane = document.querySelector('.cs-tab-pane.active');
+      if(activePane?.id==='cs-pane-0') csT1Update();
+      else if(activePane?.id==='cs-pane-1') csT2Update();
+      else if(activePane?.id==='cs-pane-2') csT3Update();
+      else if(activePane?.id==='cs-pane-3') csT4Update();
+    };
+
+    window.csClearShpgx = function() {
+      Object.keys(SHPGX).forEach(k=>delete SHPGX[k]);
+      csUpdateShpgxBadges();
+      const status = document.getElementById('cs-shpgx-status');
+      if(status) status.textContent = 'No data loaded · Charts using simulated estimates';
+      csT1Update();
+    };
+
+    function csUpdateShpgxBadges() {
+      const wrap = document.getElementById('cs-shpgx-badges');
+      if(!wrap) return;
+      wrap.innerHTML = Object.keys(SHPGX).filter(k=>SHPGX[k]?.length).map(k=>{
+        const rows = SHPGX[k];
+        const first= rows[0]?.date||'', last=rows[rows.length-1]?.date||'';
+        return `<span style="font-size:9px;padding:2px 8px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);color:#34d399">
+          ${k.toUpperCase()} · ${rows.length} rows · ${first.slice(0,7)}→${last.slice(0,7)}
+        </span>`;
+      }).join('');
+    }
+
+    function csLog(msg, isErr=false) {
+      console.log('[SHPGX]', msg);
+    }
+
+    // Hook into existing gaMainTab to trigger init when section becomes visible
+    const _origGaMainTab = window.gaMainTab;
+    window.gaMainTab = function(id, btn) {
+      if(_origGaMainTab) _origGaMainTab(id, btn);
+      if(id==='lngbal') setTimeout(csInit, 100);
+    };
+
+    // Also init if already active on page load
+    if(document.getElementById('ga-tab-lngbal')?.classList.contains('active')) {
+      setTimeout(csInit, 500);
+    }
+
+  })();
+  </script>
 
   <!-- TAB 2: EUROPEAN GAS BALANCE -->
   <div id="ga-tab-eugas" class="ga-tab-sec">
@@ -806,8 +1893,8 @@ const ML=(function(){
 let finLoaded=false;
 const PH_T={freight:'FREIGHT RATE CALCULATOR',cargo:'CARGO PRICING',regas:'EU REGAS MODEL'};
 const PH_D={freight:'Voyage cost estimation across global LNG shipping routes with BLNG curves',cargo:'USGC/WAF/Oman arb, DES pricing, FOB netback matrix, India pricing and historical basis',regas:'European regasification terminal pricing, cost graphs, netback analysis and slot valuation'};
-const GA_T={lngbal:'S&D BALANCE',eugas:'EU GAS BALANCE',storage:'EU STORAGE',regas:'LNG REGAS',signposts:'MARKET SIGNPOSTS'};
-const GA_D={lngbal:'Global LNG supply and demand balance by exporting country and importing region',eugas:'Pipeline imports, domestic production, LNG flows and EU gas demand — seasonal views',storage:'EU and country storage levels, seasonal comparison and injection/withdrawal — GIE AGSI+',regas:'Terminal utilisation heatmap, tank stocks, sendout and country aggregate — GIE AGGI+',signposts:'LNG arrivals, hydro reservoir levels, nuclear availability and 2026 maintenance tracker'};
+const GA_T={lngbal:'LNG BALANCE',eugas:'EU GAS BALANCE',storage:'EU STORAGE',regas:'LNG REGAS',signposts:'MARKET SIGNPOSTS'};
+const GA_D={lngbal:'China gas price chain, LNG truck vs JKM & LT contracts, LNG/diesel spread and China supply stack',eugas:'Pipeline imports, domestic production, LNG flows and EU gas demand — seasonal views',storage:'EU and country storage levels, seasonal comparison and injection/withdrawal — GIE AGSI+',regas:'Terminal utilisation heatmap, tank stocks, sendout and country aggregate — GIE AGGI+',signposts:'LNG arrivals, hydro reservoir levels, nuclear availability and 2026 maintenance tracker'};
 const PV_T={single:'SINGLE DEAL VALUATION',strips:'STRIPS VALUATION',portfolio:'PORTFOLIO VALUATION'};
 const PV_D={single:'Full extrinsic and optionality valuation for individual LNG cargo contracts',strips:'Multi-cargo strip optionality decomposition',portfolio:'Aggregated P&L, exposure summary and blended optionality'};
 const TB_T={converter:'NATURAL GAS CONVERTER',gasspec:'GAS SPECIFICATIONS',portcosts:'PORT COST DATABASE'};
