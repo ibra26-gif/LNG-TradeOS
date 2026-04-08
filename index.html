@@ -5342,7 +5342,8 @@ const CP_SEED_PHYS={nwe:Array(24).fill(-0.40),iberia:Array(24).fill(-0.35),uk:Ar
 const CP_SEED_FR={
   sabine_rotterdam:[0.942,0.942,0.935,0.935,0.922,0.989,1.022,0.989,0.869,0.804,0.751,0.738,0.738,0.758,0.771,0.748,0.622,0.622,0.622,0.622,0.622,0.624,0.697,0.674],
   sabine_tokyo:[3.078,3.078,2.810,2.565,2.520,2.743,2.854,2.743,2.408,2.119,2.029,1.962,1.985,2.074,2.029,1.608,1.608,1.608,1.608,1.608,1.608,1.608,1.900,1.821],
-  sabine_dahej:[2.011,2.011,1.837,1.677,1.651,1.798,1.870,1.798,1.573,1.383,1.326,1.284,1.298,1.354,1.326,1.046,1.046,1.046,1.046,1.046,1.046,1.046,1.239,1.188],
+  // sabine_dahej: rescaled to CoGH 12,800nm (was Suez 9,740nm, ×1.3142)
+  sabine_dahej:[2.643,2.643,2.414,2.204,2.170,2.363,2.457,2.363,2.067,1.817,1.743,1.687,1.706,1.779,1.743,1.375,1.375,1.375,1.375,1.375,1.375,1.375,1.628,1.561],
   angola_gate:[0.884,0.884,0.877,0.877,0.864,0.930,0.963,0.930,0.811,0.747,0.694,0.680,0.680,0.700,0.714,0.690,0.565,0.565,0.565,0.565,0.565,0.568,0.640,0.617],
   angola_tokyo:[1.820,1.820,1.660,1.512,1.486,1.620,1.686,1.620,1.419,1.245,1.191,1.151,1.164,1.218,1.191,0.939,0.939,0.939,0.939,0.939,0.939,0.939,1.115,1.068],
   angola_dahej:[1.164,1.164,1.061,0.967,0.949,1.035,1.078,1.035,0.907,0.795,0.761,0.735,0.744,0.778,0.761,0.601,0.601,0.601,0.601,0.601,0.601,0.601,0.714,0.683],
@@ -5352,12 +5353,16 @@ const CP_SEED_FR={
   nigeria_dahej:[1.571,1.571,1.456,1.350,1.330,1.427,1.475,1.427,1.282,1.157,1.118,1.089,1.099,1.138,1.118,0.938,0.938,0.938,0.938,0.938,0.938,0.938,1.065,1.031],
   nigeria_maptaphut:[1.812,1.812,1.671,1.542,1.519,1.635,1.695,1.635,1.460,1.307,1.260,1.225,1.237,1.284,1.260,1.039,1.039,1.039,1.039,1.039,1.039,1.039,1.193,1.152],
   trinidad_gate:[0.722,0.722,0.717,0.717,0.706,0.760,0.787,0.760,0.662,0.609,0.566,0.556,0.556,0.572,0.583,0.564,0.461,0.461,0.461,0.461,0.461,0.464,0.523,0.504],
-  trinidad_tokyo:[2.516,2.516,2.316,2.131,2.098,2.276,2.363,2.276,2.031,1.821,1.756,1.707,1.724,1.793,1.756,1.434,1.434,1.434,1.434,1.434,1.434,1.434,1.645,1.579],
-  trinidad_dahej:[1.871,1.871,1.736,1.610,1.587,1.698,1.755,1.698,1.527,1.390,1.348,1.317,1.328,1.377,1.348,1.110,1.110,1.110,1.110,1.110,1.110,1.110,1.277,1.232],
-  qatar_gate:[2.196,2.196,2.020,1.858,1.830,1.975,2.048,1.975,1.757,1.566,1.506,1.464,1.479,1.537,1.506,1.233,1.233,1.233,1.233,1.233,1.233,1.233,1.424,1.368],
+  // trinidad_tokyo: rescaled to CoGH 14,600nm (was Panama 13,800nm, ×1.0580)
+  trinidad_tokyo:[2.662,2.662,2.450,2.255,2.220,2.408,2.500,2.408,2.149,1.927,1.858,1.806,1.824,1.897,1.858,1.517,1.517,1.517,1.517,1.517,1.517,1.517,1.740,1.671],
+  // trinidad_dahej: rescaled to CoGH 11,100nm (was Suez 10,173nm, ×1.0911)
+  trinidad_dahej:[2.041,2.041,1.894,1.757,1.732,1.853,1.915,1.853,1.666,1.517,1.471,1.437,1.449,1.502,1.471,1.211,1.211,1.211,1.211,1.211,1.211,1.211,1.393,1.344],
+  // qatar_gate: rescaled to CoGH 13,600nm (was Suez 11,550nm, ×1.1775)
+  qatar_gate:[2.586,2.586,2.379,2.188,2.155,2.326,2.411,2.326,2.069,1.844,1.773,1.724,1.742,1.810,1.773,1.452,1.452,1.452,1.452,1.452,1.452,1.452,1.677,1.611],
   qatar_tokyo:[1.184,1.184,1.097,0.967,0.950,0.993,1.037,1.123,1.184,0.967,0.880,0.836,0.792,0.810,0.836,0.854,0.665,0.709,0.709,0.709,0.665,0.665,0.738,0.709],
   qatar_dahej:[0.312,0.312,0.293,0.265,0.262,0.271,0.281,0.298,0.312,0.265,0.246,0.238,0.229,0.233,0.238,0.241,0.205,0.215,0.215,0.215,0.205,0.205,0.222,0.213],
-  oman_gate:[1.991,1.991,1.832,1.686,1.660,1.792,1.858,1.792,1.594,1.421,1.368,1.329,1.342,1.395,1.368,1.119,1.119,1.119,1.119,1.119,1.119,1.119,1.293,1.242],
+  // oman_gate: rescaled to CoGH 12,100nm (was Suez 9,887nm, ×1.2238)
+  oman_gate:[2.437,2.437,2.242,2.063,2.032,2.193,2.274,2.193,1.951,1.739,1.674,1.626,1.642,1.707,1.674,1.369,1.369,1.369,1.369,1.369,1.369,1.369,1.582,1.520],
   oman_tokyo:[1.084,1.084,1.004,0.885,0.869,0.909,0.949,1.028,1.084,0.885,0.805,0.765,0.725,0.741,0.765,0.781,0.608,0.648,0.648,0.648,0.608,0.608,0.675,0.648],
   oman_dahej:[0.180,0.180,0.169,0.153,0.151,0.156,0.162,0.172,0.180,0.153,0.142,0.137,0.132,0.134,0.137,0.139,0.118,0.124,0.124,0.124,0.118,0.118,0.128,0.123],
   australia_b_tokyo:[0.240,0.240,0.225,0.207,0.203,0.218,0.226,0.218,0.192,0.170,0.163,0.159,0.160,0.167,0.163,0.131,0.131,0.131,0.131,0.131,0.131,0.131,0.152,0.146],
@@ -5943,6 +5948,9 @@ function cpBasinTab(cfg, d){
   }
 
   const DEST_STYLE={eur:{bg:'#0d2545',fg:'#90caf9',lbl:'Europe'},ain:{bg:'#1a2010',fg:'#d4e157',lbl:'Ain Sukhna'},mei:{bg:'#0d2e15',fg:'#a5d6a7',lbl:'MEI'},asia:{bg:'#2d0f0f',fg:'#ef9a9a',lbl:'JKTC'}};
+  // selOrg and orgSel defined early — used in route ranking, top bar and detail section
+  const selOrg=cfg.orgs.find(o=>o.id===(CP.selBasinOrg||cfg.orgs[0].id))||cfg.orgs[0];
+  const orgSel=`<select class="f-sel" onchange="CP.selBasinOrg=this.value;renderCargoTab()">${cfg.orgs.map(o=>`<option value="${o.id}"${selOrg.id===o.id?' selected':''}>${o.label}</option>`).join('')}</select>`;
   const legend=[['#0d2545','Europe'],['#0d2e15','MEI'],['#2d0f0f','JKTC']].map(([bg,lbl])=>
     `<div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#546e7a"><span style="display:inline-block;width:20px;height:11px;border-radius:3px;background:${bg}"></span>${lbl}</div>`).join('');
   const idxBtns=['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x}</button>`).join('');
@@ -5991,9 +5999,6 @@ function cpBasinTab(cfg, d){
   rkHtml+='</div>';
 
   // ── 3. Detailed calculation (sorted by netback) ────────────────────────────
-  const selOrg=cfg.orgs.find(o=>o.id===(CP.selBasinOrg||cfg.orgs[0].id))||cfg.orgs[0];
-  const orgSel=`<select class="f-sel" onchange="CP.selBasinOrg=this.value;renderCargoTab()">${cfg.orgs.map(o=>`<option value="${o.id}"${selOrg.id===o.id?' selected':''}>${o.label}</option>`).join('')}</select>`;
-
   // Compute netbacks and sort best→worst
   const dtWithNb=selOrg.dtRoutes.map(dt=>{
     const v=nbDes(dt,m);
@@ -6186,9 +6191,9 @@ function cpPacificArb(d){
   const pac_id_sing  =pacFr(fr.indonesia_tokyo,0.65);
   const pac_id_dahej =pacFr(fr.indonesia_tokyo,1.10);
   // Pacific→Gate (Europe): very long haul ~14,000 NM
-  const pac_b_gate   =pacFr(fr.australia_b_tokyo,3.50);
-  const pac_g_gate   =pacFr(fr.australia_g_tokyo,3.30);
-  const pac_id_gate  =pacFr(fr.indonesia_tokyo,3.20);
+  const pac_b_gate   =pacFr(fr.australia_b_tokyo,3.683);
+  const pac_g_gate   =pacFr(fr.australia_g_tokyo,3.538);
+  const pac_id_gate  =pacFr(fr.indonesia_tokyo,5.122);
 
   const cfg={orgs:[
     {id:'aus_b',label:'Barrow Island (Aus)',col:'#81c784',
@@ -6257,9 +6262,9 @@ function cpFrDiffBasis(d){
       label:'Pacific',
       ports:[
         // Pacific: Asia is home/base market. Spread = JKM-TTF (follows paper). Positive = Asia confirmed. Negative = Europe arb opens.
-        {id:'aus_b',   label:'Barrow Island',frGate:ML.map((_,i)=>+(fr.australia_b_tokyo[i]*3.50).toFixed(3)),frAsia:fr.australia_b_tokyo,dir:'asia',spreadFn:(i)=>CP.fp.JKM[i]-CP.fp.TTF[i]},
-        {id:'aus_g',   label:'Gladstone',    frGate:ML.map((_,i)=>+(fr.australia_g_tokyo[i]*3.30).toFixed(3)),frAsia:fr.australia_g_tokyo,dir:'asia',spreadFn:(i)=>CP.fp.JKM[i]-CP.fp.TTF[i]},
-        {id:'bontang', label:'Bontang',      frGate:ML.map((_,i)=>+(fr.indonesia_tokyo[i]*3.20).toFixed(3)),    frAsia:fr.indonesia_tokyo,  dir:'asia',spreadFn:(i)=>CP.fp.JKM[i]-CP.fp.TTF[i]},
+        {id:'aus_b',   label:'Barrow Island',frGate:ML.map((_,i)=>+(fr.australia_b_tokyo[i]*3.683).toFixed(3)),frAsia:fr.australia_b_tokyo,dir:'asia',spreadFn:(i)=>CP.fp.JKM[i]-CP.fp.TTF[i]},
+        {id:'aus_g',   label:'Gladstone',    frGate:ML.map((_,i)=>+(fr.australia_g_tokyo[i]*3.538).toFixed(3)),frAsia:fr.australia_g_tokyo,dir:'asia',spreadFn:(i)=>CP.fp.JKM[i]-CP.fp.TTF[i]},
+        {id:'bontang', label:'Bontang',      frGate:ML.map((_,i)=>+(fr.indonesia_tokyo[i]*5.122).toFixed(3)),    frAsia:fr.indonesia_tokyo,  dir:'asia',spreadFn:(i)=>CP.fp.JKM[i]-CP.fp.TTF[i]},
       ]},
   };
 
