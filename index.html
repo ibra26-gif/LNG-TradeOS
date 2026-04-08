@@ -5480,7 +5480,7 @@ function renderCargo(){
   <div class="f-body" id="cp-body"></div>`;
   renderCargoTab();
 }
-function cpTab(i){CP.tab=i;document.querySelectorAll('#cargo-wrap .f-tab').forEach((t,j)=>t.classList.toggle('active',j===i));renderCargoTab();}
+function cpTab(i){CP.tab=i;if(i!==CP._lastTab)CP.selBasinOrg=null;CP._lastTab=i;document.querySelectorAll('#cargo-wrap .f-tab').forEach((t,j)=>t.classList.toggle('active',j===i));renderCargoTab();}
 function renderCargoTab(){const b=document.getElementById('cp-body');if(!b)return;const d=cpDerived();
   if(CP.tab===0)b.innerHTML=cpPhysDiff(d);
   else if(CP.tab===1)b.innerHTML=cpDesPrices(d);
@@ -5812,124 +5812,247 @@ function cpGlobalArb(d){
   <style>.cp-popup .leaflet-popup-content-wrapper{background:#0d1e36;border:1px solid #1e3a5f;border-radius:2px;box-shadow:none}.cp-popup .leaflet-popup-tip{background:#0d1e36}.cp-tooltip{background:#070b14;border:1px solid #1e3a5f;color:#c8d6e5;font-family:IBM Plex Mono,monospace;font-size:10px;box-shadow:none}</style>`;
 }
 
-// ── Tab 2: Atlantic Basin Arb ───────────────────────────────────────────────
-function cpAtlanticArb(d){
-  const m=CP.selMonth;
-  const orgs=[
-    {id:'sabine', label:'Sabine Pass (USGC)',costBase:'HH',col:'#4fc3f7',
-      routes:[{dest:'NWE',desArr:d.des.nwe,fr:CP.freight.sabine_rotterdam},{dest:'Iberia',desArr:d.des.iberia,fr:CP.freight.sabine_rotterdam},{dest:'JKTC',desArr:d.des.jktc,fr:CP.freight.sabine_tokyo},{dest:'MEI',desArr:d.des.mei,fr:CP.freight.sabine_dahej??CP.freight.sabine_tokyo}]},
-    {id:'trinidad',label:'Trinidad',costBase:'TTF',col:'#29b6f6',
-      routes:[{dest:'NWE',desArr:d.des.nwe,fr:CP.freight.trinidad_gate},{dest:'JKTC',desArr:d.des.jktc,fr:CP.freight.trinidad_tokyo},{dest:'MEI',desArr:d.des.mei,fr:CP.freight.trinidad_dahej}]},
-    {id:'angola', label:'Angola',costBase:'TTF',col:'#ff9800',
-      routes:[{dest:'NWE',desArr:d.des.nwe,fr:CP.freight.angola_gate},{dest:'JKTC',desArr:d.des.jktc,fr:CP.freight.angola_tokyo},{dest:'MEI',desArr:d.des.mei,fr:CP.freight.angola_dahej}]},
-    {id:'nigeria',label:'Nigeria',costBase:'TTF',col:'#81c784',
-      routes:[{dest:'NWE',desArr:d.des.nwe,fr:CP.freight.nigeria_gate},{dest:'JKTC',desArr:d.des.jktc,fr:CP.freight.nigeria_tokyo},{dest:'MEI',desArr:d.des.mei,fr:CP.freight.nigeria_dahej}]},
-  ];
-  const sl=CP.hhSlope;
-  function idxArr(costBase){return costBase==='HH'?ML.map((_,i)=>sl*CP.fp.HH[i]):costBase==='JKM'?CP.fp.JKM:CP.fp.TTF;}
-  const monthSel=`<select class="f-sel" style="float:right" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>`;
-  return`<div class="f-sec">ATLANTIC BASIN ARB &nbsp;${monthSel}</div>
-  ${orgs.map(org=>{
-    const idx=idxArr(org.costBase);
-    const costLabel=org.costBase==='HH'?`${(sl*100).toFixed(1)}%×HH`:`${org.costBase} flat`;
-    const rows=org.routes.map(r=>{
-      const nb=ML.map((_,i)=>r.desArr[i]-r.fr[i]-idx[i]);
-      return{dest:r.dest,desArr:r.desArr,fr:r.fr,nb};
+
+// ── Shared: build heatmap + ranking + details for a basin ───────────────────
+function cpBasinTab(cfg, d){
+  const idx = CP.globalArbIdx||'TTF';
+  const idxA = idx==='JKM'?CP.fp.JKM:idx==='HH'?CP.fp.HH:CP.fp.TTF;
+  const idxLbl = idx==='HH'?'HH flat':idx+' flat';
+  const sl = CP.hhSlope||1.15;
+  const fr = CP.freight;
+  const m = CP.selMonth;
+  const MONTHS12 = ML.slice(0,12);
+
+  // nb for heatmap/ranking uses selected index
+  function nbIdx(desArr, frArr){
+    return ML.map((_,i)=>frArr&&frArr[i]!=null ? desArr[i]-frArr[i]-idxA[i] : null);
+  }
+  // nb for details uses per-destination index (TTF for Europe, JKM for MEI/Asia)
+  function nbDes(des, frArr, i){
+    if(!frArr||frArr[i]==null)return null;
+    const idxV = des.hub==='TTF'?CP.fp.TTF[i]:des.hub==='JKM'?CP.fp.JKM[i]:(sl*CP.fp.HH[i]);
+    return des.arr[i]-frArr[i]-idxV;
+  }
+
+  const DEST_STYLE={eur:{bg:'#0d2545',fg:'#90caf9',lbl:'Europe'},mei:{bg:'#0d2e15',fg:'#a5d6a7',lbl:'MEI'},asia:{bg:'#2d0f0f',fg:'#ef9a9a',lbl:'JKTC'}};
+
+  // ── 1. Heatmap ─────────────────────────────────────────────────────────────
+  const idxBtns = ['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x}</button>`).join('');
+  const legend = [['#0d2545','Europe'],['#0d2e15','MEI'],['#2d0f0f','JKTC']].map(([bg,lbl])=>`<div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#546e7a"><span style="display:inline-block;width:20px;height:11px;border-radius:3px;background:${bg}"></span>${lbl}</div>`).join('');
+
+  let hmRows='';
+  cfg.orgs.forEach(org=>{
+    hmRows+=`<tr><td style="font-size:10px;padding:4px 8px;white-space:nowrap;color:#c8d6e5"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${org.col};margin-right:5px;vertical-align:middle"></span>${org.label}</td>`;
+    MONTHS12.forEach((_,i)=>{
+      const cands=[];
+      Object.entries(org.hmRoutes).forEach(([dk,frArr])=>{if(!frArr)return;const desArr=dk==='eur'?d.des.nwe:dk==='mei'?d.des.mei:d.des.jktc;const v=desArr[i]-frArr[i]-idxA[i];cands.push({dk,v});});
+      if(!cands.length){hmRows+=`<td><div style="background:#0a1628;border-radius:4px;padding:5px 2px;text-align:center;color:#1e3a5f;font-size:9px;min-width:48px">—</div></td>`;return;}
+      const best=cands.reduce((a,b)=>b.v>a.v?b:a);
+      const DS=DEST_STYLE[best.dk];
+      const isSel=i===m;
+      hmRows+=`<td style="padding:2px"><div style="background:${DS.bg};border-radius:4px;padding:5px 2px;text-align:center;cursor:pointer;min-width:48px;border:${isSel?'2px solid #c8d6e5':'2px solid transparent'}"
+        onclick="CP.selMonth=${i};renderCargoTab()"
+        title="${org.label} → ${DS.lbl} (${ML[i]})\n${idx}: ${best.v>=0?'+':''}${best.v.toFixed(3)}">
+        <div style="font-size:10px;font-weight:700;color:${DS.fg}">${DS.lbl}</div>
+        <div style="font-size:9px;color:${DS.fg};opacity:.7">${best.v>=0?'+':''}${best.v.toFixed(2)}</div>
+      </div></td>`;
     });
-    return`<div style="margin-bottom:20px;background:#0a1628;border:1px solid #1e3a5f;padding:12px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <span style="color:${org.col};font-size:10px;font-weight:700;letter-spacing:1px">${org.label}</span>
-        <span style="color:#546e7a;font-size:9px">Cost base: ${costLabel}</span>
-      </div>
-      <div style="overflow-x:auto"><table class="f-tbl"><thead>
-        <tr><th style="min-width:120px">ITEM / ${ML[m]}</th>${ML.slice(0,12).map(mo=>`<th class="tr" style="min-width:60px">${mo}</th>`).join('')}</tr>
-      </thead><tbody>
-        ${rows.map(r=>`
-          <tr style="border-top:1px solid #0d1526"><td style="color:#546e7a;font-size:9px">DES ${r.dest}</td>${r.desArr.slice(0,12).map(v=>`<td class="tr" style="color:#26c6da">${fv(v)}</td>`).join('')}</tr>
-          <tr><td style="color:#546e7a;font-size:9px">Freight</td>${r.fr.slice(0,12).map(v=>`<td class="tr" style="color:#546e7a">${fv(v)}</td>`).join('')}</tr>
-          <tr style="background:#0d1526"><td style="color:${org.col};font-weight:700;font-size:10px">► ${org.costBase} Equiv → ${r.dest}</td>${r.nb.slice(0,12).map((v,i)=>`<td class="tr" style="color:${posCol(v)};font-weight:${i===m?700:400}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
-        `).join('')}
-      </tbody></table></div>
-    </div>`;
-  }).join('')}`;
+    hmRows+='</tr>';
+  });
+
+  // ── 2. Route ranking ───────────────────────────────────────────────────────
+  let rkHtml='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:12px 0">';
+  cfg.orgs.forEach(org=>{
+    const routes=[];
+    Object.entries(org.hmRoutes).forEach(([dk,frArr])=>{
+      if(!frArr||frArr[m]==null)return;
+      const desArr=dk==='eur'?d.des.nwe:dk==='mei'?d.des.mei:d.des.jktc;
+      routes.push({dk,v:desArr[m]-frArr[m]-idxA[m],lbl:DEST_STYLE[dk].lbl,col:DEST_STYLE[dk].fg});
+    });
+    if(!routes.length)return;
+    routes.sort((a,b)=>b.v-a.v);
+    const maxV=Math.max(...routes.map(r=>Math.abs(r.v)),0.01);
+    rkHtml+=`<div style="background:#0a1628;border:0.5px solid #1e3a5f;border-radius:8px;padding:9px 11px">
+      <div style="font-size:10px;font-weight:700;color:#c8d6e5;margin-bottom:8px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${org.col};margin-right:5px;vertical-align:middle"></span>${org.label}</div>`;
+    routes.forEach((r,i)=>{
+      const pct=Math.round((Math.abs(r.v)/maxV)*100);
+      rkHtml+=`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:0.5px solid #0d1526">
+        <span style="font-size:10px;min-width:13px;${i===0?'color:#c8d6e5;font-weight:500':'color:#546e7a'}">${i+1}</span>
+        <span style="font-size:11px;font-weight:500;flex:1;color:${r.col}">${r.lbl}</span>
+        <div style="flex:1;height:3px;border-radius:2px;background:#1e3a5f;overflow:hidden"><div style="width:${pct}%;height:100%;border-radius:2px;background:${r.col}"></div></div>
+        <span style="font-size:11px;font-weight:500;min-width:50px;text-align:right;color:${r.col}">${r.v>=0?'+':''}${r.v.toFixed(3)}</span>
+      </div>`;
+    });
+    rkHtml+='</div>';
+  });
+  rkHtml+='</div>';
+
+  // ── 3. Detailed calculation ────────────────────────────────────────────────
+  const selOrg = cfg.orgs.find(o=>o.id===CP.selBasinOrg)||cfg.orgs[0];
+  const orgSel = `<select class="f-sel" onchange="CP.selBasinOrg=this.value;renderCargoTab()">${cfg.orgs.map(o=>`<option value="${o.id}"${(CP.selBasinOrg||cfg.orgs[0].id)===o.id?' selected':''}>${o.label}</option>`).join('')}</select>`;
+  let dtRows='';
+  selOrg.dtRoutes.forEach(dt=>{
+    const v=nbDes(dt,dt.frArr,m);
+    const col=dt.hub==='TTF'?'#26c6da':dt.hub==='JKM'?'#ab47bc':dt.hub==='HH'?'#4fc3f7':'#c8d6e5';
+    const idxV=dt.hub==='TTF'?CP.fp.TTF[m]:dt.hub==='JKM'?CP.fp.JKM[m]:(sl*CP.fp.HH[m]);
+    dtRows+=`<tr${dt.divider?` style="border-top:1px solid #1e3a5f"`:''}>
+      <td style="color:${col};font-size:10px">${dt.label}</td>
+      <td style="text-align:right;color:#c8d6e5">${dt.arr[m]!=null?fv(dt.arr[m]):'-'}</td>
+      <td style="text-align:right;color:#546e7a">${dt.frArr&&dt.frArr[m]!=null?'− '+fv(dt.frArr[m]):'—'}</td>
+      <td style="text-align:right;color:#546e7a">− ${fv(idxV)}</td>
+      <td style="text-align:right;color:${col};font-weight:500">${v!=null?(v>=0?'+':'')+fv(v):'—'}</td>
+    </tr>`;
+  });
+
+  return`
+  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:7px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FOB NETBACK IN</span>${idxBtns}
+    <span style="flex:1"></span>${legend}
+  </div>
+
+  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:4px 14px 6px;font-size:9px;font-weight:700;color:#546e7a;letter-spacing:1px">ARB HEATMAP</div>
+  <div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:600px">
+    <thead><tr>
+      <th style="text-align:left;font-size:9px;color:#546e7a;padding:6px 8px;min-width:130px;border-bottom:1px solid #1e3a5f">ORIGIN</th>
+      ${MONTHS12.map((mo,i)=>`<th style="font-size:9px;color:${i===m?'#c8d6e5':'#546e7a'};padding:4px 2px;text-align:center;border-bottom:${i===m?'2px solid #c8d6e5':'1px solid #1e3a5f'};min-width:54px">${mo}</th>`).join('')}
+    </tr></thead>
+    <tbody>${hmRows}</tbody>
+  </table></div>
+
+  <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;margin-top:14px;display:flex;align-items:center;gap:8px">
+    <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">ROUTE RANKING —</span>
+    <span style="color:#c8d6e5;font-size:9px;font-weight:700">${ML[m]}</span>
+    <span style="flex:1"></span>
+    <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>
+  </div>
+  ${rkHtml}
+
+  <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;margin-top:4px;display:flex;align-items:center;gap:8px">
+    <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">DETAILED CALCULATION —</span>
+    <span style="color:#c8d6e5;font-size:9px;font-weight:700">${ML[m]}</span>
+    <span style="flex:1"></span>${orgSel}
+  </div>
+  <div style="overflow-x:auto;padding:0 0 8px"><table class="f-tbl"><thead><tr>
+    <th style="min-width:140px">TERMINAL</th>
+    <th class="tr">DES price</th><th class="tr">Freight</th><th class="tr">${idxLbl}</th>
+    <th class="tr">FOB netback</th>
+  </tr></thead><tbody>${dtRows}</tbody></table></div>`;
 }
 
-// ── Tab 3: MEI Arb ──────────────────────────────────────────────────────────
+// ── Tab 3 (was 2): Atlantic Basin Arb ───────────────────────────────────────
+function cpAtlanticArb(d){
+  if(!CP.selBasinOrg||!['sabine','trinidad','angola','nigeria'].includes(CP.selBasinOrg))CP.selBasinOrg='sabine';
+  const fr=CP.freight;
+  // Sub-terminal freight for non-Sabine origins: base gate + Sabine differential
+  function subFr(gateFr,subKey){return ML.map((_,i)=>{const gv=gateFr[i];const diff=(fr[subKey]?.[i]??0)-(fr.sabine_rotterdam[i]??0);return gv!=null?gv+diff:null;});}
+  const cfg={
+    orgs:[
+      {id:'sabine',  label:'Sabine Pass', col:'#4fc3f7',
+       hmRoutes:{eur:fr.sabine_rotterdam,mei:fr.sabine_dahej,asia:fr.sabine_tokyo},
+       dtRoutes:[
+         {label:'NWE (Gate Rotterdam)',hub:'TTF',arr:d.des.nwe, frArr:fr.sabine_rotterdam},
+         {label:'Iberia',             hub:'TTF',arr:d.des.iberia,frArr:fr.sabine_huelva??fr.sabine_rotterdam},
+         {label:'UK Terminals',       hub:'TTF',arr:d.des.uk,  frArr:fr.sabine_rotterdam},
+         {label:'DES Italy',          hub:'TTF',arr:d.des.italy,frArr:fr.sabine_rovigo??fr.sabine_rotterdam},
+         {label:'Klaipeda',           hub:'TTF',arr:d.des.klaipeda,frArr:fr.sabine_klaipeda},
+         {label:'Inkoo',              hub:'TTF',arr:d.des.inkoo,frArr:fr.sabine_inkoo},
+         {label:'Revithoussa',        hub:'TTF',arr:d.des.rev, frArr:fr.sabine_rev},
+         {label:'KRK',                hub:'TTF',arr:d.des.krk, frArr:fr.sabine_krk},
+         {label:'Ain Sukhna',         hub:'TTF',arr:d.des.ain, frArr:fr.sabine_ain},
+         {label:'Aliaga',             hub:'TTF',arr:d.des.ali, frArr:fr.sabine_ali},
+         {label:'MEI (Dahej)',         hub:'JKM',arr:d.des.mei, frArr:fr.sabine_dahej,divider:true},
+         {label:'JKTC',               hub:'JKM',arr:d.des.jktc,frArr:fr.sabine_tokyo},
+       ]},
+      {id:'trinidad',label:'Trinidad',    col:'#29b6f6',
+       hmRoutes:{eur:fr.trinidad_gate,mei:fr.trinidad_dahej,asia:fr.trinidad_tokyo},
+       dtRoutes:[
+         {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.trinidad_gate},
+         {label:'Klaipeda',  hub:'TTF',arr:d.des.klaipeda,frArr:subFr(fr.trinidad_gate,'sabine_klaipeda')},
+         {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.trinidad_gate,'sabine_ain')},
+         {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.trinidad_dahej,divider:true},
+         {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.trinidad_tokyo},
+       ]},
+      {id:'angola',  label:'Angola',      col:'#ff9800',
+       hmRoutes:{eur:fr.angola_gate,mei:fr.angola_dahej,asia:fr.angola_tokyo},
+       dtRoutes:[
+         {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.angola_gate},
+         {label:'Klaipeda',  hub:'TTF',arr:d.des.klaipeda,frArr:subFr(fr.angola_gate,'sabine_klaipeda')},
+         {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.angola_gate,'sabine_ain')},
+         {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.angola_dahej,divider:true},
+         {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.angola_tokyo},
+       ]},
+      {id:'nigeria', label:'Nigeria',     col:'#81c784',
+       hmRoutes:{eur:fr.nigeria_gate,mei:fr.nigeria_dahej,asia:fr.nigeria_tokyo},
+       dtRoutes:[
+         {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.nigeria_gate},
+         {label:'Klaipeda',  hub:'TTF',arr:d.des.klaipeda,frArr:subFr(fr.nigeria_gate,'sabine_klaipeda')},
+         {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.nigeria_gate,'sabine_ain')},
+         {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.nigeria_dahej,divider:true},
+         {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.nigeria_tokyo},
+       ]},
+    ]
+  };
+  return`<div class="f-sec">ATLANTIC BASIN ARB</div>`+cpBasinTab(cfg,d);
+}
+
+// ── Tab 4 (was 3): MEI Arb ───────────────────────────────────────────────────
 function cpMEIArb(d){
-  const m=CP.selMonth;
-  const orgs=[
-    {id:'qatar',label:'Qatar (Ras Laffan)',col:'#ffb74d',
-      routes:[{dest:'NWE',desArr:d.des.nwe,fr:CP.freight.qatar_gate},{dest:'MEI',desArr:d.des.mei,fr:CP.freight.qatar_dahej},{dest:'JKTC',desArr:d.des.jktc,fr:CP.freight.qatar_tokyo}]},
-    {id:'oman',label:'Oman (Sur)',col:'#ff9800',
-      routes:[{dest:'NWE',desArr:d.des.nwe,fr:CP.freight.oman_gate},{dest:'MEI',desArr:d.des.mei,fr:CP.freight.oman_dahej},{dest:'JKTC',desArr:d.des.jktc,fr:CP.freight.oman_tokyo}]},
-  ];
-  const monthSel=`<select class="f-sel" style="float:right" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>`;
-  const phyMeiRow=`<div style="background:#0a1628;border:1px solid #1e3a5f;padding:10px;margin-bottom:16px">
-    <div style="color:#546e7a;font-size:9px;margin-bottom:8px">DES MEI PHYSICAL DIFFERENTIAL vs JKM — Angola Dahej−Tokyo freight basis ($/MMBtu)</div>
+  if(!CP.selBasinOrg||!['qatar','oman'].includes(CP.selBasinOrg))CP.selBasinOrg='qatar';
+  const fr=CP.freight;
+  const cfg={
+    orgs:[
+      {id:'qatar',label:'Qatar (Ras Laffan)',col:'#ffb74d',
+       hmRoutes:{eur:fr.qatar_gate,mei:fr.qatar_dahej,asia:fr.qatar_tokyo},
+       dtRoutes:[
+         {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.qatar_gate},
+         {label:'Revithoussa',hub:'TTF',arr:d.des.rev,frArr:fr.qatar_gate},
+         {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.qatar_gate},
+         {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:fr.qatar_dahej,divider:true},
+         {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.qatar_tokyo},
+       ]},
+      {id:'oman',label:'Oman (Sur LNG)',col:'#ff9800',
+       hmRoutes:{eur:fr.oman_gate,mei:fr.oman_dahej,asia:fr.oman_tokyo},
+       dtRoutes:[
+         {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.oman_gate},
+         {label:'Revithoussa',hub:'TTF',arr:d.des.rev,frArr:fr.oman_gate},
+         {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.oman_gate},
+         {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:fr.oman_dahej,divider:true},
+         {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.oman_tokyo},
+       ]},
+    ]
+  };
+  return`<div class="f-sec">MEI BASIN ARB</div>
+  <div style="background:#0a1628;border:1px solid #1e3a5f;padding:10px;margin-bottom:14px">
+    <div style="color:#546e7a;font-size:9px;margin-bottom:8px;font-weight:700;letter-spacing:1px">DES MEI DIFFERENTIAL — Angola Dahej−Tokyo ($/MMBtu)</div>
     <div style="overflow-x:auto"><table class="f-tbl"><thead><tr>
-      <th style="min-width:140px">COMPONENT</th>${ML.slice(0,12).map(mo=>`<th class="tr" style="min-width:60px">${mo}</th>`).join('')}
+      <th style="min-width:160px">COMPONENT</th>${ML.slice(0,12).map(mo=>`<th class="tr" style="min-width:56px">${mo}</th>`).join('')}
     </tr></thead><tbody>
-      <tr><td style="color:#546e7a;font-size:9px">Angola→Dahej freight</td>${CP.freight.angola_dahej.slice(0,12).map(v=>`<td class="tr" style="color:#546e7a">${fv(v)}</td>`).join('')}</tr>
-      <tr><td style="color:#546e7a;font-size:9px">Angola→Tokyo freight</td>${CP.freight.angola_tokyo.slice(0,12).map(v=>`<td class="tr" style="color:#546e7a">${fv(v)}</td>`).join('')}</tr>
-      <tr style="background:#0d1526"><td style="color:#ff9800;font-weight:700">MEI Physical Diff (Dahej−Tokyo)</td>${d.phyMei.slice(0,12).map(v=>`<td class="tr" style="color:#ff9800;font-weight:700">${fv(v)}</td>`).join('')}</tr>
+      <tr><td style="color:#546e7a;font-size:9px">Angola→Dahej</td>${fr.angola_dahej.slice(0,12).map(v=>`<td class="tr" style="color:#546e7a">${fv(v)}</td>`).join('')}</tr>
+      <tr><td style="color:#546e7a;font-size:9px">Angola→Tokyo</td>${fr.angola_tokyo.slice(0,12).map(v=>`<td class="tr" style="color:#546e7a">${fv(v)}</td>`).join('')}</tr>
+      <tr style="background:#0d1526"><td style="color:#ff9800;font-weight:700">MEI Diff = Dahej−Tokyo</td>${d.phyMei.slice(0,12).map(v=>`<td class="tr" style="color:#ff9800;font-weight:700">${fv(v)}</td>`).join('')}</tr>
       <tr><td style="color:#ab47bc;font-weight:700">DES MEI = JKM + Diff</td>${d.des.mei.slice(0,12).map(v=>`<td class="tr" style="color:#ab47bc">${fv(v)}</td>`).join('')}</tr>
     </tbody></table></div>
-  </div>`;
-  return`<div class="f-sec">MEI ARB &nbsp;${monthSel}</div>${phyMeiRow}
-  ${orgs.map(org=>{
-    const rows=org.routes.map(r=>{
-      const idxArr=r.dest==='NWE'?CP.fp.TTF:CP.fp.JKM;
-      const nb=ML.map((_,i)=>r.desArr[i]-r.fr[i]-idxArr[i]);
-      const idxLabel=r.dest==='NWE'?'TTF':'JKM';
-      return{dest:r.dest,desArr:r.desArr,fr:r.fr,nb,idxLabel};
-    });
-    return`<div style="margin-bottom:20px;background:#0a1628;border:1px solid #1e3a5f;padding:12px">
-      <div style="color:${org.col};font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:8px">${org.label}</div>
-      <div style="overflow-x:auto"><table class="f-tbl"><thead>
-        <tr><th style="min-width:130px">ITEM / ${ML[m]}</th>${ML.slice(0,12).map(mo=>`<th class="tr" style="min-width:60px">${mo}</th>`).join('')}</tr>
-      </thead><tbody>
-        ${rows.map(r=>`
-          <tr style="border-top:1px solid #0d1526"><td style="color:#546e7a;font-size:9px">DES ${r.dest}</td>${r.desArr.slice(0,12).map(v=>`<td class="tr" style="color:#26c6da">${fv(v)}</td>`).join('')}</tr>
-          <tr><td style="color:#546e7a;font-size:9px">Freight</td>${r.fr.slice(0,12).map(v=>`<td class="tr" style="color:#546e7a">${fv(v)}</td>`).join('')}</tr>
-          <tr style="background:#0d1526"><td style="color:${org.col};font-weight:700;font-size:10px">► ${r.idxLabel} Equiv → ${r.dest}</td>${r.nb.slice(0,12).map((v,i)=>`<td class="tr" style="color:${posCol(v)};font-weight:${i===m?700:400}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
-        `).join('')}
-      </tbody></table></div>
-    </div>`;
-  }).join('')}`;
+  </div>`+cpBasinTab(cfg,d);
 }
 
-// ── Tab 4: Pacific Basin Arb ────────────────────────────────────────────────
+// ── Tab 5 (was 4): Pacific Basin Arb ────────────────────────────────────────
 function cpPacificArb(d){
-  const m=CP.selMonth;
-  const orgs=[
-    {id:'australia_b',label:'Australia — Barrow Island',col:'#81c784',
-      routes:[{dest:'JKTC',desArr:d.des.jktc,fr:CP.freight.australia_b_tokyo}]},
-    {id:'australia_g',label:'Australia — Gladstone',col:'#66bb6a',
-      routes:[{dest:'JKTC',desArr:d.des.jktc,fr:CP.freight.australia_g_tokyo}]},
-    {id:'indonesia',label:'Indonesia — Bontang',col:'#a5d6a7',
-      routes:[{dest:'JKTC',desArr:d.des.jktc,fr:CP.freight.indonesia_tokyo}]},
-  ];
-  const monthSel=`<select class="f-sel" style="float:right" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>`;
-  return`<div class="f-sec">PACIFIC BASIN ARB — JKM cost base &nbsp;${monthSel}</div>
-  ${orgs.map(org=>{
-    const rows=org.routes.map(r=>{
-      const nb=ML.map((_,i)=>r.desArr[i]-r.fr[i]-CP.fp.JKM[i]);
-      return{dest:r.dest,desArr:r.desArr,fr:r.fr,nb};
-    });
-    return`<div style="margin-bottom:20px;background:#0a1628;border:1px solid #1e3a5f;padding:12px">
-      <div style="color:${org.col};font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:8px">${org.label}</div>
-      <div style="overflow-x:auto"><table class="f-tbl"><thead>
-        <tr><th style="min-width:130px">ITEM / ${ML[m]}</th>${ML.slice(0,12).map(mo=>`<th class="tr" style="min-width:60px">${mo}</th>`).join('')}</tr>
-      </thead><tbody>
-        ${rows.map(r=>`
-          <tr><td style="color:#546e7a;font-size:9px">DES ${r.dest} (JKM + JKTC diff)</td>${r.desArr.slice(0,12).map(v=>`<td class="tr" style="color:#ab47bc">${fv(v)}</td>`).join('')}</tr>
-          <tr><td style="color:#546e7a;font-size:9px">Freight → ${r.dest}</td>${r.fr.slice(0,12).map(v=>`<td class="tr" style="color:#546e7a">${fv(v)}</td>`).join('')}</tr>
-          <tr><td style="color:#546e7a;font-size:9px">JKM flat</td>${CP.fp.JKM.slice(0,12).map(v=>`<td class="tr" style="color:#ab47bc;opacity:0.6">${fv(v)}</td>`).join('')}</tr>
-          <tr style="background:#0d1526"><td style="color:${org.col};font-weight:700;font-size:10px">► JKM Equiv → ${r.dest}</td>${r.nb.slice(0,12).map((v,i)=>`<td class="tr" style="color:${posCol(v)};font-weight:${i===m?700:400}">${v>=0?'+':''}${fv(v)}</td>`).join('')}</tr>
-        `).join('')}
-      </tbody></table></div>
-    </div>`;
-  }).join('')}`;
+  if(!CP.selBasinOrg||!['aus_b','aus_g','bontang'].includes(CP.selBasinOrg))CP.selBasinOrg='aus_b';
+  const fr=CP.freight;
+  const cfg={
+    orgs:[
+      {id:'aus_b',  label:'Barrow Island (Aus)',col:'#81c784',
+       hmRoutes:{asia:fr.australia_b_tokyo},
+       dtRoutes:[{label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_b_tokyo}]},
+      {id:'aus_g',  label:'Gladstone (Aus)',    col:'#66bb6a',
+       hmRoutes:{asia:fr.australia_g_tokyo},
+       dtRoutes:[{label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_g_tokyo}]},
+      {id:'bontang',label:'Bontang (Indonesia)',col:'#a5d6a7',
+       hmRoutes:{asia:fr.indonesia_tokyo},
+       dtRoutes:[{label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.indonesia_tokyo}]},
+    ]
+  };
+  return`<div class="f-sec">PACIFIC BASIN ARB — JKM cost base</div>`+cpBasinTab(cfg,d);
 }
 
 
