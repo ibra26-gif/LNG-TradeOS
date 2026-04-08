@@ -5414,6 +5414,7 @@ function cpDerived(){
       freight[k]=src.map((v,i)=>(v!=null&&!isNaN(v))?v:sd[i]);
     else freight[k]=sd.slice();
   });
+  CP.freight=freight; // write back so basin tabs (cpGlobalArb/Atlantic/MEI/Pacific) get clean values
   // ── Physical diffs ─────────────────────────────────────────────────────────
   const phyItaly=ML.map((_,i)=>phys.nwe[i]+(freight.sabine_rovigo?.[i]??freight.sabine_rotterdam[i]*1.21)-(freight.sabine_rotterdam[i]));
   // MEI diff: Angola Dahej-Tokyo freight differential vs JKM
@@ -6066,7 +6067,6 @@ function cpBasinTab(cfg, d){
   return`
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:7px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FOB NETBACK IN</span>${idxBtns}
-    <span style="color:#546e7a;font-size:9px;letter-spacing:1px;margin-left:10px">SUPPLY SOURCE</span>${orgSel}
     <span style="flex:1"></span>${legend}
   </div>
 
@@ -6079,14 +6079,19 @@ function cpBasinTab(cfg, d){
     <tbody>${hmRows}${cpJkmTtfRow()}</tbody>
   </table></div>
 
-  <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;margin-top:14px;display:flex;align-items:center;gap:8px">
+  <div style="background:#080e1c;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="color:#546e7a;font-size:9px;letter-spacing:1px">SUPPLY SOURCE</span>${orgSel}
+    <span style="color:#1e3a5f;font-size:12px">│</span>
+    <span style="color:#546e7a;font-size:9px;letter-spacing:1px">MONTH</span>
+    <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>
+  </div>
+
+  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:6px 14px;margin-top:0;display:flex;align-items:center;gap:8px">
     <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">ROUTE RANKING</span>
     <span style="color:#3d5070;font-size:9px">—</span>
     <span style="color:#c8d6e5;font-size:9px;font-weight:700">${selOrg.label}</span>
     <span style="color:#3d5070;font-size:9px">·</span>
     <span style="color:#4fc3f7;font-size:9px">${ML[m]}</span>
-    <span style="flex:1"></span>
-    <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>
   </div>
   ${rkHtml}
 
@@ -6206,7 +6211,6 @@ function cpMEIArb(d){
       <tr><td style="color:#546e7a;font-size:9px">Angola→Dahej</td>${fr.angola_dahej.slice(0,12).map(v=>`<td class="tr" style="color:#546e7a">${fv(v)}</td>`).join('')}</tr>
       <tr><td style="color:#546e7a;font-size:9px">Angola→Tokyo</td>${fr.angola_tokyo.slice(0,12).map(v=>`<td class="tr" style="color:#546e7a">${fv(v)}</td>`).join('')}</tr>
       <tr style="background:#0d1526"><td style="color:#ff9800;font-weight:700">MEI Diff</td>${d.phyMei.slice(0,12).map(v=>`<td class="tr" style="color:#ff9800;font-weight:700">${fv(v)}</td>`).join('')}</tr>
-      <tr><td style="color:#ab47bc;font-weight:700">DES MEI = JKM + Diff</td>${d.des.mei.slice(0,12).map(v=>`<td class="tr" style="color:#ab47bc">${fv(v)}</td>`).join('')}</tr>
     </tbody></table></div>
   </div>`+cpBasinTab(cfg,d);
 }
@@ -6236,7 +6240,7 @@ function cpPacificArb(d){
 
   const cfg={orgs:[
     {id:'aus_b',label:'Barrow Island (Aus)',col:'#81c784',
-     hmRoutes:{eur:pac_b_gate,asia:fr.australia_b_tokyo},
+     hmRoutes:{eur:pac_b_gate,mei:pac_b_dahej,asia:fr.australia_b_tokyo},
      dtRoutes:[
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_b_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_b_thai},
@@ -6246,7 +6250,7 @@ function cpPacificArb(d){
        {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.australia_b_ain},
      ]},
     {id:'aus_g',label:'Gladstone (Aus)',col:'#66bb6a',
-     hmRoutes:{eur:pac_g_gate,asia:fr.australia_g_tokyo},
+     hmRoutes:{eur:pac_g_gate,mei:pac_g_dahej,asia:fr.australia_g_tokyo},
      dtRoutes:[
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_g_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_g_thai},
@@ -6256,7 +6260,7 @@ function cpPacificArb(d){
        {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.australia_g_ain},
      ]},
     {id:'bontang',label:'Bontang (Indonesia)',col:'#a5d6a7',
-     hmRoutes:{eur:pac_id_gate,asia:fr.indonesia_tokyo},
+     hmRoutes:{eur:pac_id_gate,mei:pac_id_dahej,asia:fr.indonesia_tokyo},
      dtRoutes:[
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.indonesia_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_id_thai},
