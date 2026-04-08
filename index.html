@@ -5492,7 +5492,7 @@ function cpDerived(){
     jkmTtf,frDiff,arbOpen,profEur,profAsia};
 }
 // ── Freight seed version: bump whenever seed curves change to force cache refresh ──
-const CP_FREIGHT_VER='v53_final_apr2026';
+const CP_FREIGHT_VER='v53_global_apr2026';
 
 function cpMergeFreight(){
   const seed=JSON.parse(JSON.stringify(CP_SEED_FR));
@@ -5530,7 +5530,7 @@ function renderCargo(){
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">CARGO PRICING MODEL</span>
     <span style="flex:1"></span>
-    <span style="color:#3d5070;font-size:9px;letter-spacing:.08em;margin-right:8px">v53_final_apr2026</span><button class="f-btn sm" onclick="cpForceReset()" title="Wipe localStorage cache and reinitialise from seed" style="border-color:rgba(255,82,82,.3);color:#ef5350">⚠ RESET CACHE</button><button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading">↺ SYNC PRICES</button>
+    <span style="color:#3d5070;font-size:9px;letter-spacing:.08em;margin-right:8px">v53_global_apr2026</span><button class="f-btn sm" onclick="cpForceReset()" title="Wipe localStorage cache and reinitialise from seed" style="border-color:rgba(255,82,82,.3);color:#ef5350">⚠ RESET CACHE</button><button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading">↺ SYNC PRICES</button>
     <button class="f-btn sm" onclick="cpSyncFreight()" title="Pull latest freight $/MMBtu from validated freight matrix">↺ SYNC FREIGHT</button>
   </div>
   <div class="f-subnav">${CP_TABS.map((t,i)=>`<button class="f-tab${CP.tab===i?' active':''}" onclick="cpTab(${i})">${t}</button>`).join('')}</div>
@@ -5767,23 +5767,23 @@ function cpGlobalArb(d){
   function nb(desArr,frArr){return ML.map((_,i)=>frArr&&frArr[i]!=null?desArr[i]-frArr[i]-idxArr[i]:null);}
   const ORGS=[
     {id:'sabine', label:'Sabine Pass',basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),ain:nb(d.des.ain,fr.sabine_ain),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.des.jktc,fr.sabine_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.des.jktc,fr.sabine_tokyo)}},
     {id:'trinidad',label:'Trinidad',  basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.trinidad_gate),ain:nb(d.des.ain,fr.trinidad_ain),mei:nb(d.des.mei,fr.trinidad_dahej),asia:nb(d.des.jktc,fr.trinidad_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.trinidad_gate),mei:nb(d.des.mei,fr.trinidad_dahej),asia:nb(d.des.jktc,fr.trinidad_tokyo)}},
     {id:'angola', label:'Angola',     basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.angola_gate),ain:nb(d.des.ain,fr.angola_ain),mei:nb(d.des.mei,fr.angola_dahej),asia:nb(d.des.jktc,fr.angola_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.angola_gate),mei:nb(d.des.mei,fr.angola_dahej),asia:nb(d.des.jktc,fr.angola_tokyo)}},
     {id:'nigeria',label:'Nigeria',    basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.nigeria_gate),ain:nb(d.des.ain,fr.nigeria_ain),mei:nb(d.des.mei,fr.nigeria_dahej),asia:nb(d.des.jktc,fr.nigeria_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.nigeria_gate),mei:nb(d.des.mei,fr.nigeria_dahej),asia:nb(d.des.jktc,fr.nigeria_tokyo)}},
     {id:'qatar',  label:'Qatar',      basin:'MEI',col:'#ffb74d',
-     routes:{eur:nb(d.des.nwe,fr.qatar_gate),ain:nb(d.des.ain,fr.qatar_ain),mei:nb(d.des.mei,fr.qatar_dahej),asia:nb(d.des.jktc,fr.qatar_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.qatar_gate),mei:nb(d.des.mei,fr.qatar_dahej),asia:nb(d.des.jktc,fr.qatar_tokyo)}},
     {id:'oman',   label:'Oman',       basin:'MEI',col:'#ffb74d',
-     routes:{eur:nb(d.des.nwe,fr.oman_gate),ain:nb(d.des.ain,fr.oman_ain),mei:nb(d.des.mei,fr.oman_dahej),asia:nb(d.des.jktc,fr.oman_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.oman_gate),mei:nb(d.des.mei,fr.oman_dahej),asia:nb(d.des.jktc,fr.oman_tokyo)}},
     {id:'aus_b',  label:'Barrow Is.', basin:'PAC',col:'#81c784',
-     routes:{asia:nb(d.des.jktc,fr.australia_b_tokyo),mei:nb(d.des.mei,fr.australia_b_ain),eur:nb(d.des.nwe,ML.map((_,i)=>fr.australia_b_tokyo[i]*3.683))}},
+     routes:{asia:nb(d.des.jktc,fr.australia_b_tokyo),eur:nb(d.des.nwe,ML.map((_,i)=>fr.australia_b_tokyo[i]*3.683))}},
     {id:'aus_g',  label:'Gladstone',  basin:'PAC',col:'#81c784',
-     routes:{asia:nb(d.des.jktc,fr.australia_g_tokyo),mei:nb(d.des.mei,fr.australia_g_ain),eur:nb(d.des.nwe,ML.map((_,i)=>fr.australia_g_tokyo[i]*3.538))}},
+     routes:{asia:nb(d.des.jktc,fr.australia_g_tokyo),eur:nb(d.des.nwe,ML.map((_,i)=>fr.australia_g_tokyo[i]*3.538))}},
     {id:'bontang',label:'Bontang',    basin:'PAC',col:'#81c784',
-     routes:{asia:nb(d.des.jktc,fr.indonesia_tokyo),mei:nb(d.des.mei,fr.indonesia_ain),eur:nb(d.des.nwe,ML.map((_,i)=>fr.indonesia_tokyo[i]*5.122))}},
+     routes:{asia:nb(d.des.jktc,fr.indonesia_tokyo),eur:nb(d.des.nwe,ML.map((_,i)=>fr.indonesia_tokyo[i]*5.122))}},
   ];
   const DEST_LABEL={eur:'Europe',ain:'Ain Sukhna',mei:'MEI',asia:'JKTC'};
   const BASIN_COL={ATL:'#4fc3f7',MEI:'#ffb74d',PAC:'#81c784'};
