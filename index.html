@@ -1175,7 +1175,7 @@ function pvCargoHTML(cargo,i){
   // Discharge dropdowns with None
   const euOpts=`<option value="none">None</option>`+BASE_D.filter(d=>d.region==='Europe').map(d=>`<option value="${d.id}" ${d.id===cargo.euDisch?'selected':''}>${d.name}</option>`).join('');
   const asiaOpts=`<option value="none">None</option>`+BASE_D.filter(d=>d.region==='Asia'&&!['dahej','portqasim'].includes(d.id)).map(d=>`<option value="${d.id}" ${d.id===cargo.asiaDisch?'selected':''}>${d.name}</option>`).join('');
-  const meiOpts=`<option value="none">None</option>`+BASE_D.filter(d=>['Middle East','Asia','Med'].includes(d.region)&&['dahej','portqasim','jebelali','ainsukhna','maptaphut','singapore'].includes(d.id)).map(d=>`<option value="${d.id}" ${d.id===cargo.meiDisch?'selected':''}>${d.name} (${d.region})</option>`).join('');
+  const meiOpts=`<option value="none">None</option>`+BASE_D.filter(d=>['Middle East','Asia','Med'].includes(d.region)&&['dahej','portqasim','jebelali','maptaphut','singapore'].includes(d.id)).map(d=>`<option value="${d.id}" ${d.id===cargo.meiDisch?'selected':''}>${d.name} (${d.region})</option>`).join('');
 
   const inp=(id,val,style,cb,type='text')=>`<input id="${id}" type="${type}" value="${val}" ${type==='number'?'step="any"':''} oninput="${cb}"
     style="width:100%;background:transparent;border:none;border-bottom:1px solid rgba(77,158,245,.2);color:var(--th);font-size:12px;font-family:inherit;padding:2px 0;outline:none;${style}">`;
@@ -5361,8 +5361,19 @@ const CP_SEED_FR={
   australia_b_tokyo:[0.240,0.240,0.225,0.207,0.203,0.218,0.226,0.218,0.192,0.170,0.163,0.159,0.160,0.167,0.163,0.131,0.131,0.131,0.131,0.131,0.131,0.131,0.152,0.146],
   australia_g_tokyo:[0.242,0.242,0.227,0.209,0.205,0.220,0.228,0.220,0.194,0.172,0.165,0.161,0.162,0.169,0.165,0.133,0.133,0.133,0.133,0.133,0.133,0.133,0.153,0.147],
   indonesia_tokyo:[0.165,0.165,0.155,0.143,0.140,0.150,0.155,0.150,0.131,0.116,0.111,0.108,0.109,0.114,0.111,0.090,0.090,0.090,0.090,0.090,0.090,0.090,0.104,0.100],
+  // ── Ain Sukhna freight curves — CoGH routing, NM-ratio derived (Apr-2026) ──
+  sabine_ain:[2.341,2.341,2.324,2.324,2.291,2.458,2.540,2.458,2.160,1.998,1.866,1.834,1.834,1.884,1.916,1.859,1.546,1.546,1.546,1.546,1.546,1.551,1.732,1.675],
+  trinidad_ain:[1.928,1.928,1.915,1.915,1.885,2.030,2.102,2.030,1.768,1.626,1.512,1.485,1.485,1.528,1.557,1.506,1.231,1.231,1.231,1.231,1.231,1.239,1.397,1.346],
+  angola_ain:[1.094,1.094,1.086,1.086,1.070,1.151,1.192,1.151,1.004,0.925,0.859,0.842,0.842,0.867,0.884,0.854,0.699,0.699,0.699,0.699,0.699,0.703,0.792,0.764],
+  nigeria_ain:[1.652,1.652,1.643,1.643,1.625,1.717,1.764,1.717,1.551,1.461,1.387,1.368,1.368,1.396,1.415,1.382,1.207,1.207,1.207,1.207,1.207,1.211,1.312,1.279],
+  qatar_ain:[0.545,0.545,0.505,0.445,0.437,0.457,0.477,0.517,0.545,0.445,0.405,0.385,0.365,0.373,0.385,0.393,0.306,0.326,0.326,0.326,0.306,0.306,0.340,0.326],
+  oman_ain:[0.450,0.450,0.417,0.367,0.361,0.377,0.394,0.427,0.450,0.367,0.334,0.317,0.301,0.307,0.317,0.324,0.252,0.269,0.269,0.269,0.252,0.252,0.280,0.269],
+  australia_b_ain:[0.385,0.385,0.361,0.332,0.326,0.350,0.363,0.350,0.308,0.273,0.262,0.255,0.257,0.268,0.262,0.210,0.210,0.210,0.210,0.210,0.210,0.210,0.244,0.234],
+  australia_g_ain:[0.541,0.541,0.508,0.467,0.458,0.492,0.510,0.492,0.434,0.385,0.369,0.360,0.362,0.378,0.369,0.297,0.297,0.297,0.297,0.297,0.297,0.297,0.342,0.329],
+  indonesia_ain:[0.398,0.398,0.374,0.345,0.337,0.361,0.374,0.361,0.316,0.280,0.267,0.260,0.263,0.275,0.267,0.217,0.217,0.217,0.217,0.217,0.217,0.217,0.251,0.241],
   sabine_klaipeda:[1.01,1.01,1.003,1.003,0.99,1.057,1.09,1.057,0.937,0.872,0.819,0.806,0.806,0.826,0.839,0.816,0.69,0.69,0.69,0.69,0.69,0.692,0.765,0.742],
   sabine_inkoo:[1.05,1.05,1.043,1.043,1.03,1.097,1.13,1.097,0.977,0.912,0.859,0.846,0.846,0.866,0.879,0.856,0.73,0.73,0.73,0.73,0.73,0.732,0.805,0.782],
+  sabine_swinoujscie:[1.067,1.067,1.060,1.060,1.045,1.121,1.158,1.121,0.985,0.911,0.851,0.836,0.836,0.859,0.874,0.848,0.705,0.705,0.705,0.705,0.705,0.707,0.790,0.764],
   sabine_rev:[1.09,1.09,1.083,1.083,1.07,1.137,1.17,1.137,1.017,0.952,0.899,0.886,0.886,0.906,0.919,0.896,0.77,0.77,0.77,0.77,0.77,0.772,0.845,0.822],
   sabine_krk:[1.1,1.1,1.093,1.093,1.08,1.147,1.18,1.147,1.027,0.962,0.909,0.896,0.896,0.916,0.929,0.906,0.78,0.78,0.78,0.78,0.78,0.782,0.855,0.832],
   sabine_ain:[1.35,1.35,1.343,1.343,1.33,1.397,1.43,1.397,1.277,1.212,1.159,1.146,1.146,1.166,1.179,1.156,1.03,1.03,1.03,1.03,1.03,1.032,1.105,1.082],
@@ -5394,6 +5405,7 @@ function cpDerived(){
   const phyKrk     =ML.map((_,i)=>withOv('krk',     termFr('krk',i),     i));
   const phyAin     =ML.map((_,i)=>withOv('ain',     termFr('ain',i)+0.50,i));
   const phyAli     =ML.map((_,i)=>withOv('ali',     termFr('ali',i)+0.50,i));
+  const phySwino   =ML.map((_,i)=>withOv('swino',   termFr('swinoujscie',i)+0.02,i)); // +$0.02: ice/pilotage premium
   // ── DES absolute prices ────────────────────────────────────────────────────
   const des={
     nwe:     ML.map((_,i)=>fp.TTF[i]+phys.nwe[i]),
@@ -5406,6 +5418,7 @@ function cpDerived(){
     krk:     ML.map((_,i)=>fp.TTF[i]+phyKrk[i]),
     ain:     ML.map((_,i)=>fp.TTF[i]+phyAin[i]),
     ali:     ML.map((_,i)=>fp.TTF[i]+phyAli[i]),
+    swino:   ML.map((_,i)=>fp.TTF[i]+phySwino[i]),
     mei:     ML.map((_,i)=>fp.JKM[i]+phyMei[i]),
     jktc:    ML.map((_,i)=>fp.JKM[i]+phys.jktc[i]),
     thailand:ML.map((_,i)=>{const ov2=cpGet('cp_phys_ov',{});const base=fp.JKM[i]+(ov2['thailand_'+i]!=null?ov2['thailand_'+i]:phyThailand[i]);return base;}),
@@ -5421,46 +5434,55 @@ function cpDerived(){
   const sabNbNwe  =nb(des.nwe,  freight.sabine_rotterdam,slHH);
   const sabNbJktc =nb(des.jktc, freight.sabine_tokyo,    slHH);
   const sabNbMei  =nb(des.mei,  freight.sabine_dahej||freight.sabine_tokyo,slHH);
+  const sabNbAin  =nb(des.ain,  freight.sabine_ain,      slHH);
   // Atlantic: Trinidad (cost base = TTF)
   const triNbNwe  =nb(des.nwe,  freight.trinidad_gate,  fp.TTF);
   const triNbJktc =nb(des.jktc, freight.trinidad_tokyo, fp.JKM);
   const triNbMei  =nb(des.mei,  freight.trinidad_dahej, fp.JKM);
+  const triNbAin  =nb(des.ain,  freight.trinidad_ain,   fp.TTF);
   // Atlantic: Angola
   const angNbNwe  =nb(des.nwe,  freight.angola_gate,    fp.TTF);
   const angNbJktc =nb(des.jktc, freight.angola_tokyo,   fp.JKM);
   const angNbMei  =nb(des.mei,  freight.angola_dahej,   fp.JKM);
+  const angNbAin  =nb(des.ain,  freight.angola_ain,     fp.TTF);
   // Atlantic: Nigeria
   const nigNbNwe  =nb(des.nwe,  freight.nigeria_gate,   fp.TTF);
   const nigNbJktc =nb(des.jktc, freight.nigeria_tokyo,  fp.JKM);
   const nigNbMei  =nb(des.mei,  freight.nigeria_dahej,  fp.JKM);
+  const nigNbAin  =nb(des.ain,  freight.nigeria_ain,    fp.TTF);
   // MEI: Qatar
   const qatNbEur  =nb(des.nwe,  freight.qatar_gate,     fp.TTF);
   const qatNbAsia =nb(des.jktc, freight.qatar_tokyo,    fp.JKM);
   const qatNbMei  =nb(des.mei,  freight.qatar_dahej,    fp.JKM);
+  const qatNbAin  =nb(des.ain,  freight.qatar_ain,      fp.TTF);
   // MEI: Oman
   const omnNbEur  =nb(des.nwe,  freight.oman_gate,      fp.TTF);
   const omnNbAsia =nb(des.jktc, freight.oman_tokyo,     fp.JKM);
   const omnNbMei  =nb(des.mei,  freight.oman_dahej,     fp.JKM);
+  const omnNbAin  =nb(des.ain,  freight.oman_ain,       fp.TTF);
   // Pacific: Australia Barrow
   const abNbAsia  =nb(des.jktc, freight.australia_b_tokyo, fp.JKM);
+  const abNbAin   =nb(des.ain,  freight.australia_b_ain,   fp.JKM);
   // Pacific: Australia Gladstone
   const agNbAsia  =nb(des.jktc, freight.australia_g_tokyo, fp.JKM);
+  const agNbAin   =nb(des.ain,  freight.australia_g_ain,   fp.JKM);
   // Pacific: Indonesia
   const idxNbAsia =nb(des.jktc, freight.indonesia_tokyo,   fp.JKM);
+  const idxNbAin  =nb(des.ain,  freight.indonesia_ain,     fp.JKM);
   // ── Swing signal ──────────────────────────────────────────────────────────
   const jkmTtf    =ML.map((_,i)=>fp.JKM[i]-fp.TTF[i]);
   const frDiff    =ML.map((_,i)=>freight.sabine_tokyo[i]-freight.sabine_rotterdam[i]);// Asia extra cost
   const arbOpen   =ML.map((_,i)=>jkmTtf[i]>frDiff[i]);// Asia arb open when spread > extra freight
   const profEur   =sabNbNwe;
   const profAsia  =sabNbJktc;
-  return{des,phyItaly,phyKlaipeda,phyInkoo,phyRev,phyKrk,phyAin,phyAli,phyMei,phyThailand,usgcFob,
-    sabNbNwe,sabNbJktc,sabNbMei,
-    triNbNwe,triNbJktc,triNbMei,
-    angNbNwe,angNbJktc,angNbMei,
-    nigNbNwe,nigNbJktc,nigNbMei,
-    qatNbEur,qatNbAsia,qatNbMei,
-    omnNbEur,omnNbAsia,omnNbMei,
-    abNbAsia,agNbAsia,idxNbAsia,
+  return{des,phyItaly,phyKlaipeda,phyInkoo,phyRev,phyKrk,phyAin,phyAli,phySwino,phyMei,phyThailand,usgcFob,
+    sabNbNwe,sabNbJktc,sabNbMei,sabNbAin,
+    triNbNwe,triNbJktc,triNbMei,triNbAin,
+    angNbNwe,angNbJktc,angNbMei,angNbAin,
+    nigNbNwe,nigNbJktc,nigNbMei,nigNbAin,
+    qatNbEur,qatNbAsia,qatNbMei,qatNbAin,
+    omnNbEur,omnNbAsia,omnNbMei,omnNbAin,
+    abNbAsia,abNbAin,agNbAsia,agNbAin,idxNbAsia,idxNbAin,
     jkmTtf,frDiff,arbOpen,profEur,profAsia};
 }
 function initCargo(){
@@ -5518,13 +5540,16 @@ function cpSyncFreight(){
   // Iterate validated matrix entries and populate CP.freight
   // vm[supplyId][dischId][mi] = $/MMBtu
   const routeMap=[
-    ['sabine','rotterdam','sabine_rotterdam'],['sabine','tokyo','sabine_tokyo'],['sabine','dahej','sabine_dahej'],
-    ['angola','rotterdam','angola_gate'],['angola','tokyo','angola_tokyo'],['angola','dahej','angola_dahej'],
-    ['nigeria','rotterdam','nigeria_gate'],['nigeria','tokyo','nigeria_tokyo'],['nigeria','dahej','nigeria_dahej'],
-    ['trinidad','rotterdam','trinidad_gate'],['trinidad','tokyo','trinidad_tokyo'],['trinidad','dahej','trinidad_dahej'],
-    ['qatar','rotterdam','qatar_gate'],['qatar','tokyo','qatar_tokyo'],['qatar','dahej','qatar_dahej'],
-    ['oman','rotterdam','oman_gate'],['oman','tokyo','oman_tokyo'],['oman','dahej','oman_dahej'],
-    ['australia_b','tokyo','australia_b_tokyo'],['australia_g','tokyo','australia_g_tokyo'],['indonesia','tokyo','indonesia_tokyo'],
+    ['sabine','rotterdam','sabine_rotterdam'],['sabine','tokyo','sabine_tokyo'],['sabine','dahej','sabine_dahej'],['sabine','ainsukhna','sabine_ain'],
+    ['angola','rotterdam','angola_gate'],['angola','tokyo','angola_tokyo'],['angola','dahej','angola_dahej'],['angola','ainsukhna','angola_ain'],
+    ['nigeria','rotterdam','nigeria_gate'],['nigeria','tokyo','nigeria_tokyo'],['nigeria','dahej','nigeria_dahej'],['nigeria','ainsukhna','nigeria_ain'],
+    ['trinidad','rotterdam','trinidad_gate'],['trinidad','tokyo','trinidad_tokyo'],['trinidad','dahej','trinidad_dahej'],['trinidad','ainsukhna','trinidad_ain'],
+    ['qatar','rotterdam','qatar_gate'],['qatar','tokyo','qatar_tokyo'],['qatar','dahej','qatar_dahej'],['qatar','ainsukhna','qatar_ain'],
+    ['oman','rotterdam','oman_gate'],['oman','tokyo','oman_tokyo'],['oman','dahej','oman_dahej'],['oman','ainsukhna','oman_ain'],
+    ['sabine','swinoujscie','sabine_swinoujscie'],
+    ['australia_b','tokyo','australia_b_tokyo'],['australia_b','ainsukhna','australia_b_ain'],
+    ['australia_g','tokyo','australia_g_tokyo'],['australia_g','ainsukhna','australia_g_ain'],
+    ['indonesia','tokyo','indonesia_tokyo'],['indonesia','ainsukhna','indonesia_ain'],
   ];
   routeMap.forEach(([orig,disch,key])=>{
     if(vm[orig]&&vm[orig][disch]){
@@ -5553,6 +5578,7 @@ function cpPhysDiff(d){
     {k:'krk',      label:'KRK',          hub:'TTF',data:d.phyKrk,          computed:true, ovKey:'krk'},
     {k:'ain',      label:'Ain Sukhna',   hub:'TTF',data:d.phyAin,          computed:true, ovKey:'ain'},
     {k:'ali',      label:'Aliaga',       hub:'TTF',data:d.phyAli,          computed:true, ovKey:'ali'},
+    {k:'swino',    label:'Swinoujscie',  hub:'TTF',data:d.phySwino,        computed:true, ovKey:'swino',      grp:'SWINOUJSCIE'},
     {k:'klaipeda', label:'Klaipeda',     hub:'TTF',data:d.phyKlaipeda,     computed:true, ovKey:'klaipeda',   grp:'BALTIC TERMINALS'},
     {k:'inkoo',    label:'Inkoo',        hub:'TTF',data:d.phyInkoo,        computed:true, ovKey:'inkoo'},
     {k:'mei',      label:'DES MEI',      hub:'JKM',data:d.phyMei,          computed:true, ovKey:'mei',        grp:'ASIA'},
@@ -5603,6 +5629,7 @@ function cpDesPrices(d){
     {l:'Ain Sukhna',    h:'TTF', arr:d.des.ain,       col:'#ffb74d'},
     {l:'Aliaga',         h:'TTF', arr:d.des.ali,      col:'#ffb74d'},
     // Baltic group - teal
+    {l:'Swinoujscie',    h:'TTF', arr:d.des.swino,    col:'#80cbc4', grp:'SWINOUJSCIE'},
     {l:'Klaipeda',       h:'TTF', arr:d.des.klaipeda, col:'#26c6da', grp:'BALTIC TERMINALS'},
     {l:'Inkoo',          h:'TTF', arr:d.des.inkoo,    col:'#26c6da'},
     // Asia group
@@ -5712,41 +5739,39 @@ function cpGlobalArb(d){
   function nb(desArr,frArr){return ML.map((_,i)=>frArr&&frArr[i]!=null?desArr[i]-frArr[i]-idxArr[i]:null);}
   const ORGS=[
     {id:'sabine', label:'Sabine Pass',basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.des.jktc,fr.sabine_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),ain:nb(d.des.ain,fr.sabine_ain),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.des.jktc,fr.sabine_tokyo)}},
     {id:'trinidad',label:'Trinidad',  basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.trinidad_gate),mei:nb(d.des.mei,fr.trinidad_dahej),asia:nb(d.des.jktc,fr.trinidad_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.trinidad_gate),ain:nb(d.des.ain,fr.trinidad_ain),mei:nb(d.des.mei,fr.trinidad_dahej),asia:nb(d.des.jktc,fr.trinidad_tokyo)}},
     {id:'angola', label:'Angola',     basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.angola_gate),mei:nb(d.des.mei,fr.angola_dahej),asia:nb(d.des.jktc,fr.angola_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.angola_gate),ain:nb(d.des.ain,fr.angola_ain),mei:nb(d.des.mei,fr.angola_dahej),asia:nb(d.des.jktc,fr.angola_tokyo)}},
     {id:'nigeria',label:'Nigeria',    basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.nigeria_gate),mei:nb(d.des.mei,fr.nigeria_dahej),asia:nb(d.des.jktc,fr.nigeria_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.nigeria_gate),ain:nb(d.des.ain,fr.nigeria_ain),mei:nb(d.des.mei,fr.nigeria_dahej),asia:nb(d.des.jktc,fr.nigeria_tokyo)}},
     {id:'qatar',  label:'Qatar',      basin:'MEI',col:'#ffb74d',
-     routes:{eur:nb(d.des.nwe,fr.qatar_gate),mei:nb(d.des.mei,fr.qatar_dahej),asia:nb(d.des.jktc,fr.qatar_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.qatar_gate),ain:nb(d.des.ain,fr.qatar_ain),mei:nb(d.des.mei,fr.qatar_dahej),asia:nb(d.des.jktc,fr.qatar_tokyo)}},
     {id:'oman',   label:'Oman',       basin:'MEI',col:'#ffb74d',
-     routes:{eur:nb(d.des.nwe,fr.oman_gate),mei:nb(d.des.mei,fr.oman_dahej),asia:nb(d.des.jktc,fr.oman_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.oman_gate),ain:nb(d.des.ain,fr.oman_ain),mei:nb(d.des.mei,fr.oman_dahej),asia:nb(d.des.jktc,fr.oman_tokyo)}},
     {id:'aus_b',  label:'Barrow Is.', basin:'PAC',col:'#81c784',
-     routes:{eur:null,mei:null,asia:nb(d.des.jktc,fr.australia_b_tokyo)}},
+     routes:{ain:nb(d.des.ain,fr.australia_b_ain),asia:nb(d.des.jktc,fr.australia_b_tokyo)}},
     {id:'aus_g',  label:'Gladstone',  basin:'PAC',col:'#81c784',
-     routes:{eur:null,mei:null,asia:nb(d.des.jktc,fr.australia_g_tokyo)}},
+     routes:{ain:nb(d.des.ain,fr.australia_g_ain),asia:nb(d.des.jktc,fr.australia_g_tokyo)}},
     {id:'bontang',label:'Bontang',    basin:'PAC',col:'#81c784',
-     routes:{eur:null,mei:null,asia:nb(d.des.jktc,fr.indonesia_tokyo)}},
+     routes:{ain:nb(d.des.ain,fr.indonesia_ain),asia:nb(d.des.jktc,fr.indonesia_tokyo)}},
   ];
-  const DEST_LABEL={eur:'Europe',mei:'MEI',asia:'JKTC'};
+  const DEST_LABEL={eur:'Europe',ain:'Ain Sukhna',mei:'MEI',asia:'JKTC'};
   const BASIN_COL={ATL:'#4fc3f7',MEI:'#ffb74d',PAC:'#81c784'};
   const BASIN_NAME={ATL:'Atlantic basin',MEI:'MEI basin',PAC:'Pacific basin'};
 
-  // Color by DESTINATION — not profitability
   const DEST_STYLE={
-    eur:{bg:'#0d2545',fg:'#90caf9'},   // blue = Europe
-    mei:{bg:'#0d2e15',fg:'#a5d6a7'},   // green = MEI
-    asia:{bg:'#2d0f0f',fg:'#ef9a9a'},  // red = JKTC
+    eur:{bg:'#0d2545',fg:'#90caf9'},
+    ain:{bg:'#1a2010',fg:'#d4e157'},
+    mei:{bg:'#0d2e15',fg:'#a5d6a7'},
+    asia:{bg:'#2d0f0f',fg:'#ef9a9a'},
   };
-  function cellStyle(dk){
-    return DEST_STYLE[dk]||{bg:'#0a1628',fg:'#3d5070'};
-  }
+  function cellStyle(dk){return DEST_STYLE[dk]||{bg:'#0a1628',fg:'#3d5070'};}
   // Build heatmap rows (12 months)
   const MONTHS12=ML.slice(0,12);
   const idxBtns=['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x==='HH'?'HH':x}</button>`).join('');
-  const legend=[['#0d2545','#90caf9','Europe'],['#0d2e15','#a5d6a7','MEI'],['#2d0f0f','#ef9a9a','JKTC']];
+  const legend=[['#0d2545','#90caf9','Europe'],['#1a2010','#d4e157','Ain Sukhna'],['#0d2e15','#a5d6a7','MEI'],['#2d0f0f','#ef9a9a','JKTC']];
 
   let rows='';let lastBasin='';
   ORGS.forEach(org=>{
@@ -5757,11 +5782,11 @@ function cpGlobalArb(d){
     rows+=`<tr><td style="font-size:10px;padding:4px 8px;white-space:nowrap;color:#c8d6e5"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${BASIN_COL[org.basin]};margin-right:5px;vertical-align:middle"></span>${org.label}</td>`;
     MONTHS12.forEach((_,i)=>{
       const cands=[];
-      ['eur','mei','asia'].forEach(dk=>{const arr=org.routes[dk];if(!arr||arr[i]==null)return;cands.push({dk,v:arr[i]});});
+      ['eur','ain','mei','asia'].forEach(dk=>{const arr=org.routes[dk];if(!arr||arr[i]==null)return;cands.push({dk,v:arr[i]});});
       if(!cands.length){rows+=`<td style="padding:2px"><div style="background:#0a1628;border-radius:5px;padding:5px 3px;text-align:center;color:#1e3a5f;font-size:10px">—</div></td>`;return;}
       const best=cands.reduce((a,b)=>b.v>a.v?b:a);
       const cs=cellStyle(best.dk);
-      const des=best.dk==='eur'?d.des.nwe[i]:best.dk==='mei'?d.des.mei[i]:d.des.jktc[i];
+      const des=best.dk==='eur'?d.des.nwe[i]:best.dk==='ain'?d.des.ain[i]:best.dk==='mei'?d.des.mei[i]:d.des.jktc[i];
       const frv=org.routes[best.dk][i];
       const idxv=idxArr[i];
       const tooltip=`${org.label} → ${DEST_LABEL[best.dk]} (${ML[i]})\nDES: ${des.toFixed(3)}\nFreight: ${frv.toFixed(3)}\n${idxLbl}: ${idxv.toFixed(3)}\n= ${best.v>=0?'+':''}${best.v.toFixed(3)} $/MMBtu`;
@@ -5775,8 +5800,8 @@ function cpGlobalArb(d){
 
   // ── Route ranking for selected month ──────────────────────────────────────
   const selM=CP.selMonth;
-  const DEST_COL={eur:'#90caf9',mei:'#a5d6a7',asia:'#ef9a9a'};
-  const DEST_LBL={eur:'Europe',mei:'MEI',asia:'JKTC'};
+  const DEST_COL={eur:'#90caf9',ain:'#d4e157',mei:'#a5d6a7',asia:'#ef9a9a'};
+  const DEST_LBL={eur:'Europe',ain:'Ain Sukhna',mei:'MEI',asia:'JKTC'};
   const BASIN_COL_MAP={sabine:'#4fc3f7',trinidad:'#4fc3f7',angola:'#4fc3f7',nigeria:'#4fc3f7',qatar:'#ffb74d',oman:'#ffb74d',australia_b:'#81c784',australia_g:'#81c784',bontang:'#81c784'};
   const ORIGIN_LABELS={sabine:'Sabine Pass',trinidad:'Trinidad',angola:'Angola',nigeria:'Nigeria',qatar:'Qatar',oman:'Oman',australia_b:'Barrow Is.',australia_g:'Gladstone',bontang:'Bontang'};
 
@@ -5785,7 +5810,7 @@ function cpGlobalArb(d){
   let rkHtml='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">';
   rkOrgs.forEach(oid=>{
     const routes=[];
-    ['eur','mei','asia'].forEach(dk=>{
+    ['eur','ain','mei','asia'].forEach(dk=>{
       const arr=ORGS.find(o=>o.id===oid)?.routes[dk];
       if(!arr||arr[selM]==null)return;
       routes.push({dk,v:arr[selM]});
@@ -5915,8 +5940,8 @@ function cpBasinTab(cfg, d){
     return +(dt.arr[i]-dt.frArr[i]-idxV).toFixed(3);
   }
 
-  const DEST_STYLE={eur:{bg:'#0d2545',fg:'#90caf9',lbl:'Europe'},mei:{bg:'#0d2e15',fg:'#a5d6a7',lbl:'MEI'},asia:{bg:'#2d0f0f',fg:'#ef9a9a',lbl:'JKTC'}};
-  const legend=[['#0d2545','Europe'],['#0d2e15','MEI'],['#2d0f0f','JKTC']].map(([bg,lbl])=>
+  const DEST_STYLE={eur:{bg:'#0d2545',fg:'#90caf9',lbl:'Europe'},ain:{bg:'#1a2010',fg:'#d4e157',lbl:'Ain Sukhna'},mei:{bg:'#0d2e15',fg:'#a5d6a7',lbl:'MEI'},asia:{bg:'#2d0f0f',fg:'#ef9a9a',lbl:'JKTC'}};
+  const legend=[['#0d2545','Europe'],['#1a2010','Ain Sukhna'],['#0d2e15','MEI'],['#2d0f0f','JKTC']].map(([bg,lbl])=>
     `<div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#546e7a"><span style="display:inline-block;width:20px;height:11px;border-radius:3px;background:${bg}"></span>${lbl}</div>`).join('');
   const idxBtns=['TTF','JKM','HH'].map(x=>`<button class="f-btn sm${idx===x?' on':''}" onclick="CP.globalArbIdx='${x}';cpSet('cp_global_arb_idx','${x}');renderCargoTab()">${x}</button>`).join('');
 
@@ -5926,7 +5951,7 @@ function cpBasinTab(cfg, d){
     hmRows+=`<tr><td style="font-size:10px;padding:4px 8px;white-space:nowrap;color:#c8d6e5"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${org.col};margin-right:5px;vertical-align:middle"></span>${org.label}</td>`;
     MONTHS12.forEach((_,i)=>{
       const cands=[];
-      Object.entries(org.hmRoutes).forEach(([dk,frArr])=>{if(!frArr)return;const desArr=dk==='eur'?d.des.nwe:dk==='mei'?d.des.mei:d.des.jktc;const v=desArr[i]-frArr[i]-idxA[i];cands.push({dk,v});});
+      Object.entries(org.hmRoutes).forEach(([dk,frArr])=>{if(!frArr)return;const desArr=dk==='eur'?d.des.nwe:dk==='ain'?d.des.ain:dk==='mei'?d.des.mei:d.des.jktc;const v=desArr[i]-frArr[i]-idxA[i];cands.push({dk,v});});
       if(!cands.length){hmRows+=`<td><div style="background:#0a1628;border-radius:4px;padding:5px 2px;text-align:center;color:#1e3a5f;font-size:9px;min-width:48px">—</div></td>`;return;}
       const best=cands.reduce((a,b)=>b.v>a.v?b:a);
       const DS=DEST_STYLE[best.dk];
@@ -5946,7 +5971,7 @@ function cpBasinTab(cfg, d){
     const routes=[];
     Object.entries(org.hmRoutes).forEach(([dk,frArr])=>{
       if(!frArr||frArr[m]==null)return;
-      const desArr=dk==='eur'?d.des.nwe:dk==='mei'?d.des.mei:d.des.jktc;
+      const desArr=dk==='eur'?d.des.nwe:dk==='ain'?d.des.ain:dk==='mei'?d.des.mei:d.des.jktc;
       routes.push({dk,v:+(desArr[m]-frArr[m]-idxA[m]).toFixed(3),lbl:DEST_STYLE[dk].lbl,col:DEST_STYLE[dk].fg});
     });
     if(!routes.length)return;
@@ -6039,7 +6064,7 @@ function cpAtlanticArb(d){
 
   const cfg={orgs:[
     {id:'sabine',label:'Sabine Pass',col:'#4fc3f7',
-     hmRoutes:{eur:fr.sabine_rotterdam,mei:fr.sabine_dahej,asia:fr.sabine_tokyo},
+     hmRoutes:{eur:fr.sabine_rotterdam,ain:fr.sabine_ain,mei:fr.sabine_dahej,asia:fr.sabine_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.sabine_rotterdam},
        {label:'Iberia',hub:'TTF',arr:d.des.iberia,frArr:subFr(fr.sabine_rotterdam,'sabine_klaipeda')},
@@ -6047,6 +6072,7 @@ function cpAtlanticArb(d){
        {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:fr.sabine_rovigo??subFr(fr.sabine_rotterdam,'sabine_rev')},
        {label:'Klaipeda',hub:'TTF',arr:d.des.klaipeda,frArr:fr.sabine_klaipeda},
        {label:'Inkoo',hub:'TTF',arr:d.des.inkoo,frArr:fr.sabine_inkoo},
+       {label:'Swinoujscie',hub:'TTF',arr:d.des.swino,frArr:fr.sabine_swinoujscie},
        {label:'Revithoussa',hub:'TTF',arr:d.des.rev,frArr:fr.sabine_rev},
        {label:'KRK',hub:'TTF',arr:d.des.krk,frArr:fr.sabine_krk},
        {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.sabine_ain},
@@ -6055,28 +6081,31 @@ function cpAtlanticArb(d){
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.sabine_tokyo},
      ]},
     {id:'trinidad',label:'Trinidad',col:'#29b6f6',
-     hmRoutes:{eur:fr.trinidad_gate,mei:fr.trinidad_dahej,asia:fr.trinidad_tokyo},
+     hmRoutes:{eur:fr.trinidad_gate,ain:fr.trinidad_ain,mei:fr.trinidad_dahej,asia:fr.trinidad_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.trinidad_gate},
        {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(fr.trinidad_gate,'sabine_rev')},
+       {label:'Swinoujscie',hub:'TTF',arr:d.des.swino,frArr:subFr(fr.trinidad_gate,'sabine_swinoujscie')},
        {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.trinidad_gate,'sabine_ain')},
        {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.trinidad_dahej},
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.trinidad_tokyo},
      ]},
     {id:'angola',label:'Angola',col:'#ff9800',
-     hmRoutes:{eur:fr.angola_gate,mei:fr.angola_dahej,asia:fr.angola_tokyo},
+     hmRoutes:{eur:fr.angola_gate,ain:fr.angola_ain,mei:fr.angola_dahej,asia:fr.angola_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.angola_gate},
        {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(fr.angola_gate,'sabine_rev')},
+       {label:'Swinoujscie',hub:'TTF',arr:d.des.swino,frArr:subFr(fr.angola_gate,'sabine_swinoujscie')},
        {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.angola_gate,'sabine_ain')},
        {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.angola_dahej},
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.angola_tokyo},
      ]},
     {id:'nigeria',label:'Nigeria',col:'#81c784',
-     hmRoutes:{eur:fr.nigeria_gate,mei:fr.nigeria_dahej,asia:fr.nigeria_tokyo},
+     hmRoutes:{eur:fr.nigeria_gate,ain:fr.nigeria_ain,mei:fr.nigeria_dahej,asia:fr.nigeria_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:fr.nigeria_gate},
        {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(fr.nigeria_gate,'sabine_rev')},
+       {label:'Swinoujscie',hub:'TTF',arr:d.des.swino,frArr:subFr(fr.nigeria_gate,'sabine_swinoujscie')},
        {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:subFr(fr.nigeria_gate,'sabine_ain')},
        {label:'MEI',hub:'JKM',arr:d.des.mei,frArr:fr.nigeria_dahej},
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.nigeria_tokyo},
@@ -6089,45 +6118,38 @@ function cpAtlanticArb(d){
 function cpMEIArb(d){
   if(!CP.selBasinOrg||!['qatar','oman'].includes(CP.selBasinOrg))CP.selBasinOrg='qatar';
   const fr=CP.freight;
-  const cogh=CP.coghMode||false;
-  // COGH multipliers: Qatar Suez=11550NM→COGH=18500NM (×1.60), Oman Suez=9887NM→COGH=17500NM (×1.77)
-  const qGateFr=ML.map((_,i)=>cogh?+(fr.qatar_gate[i]*1.60).toFixed(3):fr.qatar_gate[i]);
-  const oGateFr=ML.map((_,i)=>cogh?+(fr.oman_gate[i]*1.77).toFixed(3):fr.oman_gate[i]);
+  // NM database uses CoGH routing for Qatar/Oman→Europe. No Suez toggle needed.
+  const qGateFr=fr.qatar_gate;
+  const oGateFr=fr.oman_gate;
   function subFr(gateFr,subKey){return ML.map((_,i)=>{const gv=gateFr[i];const diff=(fr[subKey]?.[i]??0)-(fr.sabine_rotterdam[i]??0);return gv!=null?gv+diff:null;});}
 
   const cfg={orgs:[
     {id:'qatar',label:'Qatar (Ras Laffan)',col:'#ffb74d',
-     hmRoutes:{eur:qGateFr,mei:fr.qatar_dahej,asia:fr.qatar_tokyo},
+     hmRoutes:{eur:qGateFr,ain:fr.qatar_ain,mei:fr.qatar_dahej,asia:fr.qatar_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:qGateFr},
        {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(qGateFr,'sabine_rev')},
+       {label:'Swinoujscie',hub:'TTF',arr:d.des.swino,frArr:subFr(qGateFr,'sabine_swinoujscie')},
        {label:'Iberia (Spain)',hub:'TTF',arr:d.des.iberia,frArr:subFr(qGateFr,'sabine_ain')},
-       {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:qGateFr},
+       {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.qatar_ain},
        {label:'Revithoussa',hub:'TTF',arr:d.des.rev,frArr:subFr(qGateFr,'sabine_rev')},
        {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:fr.qatar_dahej},
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.qatar_tokyo},
      ]},
     {id:'oman',label:'Oman (Sur LNG)',col:'#ff9800',
-     hmRoutes:{eur:oGateFr,mei:fr.oman_dahej,asia:fr.oman_tokyo},
+     hmRoutes:{eur:oGateFr,ain:fr.oman_ain,mei:fr.oman_dahej,asia:fr.oman_tokyo},
      dtRoutes:[
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:oGateFr},
        {label:'DES Italy',hub:'TTF',arr:d.des.italy,frArr:subFr(oGateFr,'sabine_rev')},
+       {label:'Swinoujscie',hub:'TTF',arr:d.des.swino,frArr:subFr(oGateFr,'sabine_swinoujscie')},
        {label:'Iberia (Spain)',hub:'TTF',arr:d.des.iberia,frArr:subFr(oGateFr,'sabine_ain')},
-       {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:oGateFr},
+       {label:'Ain Sukhna',hub:'TTF',arr:d.des.ain,frArr:fr.oman_ain},
        {label:'Revithoussa',hub:'TTF',arr:d.des.rev,frArr:subFr(oGateFr,'sabine_rev')},
        {label:'MEI (Dahej)',hub:'JKM',arr:d.des.mei,frArr:fr.oman_dahej},
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.oman_tokyo},
      ]},
   ]};
-  const coghBtn=`<button class="f-btn sm${cogh?' on':''}" onclick="CP.coghMode=!CP.coghMode;cpSet('cp_cogh_mode',CP.coghMode);renderCargoTab()">
-    ${cogh?'COGH ✓':'COGH OFF'}</button>`;
-  const routingNote=cogh
-    ?`<span style="color:#ffb74d;font-size:9px">⚠ COGH routing active — Qatar×1.60 / Oman×1.77 vs Suez base</span>`
-    :`<span style="color:#546e7a;font-size:9px;font-style:italic">Suez routing (default) — toggle COGH for Cape of Good Hope rates</span>`;
-  return`<div class="f-sec" style="display:flex;justify-content:space-between;align-items:center">
-    <span>MEI</span>
-    <div style="display:flex;align-items:center;gap:10px">${routingNote}${coghBtn}</div>
-  </div>
+  return`<div class="f-sec">MEI</div>
   <div style="background:#0a1628;border:1px solid #1e3a5f;padding:10px;margin-bottom:14px">
     <div style="color:#546e7a;font-size:9px;margin-bottom:8px;font-weight:700;letter-spacing:1px">DES MEI DIFFERENTIAL — Angola Dahej−Tokyo ($/MMBtu)</div>
     <div style="overflow-x:auto"><table class="f-tbl"><thead><tr>
@@ -6166,7 +6188,7 @@ function cpPacificArb(d){
 
   const cfg={orgs:[
     {id:'aus_b',label:'Barrow Island (Aus)',col:'#81c784',
-     hmRoutes:{eur:pac_b_gate,asia:fr.australia_b_tokyo},
+     hmRoutes:{eur:pac_b_gate,ain:fr.australia_b_ain,asia:fr.australia_b_tokyo},
      dtRoutes:[
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_b_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_b_thai},
@@ -6175,7 +6197,7 @@ function cpPacificArb(d){
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:pac_b_gate},
      ]},
     {id:'aus_g',label:'Gladstone (Aus)',col:'#66bb6a',
-     hmRoutes:{eur:pac_g_gate,asia:fr.australia_g_tokyo},
+     hmRoutes:{eur:pac_g_gate,ain:fr.australia_g_ain,asia:fr.australia_g_tokyo},
      dtRoutes:[
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.australia_g_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_g_thai},
@@ -6184,7 +6206,7 @@ function cpPacificArb(d){
        {label:'NWE (Gate)',hub:'TTF',arr:d.des.nwe,frArr:pac_g_gate},
      ]},
     {id:'bontang',label:'Bontang (Indonesia)',col:'#a5d6a7',
-     hmRoutes:{eur:pac_id_gate,asia:fr.indonesia_tokyo},
+     hmRoutes:{eur:pac_id_gate,ain:fr.indonesia_ain,asia:fr.indonesia_tokyo},
      dtRoutes:[
        {label:'JKTC',hub:'JKM',arr:d.des.jktc,frArr:fr.indonesia_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,frArr:pac_id_thai},
@@ -6224,8 +6246,8 @@ function cpFrDiffBasis(d){
     mei:{
       label:'MEI',
       ports:[
-        {id:'qatar',label:'Qatar',frGate:ML.map((_,i)=>cogh?+(fr.qatar_gate[i]*1.60).toFixed(3):fr.qatar_gate[i]),frAsia:fr.qatar_tokyo,dir:'asia',spreadFn:(i)=>CP.fp.JKM[i]-CP.fp.TTF[i]},
-        {id:'oman', label:'Oman', frGate:ML.map((_,i)=>cogh?+(fr.oman_gate[i]*1.77).toFixed(3):fr.oman_gate[i]),  frAsia:fr.oman_tokyo, dir:'asia',spreadFn:(i)=>CP.fp.JKM[i]-CP.fp.TTF[i]},
+        {id:'qatar',label:'Qatar',frGate:fr.qatar_gate,frAsia:fr.qatar_tokyo,dir:'asia',spreadFn:(i)=>CP.fp.JKM[i]-CP.fp.TTF[i]},
+        {id:'oman', label:'Oman', frGate:fr.oman_gate,frAsia:fr.oman_tokyo,dir:'asia',spreadFn:(i)=>CP.fp.JKM[i]-CP.fp.TTF[i]},
       ]},
     pacific:{
       label:'Pacific',
@@ -6263,7 +6285,7 @@ function cpFrDiffBasis(d){
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">BASIN</span>${basinBtns}
     <span style="color:#546e7a;font-size:9px;margin-left:6px">LOAD PORT</span>${portSel}
     <span style="color:#546e7a;font-size:9px;margin-left:6px">MONTH</span>${mSel}
-    ${selBasin==='mei'?`<span style="flex:1"></span><button class="f-btn sm${cogh?' on':''}" onclick="CP.coghMode=!CP.coghMode;cpSet('cp_cogh_mode',CP.coghMode);renderCargoTab()">${cogh?'COGH ✓':'COGH OFF'}</button>`:``}
+
   </div>
 
   <div style="display:flex;gap:10px;padding:12px 14px;flex-wrap:wrap">
