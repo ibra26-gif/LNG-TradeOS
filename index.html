@@ -5817,6 +5817,7 @@ function cpGlobalArb(d){
       const des=best.dk==='eur'?d.des.nwe[i]:best.dk==='ain'?d.des.ain[i]:best.dk==='mei'?d.des.mei[i]:d.des.jktc[i];
       const frv=org.routes[best.dk][i];
       const idxv=idxArr[i];
+      const DS=DEST_STYLE[best.dk];
       const tooltip=`${org.label} → ${DS.lbl} (${ML[i]})\nDES: ${des.toFixed(3)}\nFreight: ${frv.toFixed(3)}\n${idxLbl}: ${idxv.toFixed(3)}\n= ${best.v>=0?'+':''}${best.v.toFixed(3)} $/MMBtu`;
       rows+=`<td style="padding:2px"><div style="background:${cs.bg};border-radius:5px;padding:5px 3px;text-align:center;cursor:default;font-family:IBM Plex Mono,monospace" title="${tooltip}">
         <div style="font-size:10px;font-weight:700;color:${cs.fg}">${DS.lbl}</div>
