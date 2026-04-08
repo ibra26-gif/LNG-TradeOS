@@ -198,7 +198,45 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Debug mode: ?debug=1&series=truck — returns raw HTML to inspect SHPGX response
+  // JSON debug: ?debugjson=1&series=truck — fetch the actual JSON data endpoint
+  if (req.query.debugjson === '1') {
+    const key    = (req.query.series || 'truck').split(',')[0].trim();
+    const config = SERIES_CONFIG[key];
+    if (!config) return res.status(400).json({ error: 'unknown series' });
+    try {
+      // First get the HTML to extract data-ajax-url
+      const pageResp = await fetch(config.url, {
+        headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html', 'Referer': 'https://www.shpgx.com/' },
+        signal: AbortSignal.timeout(10000),
+      });
+      const html = await pageResp.text();
+      const ajaxMatch = html.match(/data-ajax-url=["']([^"']+)["']/);
+      const ajaxPath  = ajaxMatch ? ajaxMatch[1] : null;
+      if (!ajaxPath) {
+        return res.status(200).send('No data-ajax-url found in HTML\n' + html.slice(15000));
+      }
+      const jsonUrl = 'https://www.shpgx.com' + ajaxPath + '?draw=1&start=0&length=25';
+      const jsonResp = await fetch(jsonUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          'Accept': 'application/json, text/javascript, */*',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Referer': config.url,
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+      const raw = await jsonResp.text();
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.status(200).send(
+        `JSON endpoint: ${jsonUrl}\nHTTP: ${jsonResp.status}\n\n` + raw.slice(0, 5000)
+      );
+    } catch(e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // Debug mode: ?debug=1&series=truck
   if (req.query.debug === '1') {
     const key    = (req.query.series || 'truck').split(',')[0].trim();
     const config = SERIES_CONFIG[key];
@@ -214,21 +252,29 @@ export default async function handler(req, res) {
         signal: AbortSignal.timeout(15000),
       });
       const html = await resp.text();
+      // No cache on debug responses
+      res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      // Find and show table section + any <script> data calls
       const tableIdx = html.indexOf('<table');
       const tableEnd = html.lastIndexOf('</table>');
-      const tableSection = tableIdx > -1 ? html.slice(tableIdx, Math.min(tableEnd+8, tableIdx+6000)) : 'NO TABLE FOUND';
-      // Also check for ajax/fetch patterns
-      const ajaxHints = [];
-      const ajaxRx = /(fetch|\.ajax|\.get|\.post|XMLHttpRequest|url\s*[:=])\s*["'`]([^"'`]+)["'`]/gi;
-      let am;
-      while ((am = ajaxRx.exec(html)) !== null) ajaxHints.push(am[2]);
-      return res.status(200).send(
-        `HTTP ${resp.status} | Length: ${html.length} | tableIdx: ${tableIdx}\n` +
-        `AJAX hints: ${[...new Set(ajaxHints)].slice(0,10).join(' | ')}\n\n` +
-        `TABLE SECTION:\n` + tableSection
-      );
+      // Extract all script src and ajax patterns
+      const scripts = (html.match(/src=["']([^"']+\.js[^"']*)/g)||[]).map(s=>s.replace(/src=["']/,'')).slice(0,8);
+      const jspx    = (html.match(/["']([^"']*\.jspx[^"']*)/g)||[]).map(s=>s.replace(/['"]/g,'')).slice(0,8);
+      const ajaxGet = (html.match(/\$\.(?:get|post|ajax|getJSON)\s*\(["']([^"']+)/g)||[]).slice(0,8);
+      const fullHtml = html; // Return full HTML — only 19KB
+      return res.status(200).send([
+        `=== SHPGX DEBUG ===`,
+        `HTTP: ${resp.status} | Length: ${html.length} | tableIdx: ${tableIdx} | tableEnd: ${tableEnd}`,
+        `Scripts: ${scripts.join(' | ')}`,
+        `JSPX endpoints: ${jspx.join(' | ')}`,
+        `Ajax calls: ${ajaxGet.join(' | ')}`,
+        ``,
+        `=== TABLE SECTION (${tableIdx} to ${tableEnd}) ===`,
+        tableIdx > -1 ? html.slice(tableIdx, tableEnd + 8) : 'NO <table> FOUND IN HTML',
+        ``,
+        `=== LAST 2000 CHARS ===`,
+        html.slice(-2000),
+      ].join('\n'));
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
