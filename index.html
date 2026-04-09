@@ -1503,6 +1503,40 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
           else if(name.includes('diesel')) key='diesel';
           else if(name.includes('cnp'))    key='cnp';
           else if(name.includes('pipe'))   key='pipe_spot';
+          // India Gas Balance CSV
+          if(!key && name.includes('india_gas_balance')) {
+            try {
+              const lines = text.trim().split('\n');
+              const headers = lines[0].split(',').map(h=>h.trim());
+              const indRows = {};
+              for(let i=1;i<lines.length;i++){
+                const cells = lines[i].split(',').map(v=>v.trim());
+                const row={};
+                headers.forEach((h,j)=>row[h]=cells[j]);
+                if(row.month&&row.month.match(/\d{4}-\d{2}/)){
+                  indRows[row.month]={
+                    prod:parseFloat(row.prod_mmscm)||null,
+                    rlng:parseFloat(row.rlng_mmscm)||null,
+                    Power:parseFloat(row.Power)||null,
+                    CGD:parseFloat(row.CGD)||null,
+                    Fertilizer:parseFloat(row.Fertilizer)||null,
+                    Refinery:parseFloat(row.Refinery)||null,
+                    Petrochem:parseFloat(row.Petrochem)||null,
+                    LPGShrink:parseFloat(row.LPGShrink)||null,
+                    SteelDRI:parseFloat(row.SteelDRI)||null,
+                    PipelineIC:parseFloat(row.PipelineIC)||null,
+                    Other:parseFloat(row.Other)||null,
+                  };
+                }
+              }
+              const cnt = Object.keys(indRows).length;
+              if(cnt>0){
+                try{localStorage.setItem('lng_india_gb_v1',JSON.stringify({ts:Date.now(),data:indRows}));}catch(e){}
+                alert('India Gas Balance: '+cnt+' months loaded. Reload India tab to update.');
+                res({key:'india_gas_balance',count:cnt}); return;
+              }
+            } catch(e){ console.error('India GB CSV:', e); }
+          }
           // China Gas Balance CSV
           if(!key && name.includes('china_gas_balance')) {
             try {
@@ -10988,6 +11022,9 @@ function gaExportEuPDF(){
 <script>
 
 
+
+
+
 /* ═════════════════════════════════════════════════════════════
    INDIA GAS BALANCE MODULE v2 — LNG TradeOS™
    Changes: Dom/RLNG split chart, YoY col, supply/demand area,
@@ -11085,6 +11122,28 @@ var SEC_COL = {Power:'#378ADD',CGD:'#EF9F27',Fertilizer:'#1D9E75',Refinery:'#D45
   Petrochem:'#7F77DD',LPGShrink:'#F0997B',SteelDRI:'#D85A30',PipelineIC:'#888780',Other:'#B4B2A9'};
 var MO_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var SEA_YR_COLORS = ['#4d9ef5','#34d399','#f59e0b','#ef5350','#ce93d8'];
+
+/* JKM monthly spot averages Apr 2023 -> Feb 2025 (pre-EOD period)
+   Source: Platts/ICE historical monthly averages — approximate.
+   EOD files take over from the first month they cover. */
+/* Brent M+1 monthly averages Apr 2023 -> Feb 2025 (pre-EOD period) — approximate */
+var BRENT_HIST = {
+  '2023-04':84,'2023-05':75,'2023-06':75,'2023-07':81,'2023-08':85,
+  '2023-09':93,'2023-10':90,'2023-11':83,'2023-12':78,
+  '2024-01':78,'2024-02':82,'2024-03':85,'2024-04':88,'2024-05':82,
+  '2024-06':83,'2024-07':82,'2024-08':79,'2024-09':74,
+  '2024-10':75,'2024-11':73,'2024-12':73,
+  '2025-01':79,'2025-02':76
+};
+
+var JKM_HIST = {
+  '2023-04':11.5,'2023-05':9.5,'2023-06':10.0,'2023-07':10.8,'2023-08':10.2,
+  '2023-09':13.5,'2023-10':15.5,'2023-11':16.0,'2023-12':14.5,
+  '2024-01':10.5,'2024-02':8.5,'2024-03':9.0,'2024-04':9.5,'2024-05':10.5,
+  '2024-06':11.0,'2024-07':12.0,'2024-08':11.5,'2024-09':12.5,
+  '2024-10':13.5,'2024-11':14.0,'2024-12':14.5,
+  '2025-01':15.5,'2025-02':15.0
+};
 
 var APM_HIST = [
   {from:'2021-10',to:'2022-03',apm:2.90,dw:6.13},
@@ -11618,7 +11677,7 @@ function renderPrices() {
      Power plant efficiency 35% → effective = 1.98 / 0.35 = $5.65/MMBtu */
   var coalHeat = (2900 / 84 / (4400000/252000)).toFixed(2);
   var coalPow  = (parseFloat(coalHeat) / 0.35).toFixed(2);
-  /* JKM DES India from EOD data */
+  /* JKM DES India — try EOD first, then latest hardcoded */
   var jkmIndia = null;
   try {
     if (window.sDates && window.sDates.length && window.aD) {
@@ -11634,11 +11693,40 @@ function renderPrices() {
       }
     }
   } catch(ejkm){}
+  if (jkmIndia === null) {
+    var histKeys = Object.keys(JKM_HIST).sort();
+    var lastHistKey = histKeys[histKeys.length-1];
+    if (lastHistKey) jkmIndia = +(JKM_HIST[lastHistKey] - 0.35).toFixed(2);
+  }
   var allKeys  = Object.keys(MONTHLY).sort();
   var apmData  = allKeys.map(function(k){ var p=getAPM(k); return p?p.apm:null; });
   var dwData   = allKeys.map(function(k){ var p=getAPM(k); return p?p.dw:null; });
-  var lt11Arr  = allKeys.map(function(){ return parseFloat(lt11); });
-  var lt14Arr  = allKeys.map(function(){ return parseFloat(lt14); });
+  /* Per-month Brent: EOD first, fallback to BRENT_HIST */
+  var brentArr = allKeys.map(function(k) {
+    try {
+      if (window.sDates && window.sDates.length && window.aD) {
+        var inMonth = window.sDates.filter(function(d){ return d.slice(0,7)===k; });
+        var ds = inMonth.length ? inMonth[inMonth.length-1] : null;
+        if (!ds) {
+          var target = new Date(k+'-15').getTime(), best=null, bestDiff=Infinity;
+          window.sDates.forEach(function(d){ var df=Math.abs(new Date(d).getTime()-target); if(df<bestDiff){bestDiff=df;best=d;} });
+          if (best && bestDiff<=45*24*3600*1000) ds=best;
+        }
+        if (ds) {
+          var entry=window.aD[ds];
+          if (entry&&entry.date&&entry.rows) {
+            var pk=(typeof rPK==='function')?rPK(entry.date,1):null;
+            var row=pk?entry.rows.filter(function(r){return r.pk===pk;})[0]:null;
+            if (!row) row=entry.rows[0];
+            if (row&&row.Brent&&row.Brent>0) return row.Brent;
+          }
+        }
+      }
+    } catch(e){}
+    return BRENT_HIST[k]||brent;
+  });
+  var lt11Arr = brentArr.map(function(b){ return +(b*0.11).toFixed(2); });
+  var lt14Arr = brentArr.map(function(b){ return +(b*0.14).toFixed(2); });
   var coalArr  = allKeys.map(function(){ return parseFloat(coalPow); });
 
   el.innerHTML =
@@ -11664,32 +11752,34 @@ function renderPrices() {
   /* Build historical JKM DES India series: for each calendar month,
      find the nearest EOD date and extract front-month JKM - $0.35 */
   var jkmIndiaArr = allKeys.map(function(k) {
+    /* 1. Try live EOD data first */
     try {
-      if (!window.sDates || !window.sDates.length || !window.aD) return null;
-      /* Find EOD dates within this calendar month first */
-      var mo = k; /* 'YYYY-MM' */
-      var inMonth = window.sDates.filter(function(d){ return d.slice(0,7) === mo; });
-      var ds = inMonth.length ? inMonth[inMonth.length-1] : null;
-      /* If no EOD in this month, find nearest within 45 days */
-      if (!ds) {
-        var target = new Date(k + '-15').getTime();
-        var best = null, bestDiff = Infinity;
-        window.sDates.forEach(function(d) {
-          var diff = Math.abs(new Date(d).getTime() - target);
-          if (diff < bestDiff) { bestDiff = diff; best = d; }
-        });
-        if (!best || bestDiff > 45*24*3600*1000) return null;
-        ds = best;
+      if (window.sDates && window.sDates.length && window.aD) {
+        var inMonth = window.sDates.filter(function(d){ return d.slice(0,7) === k; });
+        var ds = inMonth.length ? inMonth[inMonth.length-1] : null;
+        if (!ds) {
+          var target = new Date(k + '-15').getTime();
+          var best = null, bestDiff = Infinity;
+          window.sDates.forEach(function(d) {
+            var diff = Math.abs(new Date(d).getTime() - target);
+            if (diff < bestDiff) { bestDiff = diff; best = d; }
+          });
+          if (best && bestDiff <= 45*24*3600*1000) ds = best;
+        }
+        if (ds) {
+          var entry = window.aD[ds];
+          if (entry && entry.date && entry.rows) {
+            var pk = (typeof rPK === 'function') ? rPK(entry.date, 1) : null;
+            var row = pk ? entry.rows.filter(function(r){ return r.pk===pk; })[0] : null;
+            if (!row) row = entry.rows[0];
+            if (row && row.JKM && row.JKM > 0) return +(row.JKM - 0.35).toFixed(2);
+          }
+        }
       }
-      var entry = window.aD[ds];
-      if (!entry || !entry.date || !entry.rows) return null;
-      /* Use rPK to get front-month delivery key */
-      var pk = (typeof rPK === 'function') ? rPK(entry.date, 1) : null;
-      var row = pk ? entry.rows.filter(function(r){ return r.pk === pk; })[0] : entry.rows[0];
-      if (!row) row = entry.rows[0];
-      if (row && row.JKM && row.JKM > 0) return +(row.JKM - 0.35).toFixed(2);
-      return null;
-    } catch(e) { return null; }
+    } catch(e) {}
+    /* 2. Fall back to hardcoded historical averages */
+    if (JKM_HIST[k] !== undefined) return +(JKM_HIST[k] - 0.35).toFixed(2);
+    return null;
   });
   setTimeout(function(){ buildPriceChart(allKeys, apmData, dwData, lt11Arr, lt14Arr, coalArr, jkmIndiaArr); }, 30);
 }
@@ -11799,6 +11889,9 @@ function indInit() {
 window.indInit = indInit;
 
 })();
+
+
+
 
 
 
