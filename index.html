@@ -10987,6 +10987,7 @@ function gaExportEuPDF(){
 
 <script>
 
+
 /* ═════════════════════════════════════════════════════════════
    INDIA GAS BALANCE MODULE v2 — LNG TradeOS™
    Changes: Dom/RLNG split chart, YoY col, supply/demand area,
@@ -11660,8 +11661,36 @@ function renderPrices() {
     '</div>' +
     '<div class="cs-src" style="margin-top:8px">APM &amp; deepwater: PPAC notifications &middot; LT = 11%&ndash;14% of EOD Brent M+1 &middot; Coal: G10 CIL Rs2,900/t hardcoded (update from coalindia.in)</div>';
 
-  var jkmVal = jkmIndia || null;
-  var jkmIndiaArr = allKeys.map(function(){ return jkmVal; });
+  /* Build historical JKM DES India series: for each calendar month,
+     find the nearest EOD date and extract front-month JKM - $0.35 */
+  var jkmIndiaArr = allKeys.map(function(k) {
+    try {
+      if (!window.sDates || !window.sDates.length || !window.aD) return null;
+      /* Find EOD dates within this calendar month first */
+      var mo = k; /* 'YYYY-MM' */
+      var inMonth = window.sDates.filter(function(d){ return d.slice(0,7) === mo; });
+      var ds = inMonth.length ? inMonth[inMonth.length-1] : null;
+      /* If no EOD in this month, find nearest within 45 days */
+      if (!ds) {
+        var target = new Date(k + '-15').getTime();
+        var best = null, bestDiff = Infinity;
+        window.sDates.forEach(function(d) {
+          var diff = Math.abs(new Date(d).getTime() - target);
+          if (diff < bestDiff) { bestDiff = diff; best = d; }
+        });
+        if (!best || bestDiff > 45*24*3600*1000) return null;
+        ds = best;
+      }
+      var entry = window.aD[ds];
+      if (!entry || !entry.date || !entry.rows) return null;
+      /* Use rPK to get front-month delivery key */
+      var pk = (typeof rPK === 'function') ? rPK(entry.date, 1) : null;
+      var row = pk ? entry.rows.filter(function(r){ return r.pk === pk; })[0] : entry.rows[0];
+      if (!row) row = entry.rows[0];
+      if (row && row.JKM && row.JKM > 0) return +(row.JKM - 0.35).toFixed(2);
+      return null;
+    } catch(e) { return null; }
+  });
   setTimeout(function(){ buildPriceChart(allKeys, apmData, dwData, lt11Arr, lt14Arr, coalArr, jkmIndiaArr); }, 30);
 }
 
@@ -11770,6 +11799,7 @@ function indInit() {
 window.indInit = indInit;
 
 })();
+
 
 
 </script>
