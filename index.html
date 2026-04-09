@@ -471,7 +471,12 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       .cs-divider{font-size:9px;letter-spacing:.15em;color:#4b5a72;margin:18px 0 12px;padding-bottom:6px;border-bottom:1px solid rgba(77,158,245,0.07)}
     </style>
 
-    <!-- China Signposts sub-tabs -->
+    <!-- Country selector -->
+    <div id="lngbal-cty-bar" style="display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px">
+      <button id="lngbal-btn-china" class="cs-tab active" onclick="lngbalCountry('china',this)">CHINA</button>
+      <button id="lngbal-btn-india" class="cs-tab" onclick="lngbalCountry('india',this)">INDIA</button>
+    </div>
+    <div id="lngbal-china">
     <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS &amp; LNG ANALYTICS · CHINA SIGNPOSTS</div>
     <div class="cs-tabs">
       <button class="cs-tab active" onclick="csTab(0,this)">CHINA GAS PRICE CHAIN</button>
@@ -674,6 +679,10 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
     </div>
 
+    </div><!-- end lngbal-china -->
+    <div id="lngbal-india" style="display:none">
+      <div id="ind-container"></div>
+    </div>
   </div><!-- end ga-tab-lngbal -->
 
 
@@ -8261,6 +8270,7 @@ function lRet(vals){const out=[];for(let i=1;i<vals.length;i++)out.push(vals[i]>
 function pear(a,b){const p=[];for(let i=0;i<Math.min(a.length,b.length);i++)if(a[i]!=null&&b[i]!=null&&isFinite(a[i])&&isFinite(b[i]))p.push([a[i],b[i]]);const n=p.length;if(n<3)return NaN;const ma=p.reduce((s,x)=>s+x[0],0)/n,mb=p.reduce((s,x)=>s+x[1],0)/n;let num=0,da=0,db=0;for(const[x,y]of p){num+=(x-ma)*(y-mb);da+=(x-ma)**2;db+=(y-mb)**2;}const den=Math.sqrt(da*db);return den===0?NaN:+(num/den).toFixed(3);}
 function rCorr(s1,s2,win){const{v1,v2,dates}=al2(s1,s2);const l1=lRet(v1),l2=lRet(v2);const out=[];for(let i=win-1;i<l1.length;i++){const r=pear(l1.slice(i-win+1,i+1),l2.slice(i-win+1,i+1));if(!isNaN(r))out.push({date:dates[i+1],value:r});}return out;}
 const CD={responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#5a6882',font:{size:10,family:'IBM Plex Mono'},boxWidth:12,padding:12}},tooltip:{backgroundColor:'#0c1120',borderColor:'#1e2d45',borderWidth:1,titleColor:'#c8cfe0',bodyColor:'#8a9bb5',padding:10,titleFont:{family:'IBM Plex Mono',size:11},bodyFont:{family:'IBM Plex Mono',size:10}}},scales:{x:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{color:'#0f1824'}},y:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}};
+window.CD=CD;
 function mkRC(cid,win,data,lbl){const c=document.getElementById(cid);if(!c)return null;const lbls=data.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),vals=data.map(d=>d.value),cols=vals.map(v=>v>=0.7?'#22c55e':v>=0.3?'#2d7cff':v>=-0.3?'#f59e0b':'#ef4444'),lat=vals.length?vals[vals.length-1]:null;return new Chart(c,{type:'bar',data:{labels:lbls,datasets:[{label:`${win}D r — ${lbl}${lat!=null?' | '+lat.toFixed(3):''}`,data:vals,backgroundColor:cols,borderWidth:0}]},options:{...CD,plugins:{...CD.plugins,legend:{labels:{color:'#5a6882',font:{size:10,family:'IBM Plex Mono'},boxWidth:0,padding:0}}},scales:{x:CD.scales.x,y:{min:-1,max:1,ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});}
 function bIS(el,keys=null,wN=false){el.innerHTML=wN?'<option value="none">— None —</option>':'';const list=keys?INSTS.filter(i=>keys.includes(i.k)):INSTS;list.forEach(i=>el.innerHTML+=`<option value="${i.k}">${i.label}</option>`);}
 function bCS(el){el.innerHTML='';CI.forEach(k=>el.innerHTML+=`<option value="${k}">${INST[k].label}</option>`);}
@@ -10974,4 +10984,610 @@ function gaExportEuPDF(){
 
 </script>
 </body>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   INDIA GAS BALANCE MODULE — LNG TradeOS
+   Sources: PPAC (ppac.gov.in)
+═══════════════════════════════════════════════════════ */
+(function() {
+'use strict';
+
+var CD2 = window.CD || {
+  responsive:true, maintainAspectRatio:false,
+  interaction:{mode:'index',intersect:false},
+  plugins:{
+    legend:{labels:{color:'#5a6882',font:{size:10,family:'IBM Plex Mono'},boxWidth:12,padding:12}},
+    tooltip:{backgroundColor:'#0c1120',borderColor:'#1e2d45',borderWidth:1,
+      titleColor:'#c8cfe0',bodyColor:'#8a9bb5',padding:10,
+      titleFont:{family:'IBM Plex Mono',size:11},bodyFont:{family:'IBM Plex Mono',size:10}}
+  },
+  scales:{
+    x:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{color:'#0f1824'}},
+    y:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}
+  }
+};
+
+// Country switcher
+window.lngbalCountry = function(cty, btn) {
+  var bar = document.getElementById('lngbal-cty-bar');
+  if (bar) bar.querySelectorAll('.cs-tab').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  var china = document.getElementById('lngbal-china');
+  var india = document.getElementById('lngbal-india');
+  if (china) china.style.display = cty === 'china' ? '' : 'none';
+  if (india) india.style.display = cty === 'india' ? '' : 'none';
+  if (cty === 'india') setTimeout(indInit, 50);
+};
+
+// State
+var IND = {
+  tab: 0, unit: 'mmscm', year: '2025',
+  seaSeries: 'rlng', seaYears: ['2023','2024','2025'],
+  charts: {}, brent: 72,
+};
+
+// FY raw data — indices: 0=Apr, 1=May, ..., 9=Jan, 10=Feb, 11=Mar
+var FY = {
+  '2023-24': {
+    prod:[2670.78,2838.04,2843.9,3063.1,3111.47,2976.01,3110.73,2991.3,3078.35,3073.73,2887.16,3072.37],
+    rlng:[2514.33,2853.98,2379.63,2354.93,2729.44,2583.99,2653.42,2416.37,2557.05,2831.17,2867.82,3053.06],
+    Power:[732.31,787.37,828.78,722.31,978.58,822.15,877.2,562.52,632.06,755.83,705.49,677.91],
+    CGD:[1039.95,1108.48,1044.67,1103.95,1118.0,1088.61,1177.11,1092.5,1181.85,1162.46,1136.2,1237.79],
+    Refinery:[338.45,472.99,432.59,507.41,484.4,467.39,455.55,411.12,407.36,449.59,521.29,606.13],
+    Fertilizer:[1610.3,1778.52,1613.34,1665.9,1774.84,1767.41,1878.91,1829.3,1864.98,1916.24,1613.51,1722.01],
+    Petrochem:[255.67,247.52,168.68,207.14,258.38,216.81,265.22,265.95,305.27,285.83,234.14,264.23],
+    LPGShrink:[82.29,80.16,82.55,88.18,81.73,80.91,83.06,81.56,83.83,89.16,81.1,86.69],
+    SteelDRI:[94.98,86.05,104.52,99.63,108.97,92.27,93.07,91.67,92.67,93.97,92.43,126.63],
+    PipelineIC:[160.26,171.48,155.51,158.77,158.33,156.54,162.75,158.54,161.75,162.44,153.19,162.55],
+    Other:[629.63,652.27,833.43,912.88,1034.66,954.21,975.51,987.38,1024.16,1014.31,948.91,1003.72]
+  },
+  '2024-25': {
+    prod:[2907.46,3058.51,2945.28,3029.63,2998.87,2935.64,3073.29,2935.83,3025.92,3024.62,2711.57,2947.31],
+    rlng:[2499.46,3516.38,3460.44,3688.97,3055.98,2786.53,3626.18,2711.98,2828.53,2435.82,2712.57,2397.44],
+    Power:[945.22,1260.81,1116.54,728.75,695.27,711.7,656.38,506.2,570.98,566.39,548.01,585.58],
+    CGD:[1212.95,1280.69,1237.55,1261.13,1223.01,1200.36,1264.68,1193.29,1309.52,1327.76,1246.79,1293.73],
+    Refinery:[589.66,538.53,490.49,516.32,494.86,493.16,519.19,477.3,412.64,494.44,406.5,430.55],
+    Fertilizer:[1651.85,1724.66,1671.98,1801.25,1749.16,1656.68,1724.54,1755.37,1765.51,1757.72,1564.29,1660.2],
+    Petrochem:[154.59,280.22,265.92,282.9,260.68,263.81,264.75,337.6,319.23,333.36,287.13,305.16],
+    LPGShrink:[62.38,78.06,76.15,85.06,80.19,81.98,87.09,82.72,85.23,75.63,60.57,64.05],
+    SteelDRI:[108.42,126.98,109.05,125.61,129.94,124.88,137.41,124.74,130.3,74.09,65.79,74.64],
+    PipelineIC:[146.48,174.91,171.63,173.19,168.13,162.35,171.98,166.9,170.05,164.35,141.49,156.94],
+    Other:[805.0,843.61,836.43,1010.91,897.82,824.91,934.07,882.24,867.32,849.57,785.41,838.49]
+  },
+  '2025-26': {
+    prod:[2870.22,2940.83,2859.71,2929.16,2935.32,2823.62,2915.13,2863.25,2895.82,2876.34,2578.85,null],
+    rlng:[2777.91,2864.85,2753.64,2872.23,2912.14,3233.15,3239.24,2662.81,3044.2,3198.41,2889.05,null],
+    Power:[824.17,805.41,775.38,744.79,647.03,724.7,533.87,581.0,665.24,596.85,550.59,null],
+    CGD:[1281.13,1335.69,1311.94,1396.06,1385.88,1359.78,1370.13,1391.86,1415.47,1450.67,1375.0,null],
+    Refinery:[390.57,463.63,388.18,427.61,449.82,447.5,484.81,508.09,542.38,627.77,479.13,null],
+    Fertilizer:[1443.29,1497.51,1663.23,1738.76,1765.92,1644.44,1781.85,1744.19,1767.22,1765.83,1597.68,null],
+    Petrochem:[296.98,378.65,383.51,308.99,336.69,327.67,350.44,370.2,348.81,341.97,306.33,null],
+    LPGShrink:[55.13,62.71,58.7,62.37,65.2,65.07,64.7,64.48,66.62,68.04,60.55,null],
+    SteelDRI:[65.72,62.29,57.39,70.58,55.68,53.59,50.81,50.4,54.5,52.45,null,null],
+    PipelineIC:[149.66,163.89,152.92,160.72,154.83,149.61,151.39,152.12,154.42,153.46,138.68,null],
+    Other:[783.22,871.09,826.39,842.01,833.13,797.45,836.13,802.47,858.91,843.94,706.73,null]
+  }
+};
+
+// FY month index to calendar month name
+var FY_MO = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+var FY_CAL = [3,4,5,6,7,8,9,10,11,0,1,2]; // 0-based month index in calendar year
+
+var SECS = ['Power','CGD','Fertilizer','Refinery','Petrochem','LPGShrink','SteelDRI','PipelineIC','Other'];
+var SEC_COL = {Power:'#378ADD',CGD:'#EF9F27',Fertilizer:'#1D9E75',Refinery:'#D4537E',
+  Petrochem:'#7F77DD',LPGShrink:'#F0997B',SteelDRI:'#D85A30',PipelineIC:'#888780',Other:'#B4B2A9'};
+
+// Build calendar-year keyed monthly data
+var MONTHLY = (function() {
+  var m = {};
+  var fyKeys = Object.keys(FY);
+  fyKeys.forEach(function(fy) {
+    var y1 = parseInt(fy.split('-')[0]);
+    // FY 2023-24 → Apr 2023 (idx 0) to Mar 2024 (idx 11)
+    for (var idx = 0; idx < 12; idx++) {
+      var calMo = FY_CAL[idx]; // 0-based
+      var calYear = (idx >= 9) ? (y1 + 1) : y1; // Jan,Feb,Mar → year+1
+      var calNum = calMo + 1; // 1-based month number
+      var key = calYear + '-' + (calNum < 10 ? '0' : '') + calNum;
+      var obj = {};
+      Object.keys(FY[fy]).forEach(function(k) {
+        obj[k] = FY[fy][k][idx];
+      });
+      m[key] = obj;
+    }
+  });
+  return m;
+})();
+
+var MO_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var SEA_YR_COLORS = ['#4d9ef5','#34d399','#f59e0b','#ef5350','#ce93d8'];
+
+// APM price history from PPAC notifications
+var APM_HIST = [
+  {from:'2021-10',to:'2022-03',apm:2.90,dw:6.13},
+  {from:'2022-04',to:'2022-09',apm:6.10,dw:9.92},
+  {from:'2022-10',to:'2023-03',apm:8.57,dw:12.46},
+  {from:'2023-04',to:'2023-09',apm:8.57,dw:12.12},
+  {from:'2023-10',to:'2024-03',apm:8.33,dw:12.56},
+  {from:'2024-04',to:'2024-09',apm:7.10,dw:11.09},
+  {from:'2024-10',to:'2025-09',apm:6.50,dw:10.04},
+  {from:'2025-10',to:'2026-03',apm:6.21,dw:9.00},
+  {from:'2026-04',to:'2026-09',apm:7.00,dw:8.90}
+];
+
+function getAPM(key) {
+  for (var i = 0; i < APM_HIST.length; i++) {
+    if (key >= APM_HIST[i].from && key <= APM_HIST[i].to) return APM_HIST[i];
+  }
+  return null;
+}
+
+function uf(v) {
+  if (v === null || v === undefined) return null;
+  if (IND.unit === 'mtpm')  return +(v * 0.000749).toFixed(2);
+  if (IND.unit === 'bcm')   return +(v * 0.001).toFixed(3);
+  return +v.toFixed(0);
+}
+function uLabel() { return {mmscm:'MMSCM',mtpm:'MTPM',bcm:'BCM'}[IND.unit]; }
+function mLabel(key) {
+  var mo = parseInt(key.slice(5)) - 1;
+  return MO_NAMES[mo] + " '" + key.slice(2,4);
+}
+
+function getYear(yr) {
+  var months = [];
+  for (var mo = 1; mo <= 12; mo++) {
+    var key = yr + '-' + (mo < 10 ? '0' : '') + mo;
+    months.push({key:key, d:MONTHLY[key]||null});
+  }
+  return months;
+}
+
+function secSum(d) {
+  if (!d) return 0;
+  return SECS.reduce(function(s,k){ return s + (d[k]||0); }, 0);
+}
+
+// ── Tab 0: India Gas Balance ─────────────────────────────────────
+function renderBalance() {
+  var el = document.getElementById('ind-pane-0');
+  if (!el) return;
+  var months = getYear(IND.year);
+  var u = uLabel();
+  var valid = months.filter(function(m){ return m.d; });
+  var ytdProd = valid.reduce(function(s,m){ return s+(m.d.prod||0); }, 0);
+  var ytdRlng = valid.reduce(function(s,m){ return s+(m.d.rlng||0); }, 0);
+  var ytdSup  = ytdProd + ytdRlng;
+  var ytdDem  = valid.reduce(function(s,m){ return s+secSum(m.d); }, 0);
+  var ytdGap  = ytdSup - ytdDem;
+
+  var hdrs = months.map(function(m){
+    return '<th>' + mLabel(m.key) + '</th>';
+  }).join('') + '<th style="color:#dde4f0">YTD</th>';
+
+  function buildRow(label, getVal, color, bold, ytd) {
+    var fw = bold ? 'font-weight:500;' : '';
+    var cells = months.map(function(m) {
+      var v = m.d ? getVal(m.d) : null;
+      var disp = v !== null ? uf(v) : '&mdash;';
+      return '<td style="color:' + color + ';' + fw + '">' + disp + '</td>';
+    }).join('');
+    var ytdDisp = ytd !== null ? uf(ytd) : '&mdash;';
+    return '<tr><td style="color:' + color + ';' + fw + 'white-space:nowrap;padding:4px 8px">' +
+      label + '</td>' + cells + '<td style="color:' + color + ';' + fw + '">' + ytdDisp + '</td></tr>';
+  }
+
+  var secRows = SECS.map(function(s) {
+    var ytd = valid.reduce(function(sum,m){ return sum+(m.d[s]||0); }, 0);
+    return buildRow(s, function(d){ return d[s]||0; }, '#34d399', false, ytd);
+  }).join('');
+
+  var gapCells = months.map(function(m) {
+    if (!m.d) return '<td>&mdash;</td>';
+    var gap = (m.d.prod||0)+(m.d.rlng||0) - secSum(m.d);
+    var col = gap >= 0 ? '#34d399' : '#f87171';
+    return '<td style="color:' + col + '">' + (gap >= 0 ? '+' : '') + uf(gap) + '</td>';
+  }).join('');
+
+  var gapCol = ytdGap >= 0 ? '#34d399' : '#f87171';
+
+  el.innerHTML =
+    '<div class="cs-divider">MONTHLY SUPPLY &amp; DEMAND BALANCE &mdash; ' + IND.year + ' &middot; ' + u + '</div>' +
+    '<div style="overflow-x:auto;margin-bottom:8px">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:9px;font-family:IBM Plex Mono">' +
+    '<thead><tr style="border-bottom:1px solid rgba(77,158,245,0.15)">' +
+    '<th style="text-align:left;padding:5px 8px;color:#6b7a99;min-width:130px">ITEM (' + u + ')</th>' +
+    hdrs + '</tr></thead><tbody>' +
+    buildRow('Domestic production (net)', function(d){ return d.prod||0; }, '#4d9ef5', false, ytdProd) +
+    buildRow('RLNG imports', function(d){ return d.rlng||0; }, '#34d399', false, ytdRlng) +
+    '<tr style="border-top:1px solid rgba(255,255,255,0.06)">' +
+    '<td style="color:#dde4f0;font-weight:500;padding:4px 8px;white-space:nowrap">Total supply</td>' +
+    months.map(function(m){
+      var v = m.d ? (m.d.prod||0)+(m.d.rlng||0) : null;
+      return '<td style="color:#dde4f0;font-weight:500">' + (v!==null?uf(v):'&mdash;') + '</td>';
+    }).join('') +
+    '<td style="color:#dde4f0;font-weight:500">' + uf(ytdSup) + '</td></tr>' +
+    '<tr><td colspan="' + (months.length+2) + '" style="height:6px"></td></tr>' +
+    secRows +
+    '<tr style="border-top:1px solid rgba(255,255,255,0.06)">' +
+    '<td style="color:#dde4f0;font-weight:500;padding:4px 8px;white-space:nowrap">Total demand</td>' +
+    months.map(function(m){
+      var v = m.d ? secSum(m.d) : null;
+      return '<td style="color:#dde4f0;font-weight:500">' + (v!==null?uf(v):'&mdash;') + '</td>';
+    }).join('') +
+    '<td style="color:#dde4f0;font-weight:500">' + uf(ytdDem) + '</td></tr>' +
+    '<tr><td style="color:#8a9bb5;font-style:italic;padding:4px 8px;white-space:nowrap">Supply &ndash; demand gap</td>' +
+    gapCells +
+    '<td style="color:' + gapCol + ';font-weight:500">' + (ytdGap>=0?'+':'') + uf(ytdGap) + '</td></tr>' +
+    '</tbody></table></div>' +
+    '<div class="cs-src">Source: PPAC &mdash; NG production, LNG imports, sectoral consumption Excel files &middot; Net production ~83% of gross &middot; Gap = supply &minus; demand (PPAC reported)</div>';
+}
+
+// ── Tab 1: Sectoral stack ────────────────────────────────────────
+function renderSectoral() {
+  var el = document.getElementById('ind-pane-1');
+  if (!el) return;
+  var months = getYear(IND.year).filter(function(m){ return m.d; });
+  var u = uLabel();
+  el.innerHTML =
+    '<div class="cs-divider">SECTORAL GAS CONSUMPTION &mdash; ' + IND.year + ' &middot; ' + u + '</div>' +
+    '<div style="height:380px;position:relative"><canvas id="ind-stk-c" role="img" aria-label="India sectoral gas consumption stacked bar chart"></canvas></div>' +
+    '<div id="ind-stk-lgd" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>' +
+    '<div class="cs-src">Source: PPAC NG-C/H-Sectoral-Consumption &middot; Total per sector (Domestic + RLNG)</div>';
+
+  if (IND.charts.stk) { try{IND.charts.stk.destroy();}catch(e){} }
+  var canvas = document.getElementById('ind-stk-c');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  IND.charts.stk = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: months.map(function(m){ return mLabel(m.key); }),
+      datasets: SECS.map(function(s) {
+        return {
+          label: s,
+          data: months.map(function(m){ return uf(m.d[s]||0); }),
+          backgroundColor: SEC_COL[s] + 'cc',
+          stack: 'demand'
+        };
+      })
+    },
+    options: Object.assign({}, CD2, {
+      responsive:true, maintainAspectRatio:false,
+      plugins: Object.assign({}, CD2.plugins, {
+        legend:{display:false},
+        tooltip:{callbacks:{label:function(ctx){ return ' '+ctx.dataset.label+': '+ctx.parsed.y+' '+u; }}}
+      }),
+      scales: {
+        x: Object.assign({}, CD2.scales.x, {stacked:true}),
+        y: {stacked:true, ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},
+          grid:{color:'#0f1824'},title:{display:true,text:u,color:'#4b5a72',font:{size:9}}}
+      }
+    })
+  });
+
+  var lgd = document.getElementById('ind-stk-lgd');
+  if (lgd) lgd.innerHTML = SECS.map(function(s){
+    return '<span style="display:flex;align-items:center;gap:4px;font-size:9px;color:#5a6882">' +
+      '<span style="width:10px;height:10px;background:' + SEC_COL[s] + ';display:inline-block"></span>' + s + '</span>';
+  }).join('');
+}
+
+// ── Tab 2: Sector trends ─────────────────────────────────────────
+function renderTrends() {
+  var el = document.getElementById('ind-pane-2');
+  if (!el) return;
+  var u = uLabel();
+  var allKeys = Object.keys(MONTHLY).sort();
+
+  el.innerHTML =
+    '<div class="cs-divider">SECTOR TRENDS &mdash; ALL YEARS &middot; ' + u + '</div>' +
+    '<div style="height:360px;position:relative"><canvas id="ind-trd-c" role="img" aria-label="India sector trend lines"></canvas></div>' +
+    '<div id="ind-trd-lgd" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>' +
+    '<div class="cs-src">Source: PPAC &middot; Calendar year Jan&ndash;Dec &middot; Dashes = months not yet reported</div>';
+
+  if (IND.charts.trd) { try{IND.charts.trd.destroy();}catch(e){} }
+  var canvas = document.getElementById('ind-trd-c');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  IND.charts.trd = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: allKeys.map(function(k){ return mLabel(k); }),
+      datasets: SECS.map(function(s) {
+        return {
+          label: s,
+          data: allKeys.map(function(k){
+            var d = MONTHLY[k];
+            return (d && d[s] != null) ? uf(d[s]) : null;
+          }),
+          borderColor: SEC_COL[s],
+          backgroundColor: 'transparent',
+          borderWidth: 1.5, pointRadius: 2, tension: .3, spanGaps: false
+        };
+      })
+    },
+    options: Object.assign({}, CD2, {
+      responsive:true, maintainAspectRatio:false,
+      plugins: Object.assign({}, CD2.plugins, {legend:{display:false}}),
+      scales: {
+        x: Object.assign({}, CD2.scales.x, {ticks: Object.assign({}, CD2.scales.x.ticks, {maxTicksLimit:24})}),
+        y: {ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},
+          grid:{color:'#0f1824'},title:{display:true,text:u,color:'#4b5a72',font:{size:9}}}
+      }
+    })
+  });
+
+  var lgd = document.getElementById('ind-trd-lgd');
+  if (lgd) lgd.innerHTML = SECS.map(function(s){
+    return '<span style="display:flex;align-items:center;gap:4px;font-size:9px;color:#5a6882">' +
+      '<span style="width:10px;height:10px;background:' + SEC_COL[s] + ';display:inline-block"></span>' + s + '</span>';
+  }).join('');
+}
+
+// ── Tab 3: Seasonal chart ────────────────────────────────────────
+var SEA_DEF = {
+  prod:      {label:'Domestic production',  fn:function(d){ return d.prod; }},
+  rlng:      {label:'RLNG imports',          fn:function(d){ return d.rlng; }},
+  supply:    {label:'Total supply',          fn:function(d){ return (d.prod||0)+(d.rlng||0); }},
+  demand:    {label:'Total demand',          fn:function(d){ return secSum(d); }},
+  Power:     {label:'Power',                 fn:function(d){ return d.Power; }},
+  CGD:       {label:'CGD',                   fn:function(d){ return d.CGD; }},
+  Fertilizer:{label:'Fertilizer',            fn:function(d){ return d.Fertilizer; }},
+  Refinery:  {label:'Refinery',              fn:function(d){ return d.Refinery; }},
+  Petrochem: {label:'Petrochem',             fn:function(d){ return d.Petrochem; }},
+  SteelDRI:  {label:'Steel/DRI',             fn:function(d){ return d.SteelDRI; }},
+  LPGShrink: {label:'LPG shrinkage',         fn:function(d){ return d.LPGShrink; }},
+  PipelineIC:{label:'Pipeline I/C',          fn:function(d){ return d.PipelineIC; }},
+  Other:     {label:'Other',                 fn:function(d){ return d.Other; }}
+};
+
+function renderSeasonal() {
+  var el = document.getElementById('ind-pane-3');
+  if (!el) return;
+  var u = uLabel();
+  var allYrs = [];
+  Object.keys(MONTHLY).sort().forEach(function(k){
+    var y = k.slice(0,4);
+    if (allYrs.indexOf(y) === -1) allYrs.push(y);
+  });
+
+  var serOpts = Object.keys(SEA_DEF).map(function(k){
+    return '<option value="' + k + '"' + (k === IND.seaSeries ? ' selected' : '') + '>' + SEA_DEF[k].label + '</option>';
+  }).join('');
+
+  var yrBtns = allYrs.map(function(y, i){
+    var sel = IND.seaYears.indexOf(y) > -1;
+    var col = SEA_YR_COLORS[i % SEA_YR_COLORS.length];
+    return '<button onclick="window.indSeaToggleYear(\'' + y + '\')" ' +
+      'style="padding:4px 8px;font-size:9px;font-family:IBM Plex Mono;letter-spacing:.06em;cursor:pointer;' +
+      'border:1px solid ' + (sel ? col : 'rgba(77,158,245,0.2)') + ';' +
+      'color:' + (sel ? col : '#4b5a72') + ';' +
+      'background:' + (sel ? 'rgba(77,158,245,0.06)' : 'transparent') + '">' + y + '</button>';
+  }).join('');
+
+  el.innerHTML =
+    '<div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">' +
+    '<div class="cs-ctrl-grp"><div class="cs-ctrl-lbl">SERIES</div>' +
+    '<select id="ind-sea-ser" onchange="window.indSeaSeries(this.value)" ' +
+    'style="background:#0d1526;border:1px solid rgba(77,158,245,0.2);color:#dde4f0;padding:4px 8px;font-size:10px;font-family:IBM Plex Mono">' +
+    serOpts + '</select></div>' +
+    '<div class="cs-ctrl-grp"><div class="cs-ctrl-lbl">YEARS</div>' +
+    '<div style="display:flex;gap:0">' + yrBtns + '</div></div></div>' +
+    '<div class="cs-divider">SEASONAL &mdash; ' + (SEA_DEF[IND.seaSeries]?SEA_DEF[IND.seaSeries].label:IND.seaSeries) + ' &middot; ' + u + '</div>' +
+    '<div style="height:340px;position:relative"><canvas id="ind-sea-c" role="img" aria-label="India seasonal chart Jan-Dec"></canvas></div>' +
+    '<div class="cs-src">Calendar year axis Jan&ndash;Dec &middot; Each line = one calendar year &middot; Source: PPAC</div>';
+
+  buildSeaChart(allYrs);
+}
+
+function buildSeaChart(allYrs) {
+  if (IND.charts.sea) { try{IND.charts.sea.destroy();}catch(e){} IND.charts.sea=null; }
+  var canvas = document.getElementById('ind-sea-c');
+  if (!canvas || typeof Chart === 'undefined') return;
+  var u = uLabel();
+  var s = SEA_DEF[IND.seaSeries];
+  if (!s) return;
+
+  var datasets = IND.seaYears.map(function(yr) {
+    var idx = allYrs.indexOf(yr);
+    var col = SEA_YR_COLORS[idx >= 0 ? idx % SEA_YR_COLORS.length : 0];
+    return {
+      label: yr,
+      data: MO_NAMES.map(function(mo, mi){
+        var key = yr + '-' + (mi+1 < 10 ? '0' : '') + (mi+1);
+        var d = MONTHLY[key];
+        return (d && s.fn(d) != null) ? uf(s.fn(d)) : null;
+      }),
+      borderColor: col, backgroundColor: 'transparent',
+      borderWidth: yr === allYrs[allYrs.length-1] ? 2.5 : 1.5,
+      pointRadius: 3, tension: .3, spanGaps: false
+    };
+  });
+
+  IND.charts.sea = new Chart(canvas, {
+    type: 'line',
+    data: {labels: MO_NAMES, datasets: datasets},
+    options: Object.assign({}, CD2, {
+      responsive:true, maintainAspectRatio:false,
+      plugins: Object.assign({}, CD2.plugins, {
+        legend:{display:true,position:'top',align:'start',labels:{color:'#5a6882',font:{size:9,family:'IBM Plex Mono'},boxWidth:20,padding:10}}
+      }),
+      scales: {
+        x: CD2.scales.x,
+        y: {ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},
+          grid:{color:'#0f1824'},title:{display:true,text:u,color:'#4b5a72',font:{size:9}}}
+      }
+    })
+  });
+}
+
+// ── Tab 4: Gas Prices ────────────────────────────────────────────
+function renderPrices() {
+  var el = document.getElementById('ind-pane-4');
+  if (!el) return;
+  var brent = IND.brent;
+  var lt11  = (brent * 0.11).toFixed(2);
+  var lt14  = (brent * 0.14).toFixed(2);
+  var coalHeat = (2900 / (4400 * 4.187 / 1000 * 1000 / 84)).toFixed(2);
+  var coalPow  = (parseFloat(coalHeat) / 0.35).toFixed(2);
+
+  var allKeys = Object.keys(MONTHLY).sort();
+  var apmData = allKeys.map(function(k){ var p=getAPM(k); return p?p.apm:null; });
+  var dwData  = allKeys.map(function(k){ var p=getAPM(k); return p?p.dw:null; });
+  var lt11Arr = allKeys.map(function(){ return parseFloat(lt11); });
+  var lt14Arr = allKeys.map(function(){ return parseFloat(lt14); });
+  var coalArr = allKeys.map(function(){ return parseFloat(coalPow); });
+
+  el.innerHTML =
+    '<div class="cs-divider">INDIA GAS SUPPLY STACK &mdash; $/MMBTU (GCV)</div>' +
+    '<div class="cs-metric-row" style="margin-bottom:16px">' +
+    '<div class="cs-mc"><div class="cs-mc-lbl">APM GAS (APR 2026)</div><div class="cs-mc-val" style="color:#4d9ef5">$7.00</div><div class="cs-mc-sub">ONGC/OIL nomination fields</div></div>' +
+    '<div class="cs-mc"><div class="cs-mc-lbl">DEEPWATER CEILING (APR&ndash;SEP 2026)</div><div class="cs-mc-val" style="color:#f59e0b">$8.90</div><div class="cs-mc-sub">HPHT / deepwater / ultra-deepwater</div></div>' +
+    '<div class="cs-mc"><div class="cs-mc-lbl">LT BAND (BRENT $' + brent + ')</div><div class="cs-mc-val" style="color:#ef5350">$' + lt11 + '&ndash;$' + lt14 + '</div><div class="cs-mc-sub">11%&ndash;14% of Brent input</div></div>' +
+    '<div class="cs-mc"><div class="cs-mc-lbl">COAL EFFECTIVE (POWER)</div><div class="cs-mc-val" style="color:#888780">$' + coalPow + '</div><div class="cs-mc-sub">G10 CIL Rs2900/t &middot; 35% plant eff.</div></div>' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">' +
+    '<span class="cs-ctrl-lbl">BRENT INPUT ($/bbl)</span>' +
+    '<input type="number" value="' + brent + '" min="30" max="150" step="1" onchange="window.indSetBrent(this.value)" ' +
+    'style="background:#0d1526;border:1px solid rgba(77,158,245,0.2);color:#dde4f0;padding:4px 8px;font-size:10px;font-family:IBM Plex Mono;width:70px">' +
+    '</div>' +
+    '<div class="cs-divider">PRICE HISTORY</div>' +
+    '<div style="height:320px;position:relative"><canvas id="ind-prc-c" role="img" aria-label="India gas price history APM and deepwater step lines"></canvas></div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:9px;color:#5a6882">' +
+    '<span><span style="display:inline-block;width:20px;height:2px;background:#4d9ef5;vertical-align:middle;margin-right:4px"></span>APM gas</span>' +
+    '<span><span style="display:inline-block;width:20px;height:2px;background:#f59e0b;vertical-align:middle;margin-right:4px"></span>Deepwater ceiling</span>' +
+    '<span><span style="display:inline-block;width:20px;height:2px;background:#ef5350;vertical-align:middle;margin-right:4px"></span>LT 11%&ndash;14% band</span>' +
+    '<span><span style="display:inline-block;width:20px;height:2px;background:#888780;vertical-align:middle;margin-right:4px"></span>Coal effective</span>' +
+    '</div>' +
+    '<div class="cs-src" style="margin-top:8px">APM &amp; deepwater: PPAC notifications &middot; LT band = Brent input above &middot; CIL coal hardcoded (update annually from coalindia.in)</div>';
+
+  buildPriceChart(allKeys, apmData, dwData, lt11Arr, lt14Arr, coalArr);
+}
+
+function buildPriceChart(keys, apmData, dwData, lt11Arr, lt14Arr, coalArr) {
+  if (IND.charts.prc) { try{IND.charts.prc.destroy();}catch(e){} IND.charts.prc=null; }
+  var canvas = document.getElementById('ind-prc-c');
+  if (!canvas || typeof Chart === 'undefined') return;
+  var labels = keys.map(function(k){ return mLabel(k); });
+
+  IND.charts.prc = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {label:'LT 11% (floor)',data:lt11Arr,borderColor:'rgba(239,83,80,0.5)',backgroundColor:'rgba(239,83,80,0.12)',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:'+1',tension:0,spanGaps:true},
+        {label:'LT 14% (ceiling)',data:lt14Arr,borderColor:'rgba(239,83,80,0.8)',backgroundColor:'transparent',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false,tension:0,spanGaps:true},
+        {label:'APM gas',data:apmData,borderColor:'#4d9ef5',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:0,spanGaps:true},
+        {label:'Deepwater ceiling',data:dwData,borderColor:'#f59e0b',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:0,spanGaps:true},
+        {label:'Coal effective (35% eff.)',data:coalArr,borderColor:'#888780',backgroundColor:'transparent',borderWidth:1.5,borderDash:[3,3],pointRadius:0,tension:0,spanGaps:true}
+      ]
+    },
+    options: Object.assign({}, CD2, {
+      responsive:true, maintainAspectRatio:false,
+      plugins: Object.assign({}, CD2.plugins, {legend:{display:false}}),
+      scales: {
+        x: Object.assign({}, CD2.scales.x, {ticks:Object.assign({},CD2.scales.x.ticks,{maxTicksLimit:18})}),
+        y: {ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},
+          grid:{color:'#0f1824'},title:{display:true,text:'$/MMBtu',color:'#4b5a72',font:{size:9}}}
+      }
+    })
+  });
+}
+
+// ── Tab controller ───────────────────────────────────────────────
+window.indTab = function(idx, btn) {
+  document.querySelectorAll('#ind-tabs .cs-tab').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  for (var i = 0; i < 5; i++) {
+    var p = document.getElementById('ind-pane-' + i);
+    if (p) p.classList.toggle('active', i === idx);
+  }
+  IND.tab = idx;
+  setTimeout(function(){
+    try {
+      if (idx === 0) renderBalance();
+      else if (idx === 1) renderSectoral();
+      else if (idx === 2) renderTrends();
+      else if (idx === 3) renderSeasonal();
+      else if (idx === 4) renderPrices();
+    } catch(e) { console.error('India tab error:', e); }
+  }, 30);
+};
+
+window.indSetYear   = function(y){ IND.year = y; indUpdate(); };
+window.indSetUnit   = function(u, btn){
+  document.querySelectorAll('#ind-unit-btns .cs-rng-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  IND.unit = u; indUpdate();
+};
+window.indSeaSeries = function(v){ IND.seaSeries = v; renderSeasonal(); };
+window.indSeaToggleYear = function(yr){
+  var i = IND.seaYears.indexOf(yr);
+  if (i > -1) { if (IND.seaYears.length > 1) IND.seaYears.splice(i,1); }
+  else IND.seaYears.push(yr);
+  renderSeasonal();
+};
+window.indSetBrent  = function(v){ IND.brent = parseFloat(v)||72; renderPrices(); };
+
+function indUpdate() {
+  try {
+    if (IND.tab === 0) renderBalance();
+    else if (IND.tab === 1) renderSectoral();
+    else if (IND.tab === 2) renderTrends();
+    else if (IND.tab === 3) renderSeasonal();
+    else if (IND.tab === 4) renderPrices();
+  } catch(e) { console.error('India update error:', e); }
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+function indBuildShell() {
+  var allYrs = [];
+  Object.keys(MONTHLY).sort().forEach(function(k){
+    var y = k.slice(0,4);
+    if (allYrs.indexOf(y) === -1) allYrs.push(y);
+  });
+  var yrOpts = allYrs.map(function(y){
+    return '<option value="' + y + '"' + (y === IND.year ? ' selected' : '') + '>' + y + '</option>';
+  }).join('');
+
+  return '<div style="font-size:9px;letter-spacing:.15em;color:#6b7a99;margin-bottom:4px">&#9655; GAS &amp; LNG ANALYTICS &middot; INDIA GAS BALANCE</div>' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(77,158,245,0.13)">' +
+    '<div><div style="font-size:13px;font-weight:500;color:#dde4f0">India &mdash; natural gas balance</div>' +
+    '<div style="font-size:9px;color:#4b5a72;margin-top:2px">Source: PPAC &middot; ppac.gov.in &middot; calendar year &middot; ~6&ndash;8 weeks lag</div></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+    '<select id="ind-yr-sel" onchange="window.indSetYear(this.value)" ' +
+    'style="background:#0d1526;border:1px solid rgba(77,158,245,0.2);color:#dde4f0;padding:4px 8px;font-size:10px;font-family:IBM Plex Mono">' + yrOpts + '</select>' +
+    '<div class="cs-rng-btns" id="ind-unit-btns">' +
+    '<button class="cs-rng-btn active" onclick="window.indSetUnit(\'mmscm\',this)">MMSCM</button>' +
+    '<button class="cs-rng-btn" onclick="window.indSetUnit(\'mtpm\',this)">MTPM</button>' +
+    '<button class="cs-rng-btn" onclick="window.indSetUnit(\'bcm\',this)">BCM</button>' +
+    '</div></div></div>' +
+    '<div class="cs-tabs" id="ind-tabs">' +
+    '<button class="cs-tab active" onclick="window.indTab(0,this)">INDIA GAS BALANCE</button>' +
+    '<button class="cs-tab" onclick="window.indTab(1,this)">SECTORAL STACK</button>' +
+    '<button class="cs-tab" onclick="window.indTab(2,this)">SECTOR TRENDS</button>' +
+    '<button class="cs-tab" onclick="window.indTab(3,this)">SEASONAL CHART</button>' +
+    '<button class="cs-tab" onclick="window.indTab(4,this)">GAS PRICES</button>' +
+    '</div>' +
+    '<div id="ind-pane-0" class="cs-tab-pane active"></div>' +
+    '<div id="ind-pane-1" class="cs-tab-pane"></div>' +
+    '<div id="ind-pane-2" class="cs-tab-pane"></div>' +
+    '<div id="ind-pane-3" class="cs-tab-pane"></div>' +
+    '<div id="ind-pane-4" class="cs-tab-pane"></div>';
+}
+
+function indInit() {
+  var container = document.getElementById('ind-container');
+  if (!container) return;
+  if (container.innerHTML.trim()) return;
+  container.innerHTML = indBuildShell();
+  setTimeout(renderBalance, 50);
+}
+window.indInit = indInit;
+
+})();
+
+</script>
 </html>
