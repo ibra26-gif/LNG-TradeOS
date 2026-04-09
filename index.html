@@ -10986,6 +10986,7 @@ function gaExportEuPDF(){
 </body>
 
 <script>
+
 /* ═════════════════════════════════════════════════════════════
    INDIA GAS BALANCE MODULE v2 — LNG TradeOS™
    Changes: Dom/RLNG split chart, YoY col, supply/demand area,
@@ -11279,8 +11280,8 @@ function buildAreaChart() {
   var canvas = document.getElementById('ind-area-c');
   if (!canvas || typeof Chart === 'undefined') return;
   var allKeys = Object.keys(MONTHLY).sort();
-  var supplyData = allKeys.map(function(k){ var d=MONTHLY[k]; return d?(d.prod||0)+(d.rlng||0):null; });
-  var demandData = allKeys.map(function(k){ var d=MONTHLY[k]; return d?secSum(d):null; });
+  var supplyData = allKeys.map(function(k){ var d=MONTHLY[k]; return d?uf((d.prod||0)+(d.rlng||0)):null; });
+  var demandData = allKeys.map(function(k){ var d=MONTHLY[k]; return d?uf(secSum(d)):null; });
 
   IND.charts.area = new Chart(canvas, {
     type:'line',
@@ -11616,6 +11617,22 @@ function renderPrices() {
      Power plant efficiency 35% → effective = 1.98 / 0.35 = $5.65/MMBtu */
   var coalHeat = (2900 / 84 / (4400000/252000)).toFixed(2);
   var coalPow  = (parseFloat(coalHeat) / 0.35).toFixed(2);
+  /* JKM DES India from EOD data */
+  var jkmIndia = null;
+  try {
+    if (window.sDates && window.sDates.length && window.aD) {
+      var latestD = window.sDates[window.sDates.length-1];
+      var latestRows = window.aD[latestD] && window.aD[latestD].rows;
+      if (latestRows) {
+        for (var ji=0; ji<latestRows.length; ji++) {
+          if (latestRows[ji].JKM && latestRows[ji].JKM > 0) {
+            jkmIndia = +(latestRows[ji].JKM - 0.35).toFixed(2);
+            break;
+          }
+        }
+      }
+    }
+  } catch(ejkm){}
   var allKeys  = Object.keys(MONTHLY).sort();
   var apmData  = allKeys.map(function(k){ var p=getAPM(k); return p?p.apm:null; });
   var dwData   = allKeys.map(function(k){ var p=getAPM(k); return p?p.dw:null; });
@@ -11630,6 +11647,7 @@ function renderPrices() {
     '<div class="cs-mc"><div class="cs-mc-lbl">DEEPWATER (APR&ndash;SEP 2026)</div><div class="cs-mc-val" style="color:#f59e0b">$8.90</div><div class="cs-mc-sub">HPHT / deepwater ceiling</div></div>' +
     '<div class="cs-mc"><div class="cs-mc-lbl">LT BAND (BRENT $' + brent.toFixed(0) + ')</div><div class="cs-mc-val" style="color:#ef5350">$' + lt11 + '&ndash;$' + lt14 + '</div><div class="cs-mc-sub">11%&ndash;14% of Brent M+1</div></div>' +
     '<div class="cs-mc"><div class="cs-mc-lbl">COAL EFF. (POWER SECTOR)</div><div class="cs-mc-val" style="color:#888780">$' + coalPow + '</div><div class="cs-mc-sub">G10 CIL Rs2,900/t &middot; 35% plant eff.</div></div>' +
+    '<div class="cs-mc"><div class="cs-mc-lbl">JKM DES INDIA</div><div class="cs-mc-val" style="color:#ce93d8">' + (jkmIndia!==null?'$'+jkmIndia.toFixed(2):'—') + '</div><div class="cs-mc-sub">JKM M+1 &minus; $0.35 shipping diff</div></div>' +
     '</div>' +
     '<div class="cs-divider">PRICE HISTORY &mdash; APM &amp; DEEPWATER STEP LINES</div>' +
     '<div style="height:320px;position:relative"><canvas id="ind-prc-c" role="img" aria-label="India gas price history step lines showing APM and deepwater ceiling with LT band and coal effective"></canvas></div>' +
@@ -11638,13 +11656,17 @@ function renderPrices() {
     '<span><span style="display:inline-block;width:18px;height:2px;background:#f59e0b;vertical-align:middle;margin-right:4px"></span>Deepwater ceiling</span>' +
     '<span><span style="display:inline-block;width:18px;height:2px;background:#ef5350;vertical-align:middle;margin-right:4px"></span>LT 11%&ndash;14% band</span>' +
     '<span><span style="display:inline-block;width:18px;height:2px;background:#888780;vertical-align:middle;margin-right:4px"></span>Coal eff. ($' + coalPow + '/MMBtu)</span>' +
+    '<span><span style="display:inline-block;width:18px;height:0px;border-top:2px dashed #ce93d8;vertical-align:middle;margin-right:4px"></span>JKM DES India' + (jkmIndia!==null?' ($'+jkmIndia.toFixed(2)+')':'') + '</span>' +
     '</div>' +
     '<div class="cs-src" style="margin-top:8px">APM &amp; deepwater: PPAC notifications &middot; LT = 11%&ndash;14% of EOD Brent M+1 &middot; Coal: G10 CIL Rs2,900/t hardcoded (update from coalindia.in)</div>';
 
-  setTimeout(function(){ buildPriceChart(allKeys, apmData, dwData, lt11Arr, lt14Arr, coalArr); }, 30);
+  var jkmVal = jkmIndia || null;
+  var jkmIndiaArr = allKeys.map(function(){ return jkmVal; });
+  setTimeout(function(){ buildPriceChart(allKeys, apmData, dwData, lt11Arr, lt14Arr, coalArr, jkmIndiaArr); }, 30);
 }
 
-function buildPriceChart(keys, apmData, dwData, lt11Arr, lt14Arr, coalArr) {
+function buildPriceChart(keys, apmData, dwData, lt11Arr, lt14Arr, coalArr, jkmIndiaArr) {
+  if (!jkmIndiaArr) jkmIndiaArr = keys.map(function(){ return null; });
   destroyChart('prc');
   var canvas = document.getElementById('ind-prc-c');
   if (!canvas || typeof Chart === 'undefined') return;
@@ -11657,7 +11679,8 @@ function buildPriceChart(keys, apmData, dwData, lt11Arr, lt14Arr, coalArr) {
         {label:'LT 14% ceiling',data:lt14Arr,borderColor:'rgba(239,83,80,0.8)',backgroundColor:'transparent',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false,tension:0,spanGaps:true},
         {label:'APM gas',data:apmData,borderColor:'#4d9ef5',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:0,spanGaps:true},
         {label:'Deepwater ceiling',data:dwData,borderColor:'#f59e0b',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:0,spanGaps:true},
-        {label:'Coal eff. (35%)',data:coalArr,borderColor:'#888780',backgroundColor:'transparent',borderWidth:1.5,borderDash:[3,3],pointRadius:0,tension:0,spanGaps:true}
+        {label:'Coal eff. (35%)',data:coalArr,borderColor:'#888780',backgroundColor:'transparent',borderWidth:1.5,borderDash:[3,3],pointRadius:0,tension:0,spanGaps:true},
+        {label:'JKM DES India (current)',data:jkmIndiaArr,borderColor:'#ce93d8',backgroundColor:'transparent',borderWidth:2,borderDash:[6,3],pointRadius:0,tension:0,spanGaps:false}
       ]
     },
     options:Object.assign({},CD2,{
@@ -11747,6 +11770,7 @@ function indInit() {
 window.indInit = indInit;
 
 })();
+
 
 </script>
 </html>
