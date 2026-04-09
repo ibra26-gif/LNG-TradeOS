@@ -2289,8 +2289,9 @@ window.csGBUpdate = csGBUpdate;
         <select class="gsel" id="ga-pipe-route" onchange="gaBuildPipeChart()">
           <option value="all">All Routes</option>
           <option value="norway">Norway</option>
-          <option value="algeria">Algeria → Italy</option>
-          <option value="russia">Russia</option>
+          <option value="algeria_italy">Algeria → Italy (TransMed)</option>
+          <option value="algeria_spain">Algeria → Spain (Medgaz)</option>
+          <option value="russia">Russia (TurkStream)</option>
           <option value="tap">TAP (Azerbaijan)</option>
         </select>
         <span class="ctrl-lbl">YEARS</span>
@@ -2305,9 +2306,12 @@ window.csGBUpdate = csGBUpdate;
         <select class="gsel" id="ga-dom-country" onchange="gaBuildDomChart()">
           <option value="all">All</option>
           <option value="netherlands">Netherlands</option>
-          <option value="uk">United Kingdom</option>
           <option value="romania">Romania</option>
           <option value="denmark">Denmark</option>
+          <option value="uk">United Kingdom</option>
+          <option value="italy">Italy</option>
+          <option value="germany">Germany</option>
+          <option value="poland">Poland</option>
         </select>
         <span class="ctrl-lbl">YEARS</span>
         <div id="ga-dom-year-btns" style="display:flex;gap:4px;flex-wrap:wrap"></div>
@@ -9098,11 +9102,17 @@ const GIE_KEY = '38d9c81ac0ef87d9b3485075f273d8fe';
 const ENTSOG_BASE = 'https://transparency.entsog.eu/api/v1';
 const GIE_AGSI  = 'https://agsi.gie.eu/api';
 const GIE_AGGI  = 'https://aggi.gie.eu/api';
+// Proxy routing: use Vercel endpoints on production to bypass CORS
+const IS_LOCAL = ['localhost','127.0.0.1'].includes(window.location.hostname);
+// Proxy helper: ENTSOG proxy requires ?endpoint=operationaldata&...
+function entsogProxyUrl(params){ return '/api/entsog?endpoint=operationaldata&'+params; }
 
 // ── GIE AGSI+ (Underground Storage) ──────────────────────────────
 async function gaFetchGIE(params={}){
   const q=new URLSearchParams(params).toString();
-  const r=await fetch(`${GIE_AGSI}?${q}`,{headers:{'x-key':GIE_KEY}});
+  const url=IS_LOCAL?`${GIE_AGSI}?${q}`:`/api/agsi?${q}`;
+  const headers=IS_LOCAL?{'x-key':GIE_KEY}:{};
+  const r=await fetch(url,{headers});
   if(!r.ok) throw new Error(`GIE AGSI ${r.status}`);
   return r.json();
 }
@@ -9110,7 +9120,9 @@ async function gaFetchGIE(params={}){
 // ── GIE AGGI+ (LNG Terminals) ────────────────────────────────────
 async function gaFetchAGGI(params={}){
   const q=new URLSearchParams(params).toString();
-  const r=await fetch(`${GIE_AGGI}?${q}`,{headers:{'x-key':GIE_KEY}});
+  const url=IS_LOCAL?`${GIE_AGGI}?${q}`:`/api/aggi?${q}`;
+  const headers=IS_LOCAL?{'x-key':GIE_KEY}:{};
+  const r=await fetch(url,{headers});
   if(!r.ok) throw new Error(`GIE AGGI ${r.status}`);
   return r.json();
 }
@@ -9120,7 +9132,8 @@ async function gaFetchAGGI(params={}){
 // ENTSOG docs: transparency.entsog.eu/api/archiveDirectories/8/api-manual/
 async function gaFetchENTSOG(params={}){
   const q=new URLSearchParams({limit:10000,periodType:'day',timezone:'CET',...params}).toString();
-  const r=await fetch(`${ENTSOG_BASE}/aggregateData?${q}`,{headers:{Accept:'application/json'}});
+  const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${q}`:entsogProxyUrl(q);
+  const r=await fetch(url,{headers:{Accept:'application/json'}});
   if(!r.ok) throw new Error(`ENTSOG ${r.status}`);
   return r.json();
 }
@@ -9205,17 +9218,18 @@ const ENTSOG_CORRIDOR_POINTS = {
 
 // ── GA_LIVE: single source of truth for all live data ────────────────────────
 const GA_LIVE = {
-  // ENTSOG pipeline: {route: {YYYY-MM: MCM_total}}  null = API not yet loaded
   pipeline: {norway:{}, algeria_italy:{}, algeria_spain:{}, tap:{}, russia:{}, exits:{}},
-  // GIE AGSI+: {YYYY-MM: {pct, twhStored}}
   storage: {},
-  // GIE AGGI+: {YYYY-MM: totalMCM} + per country {YYYY-MM: MCM}
   lngTotal: {},
-  lngByCtry: {}, // {gieCode: {YYYY-MM: MCM}}
-  // Status flags
-  ok: {pipeline:false, storage:false, lng:false, ons:false},
-  // Brazil ONS hydro: {subsystem: {date: pct}}
+  lngByCtry: {},
+  domestic: {}, // ENTSOG production: {countryLabel: {YYYY-MM: MCM}}
+  ok: {pipeline:false, storage:false, lng:false, ons:false, domestic:false},
   ons: {},
+};
+// Country codes for domestic production queries (adjacentSystemTypeLabel=Production)
+const ENTSOG_PRODUCTION_COUNTRIES = {
+  NL:'netherlands', RO:'romania', DK:'denmark', GB:'uk',
+  IT:'italy', DE:'germany', PL:'poland',
 };
 
 // ── localStorage cache helpers ───────────────────────────────────────────────
@@ -9251,6 +9265,7 @@ async function gaLoadLiveData(){
     gaLoadLiveStorage(from5y, today),
     gaLoadLiveLNG(from5y, today),
     gaLoadLiveONS(),
+    gaLoadDomProductionLive(from5y, today),
     // ENTSOG supply routes
     ...['norway','algeria_italy','algeria_spain','tap','russia'].map(route =>
       gaLoadENTSOGRoute(route, currentYearStart, today, true)
@@ -9281,6 +9296,7 @@ function gaUpdateStatusDots(){
     {lbl:'Algeria→ES',ok:!!Object.keys(GA_LIVE.pipeline.algeria_spain).length,fbk:true,src:'ENTSOG'},
     {lbl:'TAP',ok:!!Object.keys(GA_LIVE.pipeline.tap).length,fbk:true,src:'ENTSOG'},
     {lbl:'Russia',ok:!!Object.keys(GA_LIVE.pipeline.russia).length,fbk:true,src:'ENTSOG'},
+    {lbl:'Dom.Prod',ok:GA_LIVE.ok.domestic,fbk:true,src:'ENTSOG Production'},
     {lbl:'ONS Brazil',ok:GA_LIVE.ok.ons,fbk:false,src:'ONS API'},
   ];
   sdEl.innerHTML=dots.map(d=>{
@@ -9416,7 +9432,8 @@ async function gaLoadENTSOGRoute(route,from,to,cacheResult=false){
     timezone:'CET',
     limit:'10000',
   });
-  const url=`${ENTSOG_BASE}/aggregateData?${params}`;
+  // /operationalDatas supports pointLabel; proxy requires ?endpoint=operationaldata
+  const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${params}`:entsogProxyUrl(params);
   const cacheKey=`entsog_${route}_${from}_${to.slice(0,7)}`;
 
   let raw = cacheResult ? gaCacheGet(cacheKey) : null;
@@ -9449,7 +9466,8 @@ async function gaLoadENTSOGHistorical(route,minYear){
         pointLabel:[...new Set(points)].join(','),
         from,to,periodType:'day',timezone:'CET',limit:'10000',
       });
-      const r=await fetch(`${ENTSOG_BASE}/aggregateData?${params}`,{headers:{Accept:'application/json'}});
+      const histUrl=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${params}`:entsogProxyUrl(params);
+      const r=await fetch(histUrl,{headers:{Accept:'application/json'}});
       if(!r.ok) continue; // silent fail for historical
       const raw=await r.json();
       gaCacheSet(cacheKey,raw,168); // cache 7 days for historical
@@ -9471,12 +9489,13 @@ async function gaLoadENTSOGExits(from,to){
         pointLabel:points.join(','),
         from,to,periodType:'day',timezone:'CET',limit:'10000',
       });
-      const r=await fetch(`${ENTSOG_BASE}/aggregateData?${params}`,{headers:{Accept:'application/json'}});
+      const exitsUrl=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${params}`:entsogProxyUrl(params);
+      const r=await fetch(exitsUrl,{headers:{Accept:'application/json'}});
       if(!r.ok) return;
       raw=await r.json();
       gaCacheSet(cacheKey,raw,6);
     }
-    const rows=raw?.operationalData||raw?.data||[];
+    const rows=raw?.operationaldatas||raw?.operationalDatas||raw?.operationalData||raw?.data||[];
     rows.forEach(d=>{
       const valMCM=(parseFloat(d.value||0)||0)*ENTSOG_KWH_TO_MCM;
       const date=(d.periodFrom||d.from||'').slice(0,10);
@@ -9488,9 +9507,50 @@ async function gaLoadENTSOGExits(from,to){
     console.log('Pipeline exits loaded');
   }catch(e){console.warn('ENTSOG exits failed:',e.message);}
 }
+// ─────────────────────────────────────────────────────────────────────────────
+// ENTSOG — DOMESTIC PRODUCTION (adjacentSystemTypeLabel=Production per country)
+// ─────────────────────────────────────────────────────────────────────────────
+async function gaLoadDomProductionLive(from, to){
+  const jobs = Object.entries(ENTSOG_PRODUCTION_COUNTRIES).map(async ([cc, label]) => {
+    const cacheKey = `dom_prod_${cc}_${from.slice(0,7)}_${to.slice(0,7)}`;
+    let raw = gaCacheGet(cacheKey);
+    if(!raw){
+      try{
+        const params = new URLSearchParams({
+          indicator:'Physical Flow', directionKey:'entry',
+          adjacentSystemTypeLabel:'Production', tsoCountryCode:cc,
+          from, to, periodType:'day', timezone:'CET', limit:'10000',
+        }).toString();
+        const url = IS_LOCAL
+          ? `${ENTSOG_BASE}/operationalDatas?${params}`
+          : entsogProxyUrl(params);
+        const r = await fetch(url, {headers:{Accept:'application/json'}});
+        if(!r.ok) throw new Error(`${r.status}`);
+        raw = await r.json();
+        gaCacheSet(cacheKey, raw, 24);
+      } catch(e){ console.warn(`Dom prod ${cc}:`, e.message); return; }
+    }
+    const rows = raw?.operationaldatas||raw?.operationalDatas||raw?.operationalData||raw?.data||[];
+    if(!rows.length) return;
+    if(!GA_LIVE.domestic[label]) GA_LIVE.domestic[label] = {};
+    rows.forEach(d => {
+      const valMCM = (parseFloat(d.value||0)||0) * ENTSOG_KWH_TO_MCM;
+      const date = (d.periodFrom||d.from||'').slice(0,10);
+      const mo = date.slice(0,7);
+      if(!mo||mo.length<7) return;
+      GA_LIVE.domestic[label][mo] = (GA_LIVE.domestic[label][mo]||0) + valMCM;
+    });
+    console.log(`Dom prod ${cc}: ${rows.length} rows, ${Object.keys(GA_LIVE.domestic[label]).length} months`);
+  });
+  await Promise.allSettled(jobs);
+  if(Object.values(GA_LIVE.domestic).some(d=>Object.keys(d).length>0)){
+    GA_LIVE.ok.domestic = true;
+  }
+}
+
 
 function gaAggENTSOGToLive(route,raw){
-  const rows=raw?.operationalData||raw?.data||[];
+  const rows=raw?.operationaldatas||raw?.operationalDatas||raw?.operationalData||raw?.data||[];
   if(!rows.length) return;
   rows.forEach(d=>{
     // ENTSOG daily: value = kWh/day → convert to MCM for that day
@@ -9659,6 +9719,30 @@ const GA_DOM_DATA = {
     2023:[250,240,260,240,225,215,210,215,230,245,250,255],
     2022:[260,250,270,250,235,225,220,225,240,255,260,265],
   },
+  // Italy: Adriatic/Po Valley fields (Eni/Edison) ~5 BCM/yr declining
+  italy:{
+    2026:[420,400,440,390,360,330,310,330,370,400,420,430],
+    2025:[440,420,460,410,380,350,330,350,390,420,440,450],
+    2024:[460,440,480,430,400,370,350,370,410,440,460,470],
+    2023:[480,460,500,450,420,390,370,390,430,460,480,490],
+    2022:[500,480,520,470,440,410,390,410,450,480,500,510],
+  },
+  // Germany: Lower Saxony/Emsland onshore ~4 BCM/yr declining
+  germany:{
+    2026:[320,300,330,295,270,255,245,255,280,305,320,325],
+    2025:[335,315,345,310,285,270,260,270,295,320,335,340],
+    2024:[350,330,360,325,300,285,275,285,310,335,350,355],
+    2023:[365,345,375,340,315,300,290,300,325,350,365,370],
+    2022:[380,360,390,355,330,315,305,315,340,365,380,385],
+  },
+  // Poland: PGNiG Carpathian + lowland fields ~4 BCM/yr
+  poland:{
+    2026:[330,315,345,305,280,265,255,265,290,315,330,335],
+    2025:[340,325,355,315,290,275,265,275,300,325,340,345],
+    2024:[350,335,365,325,300,285,275,285,310,335,350,355],
+    2023:[360,345,375,335,310,295,285,295,320,345,360,365],
+    2022:[370,355,385,345,320,305,295,305,330,355,370,375],
+  },
 };
 // ── LNG IMPORTS BY COUNTRY (MCM/month, terminal sendout) ──
 // Sources: GIE AGGI+, ENTSOG, Kpler. 2026 target: ~162 BCM/yr total EU+UK.
@@ -9742,11 +9826,12 @@ const GA_COUNTRY_REGAS = [
 function gaInitAll(){
   if(window.gaInitDone) return;
   window.gaInitDone = true;
-  GA_S.storYears=[GA_CUR_YEAR,GA_CUR_YEAR-1];
-  GA_S.pipeYears=[GA_CUR_YEAR,GA_CUR_YEAR-1];
-  GA_S.domYears=[GA_CUR_YEAR,GA_CUR_YEAR-1];
-  GA_S.lngimpYears=[GA_CUR_YEAR,GA_CUR_YEAR-1];
-  GA_S.soYears=[GA_CUR_YEAR,GA_CUR_YEAR-1];
+  const _y=GA_CUR_YEAR;
+  GA_S.storYears=[_y,_y-1,_y-2,_y-3,_y-4];
+  GA_S.pipeYears=[_y,_y-1,_y-2,_y-3,_y-4];
+  GA_S.domYears=[_y,_y-1,_y-2,_y-3,_y-4];
+  GA_S.lngimpYears=[_y,_y-1,_y-2,_y-3,_y-4];
+  GA_S.soYears=[_y,_y-1,_y-2,_y-3,_y-4];
   gaLoadAll();
 }
 // ═══ MORNING SNAPSHOT PDF ══════════════════════════════════════════
@@ -10430,10 +10515,11 @@ function gaBuildEUBalanceTable(){
 }
 function gaInitPipelineYears(){gaMakeYearBtns('ga-pipe-year-btns','pipeYears',gaBuildPipeChart);gaBuildPipeChart();}
 function gaBuildPipeChart(){
+  const RNAMES={norway:'Norway',algeria_italy:'Algeria→IT',algeria_spain:'Algeria→ES',tap:'TAP/Azer.',russia:'Russia'};
   const route=document.getElementById('ga-pipe-route')?.value||'all';
   const routes=route==='all'?['norway','algeria_italy','algeria_spain','tap','russia']:[route];
   const datasets=routes.flatMap((r,ri)=>GA_S.pipeYears.map((y,yi)=>({
-    label:`${r.charAt(0).toUpperCase()+r.slice(1)} ${y}`,
+    label:`${RNAMES[r]||r} ${y}`,
     data:GA_MO.map((_,m)=>gaCV(gaGetPipelineMCM(r,y,m))),
     borderColor:GA_COLS[(ri*3+yi)%GA_COLS.length],borderWidth:yi===0?2.5:1.5,
     borderDash:yi>0?[5,3]:undefined,pointRadius:yi===0?2:0,tension:.3,backgroundColor:'transparent'
@@ -10441,7 +10527,7 @@ function gaBuildPipeChart(){
   gaMakeSeasonalChart('ga-pipe-sea-chart',datasets,null,gaUL());
   const months=Array.from({length:12},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-11+i);return gaDateLabel(d);});
   gaMakeChart('ga-pipe-vol-chart','bar',{labels:months,datasets:routes.map((r,i)=>({
-    label:r.charAt(0).toUpperCase()+r.slice(1),
+    label:RNAMES[r]||r,
     data:months.map((_,mi)=>gaCV(gaGetPipelineMCM(r,GA_CUR_YEAR,mi))),
     backgroundColor:GA_COLS[i*2],borderWidth:0,stack:'s'
   }))},{scales:{x:GCD.scales.x,y:{...GCD.scales.y,stacked:true,title:{display:true,text:gaUL(),color:'#3d5070',font:{size:9}}}}});
@@ -10451,16 +10537,25 @@ function gaBuildPipeChart(){
 function gaInitDomYears(){gaMakeYearBtns('ga-dom-year-btns','domYears',gaBuildDomChart);gaBuildDomChart();}
 function gaBuildDomChart(){
   const country=document.getElementById('ga-dom-country')?.value||'all';
-  const countries=country==='all'?['netherlands','uk','romania','denmark']:[country];
+  const countries=country==='all'?['netherlands','romania','denmark','uk','italy','germany','poland']:[country];
   gaMakeSeasonalChart('ga-dom-sea-chart',countries.flatMap((c,ci)=>GA_S.domYears.map((y,yi)=>({
     label:`${c.charAt(0).toUpperCase()+c.slice(1)} ${y}`,
-    data:GA_MO.map((_,m)=>gaCV((GA_DOM_DATA[c]?.[y]?.[m])||0)),
+    data:GA_MO.map((_,m)=>{
+      const mo=`${y}-${String(m+1).padStart(2,'0')}`;
+      const live=GA_LIVE.domestic[c]?.[mo];
+      return gaCV(live!=null?live:(GA_DOM_DATA[c]?.[y]?.[m]||0));
+    }),
     borderColor:GA_COLS[(ci*3+yi)%GA_COLS.length],borderWidth:yi===0?2.5:1.5,
     borderDash:yi>0?[5,3]:undefined,pointRadius:0,tension:.3,backgroundColor:'transparent'
   }))),null,gaUL());
   const tbl=document.getElementById('ga-dom-tbl');if(!tbl)return;
-  const hdr='<thead><tr><th class="L">Country</th>'+GA_MO.map(m=>'<th>'+m+'</th>').join('')+'</tr></thead>';
-  const tbody='<tbody>'+countries.map(c=>'<tr><td class="L">'+c.charAt(0).toUpperCase()+c.slice(1)+'</td>'+GA_MO.map((_,i)=>'<td>'+gaFmt(gaCV((GA_DOM_DATA[c]?.[GA_CUR_YEAR]?.[i])||0))+'</td>').join('')+'</tr>').join('')+'</tbody>';
+  const liveTag=GA_LIVE.ok.domestic?'<span style="color:#34d399;font-size:8px;margin-left:6px">🟢 LIVE</span>':'<span style="color:#f59e0b;font-size:8px;margin-left:6px">🟡 EST</span>';
+  const hdr='<thead><tr><th class="L">Country'+liveTag+'</th>'+GA_MO.map(m=>'<th>'+m+'</th>').join('')+'</tr></thead>';
+  const tbody='<tbody>'+countries.map(c=>'<tr><td class="L">'+c.charAt(0).toUpperCase()+c.slice(1)+'</td>'+GA_MO.map((_,i)=>{
+    const mo=`${GA_CUR_YEAR}-${String(i+1).padStart(2,'0')}`;
+    const live=GA_LIVE.domestic[c]?.[mo];
+    return '<td>'+gaFmt(gaCV(live!=null?live:(GA_DOM_DATA[c]?.[GA_CUR_YEAR]?.[i]||0)))+'</td>';
+  }).join('')+'</tr>').join('')+'</tbody>';
   tbl.innerHTML=hdr+tbody;
 }
 
