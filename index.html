@@ -1902,10 +1902,11 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       const wrap = document.getElementById('cs-gb-table-wrap');
       if (!wrap) return;
       const u = gbUnitLabel();
-      const recent = data.slice(-13); // last 13 months for display
+      const recent = data.slice(-13);
       const months = recent.map(r=>r.m.slice(0,7));
+      const ytdYear = recent[recent.length-1].m.slice(0,4);
 
-      const rows = [
+      const rowDefs = [
         {label:'Domestic production', key:'prod', color:'#4d9ef5'},
         {label:'LNG imports',         key:'lng',  color:'#34d399'},
         {label:'Pipeline imports',    key:'pipe', color:'#f59e0b'},
@@ -1913,54 +1914,50 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         {label:'YoY Δ %',             key:'yoy',  color:'#8a9bb5', italic:true},
       ];
 
-      let html = `<table style="width:100%;border-collapse:collapse;font-size:9px;font-family:'IBM Plex Mono',monospace">
-        <thead><tr style="border-bottom:1px solid rgba(77,158,245,0.15)">
-          <th style="text-align:left;padding:5px 8px;color:#6b7a99;letter-spacing:.08em">ITEM (${u})</th>
-          ${months.map(m=>`<th style="text-align:right;padding:5px 6px;color:#6b7a99;white-space:nowrap">${m.slice(2)}</th>`).join('')}
-          <th style="text-align:right;padding:5px 6px;color:#6b7a99">YTD</th>
-        </tr></thead><tbody>`;
+      let html = '<table style="width:100%;border-collapse:collapse;font-size:9px;font-family:IBM Plex Mono,monospace">'
+        + '<thead><tr style="border-bottom:1px solid rgba(77,158,245,0.15)">'
+        + '<th style="text-align:left;padding:5px 8px;color:#6b7a99;letter-spacing:.08em">ITEM (' + u + ')</th>'
+        + months.map(m=>'<th style="text-align:right;padding:5px 6px;color:#6b7a99;white-space:nowrap">'+m.slice(2)+'</th>').join('')
+        + '<th style="text-align:right;padding:5px 6px;color:#6b7a99">YTD</th>'
+        + '</tr></thead><tbody>';
 
-      const ytdYear = recent[recent.length-1].m.slice(0,4);
-
-      for (const row of rows) {
-        const style = `style="font-weight:${row.bold?'600':'400'};font-style:${row.italic?'italic':'normal'};color:${row.color}"`;
-        html += `<tr ${row.key==='total'?'style="border-top:1px solid rgba(255,255,255,0.08)"':''}>`;
-        html += `<td style="padding:4px 8px;color:${row.color};white-space:nowrap">${row.label}</td>`;
-
+      for (let ri=0; ri<rowDefs.length; ri++) {
+        const row = rowDefs[ri];
+        const fw = row.bold?'600':'400';
+        const fs = row.italic?'italic':'normal';
+        html += '<tr' + (row.key==='total'?' style="border-top:1px solid rgba(255,255,255,0.08)"':'') + '>';
+        html += '<td style="padding:4px 8px;color:'+row.color+';white-space:nowrap">'+row.label+'</td>';
         let ytdSum = 0;
-        recent.forEach((r, i) => {
-          let val, disp;
-          if (row.key === 'total') {
-            val = r.prod + r.lng + r.pipe;
-            ytdSum += r.m.startsWith(ytdYear) ? val : 0;
-            disp = gbConvert(val).toFixed(2);
-          } else if (row.key === 'yoy') {
+
+        for (let i=0; i<recent.length; i++) {
+          const r = recent[i];
+          if (row.key === 'yoy') {
             const prevM = (parseInt(r.m.slice(0,4))-1) + r.m.slice(4);
             const prev = data.find(d=>d.m===prevM);
             if (prev) {
               const cur = r.prod+r.lng+r.pipe, prv = prev.prod+prev.lng+prev.pipe;
               const pct = ((cur-prv)/prv*100).toFixed(1);
               const col = pct>0?'#34d399':pct<0?'#ef5350':'#6b7a99';
-              html += `<td style="text-align:right;padding:4px 6px;color:${col}">${pct>0?'+':''}${pct}%</td>`;
-              continue;
-            } else { html += `<td style="text-align:right;padding:4px 6px;color:#3d5070">—</td>`; continue; }
+              html += '<td style="text-align:right;padding:4px 6px;color:'+col+'">'+(pct>0?'+':'')+pct+'%</td>';
+            } else {
+              html += '<td style="text-align:right;padding:4px 6px;color:#3d5070">—</td>';
+            }
           } else {
-            val = r[row.key];
+            const val = row.key==='total' ? r.prod+r.lng+r.pipe : r[row.key];
             ytdSum += r.m.startsWith(ytdYear) ? val : 0;
-            disp = gbConvert(val).toFixed(2);
+            html += '<td style="text-align:right;padding:4px 6px;font-weight:'+fw+';font-style:'+fs+';color:'+row.color+'">'+gbConvert(val).toFixed(2)+'</td>';
           }
-          html += `<td style="text-align:right;padding:4px 6px;${style.slice(7,-1)}">${disp}</td>`;
-        });
+        }
 
         if (row.key !== 'yoy') {
-          html += `<td style="text-align:right;padding:4px 6px;font-weight:500;color:${row.color}">${gbConvert(ytdSum).toFixed(2)}</td>`;
+          html += '<td style="text-align:right;padding:4px 6px;font-weight:500;color:'+row.color+'">'+gbConvert(ytdSum).toFixed(2)+'</td>';
         } else {
-          html += `<td style="text-align:right;padding:4px 6px;color:#3d5070">—</td>`;
+          html += '<td style="text-align:right;padding:4px 6px;color:#3d5070">—</td>';
         }
-        html += `</tr>`;
+        html += '</tr>';
       }
 
-      html += `</tbody></table>`;
+      html += '</tbody></table>';
       wrap.innerHTML = html;
     }
 
