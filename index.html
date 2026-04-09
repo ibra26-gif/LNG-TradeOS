@@ -656,10 +656,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
       </div>
 
-      <!-- Status bar -->
-      <div id="cs-gb-status" style="font-size:9px;color:#4b5a72;margin-bottom:12px;letter-spacing:.06em">
-        Loading China gas balance data...
-      </div>
+
 
       <!-- Metric cards -->
       <div class="cs-metric-row" id="cs-gb-metrics" style="margin-bottom:16px"></div>
@@ -1524,8 +1521,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
                 try{localStorage.setItem('lng_china_gb_v1',JSON.stringify({ts:Date.now(),rows:gbRows}));}catch(e){}
                 if(typeof GB!=='undefined'){
                   GB.data=gbRows;
-                  const el=document.getElementById('cs-gb-status');
-                  if(el) el.textContent='✓ CSV — '+gbRows.length+' months · '+gbRows[0].m+' → '+gbRows[gbRows.length-1].m+' · NBS + GACC';
+                  // status removed —'✓ CSV — '+gbRows.length+' months · '+gbRows[0].m+' → '+gbRows[gbRows.length-1].m+' · NBS + GACC';
                   if(typeof csGBUpdate==='function') csGBUpdate();
                 }
                 res({key:'china_gas_balance', rows:gbRows, count:gbRows.length});
@@ -1789,7 +1785,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     function gbUnitLabel() {
       if (GB.unit === 'bcm')   return 'BCM';
       if (GB.unit === 'mmscm') return 'MMSCM';
-      return 'MTPA';
+      return 'MTPM';
     }
 
     window.csGBSetUnit = function(u, btn) {
@@ -1858,8 +1854,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
     // ── Fetch live data from /api/china-gas-balance ───────────
     window.csGBFetch = async function() {
-      const statusEl = document.getElementById('cs-gb-status');
-      if (statusEl) statusEl.textContent = 'Fetching live data from NBS & GACC...';
+      // status removed — 'Fetching live data from NBS & GACC...';
 
       try {
         const resp = await fetch('/api/china-gas-balance', {signal: AbortSignal.timeout(20000)});
@@ -2036,7 +2031,8 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         });
 
       } else {
-        // ── Seasonal view with toggle buttons ────────────────
+        // ── Seasonal view with toggle buttons
+        try { ────────────────
         if (titleEl) titleEl.textContent = 'CHINA GAS BALANCE — SEASONAL · '+u;
 
         const allYears   = [...new Set(fullData.map(r=>r.m.slice(0,4)))].sort();
@@ -2091,6 +2087,10 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
           }
         }
 
+        if (!datasets.length) {
+          console.warn('GB Seasonal: no datasets built — years:', GB.seasonal.years, 'series:', GB.seasonal.series);
+        }
+        console.log('GB Seasonal: building chart with', datasets.length, 'datasets, canvas:', !!canvas);
         GB.chart = new Chart(canvas, {
           type: 'line',
           data: { labels: GB_MONTHS, datasets },
@@ -2108,6 +2108,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
             }
           }
         });
+        } catch(e) { console.error('GB Seasonal chart error:', e); }
       }
     }
 
@@ -2115,11 +2116,9 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       const fullData = GB.data || GB_HISTORICAL;
       const filtData = gbGetData();
       if (!filtData.length) return;
-      // Hide seasonal dropdowns when switching to balance view
-      if (GB.view === 'balance') {
-        const ctrl = document.getElementById('cs-gb-sea-ctrl');
-        if (ctrl) ctrl.style.display = 'none';
-      }
+      // Show/hide seasonal controls
+      const ctrl = document.getElementById('cs-gb-sea-ctrl');
+      if (ctrl) ctrl.style.display = GB.view === 'seasonal' ? 'flex' : 'none';
       gbRenderMetrics(fullData, filtData);
       gbRenderTable(fullData, filtData);
       gbRenderChart(fullData, filtData);
