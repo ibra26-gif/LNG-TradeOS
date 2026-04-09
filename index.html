@@ -1992,9 +1992,16 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     }
 
     function gbRenderChart(fullData, filtData) {
-      const canvas  = document.getElementById('cs-gb-canvas');
-      if (!canvas) return;
-      if (GB.chart) { GB.chart.destroy(); GB.chart = null; }
+      // Replace canvas to avoid Chart.js canvas reuse issues after destroy()
+      const wrap = document.querySelector('#cs-gb-canvas')?.parentElement;
+      if (!wrap) return;
+      if (GB.chart) { try { GB.chart.destroy(); } catch(e){} GB.chart = null; }
+      const oldCanvas = document.getElementById('cs-gb-canvas');
+      if (oldCanvas) oldCanvas.remove();
+      const canvas = document.createElement('canvas');
+      canvas.id = 'cs-gb-canvas';
+      wrap.appendChild(canvas);
+
       const u       = gbUnitLabel();
       const titleEl = document.getElementById('cs-gb-chart-title');
 
