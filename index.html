@@ -1003,7 +1003,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         if(!m) {
           // find nearest within 3 calendar days
           let best=null, bestDiff=Infinity;
-          _tD.forEach(x=>{ const diff=Math.abs(new Date(x.dateStr).getTime()-dsMs); if(diff<bestDiff&&diff<=3*86400000){bestDiff=diff;best=x;} });
+          _tD.forEach(x=>{ const diff=Math.abs(new Date(x.dateStr).getTime()-dsMs); if(diff<bestDiff&&diff<=7*86400000){bestDiff=diff;best=x;} });
           m=best;
         }
         return m?truckToUSD(m.value,usdcny):null;
@@ -1342,9 +1342,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
           plugins:{
             ...CD.plugins,
             legend:{
-              display:true,
-              position:'top',
-              align:'start',
+              display:false,
               labels:{
                 color:'#5a6882',
                 font:{size:9,family:'IBM Plex Mono'},
