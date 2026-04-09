@@ -621,31 +621,16 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:12px;font-size:9px;letter-spacing:.08em;color:#6b7a99">
         <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:6px;background:rgba(107,122,153,0.18);border:1px dashed #3d5070;display:inline-block"></span>DOMESTIC PRODUCTION COST RANGE</span>
         <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#3d5070;display:inline-block;border-top:2px dashed #3d5070"></span>NDRC CITY GATE REF (2017)</span>
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#81c784;display:inline-block"></span>CNP OPEN MARKET ★EST</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#81c784;display:inline-block"></span>SPOT PIPELINE GAS ★EST</span>
         <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#34d399;display:inline-block"></span>PIPELINE SPOT ★EST</span>
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#f59e0b;display:inline-block;border-top:2px dashed #f59e0b"></span>NDRC 36-CITY INDUSTRIAL</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#f59e0b;display:inline-block;border-top:2px dashed #f59e0b"></span>INDUSTRIAL MAX BID</span>
         <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#4d9ef5;display:inline-block"></span>JKM SETTLEMENT AVG</span>
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#ef5350;display:inline-block;border-top:2px dashed #ef5350"></span>LT 14% BRENT</span>
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#ce93d8;display:inline-block;border-top:2px dashed #ce93d8"></span>LT 11% BRENT</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#ef5350;display:inline-block;border-top:2px dashed #ef5350"></span>LT BAND (14% BRENT CEILING)</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:rgba(239,83,80,0.5);display:inline-block"></span>LT BAND (11% BRENT FLOOR)</span>
       </div>
 
       <div class="cs-chart-wrap" style="height:380px"><canvas id="cs-t4-canvas"></canvas></div>
 
-      <!-- Stack interpretation -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:14px;font-size:10px">
-        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px">
-          <div style="font-size:9px;letter-spacing:.1em;color:#6b7a99;margin-bottom:4px">PRODUCTION COST FLOOR</div>
-          <div style="color:#dde4f0">$3–8/MMBtu — conventional Sichuan/Ordos ($3–5) to ultra-deep shale Tarim ($5–8). Below this, domestic supply is uneconomic.</div>
-        </div>
-        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px">
-          <div style="font-size:9px;letter-spacing:.1em;color:#6b7a99;margin-bottom:4px">LNG DEMAND SIGNAL</div>
-          <div style="color:#dde4f0">JKM below CNP → LNG imports competitive → more spot demand potential. JKM above CNP → domestic gas preferred, LNG demand softens.</div>
-        </div>
-        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px">
-          <div style="font-size:9px;letter-spacing:.1em;color:#6b7a99;margin-bottom:4px">END-USER CEILING</div>
-          <div style="color:#dde4f0">NDRC 36-city industrial avg (~$13/MMBtu) = what industry actually pays. Gap vs CNP is the distribution margin absorbed by city gas companies.</div>
-        </div>
-      </div>
 
       <div class="cs-src" style="margin-top:10px">
         Sources: SHPGX — CNP open market &amp; pipeline spot (estimated, ¥/m³ → $/MMBtu @ 0.0373 MMBtu/m³) · NDRC/CEIC — 36-city industrial avg (Nov 2025: ¥3.58/m³) · NDRC city gate benchmark (2017 ref) · Production cost: EIA/IEEFA estimates · JKM settlement (16th→15th determination, EOD files) · LT 11% &amp; 14% × Brent 3M avg (ICE Brent, EOD files) · All series monthly
@@ -988,26 +973,54 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-days);
       const filtDs=sDates.filter(ds=>new Date(ds)>=cutoff);
 
-      const labels = filtDs.map(ds=>aD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
-      const jkmRolling = getJKMRolling(filtDs);
-      const brent3M    = getBrent3MAvg(filtDs);
+      // Use truck data dates as the primary x-axis for Tab 2
+      // Then map JKM/LT onto those dates for comparison
+      const _tD=liveOrSim("truck",()=>TRUCK_CNY);
+      const daysMap2={'1M':30,'3M':90,'6M':180,'1Y':365};
+      const days2=daysMap2[CS.ranges.t2]||90;
+      const cutoff2=new Date(); cutoff2.setDate(cutoff2.getDate()-days2);
+      const filtTruck2 = _tD.filter(r=>r.date>=cutoff2).sort((a,b)=>a.date-b.date);
+
+      // Build date-indexed JKM/Brent lookups from EOD data
+      const jkmByDate={}, brentByDate={};
+      (sDates||[]).forEach(ds=>{
+        const d=aD[ds]?.date; if(!d)return;
+        const tenor=d.getDate()>=16?2:1;
+        const pk=rPK(d,tenor);
+        const row=(aD[ds].rows||[]).find(r=>r.pk===pk);
+        if(row?.JKM!=null) jkmByDate[ds]=row.JKM;
+        if(row?.Brent!=null) brentByDate[ds]=row.Brent;
+      });
+
+      // For each truck date, find nearest EOD date within 7 days
+      function nearestEODValue(map, targetDate) {
+        const tMs = targetDate.getTime();
+        let best=null, bestDiff=Infinity;
+        Object.keys(map).forEach(ds=>{
+          const diff=Math.abs(new Date(ds).getTime()-tMs);
+          if(diff<bestDiff&&diff<=7*86400000){bestDiff=diff;best=map[ds];}
+        });
+        return best;
+      }
+
+      // Get 3M rolling Brent avg for each truck date
+      function brent3MForDate(targetDate) {
+        const tMs=targetDate.getTime(), w90=90*86400000;
+        const vals=[];
+        Object.keys(brentByDate).forEach(ds=>{
+          const dMs=new Date(ds).getTime();
+          if(dMs<=tMs&&tMs-dMs<=w90) vals.push(brentByDate[ds]);
+        });
+        if(!vals.length) return null;
+        return vals.reduce((s,v)=>s+v,0)/vals.length;
+      }
+
+      const labels = filtTruck2.map(r=>r.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+      const truckAligned = filtTruck2.map(r=>truckToUSD(r.value,usdcny));
+      const jkmRolling   = filtTruck2.map(r=>nearestEODValue(jkmByDate,r.date));
+      const brent3M      = filtTruck2.map(r=>brent3MForDate(r.date));
       const lt11 = brent3M.map(b=>b!=null?+(b*0.11).toFixed(3):null);
       const lt14 = brent3M.map(b=>b!=null?+(b*0.14).toFixed(3):null);
-
-      // Align truck to filtDs dates — find closest within 3 days
-      const _tD=liveOrSim("truck",()=>TRUCK_CNY);
-      const truckAligned = filtDs.map(ds=>{
-        const dsMs = new Date(ds).getTime();
-        // exact match first
-        let m = _tD.find(x=>x.dateStr===ds.slice(0,10));
-        if(!m) {
-          // find nearest within 3 calendar days
-          let best=null, bestDiff=Infinity;
-          _tD.forEach(x=>{ const diff=Math.abs(new Date(x.dateStr).getTime()-dsMs); if(diff<bestDiff&&diff<=7*86400000){bestDiff=diff;best=x;} });
-          m=best;
-        }
-        return m?truckToUSD(m.value,usdcny):null;
-      });
 
       // Determine current regime
       const latTruck=truckAligned.filter(v=>v!=null).slice(-1)[0];
