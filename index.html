@@ -2069,31 +2069,33 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         if (!GB.seasonal.years.length) GB.seasonal.years = allYears.slice();
         if (!GB.seasonal.series.length) GB.seasonal.series = ['total'];
 
-        // Render controls in the ctrl div
+        // Render controls
         const ctrlDiv = document.getElementById('cs-gb-sea-ctrl');
         if (ctrlDiv) {
           ctrlDiv.style.display = 'flex';
-          const ss = (id, label, opts, val, multi, onch) => {
-            const sel = '<select id="'+id+'" '+(multi?'multiple size="4"':'')+
-              ' style="background:#0d1526;color:#dde4f0;border:1px solid rgba(77,158,245,0.25);'+
-              'padding:3px 6px;font-size:9px;font-family:IBM Plex Mono;min-width:100px" onchange="'+onch+'">'+
-              opts.map(o=>'<option value="'+o.v+'"'+(multi?GB.seasonal.series.includes(o.v):o.v===val?' selected':'')+' '+(multi&&GB.seasonal.years.includes(o.v)?'selected':'')+'>'+o.l+'</option>').join('')+
-              '</select>';
-            return '<div style="display:flex;flex-direction:column;gap:3px">'+
-              '<span style="font-size:9px;color:#6b7a99;letter-spacing:.08em">'+label+'</span>'+sel+'</div>';
-          };
-          ctrlDiv.innerHTML =
-            ss('cs-gb-yr-sel','YEAR',allYears.map(y=>({v:y,l:y})),null,true,'window.csGBYrChange(this)') +
-            '<div style="width:12px"></div>' +
-            ss('cs-gb-ser-sel','SERIES',Object.entries(SERIES).map(([k,v])=>({v:k,l:v.label})),null,true,'window.csGBSerChange(this)');
 
-          // Set selected options
-          setTimeout(()=>{
-            const yrSel = document.getElementById('cs-gb-yr-sel');
-            const serSel = document.getElementById('cs-gb-ser-sel');
-            if (yrSel) [...yrSel.options].forEach(o=>{ o.selected = GB.seasonal.years.includes(o.value); });
-            if (serSel) [...serSel.options].forEach(o=>{ o.selected = GB.seasonal.series.includes(o.value); });
-          }, 0);
+          const mkSel = (id, label, opts, selectedVals, onch) => {
+            const options = opts.map(o =>
+              '<option value="' + o.v + '"' + (selectedVals.includes(o.v) ? ' selected' : '') + '>' + o.l + '</option>'
+            ).join('');
+            return '<div style="display:flex;flex-direction:column;gap:4px">' +
+              '<span style="font-size:9px;color:#6b7a99;letter-spacing:.08em">' + label + '</span>' +
+              '<select id="' + id + '" multiple size="' + opts.length + '" onchange="' + onch + '" ' +
+              'style="background:#0d1526;color:#dde4f0;border:1px solid rgba(77,158,245,0.25);' +
+              'padding:3px 6px;font-size:9px;font-family:IBM Plex Mono;min-width:110px">' +
+              options + '</select></div>';
+          };
+
+          ctrlDiv.innerHTML =
+            mkSel('cs-gb-yr-sel',  'YEAR',
+              allYears.map(y => ({v:y, l:y})),
+              GB.seasonal.years,
+              'window.csGBYrChange(this)') +
+            '<div style="width:16px"></div>' +
+            mkSel('cs-gb-ser-sel', 'SERIES',
+              Object.entries(SERIES).map(([k,v]) => ({v:k, l:v.label})),
+              GB.seasonal.series,
+              'window.csGBSerChange(this)');
         }
 
         // Build datasets
