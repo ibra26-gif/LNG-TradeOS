@@ -551,21 +551,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       <div class="cs-chart-wrap" style="height:320px"><canvas id="cs-t2-canvas"></canvas></div>
       <div class="cs-src">Source: SHPGX North China truck retail (estimated) · JKM M+1 rolling (EOD, rolls 16th) · LT 11% &amp; 14% × Brent 3M avg · $/MMBtu</div>
 
-      <div class="cs-divider" style="margin-top:20px">REGIME INTERPRETATION</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:10px">
-        <div style="background:rgba(248,113,113,0.07);border:1px solid rgba(248,113,113,0.2);padding:10px 12px;color:#f87171">
-          <div style="font-size:9px;letter-spacing:.1em;margin-bottom:5px">TRUCK &lt; JKM</div>
-          No spot LNG demand from China — inland market cannot absorb import cost
-        </div>
-        <div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);padding:10px 12px;color:#f59e0b">
-          <div style="font-size:9px;letter-spacing:.1em;margin-bottom:5px">JKM &lt; TRUCK &lt; LT</div>
-          Max LT contracted volumes — spot uneconomic, LT contracts clearing the market
-        </div>
-        <div style="background:rgba(52,211,153,0.07);border:1px solid rgba(52,211,153,0.2);padding:10px 12px;color:#34d399">
-          <div style="font-size:9px;letter-spacing:.1em;margin-bottom:5px">TRUCK &gt; LT &gt; JKM</div>
-          Spot market opens — truck demand can absorb both LT and spot cargoes
-        </div>
-      </div>
+
     </div>
 
     <!-- ── TAB 3: LNG vs DIESEL ── -->
@@ -620,7 +606,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       <!-- Stack layer legend -->
       <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:12px;font-size:9px;letter-spacing:.08em;color:#6b7a99">
         <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:6px;background:rgba(107,122,153,0.18);border:1px dashed #3d5070;display:inline-block"></span>DOMESTIC PRODUCTION COST RANGE</span>
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#3d5070;display:inline-block;border-top:2px dashed #3d5070"></span>NDRC CITY GATE REF (2017)</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#3d5070;display:inline-block;border-top:2px dashed #3d5070"></span>NDRC CITY GATE (~$7)</span>
         <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#81c784;display:inline-block"></span>SPOT PIPELINE GAS ★EST</span>
         <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#34d399;display:inline-block"></span>PIPELINE SPOT ★EST</span>
         <span style="display:flex;align-items:center;gap:5px"><span style="width:28px;height:2px;background:#f59e0b;display:inline-block;border-top:2px dashed #f59e0b"></span>INDUSTRIAL MAX BID</span>
@@ -1193,7 +1179,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
           return `<div class="cs-mc"><div class="cs-mc-lbl">${lbl}</div><div class="cs-mc-val cs-mc-chg ${signal||cls}">${v}</div><div class="cs-mc-sub">${sub}</div></div>`;
         };
         mEl.innerHTML =
-          card('JKM vs CNP',      jkm_cnp,  'JKM settlement − Spot Pipeline ($/MMBtu) · neg = LNG demand opens') +
+          card('JKM vs SPOT PIPELINE',      jkm_cnp,  'JKM settlement − Spot Pipeline ($/MMBtu) · neg = LNG demand opens') +
           card('LT 14% vs CNP',   lt14_cnp, 'LT 14% Brent − Spot Pipeline ($/MMBtu)') +
           card('LT 11% vs CNP',   lt11_cnp, 'LT 11% Brent − Spot Pipeline ($/MMBtu)') +
           `<div class="cs-mc"><div class="cs-mc-lbl">DISTRIB MARGIN</div><div class="cs-mc-val" style="color:#f0f4ff">${dist_margin!=null?'+'+dist_margin.toFixed(2):'—'}</div><div class="cs-mc-sub">End-user industrial − Pipeline (distrib. margin)</div></div>` +
@@ -1232,7 +1218,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         },
         // NDRC city gate static reference
         {
-          label:'NDRC city gate ref (~$7)',
+          label:'NDRC city gate ref',
           data: ndrcGate,
           borderColor:'#3d5070',
           backgroundColor:'transparent',
@@ -1671,7 +1657,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       setB('cs-badge-t1b',cldL&&extL&&truckL?'':'SHPGX ESTIMATE','rgba(245,158,11,0.15)');
       setB('cs-badge-t2', truckL?'TRUCK: LIVE':'TRUCK: SHPGX ESTIMATE',truckL?'rgba(52,211,153,0.15)':'rgba(245,158,11,0.15)');
       setB('cs-badge-t3', dieselL&&truckL?'LIVE DATA':'SHPGX ESTIMATE',dieselL&&truckL?'rgba(52,211,153,0.15)':'rgba(245,158,11,0.15)');
-      setB('cs-badge-t4', cnpL?'DOMESTIC: LIVE':'DOMESTIC: SHPGX ESTIMATE',cnpL?'rgba(52,211,153,0.15)':'rgba(245,158,11,0.15)');
+      setB('cs-badge-t4','','');
     }
 
     function csLog(msg, isErr=false) {
