@@ -1153,10 +1153,10 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
             sig.textContent=`LNG IMPORT DEMAND SUPPORTED — JKM $${latJKM.toFixed(2)} < CNP $${latCNP.toFixed(2)}/MMBtu · Imported LNG competitive vs domestic gas · Spot demand potential elevated`;
           } else if(latJKM < (latLT14||999)){
             sig.className='cs-signal lt-only';
-            sig.textContent=`LNG DEMAND SOFTENING — JKM $${latJKM.toFixed(2)} > CNP $${latCNP.toFixed(2)}/MMBtu · Domestic gas cheaper than spot LNG · Buyers prefer domestic supply`;
+            sig.textContent=`LNG DEMAND SOFTENING — JKM $${latJKM.toFixed(2)} > CNP $${latCNP.toFixed(2)}/MMBtu · Spot Pipeline Gas cheaper than LNG · Buyers prefer domestic supply`;
           } else {
             sig.className='cs-signal no-demand';
-            sig.textContent=`NO SPOT LNG DEMAND — JKM $${latJKM.toFixed(2)} well above domestic gas $${latCNP.toFixed(2)}/MMBtu · Spot imports uncompetitive vs domestic supply`;
+            sig.textContent=`NO SPOT LNG DEMAND — JKM $${latJKM.toFixed(2)} well above domestic gas $${latCNP.toFixed(2)}/MMBtu · Spot imports uncompetitive vs Spot Pipeline Gas`;
           }
         } else {
           sig.className='cs-signal lt-only';
@@ -1180,11 +1180,11 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
           return `<div class="cs-mc"><div class="cs-mc-lbl">${lbl}</div><div class="cs-mc-val cs-mc-chg ${signal||cls}">${v}</div><div class="cs-mc-sub">${sub}</div></div>`;
         };
         mEl.innerHTML =
-          card('JKM vs CNP',      jkm_cnp,  'JKM settlement − CNP ($/MMBtu) · neg = LNG demand potential') +
-          card('LT 14% vs CNP',   lt14_cnp, 'LT 14% Brent − CNP ($/MMBtu)') +
-          card('LT 11% vs CNP',   lt11_cnp, 'LT 11% Brent − CNP ($/MMBtu)') +
-          `<div class="cs-mc"><div class="cs-mc-lbl">DISTRIB MARGIN</div><div class="cs-mc-val" style="color:#f0f4ff">${dist_margin!=null?'+'+dist_margin.toFixed(2):'—'}</div><div class="cs-mc-sub">Industrial end-user − CNP (city gas co. margin)</div></div>` +
-          `<div class="cs-mc"><div class="cs-mc-lbl">CNP OPEN MKT</div><div class="cs-mc-val" style="color:#81c784">${latCNP!=null?'$'+latCNP.toFixed(2):'—'}</div><div class="cs-mc-sub">$/MMBtu · domestic supply benchmark ★EST</div></div>` +
+          card('JKM vs CNP',      jkm_cnp,  'JKM settlement − Spot Pipeline ($/MMBtu) · neg = LNG demand opens') +
+          card('LT 14% vs CNP',   lt14_cnp, 'LT 14% Brent − Spot Pipeline ($/MMBtu)') +
+          card('LT 11% vs CNP',   lt11_cnp, 'LT 11% Brent − Spot Pipeline ($/MMBtu)') +
+          `<div class="cs-mc"><div class="cs-mc-lbl">DISTRIB MARGIN</div><div class="cs-mc-val" style="color:#f0f4ff">${dist_margin!=null?'+'+dist_margin.toFixed(2):'—'}</div><div class="cs-mc-sub">End-user industrial − Pipeline (distrib. margin)</div></div>` +
+          `<div class="cs-mc"><div class="cs-mc-lbl">SPOT PIPELINE GAS</div><div class="cs-mc-val" style="color:#81c784">${latCNP!=null?'$'+latCNP.toFixed(2):'—'}</div><div class="cs-mc-sub">$/MMBtu · PetroChina open market ★EST</div></div>` +
           `<div class="cs-mc"><div class="cs-mc-lbl">JKM SETTLEMENT</div><div class="cs-mc-val" style="color:#4d9ef5">${latJKM!=null?'$'+latJKM.toFixed(2):'—'}</div><div class="cs-mc-sub">$/MMBtu · monthly avg (16th→15th)</div></div>`;
       }
 
@@ -1232,7 +1232,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         },
         // CNP open market
         {
-          label:'CNP open market ★EST',
+          label:'Spot Pipeline Gas Price ★EST',
           data: cnpA,
           borderColor:'#81c784',
           backgroundColor:'transparent',
@@ -1258,7 +1258,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         },
         // NDRC 36-city industrial avg (end-user ceiling)
         {
-          label:'NDRC 36-city industrial avg',
+          label:'Industrial max bid',
           data: ndrcInd,
           borderColor:'#f59e0b',
           backgroundColor:'rgba(245,158,11,0.06)',
@@ -1284,33 +1284,34 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
           fill:false,
           order:2
         },
-        // LT 14%
+        // LT band — red fill between LT11% (floor) and LT14% (ceiling)
         {
-          label:'LT 14% Brent',
-          data: lt14A,
-          borderColor:'#ef5350',
-          backgroundColor:'transparent',
-          borderWidth:1.5,
-          borderDash:[5,3],
-          pointRadius:3,
-          pointBackgroundColor:'#ef5350',
-          tension:.3,
-          spanGaps:true,
-          order:3
-        },
-        // LT 11%
-        {
-          label:'LT 11% Brent',
+          label:'LT 11% Brent (floor)',
           data: lt11A,
-          borderColor:'#ce93d8',
-          backgroundColor:'transparent',
+          borderColor:'rgba(239,83,80,0.6)',
+          backgroundColor:'rgba(239,83,80,0.18)',
           borderWidth:1.5,
-          borderDash:[3,3],
+          borderDash:[4,3],
           pointRadius:3,
-          pointBackgroundColor:'#ce93d8',
+          pointBackgroundColor:'rgba(239,83,80,0.8)',
           tension:.3,
           spanGaps:true,
+          fill:'+1',
           order:4
+        },
+        {
+          label:'LT 14% Brent (ceiling)',
+          data: lt14A,
+          borderColor:'rgba(239,83,80,0.85)',
+          backgroundColor:'rgba(239,83,80,0.18)',
+          borderWidth:1.5,
+          borderDash:[6,3],
+          pointRadius:3,
+          pointBackgroundColor:'rgba(239,83,80,0.9)',
+          tension:.3,
+          spanGaps:true,
+          fill:false,
+          order:3
         },
       ];
 
