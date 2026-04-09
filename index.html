@@ -1034,7 +1034,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
           {label:'LT 14% Brent',data:lt14,borderColor:'#ef5350',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:.3,spanGaps:true,order:4},
           {label:'LT 11% Brent',data:lt11,borderColor:'#ce93d8',backgroundColor:'transparent',borderWidth:1.5,borderDash:[3,3],pointRadius:0,tension:.3,spanGaps:true,order:3},
           {label:'JKM M+1 (rolling)',data:jkmRolling,borderColor:'#4d9ef5',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true,order:2},
-          {label:'Truck retail N.China ★EST',data:truckAligned,borderColor:'#34d399',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true,order:1},
+          {label:'Truck retail N.China',data:truckAligned,borderColor:'#34d399',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true,order:1},
         ]},
         options:{...CD,scales:{
           x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:16}},
@@ -1180,8 +1180,8 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         };
         mEl.innerHTML =
           card('JKM vs SPOT PIPELINE',      jkm_cnp,  'JKM settlement − Spot Pipeline ($/MMBtu) · neg = LNG demand opens') +
-          card('LT 14% vs CNP',   lt14_cnp, 'LT 14% Brent − Spot Pipeline ($/MMBtu)') +
-          card('LT 11% vs CNP',   lt11_cnp, 'LT 11% Brent − Spot Pipeline ($/MMBtu)') +
+          card('LT 14% vs PIPELINE', lt14_cnp, 'LT 14% Brent − Spot Pipeline ($/MMBtu)') +
+          card('LT 11% vs PIPELINE', lt11_cnp, 'LT 11% Brent − Spot Pipeline ($/MMBtu)') +
           `<div class="cs-mc"><div class="cs-mc-lbl">DISTRIB MARGIN</div><div class="cs-mc-val" style="color:#f0f4ff">${dist_margin!=null?'+'+dist_margin.toFixed(2):'—'}</div><div class="cs-mc-sub">End-user industrial − Pipeline (distrib. margin)</div></div>` +
           `<div class="cs-mc"><div class="cs-mc-lbl">SPOT PIPELINE GAS</div><div class="cs-mc-val" style="color:#81c784">${latCNP!=null?'$'+latCNP.toFixed(2):'—'}</div><div class="cs-mc-sub">$/MMBtu · PetroChina open market ★EST</div></div>` +
           `<div class="cs-mc"><div class="cs-mc-lbl">JKM SETTLEMENT</div><div class="cs-mc-val" style="color:#4d9ef5">${latJKM!=null?'$'+latJKM.toFixed(2):'—'}</div><div class="cs-mc-sub">$/MMBtu · monthly avg (16th→15th)</div></div>`;
@@ -1285,7 +1285,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         },
         // LT band — red fill between LT11% (floor) and LT14% (ceiling)
         {
-          label:'LT 11% Brent (floor)',
+          label:'LT contract band (11% floor)',
           data: lt11A,
           borderColor:'rgba(239,83,80,0.6)',
           backgroundColor:'rgba(239,83,80,0.18)',
@@ -1299,7 +1299,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
           order:4
         },
         {
-          label:'LT 14% Brent (ceiling)',
+          label:'LT contract band (14% ceiling)',
           data: lt14A,
           borderColor:'rgba(239,83,80,0.85)',
           backgroundColor:'rgba(239,83,80,0.18)',
