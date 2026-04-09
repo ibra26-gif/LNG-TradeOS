@@ -701,7 +701,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
     // Filter sDates by period
     function filterDates(rng) {
-      if(!window.sDates||!sDates.length) return [];
+      if(typeof sDates==='undefined'||!sDates.length) return [];
       const all = sDates.slice();
       if(rng==='ALL') return all;
       const days = {t1:{},t2:{},t3:{},t4:{}}; // handled below
@@ -727,7 +727,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     function getBrent3MAvg(dates) {
       // Build lookup of all Brent M+1 values by date string
       const bMap = {};
-      (window.sDates||[]).forEach(ds=>{ const d=aD[ds]?.date; if(!d)return; const pk=rPK(d,1); const row=(aD[ds].rows||[]).find(r=>r.pk===pk); if(row?.Brent!=null) bMap[ds]=row.Brent; });
+      (sDates||[]).forEach(ds=>{ const d=aD[ds]?.date; if(!d)return; const pk=rPK(d,1); const row=(aD[ds].rows||[]).find(r=>r.pk===pk); if(row?.Brent!=null) bMap[ds]=row.Brent; });
       const allDs = Object.keys(bMap).sort();
       return dates.map(ds=>{
         const cutoff = new Date(ds); cutoff.setDate(cutoff.getDate()-90);
@@ -740,7 +740,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
     // JKM monthly settlement: avg M+1 closes from 16th of M-2 to 15th of M-1
     function getJKMMonthlySettlement() {
-      if(!window.sDates||!sDates.length) return [];
+      if(typeof sDates==='undefined'||!sDates.length) return [];
       // Group daily M+1 by settlement month
       // For delivery month M: avg closes where date ∈ [16th of M-2, 15th of M-1]
       const bMap = {}; // date→JKM M+1
@@ -765,7 +765,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
     // Brent 3M avg by delivery month for LT formula (monthly Tab4)
     function getBrentMonthlyLT() {
-      if(!window.sDates||!sDates.length) return {};
+      if(typeof sDates==='undefined'||!sDates.length) return {};
       const bMap = {};
       sDates.forEach(ds=>{ const d=aD[ds]?.date; if(!d)return; const pk=rPK(d,1); const row=(aD[ds].rows||[]).find(r=>r.pk===pk); if(row?.Brent!=null) bMap[ds]=row.Brent; });
       const first=new Date(sDates[0]), last=new Date(sDates[sDates.length-1]);
@@ -977,11 +977,22 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
     // ── TAB 2: TRUCK vs JKM & LT ──
     function csT2Update() {
-      if(!window.aD||!Object.keys(window.aD).length||!window.sDates||!window.sDates.length){
+      // aD is loaded from localStorage cache — may not be ready yet, poll for up to 5s
+      if(typeof aD==='undefined'||!Object.keys(aD).length||!sDates||!sDates.length){
         const sig=document.getElementById('cs-t2-signal');
-        if(sig){sig.className='cs-signal lt-only';sig.textContent='LOAD EOD FILES IN FINANCIAL TRADING TO ENABLE JKM & LT SERIES';}
+        if(sig){sig.className='cs-signal lt-only';sig.textContent='Loading EOD data from cache...';}
+        // Retry up to 10 times at 500ms intervals
+        if(!csT2Update._retries) csT2Update._retries = 0;
+        if(csT2Update._retries < 10) {
+          csT2Update._retries++;
+          setTimeout(csT2Update, 500);
+        } else {
+          csT2Update._retries = 0;
+          if(sig) sig.textContent='No EOD data found — load files in Financial Trading';
+        }
         return;
       }
+      csT2Update._retries = 0;
       const usdcny = parseFloat(document.getElementById('cs-t2-usdcny')?.value||7.25);
       const rng = CS.ranges.t2;
       const daysMap={'1M':30,'3M':90,'6M':180,'1Y':365};
