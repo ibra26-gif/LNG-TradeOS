@@ -705,8 +705,17 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       document.querySelectorAll('.cs-tab').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('.cs-tab-pane').forEach(p=>p.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('cs-pane-'+idx).classList.add('active');
-      setTimeout(()=>{ if(idx===0)csT1Update(); else if(idx===1)csT2Update(); else if(idx===2)csT3Update(); else if(idx===3)csT4Update(); else csGBUpdate(); },50);
+      const pane = document.getElementById('cs-pane-'+idx);
+      if(pane) pane.classList.add('active');
+      setTimeout(()=>{
+        try {
+          if(idx===0) csT1Update();
+          else if(idx===1) csT2Update();
+          else if(idx===2) csT3Update();
+          else if(idx===3) csT4Update();
+          else if(idx===4) { if(typeof csGBUpdate==='function') csGBUpdate(); else if(typeof window.csGBUpdate==='function') window.csGBUpdate(); }
+        } catch(e) { console.error('csTab error idx='+idx, e); }
+      },50);
     }
     window.csTab = csTab;
 
