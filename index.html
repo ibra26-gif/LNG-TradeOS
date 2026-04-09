@@ -2038,84 +2038,48 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         });
 
       } else {
-        // ── Seasonal view with toggle buttons
-        try {
-        if (titleEl) titleEl.textContent = 'CHINA GAS BALANCE — SEASONAL · '+u;
+        if (titleEl) titleEl.textContent = 'CHINA GAS SUPPLY — SEASONAL · ' + u;
 
-        const allYears   = [...new Set(fullData.map(r=>r.m.slice(0,4)))].sort();
-        if (!GB.seasonal.years.length) GB.seasonal.years = allYears.slice();
-        const yearColors = ['#4d9ef5','#34d399','#f59e0b','#ef5350','#ce93d8'];
+        const allYears = [...new Set(fullData.map(r => r.m.slice(0,4)))].sort();
+        const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const lineColors  = ['#4d9ef5','#34d399','#f59e0b','#ef5350','#ce93d8'];
 
-        const seriesMap = {
-          total: {label:'Total supply',        fn:r=>r.prod+r.lng+r.pipe, dash:[],    col:'#dde4f0'},
-          prod:  {label:'Domestic production', fn:r=>r.prod,              dash:[],    col:'#4d9ef5'},
-          lng:   {label:'LNG imports',         fn:r=>r.lng,               dash:[5,3], col:'#34d399'},
-          pipe:  {label:'Pipeline imports',    fn:r=>r.pipe,              dash:[3,3], col:'#f59e0b'},
-        };
+        const datasets = allYears.map((yr, i) => ({
+          label: yr,
+          data: monthLabels.map((_, mo) => {
+            const row = fullData.find(r => r.m === yr + '-' + String(mo + 1).padStart(2, '0'));
+            return row ? gbConvert(row.prod + row.lng + row.pipe) : null;
+          }),
+          borderColor: lineColors[i % lineColors.length],
+          backgroundColor: 'transparent',
+          borderWidth: yr === allYears[allYears.length - 1] ? 2.5 : 1.5,
+          pointRadius: 3,
+          tension: .3,
+          spanGaps: false,
+        }));
 
-        // Toggle button controls
-        const ctrlDiv = document.getElementById('cs-gb-sea-ctrl');
-        if (ctrlDiv) {
-          ctrlDiv.style.display = 'flex';
-          const btn = (label, active, col, onclick) =>
-            '<button onclick="'+onclick+'" style="padding:3px 9px;font-size:9px;font-family:IBM Plex Mono;'+
-            'letter-spacing:.06em;cursor:pointer;border:1px solid '+(active?col:'rgba(77,158,245,0.2)')+
-            ';color:'+(active?col:'#4b5a72')+';background:'+(active?'rgba(77,158,245,0.06)':'transparent')+
-            ';margin-right:3px">'+label+'</button>';
-
-          const yrBtns  = allYears.map((yr,i)=>btn(yr, GB.seasonal.years.includes(yr), yearColors[i%yearColors.length], "window.csGBToggleYear('"+yr+"')")).join('');
-          const serBtns = Object.entries(seriesMap).map(([k,v])=>btn(v.label, GB.seasonal.series.includes(k), v.col, "window.csGBToggleSer('"+k+"')")).join('');
-
-          ctrlDiv.innerHTML =
-            '<span style="font-size:9px;color:#6b7a99;letter-spacing:.08em;margin-right:6px">YEAR</span>'+yrBtns+
-            '<span style="font-size:9px;color:#6b7a99;letter-spacing:.08em;margin-left:14px;margin-right:6px">SERIES</span>'+serBtns;
-        }
-
-        // Build datasets
-        const datasets = [];
-        for (let yi=0; yi<allYears.length; yi++) {
-          const yr = allYears[yi];
-          if (!GB.seasonal.years.includes(yr)) continue;
-          const yrCol = yearColors[yi % yearColors.length];
-          for (const [serKey, s] of Object.entries(seriesMap)) {
-            if (!GB.seasonal.series.includes(serKey)) continue;
-            datasets.push({
-              label: yr + (GB.seasonal.series.length > 1 ? ' '+s.label : ''),
-              data: GB_MONTHS.map((_,mo) => {
-                const row = fullData.find(r=>r.m===yr+'-'+String(mo+1).padStart(2,'0'));
-                return row ? gbConvert(s.fn(row)) : null;
-              }),
-              borderColor: yrCol,
-              backgroundColor: 'transparent',
-              borderWidth: yr===allYears[allYears.length-1] ? 2.5 : 1.5,
-              borderDash: s.dash,
-              pointRadius: 3, tension: .3, spanGaps: false,
-            });
-          }
-        }
-
-        if (!datasets.length) {
-          console.warn('GB Seasonal: no datasets built — years:', GB.seasonal.years, 'series:', GB.seasonal.series);
-        }
-        console.log('GB Seasonal: building chart with', datasets.length, 'datasets, canvas:', !!canvas);
         GB.chart = new Chart(canvas, {
           type: 'line',
-          data: { labels: GB_MONTHS, datasets },
+          data: { labels: monthLabels, datasets },
           options: {
             ...CD, responsive: true, maintainAspectRatio: false,
-            plugins: { ...CD.plugins,
-              legend: { display: true, position: 'top', align: 'start',
-                labels: {color:'#5a6882', font:{size:9,family:'IBM Plex Mono'}, boxWidth:20, padding:10}}
+            plugins: {
+              ...CD.plugins,
+              legend: {
+                display: true, position: 'top', align: 'start',
+                labels: { color: '#5a6882', font: { size: 9, family: 'IBM Plex Mono' }, boxWidth: 20, padding: 12 }
+              }
             },
             scales: {
               x: CD.scales.x,
-              y: { ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},
-                   grid:{color:'#0f1824'},
-                   title:{display:true,text:u,color:'#4b5a72',font:{size:9}}}
+              y: {
+                ticks: { color: '#3d5070', font: { size: 9, family: 'IBM Plex Mono' } },
+                grid: { color: '#0f1824' },
+                title: { display: true, text: u, color: '#4b5a72', font: { size: 9 } }
+              }
             }
           }
         });
-        } catch(e) { console.error('GB Seasonal chart error:', e); }
       }
     }
 
@@ -2125,24 +2089,12 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       if (!filtData.length) return;
       // Show/hide seasonal controls
       const ctrl = document.getElementById('cs-gb-sea-ctrl');
-      if (ctrl) ctrl.style.display = GB.view === 'seasonal' ? 'flex' : 'none';
+      if (ctrl) ctrl.style.display = 'none';
       gbRenderMetrics(fullData, filtData);
       gbRenderTable(fullData, filtData);
       gbRenderChart(fullData, filtData);
     }
-    window.csGBToggleYear = function(yr) {
-      const idx = GB.seasonal.years.indexOf(yr);
-      if (idx > -1) { if (GB.seasonal.years.length > 1) GB.seasonal.years.splice(idx,1); }
-      else GB.seasonal.years.push(yr);
-      csGBUpdate();
-    };
-    window.csGBToggleSer = function(ser) {
-      const idx = GB.seasonal.series.indexOf(ser);
-      if (idx > -1) { if (GB.seasonal.series.length > 1) GB.seasonal.series.splice(idx,1); }
-      else GB.seasonal.series.push(ser);
-      csGBUpdate();
-    };
-    window.csGBUpdate = csGBUpdate;
+window.csGBUpdate = csGBUpdate;
 
     // ── Init: try cache first, then fetch ─────────────────────
     function csGBInit() {
@@ -2150,16 +2102,11 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         const cached = JSON.parse(localStorage.getItem(GB.cache_key)||'null');
         if (cached?.rows?.length && Date.now()-cached.ts < 86400000) {
           GB.data = cached.rows;
-          const el = document.getElementById('cs-gb-status');
-          const age = Math.round((Date.now()-cached.ts)/3600000);
-          if (el) el.textContent = `✓ CACHED — ${cached.rows.length} months · ${age}h ago · NBS + GACC`;
           csGBUpdate();
           return;
         }
       } catch(e) {}
       // No cache — use historical and trigger background fetch
-      const el = document.getElementById('cs-gb-status');
-      if (el) el.textContent = '★ ESTIMATED — hardcoded historical (NBS/GACC) · Fetching live data...';
       csGBUpdate();
       setTimeout(csGBFetch, 500);
     }
@@ -2169,7 +2116,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     const _origGaMainTab = window.gaMainTab;
     window.gaMainTab = function(id, btn) {
       if(_origGaMainTab) _origGaMainTab(id, btn);
-      if(id==='lngbal') { setTimeout(csInit, 100); setTimeout(csGBInit, 200); }
+      if(id==='lngbal') { setTimeout(csInit, 100); }
     };
 
     // Also init if already active on page load
