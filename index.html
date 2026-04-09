@@ -9170,50 +9170,34 @@ const TWH_TO_BCM = 1/10.55;
 // Cache strategy: localStorage per route/year, 7d historical, 6h recent
 // ═══════════════════════════════════════════════════════════════════
 
-// ── ENTSOG interconnection points (research-verified entry labels) ──────────
-// Source: ENTSOG capacity maps + operator-point-directions endpoint
-// Norway: all pipeline export entry points into EU/UK
-// Algeria: two separate corridors (Mazara del Vallo IT, Medgaz/Almeria ES)
-// TAP: San Foca entry IT (Melendugno area, TAP terminal)
-// Russia: TurkStream Balkans residual (2026: near-zero)
+// ── ENTSOG interconnection point KEYS (verified via /connectionPoints API, Apr 2026) ──
+// Using pointKey (stable IDs) — verified hasData:true, isPlanned:false only.
 const ENTSOG_CORRIDOR_POINTS = {
   norway: [
-    'Emden EPT1',      // Europipe I — Gassco → Gasunie/OGE, Germany
-    'Emden EPT2',      // Norpipe — Gassco → Gasunie, Germany
-    'Dornum NETRA',    // NEL pipeline, Germany (also catches Dornum label variants)
-    'Dornum',          // NEL pipeline — alternative label
-    'Nybro',           // Danish/Norwegian fields → Denmark TSO, Denmark
-    'St Fergus',       // FLAGS pipeline — Gassco → NGG, UK
-    'Easington',       // Langeled — Gassco → Cadent/NGG, UK
-    'Dunkerque LNG',   // Franpipe/IFP — Gassco → GRTgaz, France (excl LNG terminal)
-    'Dunkerque',       // alternative Dunkerque label
-    'Zeebrugge ZPT',   // Zeepipe — Gassco → Fluxys, Belgium
+    'ITP-00209',  // Emden (EPT1) — Europipe/Norpipe → Germany ✓
+    'ITP-00208',  // Dornum (EPT1 & EPT2) — NEL pipeline → Germany ✓
+    'ITP-00525',  // Dornum GASPOOL → Germany ✓
+    'ITP-00097',  // Nybro — Danish landing → Denmark ✓
+    'ITP-00106',  // Zeebrugge ZPT — Zeepipe → Belgium ✓
+    'ITP-00091',  // Easington — Langeled → UK ✓
+    'ITP-00022',  // St. Fergus — FLAGS pipeline → UK ✓
   ],
   algeria_italy: [
-    'Mazara del Vallo', // TransMed — Sonatrach/SNAM entry, Italy
-    'Mazara',           // alternative label
+    'ITP-00093',  // Mazara del Vallo — TransMed → Italy ✓
   ],
   algeria_spain: [
-    'Medgaz',          // Medgaz submarine pipeline — Sonatrach → Enagás, Almeria Spain
-    'Almeria',         // alternative label (Medgaz landfall point)
+    'ITP-00048',  // Almería — Medgaz landfall → Spain ✓
+    'ITP-00082',  // Tarifa — GME/Maghreb pipeline → Spain ✓
   ],
   tap: [
-    'San Foca',        // TAP entry Italy (Melendugno terminal, Puglia)
-    'Melendugno',      // alternative TAP entry label
-    'TAP',             // catch-all TAP label
+    'ITP-00046',  // Kipi (TR/GR) — TANAP/TAP non-EU entry → Greece ✓
+    'ITP-00274',  // Kipoi — TAP entry → Greece ✓
+    'ITP-00008',  // Melendugno - IT / TAP — Italy terminal entry ✓
   ],
   russia: [
-    'Strandzha 2',     // TurkStream → Bulgaria (main remaining Russian route 2026)
-    'Isaccea',         // Ukraine → Romania (minimal residual)
-    'Kiskundorozsma',  // TurkStream → Hungary
+    'ITP-00549',  // Strandzha 2 (BG) / Malkoclar (TR) — TurkStream ✓
   ],
-  // Pipeline EXITS — subtract from supply (directionKey=exit)
-  exits: [
-    'Isaccea',         // Romania → Moldova (small)
-    'Medgidia South',  // Romania → Bulgaria exits
-    'Kiskundorozsma',  // Hungary → Serbia/Balkans re-export
-    'Strandzha',       // Possible Balkan re-exports
-  ],
+  exits: [],     // Not needed for supply balance — omitted for now
 };
 
 // ── GA_LIVE: single source of truth for all live data ────────────────────────
@@ -9420,20 +9404,14 @@ function gaGetONSPct(subsystem){
 // Fetch current year live (always fresh)
 async function gaLoadENTSOGRoute(route,from,to,cacheResult=false){
   const points=ENTSOG_CORRIDOR_POINTS[route];
-  if(!points?.length) return;
-  // Use comma-separated pointLabel filter (ENTSOG supports multiple values)
-  const deduped=[...new Set(points)]; // remove duplicates
-  const params=new URLSearchParams({
-    indicator:'Physical Flow',
-    directionKey:'entry',
-    pointLabel: deduped.join(','),
-    from, to,
-    periodType:'day',
-    timezone:'CET',
-    limit:'10000',
-  });
-  // /operationalDatas supports pointLabel; proxy requires ?endpoint=operationaldata
-  const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${params}`:entsogProxyUrl(params);
+  if(!points?.length) return; // corridor not yet configured (e.g. algeria_spain pending key lookup)
+  const deduped=[...new Set(points)];
+  // pointKey values are alphanumeric+dash — safe to join with literal commas, no encoding needed
+  const keyStr=deduped.join(',');
+  const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointKey=${keyStr}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=10000`;
+  const url=IS_LOCAL
+    ?`${ENTSOG_BASE}/operationalDatas?${paramStr}`
+    :`/api/entsog?endpoint=operationaldata&${paramStr}`;
   const cacheKey=`entsog_${route}_${from}_${to.slice(0,7)}`;
 
   let raw = cacheResult ? gaCacheGet(cacheKey) : null;
@@ -9441,9 +9419,8 @@ async function gaLoadENTSOGRoute(route,from,to,cacheResult=false){
     const r=await fetch(url,{headers:{Accept:'application/json'}});
     if(!r.ok) throw new Error(`ENTSOG ${r.status} route=${route}`);
     raw=await r.json();
-    if(cacheResult) gaCacheSet(cacheKey,raw,6); // 6h for recent data
+    if(cacheResult) gaCacheSet(cacheKey,raw,6);
   }
-
   gaAggENTSOGToLive(route,raw);
 }
 
@@ -9461,12 +9438,9 @@ async function gaLoadENTSOGHistorical(route,minYear){
     try{
       const from=`${yr}-01-01`,to=`${yr}-12-31`;
       const points=ENTSOG_CORRIDOR_POINTS[route];
-      const params=new URLSearchParams({
-        indicator:'Physical Flow',directionKey:'entry',
-        pointLabel:[...new Set(points)].join(','),
-        from,to,periodType:'day',timezone:'CET',limit:'10000',
-      });
-      const histUrl=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${params}`:entsogProxyUrl(params);
+      const keyStr=[...new Set(points)].join(',');
+      const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointKey=${keyStr}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=10000`;
+      const histUrl=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:`/api/entsog?endpoint=operationaldata&${paramStr}`;
       const r=await fetch(histUrl,{headers:{Accept:'application/json'}});
       if(!r.ok) continue; // silent fail for historical
       const raw=await r.json();
@@ -9484,12 +9458,10 @@ async function gaLoadENTSOGExits(from,to){
     let raw=gaCacheGet(cacheKey);
     if(!raw){
       const points=[...new Set(ENTSOG_CORRIDOR_POINTS.exits)];
-      const params=new URLSearchParams({
-        indicator:'Physical Flow',directionKey:'exit',
-        pointLabel:points.join(','),
-        from,to,periodType:'day',timezone:'CET',limit:'10000',
-      });
-      const exitsUrl=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${params}`:entsogProxyUrl(params);
+      if(!points.length) return; // exits not yet configured
+      const keyStr=points.join(',');
+      const paramStr=`indicator=Physical%20Flow&directionKey=exit&pointKey=${keyStr}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=10000`;
+      const exitsUrl=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:`/api/entsog?endpoint=operationaldata&${paramStr}`;
       const r=await fetch(exitsUrl,{headers:{Accept:'application/json'}});
       if(!r.ok) return;
       raw=await r.json();
@@ -9511,40 +9483,55 @@ async function gaLoadENTSOGExits(from,to){
 // ENTSOG — DOMESTIC PRODUCTION (adjacentSystemTypeLabel=Production per country)
 // ─────────────────────────────────────────────────────────────────────────────
 async function gaLoadDomProductionLive(from, to){
-  const jobs = Object.entries(ENTSOG_PRODUCTION_COUNTRIES).map(async ([cc, label]) => {
-    const cacheKey = `dom_prod_${cc}_${from.slice(0,7)}_${to.slice(0,7)}`;
-    let raw = gaCacheGet(cacheKey);
-    if(!raw){
-      try{
-        const params = new URLSearchParams({
-          indicator:'Physical Flow', directionKey:'entry',
-          adjacentSystemTypeLabel:'Production', tsoCountryCode:cc,
-          from, to, periodType:'day', timezone:'CET', limit:'10000',
-        }).toString();
-        const url = IS_LOCAL
-          ? `${ENTSOG_BASE}/operationalDatas?${params}`
-          : entsogProxyUrl(params);
-        const r = await fetch(url, {headers:{Accept:'application/json'}});
-        if(!r.ok) throw new Error(`${r.status}`);
-        raw = await r.json();
-        gaCacheSet(cacheKey, raw, 24);
-      } catch(e){ console.warn(`Dom prod ${cc}:`, e.message); return; }
+  // Single query for all EU production entries — no per-country filtering.
+  // tsoCountryCode is a response field, NOT a valid ENTSOG query parameter.
+  // adjacentSystemTypeLabel=Production filters entry points adjacent to production systems.
+  // We then aggregate rows by the first 2 chars of tsoEicCode (ISO country code).
+  const EIC_TO_LABEL = {
+    NL:'netherlands', RO:'romania', DK:'denmark', GB:'uk',
+    IT:'italy', DE:'germany', PL:'poland',
+  };
+  const cacheKey = `dom_prod_eu_${from.slice(0,7)}_${to.slice(0,7)}`;
+  let raw = gaCacheGet(cacheKey);
+  if(!raw){
+    try{
+      // Build params as a plain string to avoid URLSearchParams comma-encoding
+      const paramStr = [
+        'indicator=Physical%20Flow',
+        'directionKey=entry',
+        'adjacentSystemTypeLabel=Production',
+        `from=${from}`, `to=${to}`,
+        'periodType=day', 'timezone=CET', 'limit=10000',
+      ].join('&');
+      const url = IS_LOCAL
+        ? `${ENTSOG_BASE}/operationalDatas?${paramStr}`
+        : `/api/entsog?endpoint=operationaldata&${paramStr}`;
+      const r = await fetch(url, {headers:{Accept:'application/json'}});
+      if(!r.ok) throw new Error(`ENTSOG ${r.status}`);
+      raw = await r.json();
+      gaCacheSet(cacheKey, raw, 24);
+    } catch(e){
+      console.warn('Dom prod (EU query):', e.message, '— using static fallback');
+      return; // static GA_DOM_DATA will be used by gaBuildDomChart
     }
-    const rows = raw?.operationaldatas||raw?.operationalDatas||raw?.operationalData||raw?.data||[];
-    if(!rows.length) return;
+  }
+  const rows = raw?.operationaldatas||raw?.operationalDatas||raw?.operationalData||raw?.data||[];
+  if(!rows.length) return;
+  rows.forEach(d => {
+    // Derive country from tsoEicCode (e.g. "NL-TSO-0001..." → "NL")
+    const cc = (d.tsoEicCode||d.tsoCountryCode||'').slice(0,2).toUpperCase();
+    const label = EIC_TO_LABEL[cc];
+    if(!label) return; // skip non-target countries
+    const valMCM = (parseFloat(d.value||0)||0) * ENTSOG_KWH_TO_MCM;
+    const date = (d.periodFrom||d.from||'').slice(0,10);
+    const mo = date.slice(0,7);
+    if(!mo||mo.length<7) return;
     if(!GA_LIVE.domestic[label]) GA_LIVE.domestic[label] = {};
-    rows.forEach(d => {
-      const valMCM = (parseFloat(d.value||0)||0) * ENTSOG_KWH_TO_MCM;
-      const date = (d.periodFrom||d.from||'').slice(0,10);
-      const mo = date.slice(0,7);
-      if(!mo||mo.length<7) return;
-      GA_LIVE.domestic[label][mo] = (GA_LIVE.domestic[label][mo]||0) + valMCM;
-    });
-    console.log(`Dom prod ${cc}: ${rows.length} rows, ${Object.keys(GA_LIVE.domestic[label]).length} months`);
+    GA_LIVE.domestic[label][mo] = (GA_LIVE.domestic[label][mo]||0) + valMCM;
   });
-  await Promise.allSettled(jobs);
   if(Object.values(GA_LIVE.domestic).some(d=>Object.keys(d).length>0)){
     GA_LIVE.ok.domestic = true;
+    console.log('ENTSOG domestic production: OK,', rows.length, 'rows');
   }
 }
 
