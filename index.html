@@ -1503,6 +1503,40 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
           else if(name.includes('diesel')) key='diesel';
           else if(name.includes('cnp'))    key='cnp';
           else if(name.includes('pipe'))   key='pipe_spot';
+          // China Gas Balance CSV
+          if(!key && name.includes('china_gas_balance')) {
+            try {
+              const lines = text.trim().split('\n');
+              const headers = lines[0].split(',').map(h=>h.trim());
+              const gbRows = [];
+              for(let i=1;i<lines.length;i++){
+                const cells = lines[i].split(',').map(v=>v.trim());
+                const row={};
+                headers.forEach((h,j)=>row[h]=cells[j]);
+                if(row.month&&row.month.match(/\d{4}-\d{2}/)){
+                  gbRows.push({
+                    m:row.month,
+                    prod:parseFloat(row.prod_bcm)||0,
+                    lng:parseFloat(row.lng_bcm)||0,
+                    pipe:parseFloat(row.pipe_bcm)||0,
+                    lng_mt:parseFloat(row.lng_mt)||0,
+                    pipe_mt:parseFloat(row.pipe_mt)||0,
+                  });
+                }
+              }
+              if(gbRows.length>0){
+                try{localStorage.setItem('lng_china_gb_v1',JSON.stringify({ts:Date.now(),rows:gbRows}));}catch(e){}
+                if(typeof GB!=='undefined'){
+                  GB.data=gbRows;
+                  const el=document.getElementById('cs-gb-status');
+                  if(el) el.textContent='✓ CSV — '+gbRows.length+' months · '+gbRows[0].m+' → '+gbRows[gbRows.length-1].m+' · NBS + GACC';
+                  if(typeof csGBUpdate==='function') csGBUpdate();
+                }
+                res({key:'china_gas_balance', rows:gbRows, count:gbRows.length});
+                return;
+              }
+            } catch(e){}
+          }
           if(!key) { rej('Cannot detect series from filename: '+file.name); return; }
           const rows = parseShpgxCSV(text, key);
           SHPGX[key] = rows;
@@ -1662,7 +1696,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
             ondragover="event.preventDefault();this.style.borderColor='rgba(77,158,245,0.6)';this.style.color='#4d9ef5'"
             ondragleave="this.style.borderColor='rgba(77,158,245,0.2)';this.style.color='#4b5a72'"
             ondrop="event.preventDefault();this.style.borderColor='rgba(77,158,245,0.2)';this.style.color='#4b5a72';csLoadShpgxFiles(event.dataTransfer.files)">
-            DRAG &amp; DROP CSV FILES HERE — or click LOAD CSVs above · Files from SHPGX Extractor (shpgx_scraper.html) slot in automatically
+            DRAG &amp; DROP CSV FILES HERE — or click LOAD CSVs above · SHPGX Extractor files + china_gas_balance_*.csv slot in automatically
           </div>
         `;
         const pane0 = document.getElementById('cs-pane-0');
