@@ -635,7 +635,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
           <div class="cs-rng-btns" id="cs-gb-unit-btns">
             <button class="cs-rng-btn active" onclick="csGBSetUnit('bcm',this)">BCM</button>
             <button class="cs-rng-btn" onclick="csGBSetUnit('mmscm',this)">MMSCM</button>
-            <button class="cs-rng-btn" onclick="csGBSetUnit('mtpa',this)">MTPA</button>
+            <button class="cs-rng-btn" onclick="csGBSetUnit('mtpa',this)">MTPM</button>
           </div>
         </div>
         <div class="cs-ctrl-grp">
@@ -1780,6 +1780,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       chart: null,
       data: null,
       cache_key: 'lng_china_gb_v1',
+      seasonal: { years: [], series: ['total'] },
     };
 
     // Unit conversion from BCM
@@ -1905,39 +1906,47 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     }
 
     // ── Render metric cards ───────────────────────────────────
-    function gbRenderMetrics(data) {
-      const el = document.getElementById('cs-gb-metrics');
-      if (!el || !data.length) return;
-      const latest = data[data.length-1];
-      const ytd = data.filter(r=>r.m.startsWith(latest.m.slice(0,4)));
-      const u = gbUnitLabel();
-
-      const totalSupply = latest.prod + latest.lng + latest.pipe;
-      const lngShare = (latest.lng / totalSupply * 100).toFixed(1);
-      const ytdProd = ytd.reduce((s,r)=>s+r.prod,0);
-      const ytdLNG  = ytd.reduce((s,r)=>s+r.lng,0);
-      const ytdPipe = ytd.reduce((s,r)=>s+r.pipe,0);
-      const ytdTotal = ytdProd + ytdLNG + ytdPipe;
-
-      // YoY for latest month
-      const prevYear = data.find(r=>r.m === (parseInt(latest.m.slice(0,4))-1)+latest.m.slice(4));
-      const yoy = prevYear ? +((totalSupply-(prevYear.prod+prevYear.lng+prevYear.pipe))/(prevYear.prod+prevYear.lng+prevYear.pipe)*100).toFixed(1) : null;
-
-      el.innerHTML = [
-        {lbl:'YTD TOTAL SUPPLY', val: gbConvert(ytdTotal)+' '+u, sub: `${ytd.length} months Jan–${latest.m.slice(5,7)}`},
-        {lbl:'LNG IMPORT SHARE', val: lngShare+'%', sub: 'of total supply latest month', col:'#34d399'},
-        {lbl:'LATEST PRODUCTION', val: gbConvert(latest.prod)+' '+u, sub: latest.m+' domestic output'},
-        {lbl:'YOY SUPPLY GROWTH', val: yoy!=null?(yoy>=0?'+':'')+yoy+'%':'—', sub: 'vs same month prior year', col:yoy>0?'#34d399':yoy<0?'#ef5350':'#dde4f0'},
-      ].map(m=>`<div class="cs-mc"><div class="cs-mc-lbl">${m.lbl}</div><div class="cs-mc-val" style="color:${m.col||'#dde4f0'}">${m.val}</div><div class="cs-mc-sub">${m.sub}</div></div>`).join('');
+    // Month label helper: "2025-01" → "Jan 25"
+    const GB_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function gbMonLbl(m) {
+      const yr = m.slice(2,4), mo = parseInt(m.slice(5,7),10)-1;
+      return GB_MONTHS[mo] + ' ' + yr;
     }
 
-    // ── Render balance table ──────────────────────────────────
-    function gbRenderTable(data) {
+    function gbRenderMetrics(fullData, filtData) {
+      const el = document.getElementById('cs-gb-metrics');
+      if (!el || !fullData.length) return;
+      const latest  = fullData[fullData.length-1];
+      const ytdYear = latest.m.slice(0,4);
+      const ytd     = fullData.filter(r=>r.m.startsWith(ytdYear));
+      const u       = gbUnitLabel();
+
+      const totalSupply = latest.prod + latest.lng + latest.pipe;
+      const lngShare    = (latest.lng / totalSupply * 100).toFixed(1);
+      const ytdTotal    = ytd.reduce((s,r)=>s+r.prod+r.lng+r.pipe, 0);
+
+      const prevM  = (parseInt(ytdYear)-1) + latest.m.slice(4);
+      const prevR  = fullData.find(r=>r.m===prevM);
+      const yoy    = prevR ? +((totalSupply-(prevR.prod+prevR.lng+prevR.pipe))/(prevR.prod+prevR.lng+prevR.pipe)*100).toFixed(1) : null;
+
+      const latestMT = GB.unit==='mtpa' ? +(latest.lng * (1/LNG_MT_TO_BCM)).toFixed(2) : null;
+
+      el.innerHTML = [
+        {lbl:'YTD TOTAL SUPPLY',  val: gbConvert(ytdTotal)+' '+u, sub: ytd.length+' months Jan–'+GB_MONTHS[parseInt(latest.m.slice(5,7))-1]},
+        {lbl:'LNG IMPORT SHARE',  val: lngShare+'%', sub: 'of total supply · '+gbMonLbl(latest.m), col:'#34d399'},
+        {lbl:'LATEST PRODUCTION', val: gbConvert(latest.prod)+' '+u, sub: gbMonLbl(latest.m)+' domestic output'},
+        {lbl:'YOY SUPPLY GROWTH', val: yoy!=null?(yoy>=0?'+':'')+yoy+'%':'—', sub: 'vs same month prior year', col:yoy>0?'#34d399':yoy<0?'#ef5350':'#dde4f0'},
+      ].map(m=>'<div class="cs-mc"><div class="cs-mc-lbl">'+m.lbl+'</div><div class="cs-mc-val" style="color:'+(m.col||'#dde4f0')+'">'+m.val+'</div><div class="cs-mc-sub">'+m.sub+'</div></div>').join('');
+    }
+
+    // Conversion factor stored for metrics use
+    const LNG_MT_TO_BCM = 1.36;
+
+    function gbRenderTable(fullData, filtData) {
       const wrap = document.getElementById('cs-gb-table-wrap');
       if (!wrap) return;
-      const u = gbUnitLabel();
-      const recent = data.slice(-13);
-      const months = recent.map(r=>r.m.slice(0,7));
+      const u       = gbUnitLabel();
+      const recent  = filtData.slice(-13);
       const ytdYear = recent[recent.length-1].m.slice(0,4);
 
       const rowDefs = [
@@ -1950,24 +1959,24 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
       let html = '<table style="width:100%;border-collapse:collapse;font-size:9px;font-family:IBM Plex Mono,monospace">'
         + '<thead><tr style="border-bottom:1px solid rgba(77,158,245,0.15)">'
-        + '<th style="text-align:left;padding:5px 8px;color:#6b7a99;letter-spacing:.08em">ITEM (' + u + ')</th>'
-        + months.map(m=>'<th style="text-align:right;padding:5px 6px;color:#6b7a99;white-space:nowrap">'+m.slice(2)+'</th>').join('')
+        + '<th style="text-align:left;padding:5px 8px;color:#6b7a99;letter-spacing:.08em">ITEM ('+u+')</th>'
+        + recent.map(r=>'<th style="text-align:right;padding:5px 6px;color:#6b7a99;white-space:nowrap">'+gbMonLbl(r.m)+'</th>').join('')
         + '<th style="text-align:right;padding:5px 6px;color:#6b7a99">YTD</th>'
         + '</tr></thead><tbody>';
 
       for (let ri=0; ri<rowDefs.length; ri++) {
         const row = rowDefs[ri];
-        const fw = row.bold?'600':'400';
-        const fs = row.italic?'italic':'normal';
-        html += '<tr' + (row.key==='total'?' style="border-top:1px solid rgba(255,255,255,0.08)"':'') + '>';
-        html += '<td style="padding:4px 8px;color:'+row.color+';white-space:nowrap">'+row.label+'</td>';
+        const fw  = row.bold?'600':'400';
+        const fs  = row.italic?'italic':'normal';
+        html += '<tr'+(row.key==='total'?' style="border-top:1px solid rgba(255,255,255,0.08)"':'')+'>'+
+                '<td style="padding:4px 8px;color:'+row.color+';white-space:nowrap">'+row.label+'</td>';
         let ytdSum = 0;
 
         for (let i=0; i<recent.length; i++) {
           const r = recent[i];
           if (row.key === 'yoy') {
             const prevM = (parseInt(r.m.slice(0,4))-1) + r.m.slice(4);
-            const prev = data.find(d=>d.m===prevM);
+            const prev  = fullData.find(d=>d.m===prevM);  // search FULL dataset
             if (prev) {
               const cur = r.prod+r.lng+r.pipe, prv = prev.prod+prev.lng+prev.pipe;
               const pct = ((cur-prv)/prv*100).toFixed(1);
@@ -1978,113 +1987,156 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
             }
           } else {
             const val = row.key==='total' ? r.prod+r.lng+r.pipe : r[row.key];
-            ytdSum += r.m.startsWith(ytdYear) ? val : 0;
+            if (r.m.startsWith(ytdYear)) ytdSum += val;
             html += '<td style="text-align:right;padding:4px 6px;font-weight:'+fw+';font-style:'+fs+';color:'+row.color+'">'+gbConvert(val).toFixed(2)+'</td>';
           }
         }
-
-        if (row.key !== 'yoy') {
-          html += '<td style="text-align:right;padding:4px 6px;font-weight:500;color:'+row.color+'">'+gbConvert(ytdSum).toFixed(2)+'</td>';
-        } else {
-          html += '<td style="text-align:right;padding:4px 6px;color:#3d5070">—</td>';
-        }
+        html += row.key!=='yoy'
+          ? '<td style="text-align:right;padding:4px 6px;font-weight:500;color:'+row.color+'">'+gbConvert(ytdSum).toFixed(2)+'</td>'
+          : '<td style="text-align:right;padding:4px 6px;color:#3d5070">—</td>';
         html += '</tr>';
       }
-
       html += '</tbody></table>';
       wrap.innerHTML = html;
     }
 
-    // ── Render chart ──────────────────────────────────────────
-    function gbRenderChart(data) {
-      const canvas = document.getElementById('cs-gb-canvas');
+    function gbRenderChart(fullData, filtData) {
+      const canvas  = document.getElementById('cs-gb-canvas');
       if (!canvas) return;
       if (GB.chart) { GB.chart.destroy(); GB.chart = null; }
-
-      const u = gbUnitLabel();
+      const u       = gbUnitLabel();
       const titleEl = document.getElementById('cs-gb-chart-title');
 
       if (GB.view === 'balance') {
-        if (titleEl) titleEl.textContent = `CHINA GAS BALANCE — MONTHLY · ${u}`;
-        const labels = data.map(r=>r.m.slice(2));
-        const prod  = data.map(r=>gbConvert(r.prod));
-        const lng   = data.map(r=>gbConvert(r.lng));
-        const pipe  = data.map(r=>gbConvert(r.pipe));
-        const total = data.map(r=>gbConvert(r.prod+r.lng+r.pipe));
+        if (titleEl) titleEl.textContent = 'CHINA GAS BALANCE — MONTHLY · '+u;
+        const labels = filtData.map(r=>gbMonLbl(r.m));
+        const prod   = filtData.map(r=>gbConvert(r.prod));
+        const lng    = filtData.map(r=>gbConvert(r.lng));
+        const pipe   = filtData.map(r=>gbConvert(r.pipe));
+        const total  = filtData.map(r=>gbConvert(r.prod+r.lng+r.pipe));
 
         GB.chart = new Chart(canvas, {
-          type: 'bar',
-          data: { labels, datasets: [
-            {label:'Domestic production', data:prod, backgroundColor:'rgba(77,158,245,0.7)', stack:'supply', order:2},
-            {label:'Pipeline imports',    data:pipe, backgroundColor:'rgba(245,158,11,0.7)', stack:'supply', order:2},
-            {label:'LNG imports',         data:lng,  backgroundColor:'rgba(52,211,153,0.7)', stack:'supply', order:2},
-            {label:'Total supply',        data:total,type:'line', borderColor:'#dde4f0', backgroundColor:'transparent',
-             borderWidth:2, pointRadius:3, pointBackgroundColor:'#dde4f0', tension:.3, order:1, stack:undefined},
+          type:'bar',
+          data:{labels, datasets:[
+            {label:'Domestic production', data:prod, backgroundColor:'rgba(77,158,245,0.7)', stack:'s', order:2},
+            {label:'Pipeline imports',    data:pipe, backgroundColor:'rgba(245,158,11,0.7)',  stack:'s', order:2},
+            {label:'LNG imports',         data:lng,  backgroundColor:'rgba(52,211,153,0.7)',  stack:'s', order:2},
+            {label:'Total supply', data:total, type:'line', borderColor:'#dde4f0', backgroundColor:'transparent',
+             borderWidth:2, pointRadius:3, pointBackgroundColor:'#dde4f0', tension:.3, order:1},
           ]},
-          options: {
-            ...CD, responsive:true, maintainAspectRatio:false,
-            plugins: {
-              ...CD.plugins,
-              legend: { display:true, position:'top', align:'start',
-                labels:{color:'#5a6882', font:{size:9,family:'IBM Plex Mono'}, boxWidth:12, padding:12}
-              },
-              tooltip: { ...CD.plugins?.tooltip,
-                callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed?.(2)||ctx.parsed.y} ${u}` }
-              }
+          options:{...CD, responsive:true, maintainAspectRatio:false,
+            plugins:{...CD.plugins,
+              legend:{display:true, position:'top', align:'start',
+                labels:{color:'#5a6882', font:{size:9,family:'IBM Plex Mono'}, boxWidth:12, padding:12}},
+              tooltip:{...CD.plugins?.tooltip,
+                callbacks:{label:ctx=>' '+ctx.dataset.label+': '+ctx.parsed.y?.toFixed(2)+' '+u}}
             },
-            scales: {
-              x: { ...CD.scales.x, stacked:true, ticks:{...CD.scales.x.ticks, maxTicksLimit:18} },
-              y: { stacked:true, ticks:{color:'#3d5070', font:{size:9,family:'IBM Plex Mono'}},
-                grid:{color:'#0f1824'}, title:{display:true, text:u, color:'#4b5a72', font:{size:9}} }
+            scales:{
+              x:{...CD.scales.x, stacked:true, ticks:{...CD.scales.x.ticks, maxTicksLimit:18}},
+              y:{stacked:true, ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},
+                grid:{color:'#0f1824'}, title:{display:true,text:u,color:'#4b5a72',font:{size:9}}}
             }
           }
         });
 
       } else {
-        // Seasonal view — group by year, monthly pattern
-        if (titleEl) titleEl.textContent = `CHINA GAS SUPPLY — SEASONAL · ${u}`;
-        const years = [...new Set(data.map(r=>r.m.slice(0,4)))];
-        const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        const colors = ['#4d9ef5','#34d399','#f59e0b','#ef5350','#ce93d8'];
+        // ── Seasonal view with dropdowns ─────────────────────
+        if (titleEl) titleEl.textContent = 'CHINA GAS BALANCE — SEASONAL · '+u;
+        const allYears  = [...new Set(fullData.map(r=>r.m.slice(0,4)))].sort();
+        const selYears  = GB.seasonal.years.length ? GB.seasonal.years : allYears;
+        const selSeries = GB.seasonal.series;
+        const mLabels   = GB_MONTHS;
+        const colors    = ['#4d9ef5','#34d399','#f59e0b','#ef5350','#ce93d8','#81c784'];
 
-        const datasets = years.map((yr, i) => ({
-          label: yr,
-          data: monthLabels.map((_, mo) => {
-            const row = data.find(r=>r.m===`${yr}-${String(mo+1).padStart(2,'0')}`);
-            return row ? gbConvert(row.prod+row.lng+row.pipe) : null;
-          }),
-          borderColor: colors[i%colors.length],
-          backgroundColor: 'transparent',
-          borderWidth: i===years.length-1 ? 2.5 : 1.5,
-          pointRadius: 3, tension:.3, spanGaps:false,
-        }));
+        const seriesMap = {
+          total:   {label:'Total supply',        fn: r=>r.prod+r.lng+r.pipe},
+          prod:    {label:'Domestic production', fn: r=>r.prod},
+          lng:     {label:'LNG imports',         fn: r=>r.lng},
+          pipe:    {label:'Pipeline imports',    fn: r=>r.pipe},
+        };
+        const activeSeries = selSeries.filter(s=>seriesMap[s]);
+
+        // Render dropdowns above chart
+        const chartWrap = canvas.parentElement;
+        let ctrlDiv = document.getElementById('cs-gb-sea-ctrl');
+        if (!ctrlDiv) {
+          ctrlDiv = document.createElement('div');
+          ctrlDiv.id = 'cs-gb-sea-ctrl';
+          ctrlDiv.style.cssText = 'display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap;align-items:center';
+          chartWrap.insertBefore(ctrlDiv, canvas);
+        }
+
+        const yrOpts  = allYears.map(y=>'<option value="'+y+'"'+(selYears.includes(y)?' selected':'')+'>'+y+'</option>').join('');
+        const serOpts = Object.entries(seriesMap).map(([k,v])=>'<option value="'+k+'"'+(selSeries.includes(k)?' selected':'')+'>'+v.label+'</option>').join('');
+
+        ctrlDiv.innerHTML =
+          '<div style="font-size:9px;color:#6b7a99;letter-spacing:.08em">YEARS</div>'+
+          '<select id="cs-gb-yr-sel" multiple size="1" style="background:#0d1526;color:#dde4f0;border:1px solid rgba(77,158,245,0.25);padding:3px 6px;font-family:IBM Plex Mono;font-size:9px;min-width:80px">'+yrOpts+'</select>'+
+          '<div style="font-size:9px;color:#6b7a99;letter-spacing:.08em;margin-left:8px">SERIES</div>'+
+          '<select id="cs-gb-ser-sel" multiple size="1" style="background:#0d1526;color:#dde4f0;border:1px solid rgba(77,158,245,0.25);padding:3px 6px;font-family:IBM Plex Mono;font-size:9px;min-width:160px">'+serOpts+'</select>'+
+          '<span style="font-size:9px;color:#4b5a72">Ctrl+click to select multiple</span>';
+
+        document.getElementById('cs-gb-yr-sel').onchange  = function() {
+          GB.seasonal.years  = [...this.selectedOptions].map(o=>o.value);
+          csGBUpdate();
+        };
+        document.getElementById('cs-gb-ser-sel').onchange = function() {
+          GB.seasonal.series = [...this.selectedOptions].map(o=>o.value);
+          csGBUpdate();
+        };
+
+        // Build datasets: one line per selected year × selected series
+        const datasets = [];
+        let colorIdx = 0;
+        for (const yr of selYears) {
+          for (const serKey of activeSeries) {
+            const s = seriesMap[serKey];
+            datasets.push({
+              label: yr + ' — ' + s.label,
+              data: mLabels.map((_,mo)=>{
+                const row = fullData.find(r=>r.m===yr+'-'+String(mo+1).padStart(2,'0'));
+                return row ? gbConvert(s.fn(row)) : null;
+              }),
+              borderColor: colors[colorIdx % colors.length],
+              backgroundColor:'transparent',
+              borderWidth: yr===allYears[allYears.length-1] ? 2.5 : 1.5,
+              borderDash: serKey==='prod'?[]:serKey==='lng'?[5,3]:serKey==='pipe'?[2,3]:[],
+              pointRadius:3, tension:.3, spanGaps:false,
+            });
+            colorIdx++;
+          }
+        }
 
         GB.chart = new Chart(canvas, {
-          type: 'line',
-          data: { labels: monthLabels, datasets },
-          options: {
-            ...CD, responsive:true, maintainAspectRatio:false,
-            plugins: { ...CD.plugins,
-              legend:{display:true,position:'top',align:'start',
-                labels:{color:'#5a6882',font:{size:9,family:'IBM Plex Mono'},boxWidth:20,padding:12}}
+          type:'line',
+          data:{labels:mLabels, datasets},
+          options:{...CD, responsive:true, maintainAspectRatio:false,
+            plugins:{...CD.plugins,
+              legend:{display:true, position:'top', align:'start',
+                labels:{color:'#5a6882', font:{size:9,family:'IBM Plex Mono'}, boxWidth:20, padding:10}}
             },
-            scales: {
-              x: CD.scales.x,
-              y: { ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}}, grid:{color:'#0f1824'},
-                title:{display:true,text:u,color:'#4b5a72',font:{size:9}} }
+            scales:{
+              x:CD.scales.x,
+              y:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},
+                grid:{color:'#0f1824'}, title:{display:true,text:u,color:'#4b5a72',font:{size:9}}}
             }
           }
         });
       }
     }
 
-    // ── Main update function ──────────────────────────────────
     function csGBUpdate() {
-      const data = gbGetData();
-      if (!data.length) return;
-      gbRenderMetrics(data);
-      gbRenderTable(data);
-      gbRenderChart(data);
+      const fullData = GB.data || GB_HISTORICAL;
+      const filtData = gbGetData();
+      if (!filtData.length) return;
+      // Hide seasonal dropdowns when switching to balance view
+      if (GB.view === 'balance') {
+        const ctrl = document.getElementById('cs-gb-sea-ctrl');
+        if (ctrl) ctrl.style.display = 'none';
+      }
+      gbRenderMetrics(fullData, filtData);
+      gbRenderTable(fullData, filtData);
+      gbRenderChart(fullData, filtData);
     }
     window.csGBUpdate = csGBUpdate;
 
