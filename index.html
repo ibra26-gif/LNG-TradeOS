@@ -518,7 +518,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       <div class="cs-metric-row" id="cs-t1-metrics"></div>
 
       <!-- View A: Waterfall -->
-      <div class="cs-divider">VIEW A — PRICE BUILD SNAPSHOT (LATEST) <span class="cs-est-badge">SHPGX ESTIMATE</span></div>
+      <div class="cs-divider">VIEW A — PRICE BUILD SNAPSHOT (LATEST) <span class="cs-est-badge" id="cs-badge-t1a"></span></div>
       <div class="cs-waterfall-wrap">
         <div class="cs-wf-chart" style="height:320px;position:relative"><canvas id="cs-wf-canvas"></canvas></div>
         <div class="cs-wf-legend" id="cs-wf-legend"></div>
@@ -526,7 +526,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       <div class="cs-src">Source: SHPGX (estimated) · CLD, ex-terminal, ex-factory, truck retail · Freight: Longzhong benchmark · VAT: 9%</div>
 
       <!-- View B: Stack over time -->
-      <div class="cs-divider" style="margin-top:24px">VIEW B — PRICE STACK OVER TIME <span class="cs-est-badge">SHPGX ESTIMATE</span></div>
+      <div class="cs-divider" style="margin-top:24px">VIEW B — PRICE STACK OVER TIME <span class="cs-est-badge" id="cs-badge-t1b"></span></div>
       <div class="cs-chart-wrap" style="height:280px"><canvas id="cs-t1-hist-canvas"></canvas></div>
       <div class="cs-src">Source: SHPGX (estimated) · CLD import price, ex-terminal price, truck retail — all $/MMBtu · Shaded bands = margin at each stage</div>
     </div>
@@ -534,10 +534,6 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     <!-- ── TAB 2: TRUCK vs JKM & LT ── -->
     <div id="cs-pane-1" class="cs-tab-pane">
       <div class="cs-ctrl-row">
-        <div class="cs-ctrl-grp">
-          <div class="cs-ctrl-lbl">USD/CNY</div>
-          <input type="number" id="cs-t2-usdcny" value="7.25" step="0.01" style="width:80px" onchange="csT2Update()">
-        </div>
         <div class="cs-ctrl-grp">
           <div class="cs-ctrl-lbl">PERIOD</div>
           <div class="cs-rng-btns" id="cs-t2-rng">
@@ -551,7 +547,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
       <div id="cs-t2-signal" class="cs-signal lt-only">LOADING SIGNAL...</div>
 
-      <div class="cs-divider">LNG TRUCK RETAIL ($/MMBTU) vs JKM ROLLING M+1 &amp; LT CONTRACTS <span class="cs-est-badge">TRUCK: SHPGX ESTIMATE</span></div>
+      <div class="cs-divider">LNG TRUCK RETAIL ($/MMBTU) vs JKM ROLLING M+1 &amp; LT CONTRACTS <span class="cs-est-badge" id="cs-badge-t2"></span></div>
       <div class="cs-chart-wrap" style="height:320px"><canvas id="cs-t2-canvas"></canvas></div>
       <div class="cs-src">Source: SHPGX North China truck retail (estimated) · JKM M+1 rolling (EOD, rolls 16th) · LT 11% &amp; 14% × Brent 3M avg · $/MMBtu</div>
 
@@ -576,10 +572,6 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     <div id="cs-pane-2" class="cs-tab-pane">
       <div class="cs-ctrl-row">
         <div class="cs-ctrl-grp">
-          <div class="cs-ctrl-lbl">USD/CNY</div>
-          <input type="number" id="cs-t3-usdcny" value="7.25" step="0.01" style="width:80px" onchange="csT3Update()">
-        </div>
-        <div class="cs-ctrl-grp">
           <div class="cs-ctrl-lbl">PERIOD</div>
           <div class="cs-rng-btns" id="cs-t3-rng">
             <button class="cs-rng-btn" onclick="csSetRng('t3','1M',this)">1M</button>
@@ -592,7 +584,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
       <div class="cs-metric-row" id="cs-t3-metrics"></div>
 
-      <div class="cs-divider">LNG TRUCK vs DIESEL — ENERGY EQUIVALENT ($/MMBTU) <span class="cs-est-badge">SHPGX ESTIMATE</span></div>
+      <div class="cs-divider">LNG TRUCK vs DIESEL — ENERGY EQUIVALENT ($/MMBTU) <span class="cs-est-badge" id="cs-badge-t3"></span></div>
       <div class="cs-chart-wrap" style="height:300px"><canvas id="cs-t3-canvas"></canvas></div>
       <div class="cs-src">Source: SHPGX truck retail (estimated) &amp; diesel wholesale (estimated) · Diesel: 40.4 MMBtu/tonne · Green shading = LNG cheaper (fleet switching supported)</div>
     </div>
@@ -601,10 +593,6 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     <div id="cs-pane-3" class="cs-tab-pane">
 
       <div class="cs-ctrl-row">
-        <div class="cs-ctrl-grp">
-          <div class="cs-ctrl-lbl">USD/CNY</div>
-          <input type="number" id="cs-t4-usdcny" value="7.25" step="0.01" style="width:80px" onchange="csT4Update()">
-        </div>
         <div class="cs-ctrl-grp">
           <div class="cs-ctrl-lbl">CNP REGIONS</div>
           <select id="cs-t4-region" onchange="csT4Update()">
@@ -627,7 +615,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       <div class="cs-metric-row" id="cs-t4-metrics"></div>
 
       <!-- Stack legend -->
-      <div class="cs-divider">CHINA GAS SUPPLY STACK — MONTHLY · $/MMBTU <span class="cs-est-badge">DOMESTIC: SHPGX ESTIMATE</span></div>
+      <div class="cs-divider">CHINA GAS SUPPLY STACK — MONTHLY · $/MMBTU <span class="cs-est-badge" id="cs-badge-t4"></span></div>
 
       <!-- Stack layer legend -->
       <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:12px;font-size:9px;letter-spacing:.08em;color:#6b7a99">
@@ -963,9 +951,9 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       mkChart('cs-t1-hist-canvas',{
         type:'line',
         data:{labels,datasets:[
-          {label:'Truck retail',data:truckUSD,borderColor:'#34d399',backgroundColor:'rgba(52,211,153,0.08)',fill:false,borderWidth:2,pointRadius:0,tension:.3,spanGaps:true},
-          {label:'Ex-terminal',data:extAligned,borderColor:'#4d9ef5',backgroundColor:'rgba(77,158,245,0.08)',fill:false,borderWidth:1.5,pointRadius:0,tension:.3,spanGaps:true},
-          {label:'CLD import',data:cldAligned,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.08)',fill:false,borderWidth:1.5,pointRadius:0,tension:.3,spanGaps:true},
+          {label:'CLD import',data:cldAligned,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.06)',fill:false,borderWidth:1.5,pointRadius:0,tension:.3,spanGaps:true,order:3},
+          {label:'Ex-terminal (import→terminal margin)',data:extAligned,borderColor:'#4d9ef5',backgroundColor:'rgba(77,158,245,0.10)',fill:'-1',borderWidth:1.5,pointRadius:0,tension:.3,spanGaps:true,order:2},
+          {label:'Truck retail (inland margin)',data:truckUSD,borderColor:'#34d399',backgroundColor:'rgba(52,211,153,0.10)',fill:'-1',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true,order:1},
         ]},
         options:{...CD,scales:{
           x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:14}},
@@ -993,7 +981,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         return;
       }
       csT2Update._retries = 0;
-      const usdcny = parseFloat(document.getElementById('cs-t2-usdcny')?.value||7.25);
+      const usdcny = parseFloat(document.getElementById('cs-usdcny')?.value||7.25);
       const rng = CS.ranges.t2;
       const daysMap={'1M':30,'3M':90,'6M':180,'1Y':365};
       const days=daysMap[rng]||90;
@@ -1006,10 +994,18 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       const lt11 = brent3M.map(b=>b!=null?+(b*0.11).toFixed(3):null);
       const lt14 = brent3M.map(b=>b!=null?+(b*0.14).toFixed(3):null);
 
-      // Align truck to filtDs dates
+      // Align truck to filtDs dates — find closest within 3 days
+      const _tD=liveOrSim("truck",()=>TRUCK_CNY);
       const truckAligned = filtDs.map(ds=>{
-        const dsDate=ds.slice(0,10);
-        const _tD=liveOrSim("truck",()=>TRUCK_CNY);const m=_tD.find(x=>x.dateStr===dsDate);
+        const dsMs = new Date(ds).getTime();
+        // exact match first
+        let m = _tD.find(x=>x.dateStr===ds.slice(0,10));
+        if(!m) {
+          // find nearest within 3 calendar days
+          let best=null, bestDiff=Infinity;
+          _tD.forEach(x=>{ const diff=Math.abs(new Date(x.dateStr).getTime()-dsMs); if(diff<bestDiff&&diff<=3*86400000){bestDiff=diff;best=x;} });
+          m=best;
+        }
         return m?truckToUSD(m.value,usdcny):null;
       });
 
@@ -1051,7 +1047,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
     // ── TAB 3: LNG vs DIESEL ──
     function csT3Update() {
-      const usdcny = parseFloat(document.getElementById('cs-t3-usdcny')?.value||7.25);
+      const usdcny = parseFloat(document.getElementById('cs-usdcny')?.value||7.25);
       const rng = CS.ranges.t3;
       const filtTruck  = filterByRng(liveOrSim("truck",()=>TRUCK_CNY), rng);
       const filtDiesel = filterByRng(liveOrSim("diesel",()=>DIESEL_CNY_T), rng);
@@ -1073,17 +1069,20 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
         ].map(m=>`<div class="cs-mc"><div class="cs-mc-lbl">${m.lbl}</div><div class="cs-mc-val cs-mc-chg ${m.cls}">${m.val}</div><div class="cs-mc-sub">${m.sub}</div></div>`).join('');
       }
 
+      // Build fill datasets for spread shading
+      const spreadGreen = spread.map((v,i)=>v!=null&&v<0?v:null);
+      const spreadRed   = spread.map((v,i)=>v!=null&&v>=0?v:null);
       mkChart('cs-t3-canvas',{
         type:'line',
         data:{labels,datasets:[
-          {label:'Diesel (energy equiv) ★EST',data:dieselAligned,borderColor:'#f59e0b',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true},
-          {label:'LNG truck retail ★EST',data:truckUSD,borderColor:'#4d9ef5',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true},
-          {label:'Spread (LNG−Diesel)',data:spread,borderColor:'#6b7a99',backgroundColor:spread.map(v=>v!=null&&v<0?'rgba(52,211,153,0.15)':'rgba(248,113,113,0.15)'),borderWidth:1,pointRadius:0,tension:.3,spanGaps:true,yAxisID:'y2',type:'bar'},
+          {label:'Diesel $/MMBtu ★EST',data:dieselAligned,borderColor:'#f59e0b',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:.3,spanGaps:true,order:3},
+          {label:'LNG Truck $/MMBtu ★EST',data:truckUSD,borderColor:'#4d9ef5',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true,order:2},
+          {label:'Spread — LNG cheaper',data:spreadGreen,borderColor:'rgba(52,211,153,0.8)',backgroundColor:'rgba(52,211,153,0.12)',borderWidth:1.5,pointRadius:0,tension:.3,spanGaps:false,fill:'origin',order:1},
+          {label:'Spread — Diesel cheaper',data:spreadRed,borderColor:'rgba(248,113,113,0.8)',backgroundColor:'rgba(248,113,113,0.12)',borderWidth:1.5,pointRadius:0,tension:.3,spanGaps:false,fill:'origin',order:1},
         ]},
         options:{...CD,scales:{
           x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:16}},
-          y:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},callback:v=>'$'+v.toFixed(1)},grid:{color:'#0f1824'},title:{display:true,text:'$/MMBtu',color:'#4b5a72',font:{size:9}}},
-          y2:{position:'right',ticks:{color:'#6b7a99',font:{size:9,family:'IBM Plex Mono'},callback:v=>(v>=0?'+':'')+v.toFixed(2)},grid:{display:false},title:{display:true,text:'Spread',color:'#4b5a72',font:{size:9}}}
+          y:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},callback:v=>'$'+v.toFixed(1)},grid:{color:'#0f1824'},title:{display:true,text:'$/MMBtu',color:'#4b5a72',font:{size:9}}}
         }}
       });
     }
@@ -1091,7 +1090,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 
     // ── TAB 4: PIPELINE GAS (MONTHLY) ──
     function csT4Update() {
-      const usdcny  = parseFloat(document.getElementById('cs-t4-usdcny')?.value||7.25);
+      const usdcny  = parseFloat(document.getElementById('cs-usdcny')?.value||7.25);
       const rng     = CS.ranges.t4;
       const showReg = document.getElementById('cs-t4-region')?.value==='all';
       const daysMap = {'6M':180,'1Y':365,'ALL':9999};
@@ -1565,12 +1564,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     }
 
     function csInit() {
-      // Sync USD/CNY inputs across tabs
-      const main=document.getElementById('cs-usdcny');
-      ['cs-t2-usdcny','cs-t3-usdcny','cs-t4-usdcny'].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el&&main) el.value=main.value;
-      });
+      // USD/CNY is now a single global input on Tab 1 (cs-usdcny)
 
       // Render data source bar if not already present
       if(!document.getElementById('cs-shpgx-import')) {
@@ -1653,21 +1647,19 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
     function csUpdateShpgxBadges(source) {
       const wrap = document.getElementById('cs-shpgx-badges');
       if(!wrap) return;
-      const src = source || 'EST';
-      const colors = {
-        LIVE:   { bg:'rgba(52,211,153,0.1)',  border:'rgba(52,211,153,0.3)',  text:'#34d399' },
-        CACHED: { bg:'rgba(245,158,11,0.08)', border:'rgba(245,158,11,0.25)', text:'#f59e0b' },
-        CSV:    { bg:'rgba(77,158,245,0.08)', border:'rgba(77,158,245,0.25)', text:'#4d9ef5' },
-        EST:    { bg:'rgba(107,122,153,0.07)',border:'rgba(107,122,153,0.2)', text:'#6b7a99' },
-      };
-      const c = colors[src] || colors.EST;
       wrap.innerHTML = Object.keys(SHPGX).filter(k=>SHPGX[k]?.length).map(k=>{
-        const rows = SHPGX[k];
-        const first = rows[0]?.date||'', last = rows[rows.length-1]?.date||'';
-        return `<span style="font-size:9px;padding:2px 8px;background:${c.bg};border:1px solid ${c.border};color:${c.text}">
-          ★${src} ${k.toUpperCase()} · ${rows.length}r · ${first.slice(0,7)}→${last.slice(0,7)}
-        </span>`;
+        const rows=SHPGX[k], first=rows[0]?.date||'', last=rows[rows.length-1]?.date||'';
+        return `<span style="font-size:8px;padding:3px 8px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);color:#34d399">★CSV ${k.toUpperCase()} · ${rows.length}r · ${last.slice(0,10)}→${first.slice(0,10)}</span>`;
       }).join('');
+      // Update per-tab EST badges
+      const loaded=Object.keys(SHPGX).filter(k=>SHPGX[k]?.length);
+      const truckL=loaded.includes('truck'),cldL=loaded.includes('cld'),extL=loaded.includes('exterm'),dieselL=loaded.includes('diesel'),cnpL=loaded.includes('cnp');
+      const setB=(id,txt,col)=>{const el=document.getElementById(id);if(!el)return;el.textContent=txt;el.style.background=col;el.style.display=txt?'':'none';};
+      setB('cs-badge-t1a',cldL&&extL&&truckL?'':'SHPGX ESTIMATE','rgba(245,158,11,0.15)');
+      setB('cs-badge-t1b',cldL&&extL&&truckL?'':'SHPGX ESTIMATE','rgba(245,158,11,0.15)');
+      setB('cs-badge-t2', truckL?'TRUCK: LIVE':'TRUCK: SHPGX ESTIMATE',truckL?'rgba(52,211,153,0.15)':'rgba(245,158,11,0.15)');
+      setB('cs-badge-t3', dieselL&&truckL?'LIVE DATA':'SHPGX ESTIMATE',dieselL&&truckL?'rgba(52,211,153,0.15)':'rgba(245,158,11,0.15)');
+      setB('cs-badge-t4', cnpL?'DOMESTIC: LIVE':'DOMESTIC: SHPGX ESTIMATE',cnpL?'rgba(52,211,153,0.15)':'rgba(245,158,11,0.15)');
     }
 
     function csLog(msg, isErr=false) {
