@@ -4,7 +4,7 @@
 // Attribution REQUIRED by GIE terms: "Source: GIE AGGI+" on all outputs.
 
 const AGGI_KEY = process.env.AGGI_API_KEY;
-const AGGI_BASE = 'https://alsi.gie.eu/api';
+const AGGI_BASE = 'https://alsi.gie.eu/api';  // was aggi.gie.eu
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
