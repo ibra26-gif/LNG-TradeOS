@@ -9401,27 +9401,27 @@ function gaGetONSPct(subsystem){
 // ENTSOG — PHYSICAL FLOW per corridor
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Fetch current year live (always fresh)
+// Fetch current year live (always fresh) — one pointKey per request
 async function gaLoadENTSOGRoute(route,from,to,cacheResult=false){
   const points=ENTSOG_CORRIDOR_POINTS[route];
-  if(!points?.length) return; // corridor not yet configured (e.g. algeria_spain pending key lookup)
+  if(!points?.length) return;
   const deduped=[...new Set(points)];
-  // pointKey values are alphanumeric+dash — safe to join with literal commas, no encoding needed
-  const keyStr=deduped.join(',');
-  const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointKey=${keyStr}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=10000`;
-  const url=IS_LOCAL
-    ?`${ENTSOG_BASE}/operationalDatas?${paramStr}`
-    :`/api/entsog?endpoint=operationaldata&${paramStr}`;
-  const cacheKey=`entsog_${route}_${from}_${to.slice(0,7)}`;
-
-  let raw = cacheResult ? gaCacheGet(cacheKey) : null;
-  if(!raw){
-    const r=await fetch(url,{headers:{Accept:'application/json'}});
-    if(!r.ok) throw new Error(`ENTSOG ${r.status} route=${route}`);
-    raw=await r.json();
-    if(cacheResult) gaCacheSet(cacheKey,raw,6);
+  // ENTSOG does not reliably support comma-separated pointKey — query one at a time
+  for(const key of deduped){
+    const cacheKey=`entsog_${route}_${key}_${from}_${to.slice(0,7)}`;
+    let raw = cacheResult ? gaCacheGet(cacheKey) : null;
+    if(!raw){
+      try{
+        const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointKey=${key}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=3000`;
+        const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:`/api/entsog?endpoint=operationaldata&${paramStr}`;
+        const r=await fetch(url,{headers:{Accept:'application/json'}});
+        if(!r.ok){ console.warn(`ENTSOG ${r.status} ${route} ${key}`); continue; }
+        raw=await r.json();
+        if(cacheResult) gaCacheSet(cacheKey,raw,6);
+      }catch(e){ console.warn(`ENTSOG ${route} ${key}:`,e.message); continue; }
+    }
+    gaAggENTSOGToLive(route,raw);
   }
-  gaAggENTSOGToLive(route,raw);
 }
 
 // Fetch historical years from cache or API
@@ -9450,31 +9450,31 @@ async function gaLoadENTSOGHistorical(route,minYear){
   }
 }
 
-// Month-by-month loader for a single historical year — avoids ENTSOG 504/502 timeouts
-// Called lazily when user views a past year in the pipeline chart
 async function gaLoadENTSOGHistoricalMonthly(route, year){
   const points=ENTSOG_CORRIDOR_POINTS[route];
   if(!points?.length) return;
-  const keyStr=[...new Set(points)].join(',');
+  const deduped=[...new Set(points)];
   const months=year<new Date().getFullYear()?12:new Date().getMonth()+1;
   for(let mo=0; mo<months; mo++){
     const mm=String(mo+1).padStart(2,'0');
-    const cacheKey=`entsog_mo_${route}_${year}_${mm}`;
-    if(gaCacheGet(cacheKey)){ continue; } // already cached
-    if(GA_LIVE.pipeline[route]?.[`${year}-${mm}`]) continue; // already in memory
-    await new Promise(r=>setTimeout(r,800)); // 800ms between requests — ENTSOG rate limit
-    try{
-      const from=`${year}-${mm}-01`;
-      const lastDay=new Date(year,mo+1,0).getDate();
-      const to=`${year}-${mm}-${lastDay}`;
-      const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointKey=${keyStr}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=3000`;
-      const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:`/api/entsog?endpoint=operationaldata&${paramStr}`;
-      const r=await fetch(url,{headers:{Accept:'application/json'}});
-      if(!r.ok){ console.warn(`ENTSOG ${r.status} ${route} ${year}-${mm}`); continue; }
-      const raw=await r.json();
-      gaCacheSet(cacheKey,raw,168);
-      gaAggENTSOGToLive(route,raw);
-    }catch(e){ console.warn(`ENTSOG mo ${route} ${year}-${mm}:`,e.message); }
+    const from=`${year}-${mm}-01`;
+    const lastDay=new Date(year,mo+1,0).getDate();
+    const to=`${year}-${mm}-${lastDay}`;
+    for(const key of deduped){
+      const cacheKey=`entsog_mo_${route}_${key}_${year}_${mm}`;
+      if(gaCacheGet(cacheKey)) continue;
+      if(GA_LIVE.pipeline[route]?.[`${year}-${mm}`]) continue;
+      await new Promise(r=>setTimeout(r,500));
+      try{
+        const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointKey=${key}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=1000`;
+        const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:`/api/entsog?endpoint=operationaldata&${paramStr}`;
+        const r=await fetch(url,{headers:{Accept:'application/json'}});
+        if(!r.ok){ console.warn(`ENTSOG ${r.status} ${route} ${key} ${year}-${mm}`); continue; }
+        const raw=await r.json();
+        gaCacheSet(cacheKey,raw,168);
+        gaAggENTSOGToLive(route,raw);
+      }catch(e){ console.warn(`ENTSOG mo ${route} ${key} ${year}-${mm}:`,e.message); }
+    }
   }
 }
 
@@ -9843,7 +9843,7 @@ function gaInitAll(){
   window.gaInitDone = true;
   const _y=GA_CUR_YEAR;
   GA_S.storYears=[_y,_y-1,_y-2,_y-3,_y-4];
-  GA_S.pipeYears=[_y,_y-1,_y-2,_y-3,_y-4];
+  GA_S.pipeYears=[_y,_y-1];  // Start with 2 years — user can add more via buttons
   GA_S.domYears=[_y,_y-1,_y-2,_y-3,_y-4];
   GA_S.lngimpYears=[_y,_y-1,_y-2,_y-3,_y-4];
   GA_S.soYears=[_y,_y-1,_y-2,_y-3,_y-4];
@@ -10533,17 +10533,6 @@ function gaBuildPipeChart(){
   const RNAMES={norway:'Norway',algeria_italy:'Algeria→IT',algeria_spain:'Algeria→ES',tap:'TAP/Azer.',russia:'Russia'};
   const route=document.getElementById('ga-pipe-route')?.value||'all';
   const routes=route==='all'?['norway','algeria_italy','algeria_spain','tap','russia']:[route];
-  // Lazy-load historical months for any selected past year not yet in cache
-  const curYear=new Date().getFullYear();
-  GA_S.pipeYears.filter(y=>y<curYear).forEach(y=>{
-    routes.forEach(r=>{
-      const mo='01'; const cacheKey=`entsog_mo_${r}_${y}_${mo}`;
-      if(!gaCacheGet(cacheKey) && !GA_LIVE.pipeline[r]?.[`${y}-01`]){
-        // Fire and forget — chart will re-render via gaRebuildAll when data arrives
-        gaLoadENTSOGHistoricalMonthly(r,y).then(()=>gaBuildPipeChart()).catch(()=>{});
-      }
-    });
-  });
   const datasets=routes.flatMap((r,ri)=>GA_S.pipeYears.map((y,yi)=>({
     label:`${RNAMES[r]||r} ${y}`,
     data:GA_MO.map((_,m)=>gaCV(gaGetPipelineMCM(r,y,m))),
