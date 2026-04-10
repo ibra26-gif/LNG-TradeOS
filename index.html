@@ -8070,7 +8070,7 @@ const ENTSOG_CORRIDOR_POINTS = {
   russia: [
     'Strandzha 2 (BG) / Malkoclar (TR)', // TurkStream → Bulgaria ✓
     'Budince',                            // TurkStream → North Macedonia/Serbia ✓
-    'Uzhhorod (UA) - Velké Kapušany (SK)', // Ukraine transit → Slovakia (residual) ✓
+    'Uzhhorod (UA) - Velke Kapusany (SK)', // Ukraine transit → Slovakia (residual) ✓
     'Isaccea (RO) - Orlovka (UA) II',     // Ukraine → Romania (residual) ✓
   ],
   exits: [],
@@ -8480,7 +8480,7 @@ const PIPE_POINTS = {
   algeria_spain:['Almería','Tarifa'],
   tap:          ['Kipi (TR) / Kipi (GR)','Melendugno - IT / TAP'],
   russia:       ['Strandzha 2 (BG) / Malkoclar (TR)','Budince',
-                 'Uzhhorod (UA) - Velké Kapušany (SK)','Isaccea (RO) - Orlovka (UA) II'],
+                 'Uzhhorod (UA) - Velke Kapusany (SK)','Isaccea (RO) - Orlovka (UA) II'],
 };
 const PIPE_COLORS = {
   norway:'#4fc3f7', algeria_italy:'#81c784', algeria_spain:'#a5d6a7',
@@ -8546,6 +8546,56 @@ async function gdFetchENTSOG(label, from, to){
 }
 
 // ── Load all pipeline routes for a given year ─────────────────────────────────
+// Load Norway first (fastest, most critical), then other routes in background
+async function gdLoadPipelineYearFast(year){
+  // Phase 1: Norway only — fast (6 points but they load quick)
+  const from = `${year}-01-01`;
+  const to   = year < new Date().getFullYear() ? `${year}-12-31` : new Date().toISOString().slice(0,10);
+  for(const label of PIPE_POINTS.norway){
+    try{
+      const rows = await gdFetchENTSOG(label, from, to);
+      rows.forEach(d=>{
+        const date=(d.periodFrom||d.from||'').slice(0,10); if(!date)return;
+        const mo=date.slice(0,7);
+        const mcm=(parseFloat(d.value||0)||0)*ENTSOG_TO_MCM;
+        if(!GD.pipeline.norway[mo]) GD.pipeline.norway[mo]={mcm:0,days:0};
+        GD.pipeline.norway[mo].mcm+=mcm; GD.pipeline.norway[mo].days+=1;
+        if(year>=new Date().getFullYear()-1){
+          if(!GD.pipeDaily.norway) GD.pipeDaily.norway={};
+          if(!GD.pipeDaily.norway[date]) GD.pipeDaily.norway[date]=0;
+          GD.pipeDaily.norway[date]+=mcm;
+        }
+      });
+      GD.ok.pipeline=true;
+    }catch(e){ console.warn(`ENTSOG norway/${label}: ${e.message}`); }
+    await new Promise(r=>setTimeout(r,400));
+  }
+  // Re-render after Norway loads
+  gdRerenderActive(); gaUpdateStatusDots();
+  // Phase 2: Other routes in background (non-blocking)
+  const otherRoutes = Object.keys(PIPE_POINTS).filter(r=>r!=='norway');
+  (async()=>{
+    for(const route of otherRoutes){
+      for(const label of PIPE_POINTS[route]){
+        try{
+          const rows = await gdFetchENTSOG(label, from, to);
+          rows.forEach(d=>{
+            const date=(d.periodFrom||d.from||'').slice(0,10); if(!date)return;
+            const mo=date.slice(0,7);
+            const mcm=(parseFloat(d.value||0)||0)*ENTSOG_TO_MCM;
+            if(!GD.pipeline[route][mo]) GD.pipeline[route][mo]={mcm:0,days:0};
+            GD.pipeline[route][mo].mcm+=mcm; GD.pipeline[route][mo].days+=1;
+          });
+        }catch(e){ console.warn(`ENTSOG ${route}/${label}: ${e.message}`); }
+        await new Promise(r=>setTimeout(r,400));
+      }
+      // Re-render after each route completes
+      gdRerenderActive();
+    }
+    gaUpdateStatusDots();
+  })();
+}
+
 async function gdLoadPipelineYear(year){
   const from = `${year}-01-01`;
   const to   = year < new Date().getFullYear()
@@ -8613,7 +8663,7 @@ async function gdLoadStorageCountries(from, to){
       const cacheKey=`agsi_${code}_${from.slice(0,7)}_${to.slice(0,7)}`;
       let series = gdCacheGet(cacheKey);
       if(!series){
-        const r = await fetch(`/api/agsi?country=${code}&from=${from}&to=${to}&size=2000`);
+        const r = await fetch(`/api/agsi?country=${code}&from=${from}&to=${to}&size=500`);
         if(!r.ok){ console.warn(`AGSI ${code}: ${r.status}`); continue; }
         const j = await r.json();
         series = j?.data || [];
@@ -8670,7 +8720,7 @@ async function gdLoadLNGCountries(from, to){
       const cacheKey=`alsi_${code}_${from.slice(0,7)}_${to.slice(0,7)}`;
       let series = gdCacheGet(cacheKey);
       if(!series){
-        const r = await fetch(`/api/aggi?country=${code}&from=${from}&to=${to}&size=2000`);
+        const r = await fetch(`/api/aggi?country=${code}&from=${from}&to=${to}&size=500`);
         if(!r.ok){ console.warn(`ALSI ${code}: ${r.status}`); continue; }
         const j = await r.json();
         series = j?.data || [];
@@ -8712,10 +8762,10 @@ async function gaLoadAll(){
   await Promise.allSettled([
     gdLoadStorage(from4y, today),
     gdLoadLNG(from4y, today),
-    gdLoadPipelineYear(curYear),       // current year live
+    gdLoadPipelineYearFast(curYear),    // Norway first, others background
     // Country data: only load if not already cached (permanent cache)
     Object.keys(GD.storByCtry).length === 0 ? gdLoadStorageCountries(`${curYear-1}-01-01`, today) : Promise.resolve(),
-    Object.keys(GD.lngByCtry).length === 0 ? gdLoadLNGCountries(`${curYear-1}-01-01`, today) : Promise.resolve(),
+    Object.keys(GD.lngByCtry).length === 0 ? gdLoadLNGCountries(`${curYear}-01-01`, today) : Promise.resolve(),
   ]);
 
   gaSetRefreshBtn(false);
@@ -8814,7 +8864,8 @@ function eugasTab(sub, btn){
 
 // ── PIPELINE PANE ─────────────────────────────────────────────────────────────
 function renderPipelinePane(pane){
-  const viewSel = pane.querySelector('#pipe-view-sel')?.value || 'monthly';
+  const viewSel  = pane.querySelector('#pipe-view-sel')?.value  || 'monthly';
+  const routeSel = pane.querySelector('#pipe-route-sel')?.value || 'all';
   pane.innerHTML = `
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
       <span class="ctrl-lbl">VIEW</span>
@@ -8825,8 +8876,8 @@ function renderPipelinePane(pane){
       </select>
       <span class="ctrl-lbl">ROUTE</span>
       <select class="gsel" id="pipe-route-sel" onchange="renderPipelinePane(document.getElementById('ga-eugas-pane'))">
-        <option value="all">All Routes</option>
-        ${Object.keys(PIPE_LABELS).map(k=>`<option value="${k}">${PIPE_LABELS[k]}</option>`).join('')}
+        <option value="all"${routeSel==='all'?' selected':''}>All Routes</option>
+        ${Object.keys(PIPE_LABELS).map(k=>`<option value="${k}"${routeSel===k?' selected':''} >${PIPE_LABELS[k]}</option>`).join('')}
       </select>
       ${viewSel==='monthly'?`<span class="ctrl-lbl">YEARS</span><div id="pipe-yr-btns" style="display:flex;gap:4px;flex-wrap:wrap">${gdYearBtns(_pipeYears)}</div>`:''}
       <span id="pipe-status" style="font-size:9px;margin-left:auto;color:${GD.ok.pipeline?'#34d399':'#f59e0b'}">${GD.ok.pipeline?'🟢 ENTSOG live':'🟡 Loading...'}</span>
@@ -8836,8 +8887,8 @@ function renderPipelinePane(pane){
       <div class="ga-ch-wrap tall" style="height:360px"><canvas id="pipe-main-chart"></canvas></div>
       <div class="ga-source">Source: ENTSOG Transparency Platform · Physical Flow · ${new Date().toLocaleDateString('en-GB')}</div>
     </div>`;
-  const view = document.getElementById('pipe-view-sel')?.value || 'monthly';
-  const route = document.getElementById('pipe-route-sel')?.value || 'all';
+  const view  = viewSel;
+  const route = routeSel;
   if(view==='daily')   drawPipeDaily(route);
   else if(view==='monthly') drawPipeMonthly(route);
   else drawPipeYearly(route);
@@ -9300,7 +9351,7 @@ function renderRegasHeatmap(pane){
     <div class="ga-source">Source: GIE ALSI (alsi.gie.eu) · Daily Technical Reference Sendout (dtrs) · ${new Date().toLocaleDateString('en-GB')}</div></div>`;
   if(!GD.ok.lng){
     gdErr('ga-regas-pane','ALSI data not loaded — hit ↺ REFRESH ALL');
-    gdLoadLNGCountries(`${curY-1}-01-01`, today.toISOString().slice(0,10)).then(()=>renderRegasHeatmap(pane));
+    gdLoadLNGCountries(`${curY}-01-01`, today.toISOString().slice(0,10)).then(()=>renderRegasHeatmap(pane));
   }
 }
 
@@ -9321,7 +9372,7 @@ function renderRegasCountry(pane){
   const ctry=GD.lngByCtry[selCtry];
   if(!ctry||!Object.keys(ctry).length){
     gdErr('regas-ctry-chart','Country data loading — hit ↺ REFRESH ALL');
-    gdLoadLNGCountries(`${new Date().getFullYear()-1}-01-01`, new Date().toISOString().slice(0,10))
+    gdLoadLNGCountries(`${new Date().getFullYear()}-01-01`, new Date().toISOString().slice(0,10))
       .then(()=>renderRegasCountry(document.getElementById('ga-regas-pane')));
     return;
   }
