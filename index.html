@@ -2243,6 +2243,7 @@ window.csGBUpdate = csGBUpdate;
       <button class="ga-stab active" onclick="storTab('eu',this)">EU AGGREGATE</button>
       <button class="ga-stab" onclick="storTab('country',this)">BY COUNTRY</button>
       <button class="ga-stab" onclick="storTab('map',this)">HEATMAP</button>
+      <button class="ga-stab" onclick="storTab('inject',this)">INJECTIONS &amp; WITHDRAWAL</button>
       <button class="ga-stab" onclick="storTab('facility',this)">BY FACILITY</button>
     </div>
     <div id="ga-stor-pane" style="margin-top:2px"></div>
@@ -8456,6 +8457,8 @@ function guFmt(v,dp=2){ return v===null||isNaN(v)?'--':v.toFixed(dp); }
 const GD = {
   // ENTSOG pipeline: {route: {YYYY-MM-DD: kWh}} → aggregated to {route: {YYYY-MM: MCM}}
   pipeline: {norway:{}, algeria_italy:{}, algeria_spain:{}, tap:{}, russia:{}},
+  storDaily: {},
+  lngDaily: {}, // raw daily ALSI sendout keyed by YYYY-MM-DD
   // GIE AGSI+: {YYYY-MM: {pct, twh}}
   storage: {},
   // AGSI by country: {countryCode: {YYYY-MM: {pct, twh}}}
@@ -8642,14 +8645,21 @@ async function gdLoadStorage(from, to){
       const isCurMo = to.slice(0,7) >= new Date().toISOString().slice(0,7);
       if(series.length) gdCacheSet(cacheKey, series, isCurMo?6:0); // current month=6h, historical=permanent
     }
+    // Also track daily injection/withdrawal for I/W tab
+    if(!GD.storDaily) GD.storDaily={};
     series.forEach(d=>{
       const date=d.gasDayStart||d.gas_day||'';
       const mo=date.slice(0,7);
       if(!mo) return;
       const pct=parseFloat(d.full)||0;
       const twh=parseFloat(d.gasInStorage)||0;
+      const inj=parseFloat(d.injection)||0;   // GWh/d injection
+      const wdr=parseFloat(d.withdrawal)||0;   // GWh/d withdrawal
+      const net=parseFloat(d.netWithdrawal)||0;
       if(!GD.storage[mo] || date > (GD.storage[mo].date||''))
         GD.storage[mo]={pct,twh,date};
+      // Daily data keyed by YYYY-MM-DD
+      GD.storDaily[date]={inj,wdr,net,pct,twh};
     });
     if(Object.keys(GD.storage).length) GD.ok.storage=true;
     console.log(`AGSI EU: ${Object.keys(GD.storage).length} months`);
@@ -8698,15 +8708,23 @@ async function gdLoadLNG(from, to){
       const isCurMo = to.slice(0,7) >= new Date().toISOString().slice(0,7);
       if(series.length) gdCacheSet(cacheKey, series, isCurMo?6:0); // current month=6h, historical=permanent
     }
+    const curY=new Date().getFullYear();
     series.forEach(d=>{
       const date=d.gasDayStart||d.gas_day||'';
       const mo=date.slice(0,7);
-      if(!mo) return;
+      if(!mo||!date) return;
       const send=parseFloat(d.sendOut||d.sendout||0)||0;
       const dtrs=parseFloat(d.dtrs||0)||0;
       if(!GD.lngTotal[mo]) GD.lngTotal[mo]={sendGWh:0,dtrsGWh:0};
       GD.lngTotal[mo].sendGWh += send;
       GD.lngTotal[mo].dtrsGWh += dtrs;
+      // Store daily data for recent years (current + previous)
+      const yr=+date.slice(0,4);
+      if(yr>=curY-1){
+        if(!GD.lngDaily[date]) GD.lngDaily[date]={sendGWh:0,dtrsGWh:0};
+        GD.lngDaily[date].sendGWh += send;
+        GD.lngDaily[date].dtrsGWh += dtrs;
+      }
     });
     if(Object.keys(GD.lngTotal).length) GD.ok.lng=true;
     console.log(`ALSI EU: ${Object.keys(GD.lngTotal).length} months`);
@@ -8788,7 +8806,7 @@ async function gaRefreshAll(){
   }).forEach(k=>localStorage.removeItem(k));
   // Reset in-memory store but reload from localStorage cache immediately
   Object.keys(GD.pipeline).forEach(r=>{ GD.pipeline[r]={}; GD.pipeDaily[r]={}; });
-  GD.storage={}; GD.storByCtry={}; GD.lngTotal={}; GD.lngByCtry={};
+  GD.storage={}; GD.storDaily={}; GD.storByCtry={}; GD.lngTotal={}; GD.lngByCtry={}; GD.lngDaily={};
   GD.ok.pipeline=false; GD.ok.storage=false; GD.ok.lng=false;
   window.gaInitDone=false;
   gaInitAll();
@@ -9158,66 +9176,144 @@ let _storYears=[2026,2025,2024,2023];
 function storTab(sub, btn){
   document.querySelectorAll('#ga-stor-subtabs .ga-stab').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  else { const map={'eu':0,'country':1,'map':2,'facility':3}; const btns=document.querySelectorAll('#ga-stor-subtabs .ga-stab'); const b=btns[map[sub]??0]; if(b)b.classList.add('active'); }
+  else { const map={'eu':0,'country':1,'map':2,'inject':3,'facility':4}; const btns=document.querySelectorAll('#ga-stor-subtabs .ga-stab'); const b=btns[map[sub]??0]; if(b)b.classList.add('active'); }
   const pane=document.getElementById('ga-stor-pane');if(!pane)return;
-  if(sub==='eu')       renderStorEU(pane);
+  if(sub==='eu')           renderStorEU(pane);
   else if(sub==='country') renderStorCountry(pane);
   else if(sub==='map')     renderStorMap(pane);
+  else if(sub==='inject')  renderStorInject(pane);
   else if(sub==='facility') renderStorFacility(pane);
 }
 
+// ── EU Aggregate Storage — reference-style seasonal chart ─────────────────
+// _storBand: which years form the range band (user-selectable)
+// _storYears: which individual year lines to show
+let _storBand = '2023-2025'; // fixed band
+
 function renderStorEU(pane){
+  const bandSel = '2023-2025';
+  _storBand = bandSel;
   pane.innerHTML=`
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
       <span class="ctrl-lbl">YEARS</span>
       <div style="display:flex;gap:4px;flex-wrap:wrap">${GA_AVAIL_YEARS.map(y=>`<button class="ga-stab${_storYears.includes(y)?' active':''}" onclick="gdToggleStorYear(${y},this)">${y}</button>`).join('')}</div>
+      <span style="font-size:9px;color:#3d5070;margin-left:8px">BAND: 2023-2025</span>
       <span style="font-size:9px;margin-left:auto;color:${GD.ok.storage?'#34d399':'#f59e0b'}">${GD.ok.storage?'🟢 AGSI+ live':'🟡 Loading...'}</span>
     </div>
     <div class="ga-gauto" id="stor-kpis" style="margin-bottom:12px"></div>
-    <div class="ga-card"><div class="ga-sec">EU GAS STORAGE — % FULL (SEASONAL)</div>
-      <div class="ga-ch-wrap tall" style="height:340px"><canvas id="stor-eu-chart"></canvas></div>
-      <div class="ga-source">Source: GIE AGSI+ (agsi.gie.eu) · ${new Date().toLocaleDateString('en-GB')}</div>
+    <div class="ga-card">
+      <div class="ga-sec">EU GAS STORAGE — % FULL (SEASONAL) <span class="ga-tag">GIE AGSI+</span></div>
+      <div class="ga-ch-wrap tall" style="height:360px"><canvas id="stor-eu-chart"></canvas></div>
+      <div class="ga-source">Source: GIE AGSI+ (agsi.gie.eu) · Grey band = 2023–2025 range · Dashed = 3-yr avg · ${new Date().toLocaleDateString('en-GB')}</div>
     </div>
-    <div class="ga-card" style="margin-top:12px"><div class="ga-sec">WORKING GAS VOLUME (TWh)</div>
-      <div class="ga-ch-wrap" style="height:240px"><canvas id="stor-twh-chart"></canvas></div>
+    <div class="ga-card" style="margin-top:12px">
+      <div class="ga-sec">WORKING GAS VOLUME (TWh)</div>
+      <div class="ga-ch-wrap" style="height:220px"><canvas id="stor-twh-chart"></canvas></div>
     </div>`;
   drawStorEU();
 }
+
 window.gdToggleStorYear=function(y,btn){
   if(_storYears.includes(y)) _storYears=_storYears.filter(x=>x!==y);
   else _storYears=[..._storYears,y];
   btn.classList.toggle('active',_storYears.includes(y));
-  drawStorEU();
+  // Load historical data if needed
+  gdEnsureStorageYears(_storBand).then(()=>drawStorEU());
 };
+
+// Ensure storage data exists for band years — lazy load if missing
+async function gdEnsureStorageYears(band){
+  const [y1,y2]=band.split('-').map(Number);
+  const needed=[];
+  for(let y=y1;y<=y2;y++){
+    const hasData=Object.keys(GD.storage).some(mo=>mo.startsWith(String(y)));
+    if(!hasData) needed.push(y);
+  }
+  if(!needed.length) return;
+  const from=`${Math.min(...needed)}-01-01`;
+  const to=`${Math.max(...needed)}-12-31`;
+  await gdLoadStorage(from,to);
+}
+
 function drawStorEU(){
-  // KPIs
-  const today=new Date(); const curMo=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
-  const latest=GD.storage[curMo]; const kpiEl=document.getElementById('stor-kpis');
+  if(!GD.ok.storage){ gdErr('stor-eu-chart','GIE AGSI+ not loaded — hit ↺ REFRESH ALL'); return; }
+
+  // ── KPIs (just two: % full + working gas) ──
+  const today=new Date();
+  const curMo=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  const latest=GD.storage[curMo];
+  const kpiEl=document.getElementById('stor-kpis');
   if(kpiEl && latest){
     kpiEl.innerHTML=[
       {lbl:'EU STORAGE',val:`${latest.pct.toFixed(1)}%`,unit:'full',col:latest.pct>=50?'#34d399':latest.pct>=30?'#ff9800':'#f44336'},
       {lbl:'WORKING GAS',val:latest.twh.toFixed(0),unit:'TWh',col:'#4fc3f7'},
-      {lbl:'STATUS',val:latest.pct<30?'CRITICALLY LOW':latest.pct<50?'BELOW AVG':'NORMAL',unit:'',col:latest.pct<30?'#f44336':latest.pct<50?'#ff9800':'#34d399'},
-    ].map(k=>`<div class="ga-kpi"><div class="ga-kpi-lbl">${k.lbl}</div><div class="ga-kpi-val" style="color:${k.col}">${k.val}<span class="ga-kpi-unit"> ${k.unit}</span></div></div>`).join('');
+      {lbl:'vs 2025',val:(()=>{const prev=GD.storage[`${today.getFullYear()-1}-${String(today.getMonth()+1).padStart(2,'0')}`];return prev?`${(latest.pct-prev.pct).toFixed(1)}pp`:null;})(),unit:'pp YoY',col:'#f59e0b'},
+    ].filter(k=>k.val!==null).map(k=>`<div class="ga-kpi"><div class="ga-kpi-lbl">${k.lbl}</div><div class="ga-kpi-val" style="color:${k.col}">${k.val}<span class="ga-kpi-unit"> ${k.unit}</span></div></div>`).join('');
   }
-  if(!GD.ok.storage){ gdErr('stor-eu-chart','GIE AGSI+ data not loaded — hit ↺ REFRESH ALL'); return; }
-  // % full chart
-  const pctDatasets=_storYears.sort((a,b)=>b-a).map((yr,i)=>({
-    label:`${yr} (% full)`,
-    data:GA_MO.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const d=GD.storage[mo]; return d?.pct??null; }),
-    borderColor:GA_COLS[i],backgroundColor:i===0?GA_COLS[0]+'18':'transparent',
-    borderWidth:i===0?2.5:1.5,borderDash:i>0?[5,3]:undefined,pointRadius:3,tension:.3,fill:i===0,spanGaps:false,
-  }));
-  gaMakeChart('stor-eu-chart','line',{labels:GA_MO,datasets:pctDatasets},{
-    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},
-      y:{...GCD.scales.y,min:0,max:100,title:{display:true,text:'% Full',color:'#3d5070',font:{size:9}}}}
+
+  // ── Build range band from selected years ──
+  const [by1,by2]=_storBand.split('-').map(Number);
+  const bandYears=Array.from({length:by2-by1+1},(_,i)=>by1+i);
+  const bandMin=GA_MO.map((_,m)=>{
+    const vals=bandYears.map(y=>{const d=GD.storage[`${y}-${String(m+1).padStart(2,'0')}`];return d?.pct??null;}).filter(v=>v!==null);
+    return vals.length?Math.min(...vals):null;
   });
-  // TWh chart
-  const twhDatasets=_storYears.sort((a,b)=>b-a).map((yr,i)=>({
-    label:`${yr} (TWh)`,
-    data:GA_MO.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; return GD.storage[mo]?.twh??null; }),
-    borderColor:GA_COLS[i],backgroundColor:'transparent',borderWidth:i===0?2.5:1.5,
-    borderDash:i>0?[5,3]:undefined,pointRadius:2,tension:.3,spanGaps:false,
+  const bandMax=GA_MO.map((_,m)=>{
+    const vals=bandYears.map(y=>{const d=GD.storage[`${y}-${String(m+1).padStart(2,'0')}`];return d?.pct??null;}).filter(v=>v!==null);
+    return vals.length?Math.max(...vals):null;
+  });
+
+  // ── 3-year average (last 3 complete years before current) ──
+  const curY=today.getFullYear();
+  const avgYears=[curY-1,curY-2,curY-3];
+  const avgLine=GA_MO.map((_,m)=>{
+    const vals=avgYears.map(y=>{const d=GD.storage[`${y}-${String(m+1).padStart(2,'0')}`];return d?.pct??null;}).filter(v=>v!==null);
+    return vals.length?+(vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(1):null;
+  });
+
+  // ── Year line colors (current year = red/bold like reference chart) ──
+  const yearColors={[curY]:'#ef4444',[curY-1]:'#f59e0b',[curY-2]:'#22c55e',[curY-3]:'#3b82f6',[curY-4]:'#a855f7'};
+
+  const datasets=[
+    // Grey band (min fill to max)
+    {label:`${_storBand} range`,data:bandMax,borderColor:'rgba(150,160,180,0.0)',backgroundColor:'rgba(150,160,180,0.18)',
+     borderWidth:0,pointRadius:0,fill:'+1',tension:.3,spanGaps:true,order:10},
+    {label:'_band_min',data:bandMin,borderColor:'rgba(150,160,180,0.0)',backgroundColor:'rgba(150,160,180,0.18)',
+     borderWidth:0,pointRadius:0,fill:false,tension:.3,spanGaps:true,order:10},
+    // 3-year average — dashed black
+    {label:`3Y avg (${avgYears.join('/')}%)`,data:avgLine,borderColor:'#94a3b8',backgroundColor:'transparent',
+     borderWidth:1.5,borderDash:[6,3],pointRadius:0,tension:.3,spanGaps:true,order:5},
+    // Individual year lines
+    ..._storYears.sort((a,b)=>b-a).map(yr=>({
+      label:`${yr}`,
+      data:GA_MO.map((_,m)=>{const d=GD.storage[`${yr}-${String(m+1).padStart(2,'0')}`];return d?.pct??null;}),
+      borderColor:yearColors[yr]||GA_COLS[_storYears.indexOf(yr)%GA_COLS.length],
+      backgroundColor:'transparent',
+      borderWidth:yr===curY?2.5:1.8,
+      pointRadius:yr===curY?3:2,
+      tension:.3,fill:false,spanGaps:false,order:yr===curY?1:3,
+    })),
+  ];
+
+  gaMakeChart('stor-eu-chart','line',{labels:GA_MO,datasets},{
+    plugins:{
+      legend:{labels:{color:'#5a6882',font:{size:9,family:'IBM Plex Mono'},boxWidth:12,padding:10,
+        filter:(item)=>!item.text.startsWith('_')}}, // hide _band_min from legend
+      tooltip:{...GCD.plugins.tooltip},
+    },
+    scales:{
+      x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},
+      y:{...GCD.scales.y,min:0,max:100,title:{display:true,text:'% Full',color:'#3d5070',font:{size:9}}},
+    }
+  });
+
+  // TWh chart (simpler — just year lines, no band)
+  const twhDatasets=_storYears.sort((a,b)=>b-a).map(yr=>({
+    label:`${yr}`,
+    data:GA_MO.map((_,m)=>{const d=GD.storage[`${yr}-${String(m+1).padStart(2,'0')}`];return d?.twh??null;}),
+    borderColor:yearColors[yr]||GA_COLS[_storYears.indexOf(yr)%GA_COLS.length],
+    backgroundColor:'transparent',borderWidth:yr===curY?2.5:1.5,
+    pointRadius:yr===curY?3:1,tension:.3,spanGaps:false,
   }));
   gaMakeChart('stor-twh-chart','line',{labels:GA_MO,datasets:twhDatasets},{
     scales:{x:GCD.scales.x,y:{...GCD.scales.y,title:{display:true,text:'TWh',color:'#3d5070',font:{size:9}}}}
@@ -9285,6 +9381,75 @@ function renderStorMap(pane){
   pane.innerHTML=`<div class="ga-card"><div class="ga-sec">STORAGE HEATMAP — EU COUNTRIES <span class="ga-tag ga-tag-live">GIE AGSI+</span></div><div style="overflow-x:auto;padding:4px 0">${tbl}</div><div class="ga-source">Source: GIE AGSI+ · Red &lt;30% · Amber 30–60% · Green &gt;60% · ${new Date().toLocaleDateString('en-GB')}</div></div>`;
 }
 
+function renderStorInject(pane){
+  const today=new Date(); const curY=today.getFullYear();
+  if(!GD.ok.storage){ gdErr('ga-stor-pane','Storage data not loaded — hit ↺ REFRESH ALL'); return; }
+
+  pane.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px">
+      <div class="ga-card">
+        <div class="ga-sec">INJECTIONS &amp; WITHDRAWAL — ${curY} <span class="ga-tag ga-tag-live">GIE AGSI+</span></div>
+        <div class="ga-ch-wrap" style="height:300px"><canvas id="stor-inject-cur-chart"></canvas></div>
+        <div class="ga-source">GIE AGSI+ · GWh/d · ${new Date().toLocaleDateString('en-GB')}</div>
+      </div>
+      <div class="ga-card">
+        <div class="ga-sec">HISTORICAL — LAST 3 YEARS SEASONAL <span class="ga-tag">GIE AGSI+</span></div>
+        <div class="ga-ch-wrap" style="height:300px"><canvas id="stor-inject-hist-chart"></canvas></div>
+        <div class="ga-source">GIE AGSI+ · Monthly net withdrawal (positive=withdrawal, negative=injection) · ${new Date().toLocaleDateString('en-GB')}</div>
+      </div>
+    </div>`;
+
+  // ── Left chart: 2026 daily injection & withdrawal ──
+  const dailyKeys=Object.keys(GD.storDaily||{}).filter(d=>d.startsWith(String(curY))).sort();
+  const dlbls=dailyKeys.map(d=>{ const dt=new Date(d+'T12:00:00'); return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); });
+  gaMakeChart('stor-inject-cur-chart','bar',{
+    labels:dlbls,
+    datasets:[
+      {label:'Injection (GWh/d)',data:dailyKeys.map(d=>GD.storDaily[d]?.inj||0),
+       backgroundColor:'rgba(52,211,153,0.6)',borderWidth:0,stack:'s'},
+      {label:'Withdrawal (GWh/d)',data:dailyKeys.map(d=>-(GD.storDaily[d]?.wdr||0)),
+       backgroundColor:'rgba(248,113,113,0.6)',borderWidth:0,stack:'s'},
+    ]
+  },{
+    scales:{
+      x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:20}},
+      y:{...GCD.scales.y,title:{display:true,text:'GWh/d',color:'#3d5070',font:{size:9}},
+        grid:{color:'#0d1a2e'}},
+    }
+  });
+
+  // ── Right chart: last 3 years monthly net withdrawal seasonal ──
+  const histYears=[curY-1,curY-2,curY-3];
+  const histColors=['#f59e0b','#22c55e','#3b82f6'];
+  // Also add current year
+  const allHist=[curY,...histYears];
+  const allColors=['#ef4444',...histColors];
+  const histDatasets=allHist.map((yr,i)=>({
+    label:`${yr}`,
+    data:GA_MO.map((_,m)=>{
+      // Sum daily net withdrawal for this month
+      const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
+      const days=Object.keys(GD.storDaily||{}).filter(d=>d.startsWith(mo));
+      if(!days.length) return null;
+      // net: positive = net injection (storage filling), negative = net withdrawal
+      const netInj=days.reduce((s,d)=>{
+        const row=GD.storDaily[d];
+        return s + ((row?.inj||0)-(row?.wdr||0));
+      },0);
+      return +netInj.toFixed(0);
+    }),
+    borderColor:allColors[i],backgroundColor:'transparent',
+    borderWidth:yr===curY?2.5:1.5,borderDash:yr!==curY?[5,3]:undefined,
+    pointRadius:2,tension:.3,spanGaps:false,fill:false,
+  }));
+  gaMakeChart('stor-inject-hist-chart','line',{labels:GA_MO,datasets:histDatasets},{
+    scales:{
+      x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},
+      y:{...GCD.scales.y,title:{display:true,text:'GWh net (+ inject / - withdraw)',color:'#3d5070',font:{size:9}}},
+    }
+  });
+}
+
 function renderStorFacility(pane){
   pane.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;text-align:center;gap:12px"><div style="font-size:32px">🏭</div><div style="color:var(--b);font-size:13px;letter-spacing:2px">FACILITY-LEVEL DATA</div><div style="color:var(--td);font-size:10px;max-width:440px;line-height:1.8">Individual storage facility data available via GIE AGSI+ facility endpoint.<br><span style="color:#3d5070">Coming in next build.</span></div></div>`;
 }
@@ -9303,24 +9468,91 @@ function regasTab(sub, btn){
 }
 
 function renderRegasSendout(pane){
+  if(!GD.ok.lng){ gdErr('ga-regas-pane','ALSI data not loaded — hit ↺ REFRESH ALL'); return; }
+  const today=new Date(); const curY=today.getFullYear();
+
   pane.innerHTML=`
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
-      <span class="ctrl-lbl">YEARS</span>
-      <div style="display:flex;gap:4px">${[2026,2025].map(y=>`<button class="ga-stab${[2026,2025].includes(y)?' active':''}">${y}</button>`).join('')}</div>
-      <span style="font-size:9px;margin-left:auto;color:${GD.ok.lng?'#34d399':'#f59e0b'}">${GD.ok.lng?'🟢 ALSI live':'🟡 Loading...'}</span>
+      <span style="font-size:9px;color:${GD.ok.lng?'#34d399':'#f59e0b'};margin-left:auto">${GD.ok.lng?'🟢 ALSI live':'🟡 Loading...'}</span>
     </div>
-    <div class="ga-card"><div class="ga-sec">EU LNG SENDOUT — SEASONAL <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
-      <div class="ga-ch-wrap tall" style="height:320px"><canvas id="regas-send-chart"></canvas></div>
-      <div class="ga-source">Source: GIE ALSI (alsi.gie.eu) · sendOut GWh/d · ${new Date().toLocaleDateString('en-GB')}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="ga-card">
+        <div class="ga-sec">EU LNG SENDOUT — LAST 30 DAYS <span class="ga-tag ga-tag-live">DAILY · GIE ALSI</span></div>
+        <div class="ga-ch-wrap" style="height:300px"><canvas id="regas-daily-chart"></canvas></div>
+        <div class="ga-source">GIE ALSI · sendOut GWh/d · ${new Date().toLocaleDateString('en-GB')}</div>
+      </div>
+      <div class="ga-card">
+        <div class="ga-sec">EU LNG SENDOUT — SAME PERIOD HISTORICAL <span class="ga-tag">GIE ALSI</span></div>
+        <div class="ga-ch-wrap" style="height:300px"><canvas id="regas-hist-chart"></canvas></div>
+        <div class="ga-source">GIE ALSI · same calendar period across years · ${new Date().toLocaleDateString('en-GB')}</div>
+      </div>
+    </div>
+    <div class="ga-card" style="margin-top:12px">
+      <div class="ga-sec">EU LNG SENDOUT — SEASONAL (MONTHLY) <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
+      <div class="ga-ch-wrap tall" style="height:280px"><canvas id="regas-send-chart"></canvas></div>
+      <div class="ga-source">GIE ALSI · ${new Date().toLocaleDateString('en-GB')}</div>
     </div>`;
-  if(!GD.ok.lng){ gdErr('regas-send-chart','ALSI data not loaded — hit ↺ REFRESH ALL'); return; }
-  const datasets=[2026,2025].map((yr,i)=>({
+
+  // ── Daily sendout: last 30 days — real daily data from GD.lngDaily ──
+  const days30=Array.from({length:30},(_,i)=>{
+    const d=new Date(today); d.setDate(d.getDate()-29+i);
+    return d.toISOString().slice(0,10);
+  });
+  const hasDailyData=days30.some(d=>GD.lngDaily[d]);
+  const dailyVals=days30.map(date=>{
+    const daily=GD.lngDaily[date];
+    if(daily) return guConvLng(daily.sendGWh); // real daily value
+    // Fallback: monthly avg if daily not yet stored
+    const mo=date.slice(0,7);
+    const d=GD.lngTotal[mo]; if(!d) return null;
+    const daysInMo=new Date(+mo.slice(0,4),+mo.slice(5,7),0).getDate();
+    return guConvLng(d.sendGWh/daysInMo);
+  });
+  const dayLabels=days30.map(d=>{const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});});
+  gaMakeChart('regas-daily-chart','bar',{
+    labels:dayLabels,
+    datasets:[{label:'EU Sendout',data:dailyVals,backgroundColor:'rgba(79,195,247,0.7)',borderWidth:0}]
+  },{scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:15}},
+     y:{...GCD.scales.y,title:{display:true,text:guLbl(),color:'#3d5070',font:{size:9}}}}});
+
+  // ── Historical: same calendar window (same month range) across 3 years ──
+  const startMo=days30[0].slice(0,7); const endMo=days30[29].slice(0,7);
+  const histYears=[curY,curY-1,curY-2];
+  const histColors=['#4fc3f7','#f59e0b','#22c55e'];
+  // Get monthly data for those months across years
+  const moRange=[...new Set(days30.map(d=>d.slice(5,7)))].sort(); // unique MM values
+  const histLabels=moRange.map(m=>GA_MO[+m-1]);
+  const histDatasets=histYears.map((yr,i)=>({
+    label:`${yr}`,
+    data:moRange.map(m=>{
+      // Try real daily avg for this month/year
+      const mo=`${yr}-${m}`;
+      const dailyKeys=Object.keys(GD.lngDaily).filter(d=>d.startsWith(mo));
+      if(dailyKeys.length>0){
+        const avg=dailyKeys.reduce((s,d)=>s+(GD.lngDaily[d]?.sendGWh||0),0)/dailyKeys.length;
+        return guConvLng(avg);
+      }
+      // Fallback: monthly total / days
+      const d=GD.lngTotal[mo]; if(!d) return null;
+      const daysInMo=new Date(+yr,+m,0).getDate();
+      return guConvLng(d.sendGWh/daysInMo);
+    }),
+    borderColor:histColors[i],backgroundColor:'transparent',
+    borderWidth:i===0?2.5:1.5,borderDash:i>0?[5,3]:undefined,
+    pointRadius:3,tension:.3,spanGaps:false,
+  }));
+  gaMakeChart('regas-hist-chart','line',{labels:histLabels,datasets:histDatasets},{
+    scales:{x:GCD.scales.x,y:{...GCD.scales.y,title:{display:true,text:guLbl(),color:'#3d5070',font:{size:9}}}}
+  });
+
+  // ── Seasonal monthly chart ──
+  const seasDatasets=[curY,curY-1,curY-2].map((yr,i)=>({
     label:`EU Sendout ${yr}`,
     data:GA_MO.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const d=GD.lngTotal[mo]; return d?guConvLng(d.sendGWh):null; }),
     borderColor:GA_COLS[i],backgroundColor:i===0?GA_COLS[0]+'18':'transparent',
     borderWidth:i===0?2.5:1.5,borderDash:i>0?[5,3]:undefined,pointRadius:3,tension:.3,fill:i===0,spanGaps:false,
   }));
-  gaMakeChart('regas-send-chart','line',{labels:GA_MO,datasets},{
+  gaMakeChart('regas-send-chart','line',{labels:GA_MO,datasets:seasDatasets},{
     scales:{x:GCD.scales.x,y:{...GCD.scales.y,title:{display:true,text:guLbl(),color:'#3d5070',font:{size:9}}}}
   });
 }
