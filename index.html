@@ -9170,34 +9170,37 @@ const TWH_TO_BCM = 1/10.55;
 // Cache strategy: localStorage per route/year, 7d historical, 6h recent
 // ═══════════════════════════════════════════════════════════════════
 
-// ── ENTSOG interconnection point KEYS (verified via /connectionPoints API, Apr 2026) ──
-// Using pointKey (stable IDs) — verified hasData:true, isPlanned:false only.
+// ── ENTSOG corridor point labels (verified from working API URLs, Apr 2026) ──
+// ONE label per array entry — queries fire one at a time to avoid rate limiting.
+// Labels verified: transparency.entsog.eu/api/v1/operationaldatas.csv?pointLabel=...
 const ENTSOG_CORRIDOR_POINTS = {
   norway: [
-    'ITP-00209',  // Emden (EPT1) — Europipe/Norpipe → Germany ✓
-    'ITP-00208',  // Dornum (EPT1 & EPT2) — NEL pipeline → Germany ✓
-    'ITP-00525',  // Dornum GASPOOL → Germany ✓
-    'ITP-00097',  // Nybro — Danish landing → Denmark ✓
-    'ITP-00106',  // Zeebrugge ZPT — Zeepipe → Belgium ✓
-    'ITP-00091',  // Easington — Langeled → UK ✓
-    'ITP-00022',  // St. Fergus — FLAGS pipeline → UK ✓
+    'Zeebrugge ZPT',        // Zeepipe — Belgium ✓
+    'Dornum GASPOOL',       // NEL pipeline — Germany ✓
+    'Emden (EPT1) (OGE)',   // Europipe/Norpipe — Germany ✓
+    'Easington',            // Langeled — UK ✓
+    'St. Fergus',           // FLAGS pipeline — UK ✓
+    'Nybro',                // Danish landing ✓
   ],
   algeria_italy: [
-    'ITP-00093',  // Mazara del Vallo — TransMed → Italy ✓
+    'Mazara del Vallo',     // TransMed — Italy ✓
+    'Gela',                 // Greenstream/Transmed cluster — Italy ✓
   ],
   algeria_spain: [
-    'ITP-00048',  // Almería — Medgaz landfall → Spain ✓
-    'ITP-00082',  // Tarifa — GME/Maghreb pipeline → Spain ✓
+    'Almería',              // Medgaz landfall — Spain ✓
+    'Tarifa',               // GME/Maghreb pipeline — Spain ✓
   ],
   tap: [
-    'ITP-00046',  // Kipi (TR/GR) — TANAP/TAP non-EU entry → Greece ✓
-    'ITP-00274',  // Kipoi — TAP entry → Greece ✓
-    'ITP-00008',  // Melendugno - IT / TAP — Italy terminal entry ✓
+    'Kipi (TR) / Kipi (GR)',       // TANAP/TAP non-EU entry → Greece ✓
+    'Melendugno - IT / TAP',       // TAP Italy terminal entry ✓
   ],
   russia: [
-    'ITP-00549',  // Strandzha 2 (BG) / Malkoclar (TR) — TurkStream ✓
+    'Strandzha 2 (BG) / Malkoclar (TR)', // TurkStream → Bulgaria ✓
+    'Budince',                            // TurkStream → North Macedonia/Serbia ✓
+    'Uzhhorod (UA) - Velké Kapušany (SK)', // Ukraine transit → Slovakia (residual) ✓
+    'Isaccea (RO) - Orlovka (UA) II',     // Ukraine → Romania (residual) ✓
   ],
-  exits: [],     // Not needed for supply balance — omitted for now
+  exits: [],
 };
 
 // ── GA_LIVE: single source of truth for all live data ────────────────────────
@@ -9401,24 +9404,22 @@ function gaGetONSPct(subsystem){
 // ENTSOG — PHYSICAL FLOW per corridor
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Fetch current year live (always fresh) — one pointKey per request
+// Fetch current year live — one pointLabel per request (comma-separated multi-point causes 504)
 async function gaLoadENTSOGRoute(route,from,to,cacheResult=false){
   const points=ENTSOG_CORRIDOR_POINTS[route];
   if(!points?.length) return;
-  const deduped=[...new Set(points)];
-  // ENTSOG does not reliably support comma-separated pointKey — query one at a time
-  for(const key of deduped){
-    const cacheKey=`entsog_${route}_${key}_${from}_${to.slice(0,7)}`;
+  for(const label of points){
+    const cacheKey=`entsog_${route}_${encodeURIComponent(label).slice(0,20)}_${from}_${to.slice(0,7)}`;
     let raw = cacheResult ? gaCacheGet(cacheKey) : null;
     if(!raw){
       try{
-        const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointKey=${key}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=3000`;
+        const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointLabel=${encodeURIComponent(label)}&from=${from}&to=${to}&periodType=day&timeZone=WET&limit=3000`;
         const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:`/api/entsog?endpoint=operationaldata&${paramStr}`;
         const r=await fetch(url,{headers:{Accept:'application/json'}});
-        if(!r.ok){ console.warn(`ENTSOG ${r.status} ${route} ${key}`); continue; }
+        if(!r.ok){ console.warn(`ENTSOG ${r.status} ${route} ${label}`); continue; }
         raw=await r.json();
         if(cacheResult) gaCacheSet(cacheKey,raw,6);
-      }catch(e){ console.warn(`ENTSOG ${route} ${key}:`,e.message); continue; }
+      }catch(e){ console.warn(`ENTSOG ${route} ${label}:`,e.message); continue; }
     }
     gaAggENTSOGToLive(route,raw);
   }
@@ -9453,27 +9454,26 @@ async function gaLoadENTSOGHistorical(route,minYear){
 async function gaLoadENTSOGHistoricalMonthly(route, year){
   const points=ENTSOG_CORRIDOR_POINTS[route];
   if(!points?.length) return;
-  const deduped=[...new Set(points)];
   const months=year<new Date().getFullYear()?12:new Date().getMonth()+1;
   for(let mo=0; mo<months; mo++){
     const mm=String(mo+1).padStart(2,'0');
     const from=`${year}-${mm}-01`;
     const lastDay=new Date(year,mo+1,0).getDate();
     const to=`${year}-${mm}-${lastDay}`;
-    for(const key of deduped){
-      const cacheKey=`entsog_mo_${route}_${key}_${year}_${mm}`;
+    for(const label of points){
+      const cacheKey=`entsog_mo_${route}_${encodeURIComponent(label).slice(0,20)}_${year}_${mm}`;
       if(gaCacheGet(cacheKey)) continue;
       if(GA_LIVE.pipeline[route]?.[`${year}-${mm}`]) continue;
       await new Promise(r=>setTimeout(r,500));
       try{
-        const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointKey=${key}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=1000`;
+        const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointLabel=${encodeURIComponent(label)}&from=${from}&to=${to}&periodType=day&timeZone=WET&limit=1000`;
         const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:`/api/entsog?endpoint=operationaldata&${paramStr}`;
         const r=await fetch(url,{headers:{Accept:'application/json'}});
-        if(!r.ok){ console.warn(`ENTSOG ${r.status} ${route} ${key} ${year}-${mm}`); continue; }
+        if(!r.ok){ console.warn(`ENTSOG ${r.status} ${route} ${label} ${year}-${mm}`); continue; }
         const raw=await r.json();
         gaCacheSet(cacheKey,raw,168);
         gaAggENTSOGToLive(route,raw);
-      }catch(e){ console.warn(`ENTSOG mo ${route} ${key} ${year}-${mm}:`,e.message); }
+      }catch(e){ console.warn(`ENTSOG mo ${route} ${label} ${year}-${mm}:`,e.message); }
     }
   }
 }
