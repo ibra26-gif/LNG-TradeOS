@@ -1,6 +1,6 @@
 // Vercel serverless proxy for GIE AGGI+ LNG Terminal API
 // Env var: AGGI_API_KEY (same key as AGSI)
-// Base URL: https://aggi.gie.eu/api
+// Base URL: https://aggi.gie.eu/api 
 // Attribution REQUIRED by GIE terms: "Source: GIE AGGI+" on all outputs.
 
 const AGGI_KEY = process.env.AGGI_API_KEY;
