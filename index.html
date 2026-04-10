@@ -9250,10 +9250,11 @@ async function gaLoadLiveData(){
     gaLoadLiveLNG(from5y, today),
     gaLoadLiveONS(),
     gaLoadDomProductionLive(from5y, today),
-    // ENTSOG supply routes
+    // ENTSOG supply routes — current year only (avoid 504 timeout on broad queries)
+    // Historical years load month-by-month after live data succeeds
     ...['norway','algeria_italy','algeria_spain','tap','russia'].map(route =>
       gaLoadENTSOGRoute(route, currentYearStart, today, true)
-        .then(() => gaLoadENTSOGHistorical(route, yr5ago.getFullYear()))
+        .then(() => gaLoadENTSOGHistoricalMonthly(route, yr5ago.getFullYear()))
     ),
     // ENTSOG exits (exit direction)
     gaLoadENTSOGExits(currentYearStart, today),
@@ -9447,6 +9448,37 @@ async function gaLoadENTSOGHistorical(route,minYear){
       gaCacheSet(cacheKey,raw,168); // cache 7 days for historical
       gaAggENTSOGToLive(route,raw);
     }catch(e){ console.warn(`ENTSOG hist ${route} ${yr}:`,e.message); }
+  }
+}
+
+// Month-by-month historical loader — avoids ENTSOG 504 timeouts on broad queries
+// Fetches one month at a time, caches each month for 7 days
+async function gaLoadENTSOGHistoricalMonthly(route, minYear){
+  const curYear=new Date().getFullYear();
+  const points=ENTSOG_CORRIDOR_POINTS[route];
+  if(!points?.length) return;
+  const keyStr=[...new Set(points)].join(',');
+  for(let yr=minYear; yr<curYear; yr++){
+    for(let mo=0; mo<12; mo++){
+      const mm=String(mo+1).padStart(2,'0');
+      const cacheKey=`entsog_mo_${route}_${yr}_${mm}`;
+      let raw=gaCacheGet(cacheKey);
+      if(raw){ gaAggENTSOGToLive(route,raw); continue; }
+      // Stagger requests to avoid hammering ENTSOG
+      await new Promise(r=>setTimeout(r,300));
+      try{
+        const from=`${yr}-${mm}-01`;
+        const lastDay=new Date(yr,mo+1,0).getDate();
+        const to=`${yr}-${mm}-${lastDay}`;
+        const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointKey=${keyStr}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=3000`;
+        const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:`/api/entsog?endpoint=operationaldata&${paramStr}`;
+        const r=await fetch(url,{headers:{Accept:'application/json'}});
+        if(!r.ok) continue;
+        raw=await r.json();
+        gaCacheSet(cacheKey,raw,168);
+        gaAggENTSOGToLive(route,raw);
+      }catch(e){ console.warn(`ENTSOG mo ${route} ${yr}-${mm}:`,e.message); }
+    }
   }
 }
 
