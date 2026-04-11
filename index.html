@@ -328,7 +328,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
     <div class="group-hdr"><div class="group-icon">▣</div><div><div class="group-ttl">PHYSICAL TRADING</div><div class="group-sub">Voyage economics, cargo pricing and European regasification</div></div></div>
     <div class="cards-grid">
       <div class="mod-card" onclick="shellNav('physical','freight')"><span class="card-num">01</span><div class="card-ttl">Freight Rate Calculator</div><div class="card-desc">Voyage cost estimation across global LNG shipping routes with BLNG curves and per-month positioning</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','cargo')"><span class="card-num">02</span><div class="card-ttl">Cargo Pricing</div><div class="card-desc">USGC/WAF/Oman arb, DES pricing, FOB netback matrix, India pricing and historical basis</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','cargo')"><span class="card-num">02</span><div class="card-ttl">LNG Global Netback</div><div class="card-desc">USGC/WAF/Oman arb, DES pricing, FOB netback matrix and global cargo economics</div><span class="s-tag tag-phy">PHYSICAL</span></div>
       <div class="mod-card" onclick="shellNav('physical','regas')"><span class="card-num">03</span><div class="card-ttl">EU Regas Model</div><div class="card-desc">European regasification terminal pricing, cost graphs, netback analysis and slot valuation</div><span class="s-tag tag-phy">PHYSICAL</span></div>
       <div class="mod-card" onclick="shellNav('physical','acer')"><span class="card-num">04</span><div class="card-ttl">Historical ACER Price</div><div class="card-desc">ACER daily DES physical NWE · SE · EU — seasonal scatter vs history 2023–2026</div><span class="s-tag tag-phy">PHYSICAL</span></div>
     </div>
@@ -381,7 +381,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
   <div class="sh-subnav">
     <button class="sh-stab active" id="ptab-overview" onclick="phTab('overview')">OVERVIEW</button>
     <button class="sh-stab" id="ptab-freight" onclick="phTab('freight')">FREIGHT CALCULATOR</button>
-    <button class="sh-stab" id="ptab-cargo" onclick="phTab('cargo')">CARGO PRICING</button>
+    <button class="sh-stab" id="ptab-cargo" onclick="phTab('cargo')">LNG GLOBAL NETBACK</button>
+    <button class="sh-stab" id="ptab-mktstr" onclick="phTab('mktstr')">MARKET STRUCTURE</button>
     <button class="sh-stab" id="ptab-regas" onclick="phTab('regas')">EU REGAS MODEL</button>
     <button class="sh-stab" id="ptab-acer" onclick="phTab('acer')">HISTORICAL ACER</button>
   </div>
@@ -592,7 +593,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
 
   <!-- Main tabs -->
   <div class="ga-maintabs">
-    <button class="gmtab active" id="gmtab-lngbal" onclick="gaMainTab('lngbal',this)">LNG BALANCE</button>
+    <button class="gmtab active" id="gmtab-dashboard" onclick="gaMainTab('dashboard',this)">DASHBOARD</button>
+    <button class="gmtab" id="gmtab-lngbal" onclick="gaMainTab('lngbal',this)">LNG BALANCE</button>
     <button class="gmtab" id="gmtab-eugas"  onclick="gaMainTab('eugas',this)">EU GAS BALANCE</button>
     <button class="gmtab" id="gmtab-storage" onclick="gaMainTab('storage',this)">EU STORAGE</button>
     <button class="gmtab" id="gmtab-regas"  onclick="gaMainTab('regas',this)">LNG REGAS</button>
@@ -600,7 +602,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
   </div>
 
   <!-- TAB 1: CHINA SIGNPOSTS -->
-  <div id="ga-tab-lngbal" class="ga-tab-sec active">
+  <div id="ga-tab-dashboard" class="ga-tab-sec active">
+    <div id="ga-dashboard-body"><div style="padding:40px;text-align:center;color:#3d5070;font-size:9px">Loading dashboard…</div></div>
+  </div>
+
+  <div id="ga-tab-lngbal" class="ga-tab-sec">
     <style>
       .cs-tabs{display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px;overflow-x:auto}
       .cs-tab{padding:10px 18px;font-size:10px;letter-spacing:.1em;color:#6b7a99;cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;white-space:nowrap;transition:all .2s}
@@ -2501,8 +2507,8 @@ const ML=(function(){
 
 // ══ SHELL ══
 let finLoaded=false;
-const PH_T={freight:'FREIGHT RATE CALCULATOR',cargo:'CARGO PRICING',regas:'EU REGAS MODEL',acer:'HISTORICAL ACER'};
-const PH_D={freight:'Voyage cost estimation across global LNG shipping routes with BLNG curves',cargo:'USGC/WAF/Oman arb, DES pricing, FOB netback matrix, India pricing and historical basis',regas:'European regasification terminal pricing, cost graphs, netback analysis and slot valuation',acer:'ACER daily DES physical NWE · SE · EU — seasonal scatter all daily obs, 2023–2026'};
+const PH_T={freight:'FREIGHT RATE CALCULATOR',cargo:'LNG GLOBAL NETBACK',mktstr:'MARKET STRUCTURE PRICING',regas:'EU REGAS MODEL',acer:'HISTORICAL ACER'};
+const PH_D={freight:'Voyage cost estimation across global LNG shipping routes with BLNG curves',cargo:'USGC/WAF/Oman arb, DES pricing, FOB netback matrix and global cargo economics',mktstr:'Near/far curve structure, per-day roll, pricing formula generation for JKM and TTF — leverages the loaded forward curve',regas:'European regasification terminal pricing, cost graphs, netback analysis and slot valuation',acer:'ACER daily DES physical NWE · SE · EU — seasonal scatter all daily obs, 2023–2026'};
 const GA_T={lngbal:'GLOBAL LNG BALANCES & SIGNPOSTS',eugas:'EU GAS BALANCE',storage:'EU STORAGE',regas:'LNG REGAS',signposts:'MARKET SIGNPOSTS'};
 const GA_D={lngbal:'Key LNG country balances and pricing signals',eugas:'Pipeline imports, domestic production, LNG flows and EU gas demand — seasonal views',storage:'EU and country storage levels, seasonal comparison and injection/withdrawal — GIE AGSI+',regas:'Terminal utilisation heatmap, tank stocks, sendout and country aggregate — GIE AGGI+',signposts:'LNG arrivals, hydro reservoir levels, nuclear availability and 2026 maintenance tracker'};
 const PV_T={single:'SINGLE DEAL VALUATION',strips:'STRIPS VALUATION',portfolio:'PORTFOLIO VALUATION'};
@@ -2529,21 +2535,20 @@ function shellNav(sec,sub){
 let _pendingFinSub=null;
 
 function gaTab(tab){
-  // Map legacy 3-tab calls to the new 5-tab structure
   const map={'sd':'lngbal','signposts':'signposts','eumetrics':'eugas'};
   const target=map[tab]||tab;
   document.querySelectorAll('[id^="gatab-"]').forEach(t=>t.classList.remove('active'));
   const el=document.getElementById('gatab-'+tab);if(el)el.classList.add('active');
-  // Trigger main tab
   const gmBtn=document.getElementById('gmtab-'+target);
   if(gmBtn) gaMainTab(target,gmBtn);
-  else gaMainTab('lngbal',document.getElementById('gmtab-lngbal'));
+  else gaMainTab('dashboard',document.getElementById('gmtab-dashboard'));
 }
 function gaMainTab(id,btn){
   document.querySelectorAll('.gmtab').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.ga-tab-sec').forEach(s=>s.classList.remove('active'));
   const sec=document.getElementById('ga-tab-'+id);if(sec)sec.classList.add('active');
   if(btn)btn.classList.add('active');
+  if(id==='dashboard'){renderGaDashboard();return;}
   if(!window.gaInitDone) gaInitAll();
   setTimeout(()=>Object.values(GA_CHARTS).forEach(c=>c&&c.resize()),80);
 }
@@ -2742,6 +2747,8 @@ function phTab(tab){
     c.innerHTML='<div id="freight-wrap"></div>';initFreight();
   } else if(tab==='cargo'){
     c.innerHTML='<div id="cargo-wrap"></div>';initCargo();
+  } else if(tab==='mktstr'){
+    c.innerHTML='<div id="mktstr-wrap"></div>';initMktStr();
   } else if(tab==='regas'){
     c.innerHTML='<div id="regas-wrap" style="background:#070b14;color:#c8d6e5;min-height:calc(100vh - 105px)"></div>';initRegas();
   } else if(tab==='acer'){
@@ -4183,7 +4190,7 @@ const FMAT_TABS=['FREIGHT CURVES','SHIP PARAMS','MATRIX','DIFFERENTIALS','HISTOR
 function renderMatrixSection(){
   const stale=F.matrixTs&&F.blngTs&&F.blngTs>F.matrixTs;
   return`<div style="background:#071a2b;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:12px">
-    <span style="color:#81c784;font-size:9px;letter-spacing:2px;font-weight:700">PERSISTENT — FEEDS CARGO PRICING</span>
+    <span style="color:#81c784;font-size:9px;letter-spacing:2px;font-weight:700">PERSISTENT — FEEDS LNG GLOBAL NETBACK</span>
     <span style="flex:1"></span>
     ${stale?'<span style="color:#ff9800;font-size:10px;font-weight:700">⚠ MATRIX STALE — update curves then UPDATE MATRIX</span>':'<span style="color:#4caf50;font-size:9px">MATRIX CURRENT</span>'}
   </div>
@@ -6158,7 +6165,7 @@ function svExportXLS(){
 function exportMatrixCSV(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);const dd=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);const rows=[['Origin',...ML]];fd.forEach(sp=>dd.forEach(dp=>rows.push([`${sp.name} → ${dp.name}`,...ML.map((_,i)=>F.matrix[sp.id]&&F.matrix[sp.id][dp.id]&&F.matrix[sp.id][dp.id][i]?F.matrix[sp.id][dp.id][i].freight.toFixed(4):'-')])));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));a.download=`freight_matrix_${new Date().toISOString().slice(0,10)}.csv`;a.click();}
 function exportMatrixXLS(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:SUPPLY.filter(p=>p.id===F.fOrig);const dd=F.fRegion==='all'?allD():allD().filter(p=>p.region===F.fRegion);const rows=[['Origin',...ML]];fd.forEach(sp=>dd.forEach(dp=>rows.push([`${sp.name} → ${dp.name}`,...ML.map((_,i)=>{const v=F.matrix[sp.id]&&F.matrix[sp.id][dp.id]&&F.matrix[sp.id][dp.id][i];return v?+v.freight.toFixed(4):'-';})])));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Freight Matrix');XLSX.writeFile(wb,`freight_matrix_${new Date().toISOString().slice(0,10)}.xlsx`);}
 
-// ══ CARGO PRICING ══
+// ══ LNG GLOBAL NETBACK ══
 const CP_SEED_PRICES={
   HH:[2.90,2.90,3.03,3.28,3.35,3.33,3.39,3.71,4.55,5.02,4.48,3.53,3.23,3.20,3.33,3.53,3.59,3.57,3.65,3.92,4.64,5.10,4.43,3.55],
   TTF:[16.857,16.857,16.876,16.878,16.870,16.868,16.868,16.939,17.022,16.983,16.865,16.080,14.030,13.094,12.866,12.824,12.834,12.743,12.657,12.699,12.926,12.773,12.581,11.813],
@@ -6380,7 +6387,7 @@ function renderCargo(){
   const wrap=document.getElementById('cargo-wrap');if(!wrap)return;
   wrap.innerHTML=`
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">CARGO PRICING MODEL</span>
+    <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">LNG GLOBAL NETBACK MODEL</span>
     <span style="flex:1"></span>
     <span style="color:#3d5070;font-size:9px;letter-spacing:.08em;margin-right:8px">v53_hh_apr2026</span><button class="f-btn sm" onclick="cpForceReset()" title="Wipe localStorage cache and reinitialise from seed" style="border-color:rgba(255,82,82,.3);color:#ef5350">⚠ RESET CACHE</button><button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading">↺ SYNC PRICES</button>
     <button class="f-btn sm" onclick="cpSyncFreight()" title="Pull latest freight $/MMBtu from validated freight matrix">↺ SYNC FREIGHT</button>
@@ -7250,6 +7257,275 @@ function cpFrDiffBasis(d){
 
 
 // ── Utility functions ────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// MARKET STRUCTURE PRICING — LNG TradeOS™
+// Mirrors the logic of Market_Structure_Calculator_v9-2-2.xlsx
+// Reads CP.fp (JKM/TTF arrays aligned to ML, same as LNG Global Netback)
+// ══════════════════════════════════════════════════════════════════════════
+let MS={
+  idx:'JKM',          // 'JKM' | 'TTF'
+  mode:'curve',       // 'curve' | 'manual'
+  nearMo:null,        // contract month label e.g. 'Aug-26'
+  farMo:null,
+  manNearLbl:'',manNearPx:null,
+  manFarLbl:'',manFarPx:null,
+  eurUsd:1.09,
+  buySell:'Sell',cpty:'',incoterm:'DES',vol:3500000,
+  apStart:'',apEnd:'',
+  hedgeCost:0,charterCost:0,bogCost:0,qualAdj:0
+};
+function msGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
+function msSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+function initMktStr(){
+  // Load persisted state
+  const saved=msGet('ms_state',null);
+  if(saved){Object.assign(MS,saved);}
+  // Default months: first two in ML
+  if(!MS.nearMo||!ML.includes(MS.nearMo))MS.nearMo=ML[0];
+  if(!MS.farMo||!ML.includes(MS.farMo)||MS.farMo===MS.nearMo)MS.farMo=ML[1];
+  // Ensure CP.fp is loaded
+  if(!CP.fp)CP.fp=cpGet('cp_fp',JSON.parse(JSON.stringify(CP_SEED_PRICES)));
+  renderMktStr();
+}
+function msSave(){msSet('ms_state',{...MS});}
+function msPxFor(mo){
+  // Returns price for a given month label from CP.fp
+  const i=ML.indexOf(mo);
+  if(i<0)return null;
+  if(MS.idx==='JKM')return CP.fp.JKM[i]!=null?+CP.fp.JKM[i]:null;
+  // TTF: stored in $/MMBtu (already converted in CP.fp)
+  return CP.fp.TTF[i]!=null?+CP.fp.TTF[i]:null;
+}
+function msMidDate(mo){
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const m3=mo.slice(0,3),yr=2000+parseInt(mo.slice(-2),10);
+  const mi=MO.indexOf(m3);if(mi<0)return null;
+  return new Date(yr,mi,15);
+}
+function renderMktStr(){
+  const w=document.getElementById('mktstr-wrap');if(!w)return;
+  const idx=MS.idx,mode=MS.mode;
+  const nearPx=mode==='curve'?msPxFor(MS.nearMo):MS.manNearPx;
+  const farPx =mode==='curve'?msPxFor(MS.farMo) :MS.manFarPx;
+  const nearLbl=mode==='curve'?MS.nearMo:MS.manNearLbl;
+  const farLbl =mode==='curve'?MS.farMo :MS.manFarLbl;
+  const nearD=msMidDate(nearLbl),farD=msMidDate(farLbl);
+  const daysBetween=nearD&&farD?Math.round((farD-nearD)/(86400000)):null;
+  const structure=(nearPx!=null&&farPx!=null)?+(nearPx-farPx).toFixed(3):null;
+  const perDay=structure!=null&&daysBetween?+(structure/daysBetween).toFixed(5):null;
+  const isContango=structure!=null?structure<0:null;
+  const shapeLabel=isContango===null?'—':isContango?'Contango ▲':'Backwardation ▼';
+  const shapeCol=isContango===null?'#546e7a':isContango?'#f87171':'#4ade80';
+
+  // AP dates
+  const apS=MS.apStart?new Date(MS.apStart):null;
+  const apE=MS.apEnd  ?new Date(MS.apEnd)  :null;
+  const apMid=apS&&apE?new Date((apS.getTime()+apE.getTime())/2):null;
+  const apWin=apS&&apE?Math.round((apE-apS)/86400000)+1:null;
+
+  // Section 3: pricing options
+  function daysToMid(contMo){
+    const cd=msMidDate(contMo);
+    if(!cd||!apMid)return null;
+    return Math.round((cd.getTime()-apMid.getTime())/86400000);
+  }
+  function adjFor(contMo){
+    const d=daysToMid(contMo);
+    return d!=null&&perDay!=null?+(d*perDay).toFixed(3):null;
+  }
+  function estPx(basePx,contMo){
+    const adj=adjFor(contMo);
+    return basePx!=null&&adj!=null?+(basePx+adj).toFixed(3):null;
+  }
+  function fmla(contLbl,basePx,adj,extra){
+    if(adj==null)return '—';
+    const total=+(adj+(MS.hedgeCost||0)+(MS.charterCost||0)+(MS.bogCost||0)+(MS.qualAdj||0)).toFixed(3);
+    const sign=total>=0?'+':'-';
+    return `${idx} ${contLbl} ${sign} ${Math.abs(total).toFixed(3)}`;
+  }
+  // M3 = one month after farMo
+  function addMonth(mo){
+    const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const m3=mo.slice(0,3),yr=2000+parseInt(mo.slice(-2),10);
+    const mi=MO.indexOf(m3);if(mi<0)return null;
+    const nm=(mi+1)%12,ny=mi===11?yr+1:yr;
+    return `${MO[nm]}-${String(ny).slice(-2)}`;
+  }
+  const m3Lbl=mode==='curve'&&farLbl?addMonth(farLbl):null;
+  const m3Px=m3Lbl?msPxFor(m3Lbl):null;
+
+  // Daily fair value table (interpolation between near and far mid-dates)
+  let dvRows='';
+  if(nearPx!=null&&farPx!=null&&nearD&&farD&&apE){
+    const startD=new Date(nearD.getFullYear(),nearD.getMonth(),1);
+    const endD=apE;
+    let d=new Date(startD);let row=0;
+    while(d<=endD&&row<70){
+      const t=(farD-nearD)!==0?(d-nearD)/(farD-nearD):0;
+      const fv=+(nearPx+(farPx-nearPx)*t).toFixed(3);
+      const vsM1=nearPx!=null?+(fv-nearPx).toFixed(4):null;
+      const inAP=apS&&apE&&d>=apS&&d<=apE;
+      const mo=d.getMonth(),yr=d.getFullYear();
+      const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const period=`${MO[mo]}-${String(yr).slice(-2)}`;
+      dvRows+=`<tr style="${inAP?'background:#0d2a1a;':''}" >
+        <td style="color:${inAP?'#4ade80':'#8a9bb5'};padding:2px 8px;font-size:10px">${d.toISOString().slice(0,10)}</td>
+        <td style="text-align:right;padding:2px 6px;color:${inAP?'#c8d6e5':'#546e7a'};font-size:10px">${row+1}</td>
+        <td style="text-align:right;padding:2px 6px;font-size:10px;color:#4fc3f7">${fv.toFixed(3)}</td>
+        <td style="text-align:right;padding:2px 6px;font-size:10px;color:${vsM1>=0?'#4ade80':'#f87171'}">${vsM1!=null?(vsM1>=0?'+':'')+vsM1.toFixed(4):'-'}</td>
+        <td style="text-align:right;padding:2px 6px;font-size:9px;color:${inAP?'#4ade80':'#3d5070'}">${inAP?'◀ '+period:period}</td>
+      </tr>`;
+      d.setDate(d.getDate()+1);row++;
+    }
+  }
+
+  // Month options for dropdowns
+  const moOpts=ML.map(m=>`<option value="${m}"${m===MS.nearMo?' selected':''}>${m}</option>`).join('');
+  const moOptsFar=ML.map(m=>`<option value="${m}"${m===MS.farMo?' selected':''}>${m}</option>`).join('');
+
+  // Unit label
+  const unit=idx==='TTF'?'$/MMBtu (converted)':'$/MMBtu';
+
+  w.innerHTML=`
+  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="color:#4fc3f7;font-size:10px;font-weight:700;letter-spacing:2px">MARKET STRUCTURE PRICING</span>
+    <div style="display:flex;gap:4px;margin-left:auto">
+      <button class="f-btn sm${idx==='JKM'?' on':''}" onclick="MS.idx='JKM';msSave();renderMktStr()">JKM</button>
+      <button class="f-btn sm${idx==='TTF'?' on':''}" onclick="MS.idx='TTF';msSave();renderMktStr()">TTF</button>
+    </div>
+    <div style="display:flex;gap:4px">
+      <button class="f-btn sm${mode==='curve'?' on':''}" onclick="MS.mode='curve';msSave();renderMktStr()">CURVE</button>
+      <button class="f-btn sm${mode==='manual'?' on':''}" onclick="MS.mode='manual';msSave();renderMktStr()">MANUAL</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid #1e3a5f">
+
+  <!-- LEFT: Deal Inputs + Market Structure -->
+  <div style="padding:16px;border-right:1px solid #1e3a5f">
+
+    <div class="f-sec">SECTION 1 — DEAL INPUTS</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:14px">
+      <div><span class="f-lbl">BUY / SELL</span>
+        <select class="f-sel" style="width:100%" onchange="MS.buySell=this.value;msSave()">
+          <option${MS.buySell==='Sell'?' selected':''}>Sell</option>
+          <option${MS.buySell==='Buy'?' selected':''}>Buy</option>
+        </select></div>
+      <div><span class="f-lbl">COUNTERPARTY</span><input class="f-inp" style="width:100%" type="text" value="${MS.cpty||''}" placeholder="e.g. PPT" onchange="MS.cpty=this.value;msSave()"></div>
+      <div><span class="f-lbl">INCOTERM</span>
+        <select class="f-sel" style="width:100%" onchange="MS.incoterm=this.value;msSave()">
+          ${['DES','FOB','DAP','FCA'].map(t=>`<option${MS.incoterm===t?' selected':''}>${t}</option>`).join('')}
+        </select></div>
+      <div><span class="f-lbl">VOLUME (MMBtu)</span><input class="f-inp" style="width:100%" type="number" step="100000" value="${MS.vol||3500000}" onchange="MS.vol=+this.value;msSave()"></div>
+      <div><span class="f-lbl">AP START DATE</span><input class="f-inp" style="width:100%" type="date" value="${MS.apStart||''}" onchange="MS.apStart=this.value;msSave();renderMktStr()"></div>
+      <div><span class="f-lbl">AP END DATE</span><input class="f-inp" style="width:100%" type="date" value="${MS.apEnd||''}" onchange="MS.apEnd=this.value;msSave();renderMktStr()"></div>
+    </div>
+    ${apMid?`<div style="font-size:9px;color:#546e7a;margin-bottom:12px">AP window: <b style="color:#8a9bb5">${apWin} days</b> · Mid-point: <b style="color:#8a9bb5">${apMid.toISOString().slice(0,10)}</b></div>`:''}
+
+    <div class="f-sec" style="margin-top:4px">SECTION 2 — MARKET STRUCTURE · ${unit}</div>
+    ${mode==='curve'?`
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <div><span class="f-lbl">NEAR MONTH ▼</span><select class="f-sel" onchange="MS.nearMo=this.value;msSave();renderMktStr()">${moOpts}</select></div>
+      <div><span class="f-lbl">FAR MONTH ▼</span><select class="f-sel" onchange="MS.farMo=this.value;msSave();renderMktStr()">${moOptsFar}</select></div>
+      ${idx==='TTF'?`<div><span class="f-lbl">EUR/USD</span><input class="f-inp" style="width:72px" type="number" step="0.01" value="${MS.eurUsd}" onchange="MS.eurUsd=+this.value;msSave();renderMktStr()"></div>`:''}
+    </div>
+    <div style="font-size:8px;color:#3d5070;margin-bottom:10px">Prices sourced from loaded curve in LNG Global Netback (cp_fp). Update there to reflect latest EOD.</div>`
+    :`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:10px">
+      <div><span class="f-lbl">NEAR MONTH (e.g. Aug-26)</span><input class="f-inp" style="width:100%" type="text" value="${MS.manNearLbl||''}" placeholder="Mmm-YY" onchange="MS.manNearLbl=this.value.trim();msSave();renderMktStr()"></div>
+      <div><span class="f-lbl">FAR MONTH (e.g. Sep-26)</span><input class="f-inp" style="width:100%" type="text" value="${MS.manFarLbl||''}" placeholder="Mmm-YY" onchange="MS.manFarLbl=this.value.trim();msSave();renderMktStr()"></div>
+      <div><span class="f-lbl">NEAR PRICE ($/MMBtu)</span><input class="f-inp" style="width:100%" type="number" step="0.001" value="${MS.manNearPx||''}" onchange="MS.manNearPx=+this.value;msSave();renderMktStr()"></div>
+      <div><span class="f-lbl">FAR PRICE ($/MMBtu)</span><input class="f-inp" style="width:100%" type="number" step="0.001" value="${MS.manFarPx||''}" onchange="MS.manFarPx=+this.value;msSave();renderMktStr()"></div>
+    </div>`}
+
+    <table style="border-collapse:collapse;width:100%;margin-bottom:4px">
+      <thead><tr>
+        <th style="text-align:left;font-size:9px;color:#546e7a;padding:4px 8px;border-bottom:1px solid #1e3a5f">FIELD</th>
+        <th style="text-align:right;font-size:9px;color:#4fc3f7;padding:4px 8px;border-bottom:1px solid #1e3a5f">${nearLbl||'NEAR'}</th>
+        <th style="text-align:right;font-size:9px;color:#ffb74d;padding:4px 8px;border-bottom:1px solid #1e3a5f">${farLbl||'FAR'}</th>
+      </tr></thead><tbody>
+        <tr><td style="padding:3px 8px;font-size:9px;color:#546e7a">Mid-Month Date</td>
+          <td style="text-align:right;padding:3px 8px;font-size:10px;color:#8a9bb5">${nearD?nearD.toISOString().slice(0,10):'—'}</td>
+          <td style="text-align:right;padding:3px 8px;font-size:10px;color:#8a9bb5">${farD?farD.toISOString().slice(0,10):'—'}</td></tr>
+        <tr><td style="padding:3px 8px;font-size:9px;color:#546e7a">${idx} Price ($/MMBtu)</td>
+          <td style="text-align:right;padding:3px 8px;font-size:13px;font-weight:600;color:#4fc3f7">${nearPx!=null?nearPx.toFixed(3):'—'}</td>
+          <td style="text-align:right;padding:3px 8px;font-size:13px;font-weight:600;color:#ffb74d">${farPx!=null?farPx.toFixed(3):'—'}</td></tr>
+        <tr><td style="padding:3px 8px;font-size:9px;color:#546e7a">Days Between Mid-Months</td>
+          <td style="text-align:right;padding:3px 8px;font-size:10px;color:#546e7a">—</td>
+          <td style="text-align:right;padding:3px 8px;font-size:11px;color:#c8d6e5">${daysBetween!=null?daysBetween:'—'}</td></tr>
+        <tr><td style="padding:3px 8px;font-size:9px;color:#546e7a">Market Structure ($/MMBtu)</td>
+          <td style="text-align:right;padding:3px 8px;color:#546e7a">—</td>
+          <td style="text-align:right;padding:3px 8px;font-size:13px;font-weight:600;color:${shapeCol}">${structure!=null?(structure>=0?'+':'')+structure.toFixed(3):'—'}</td></tr>
+        <tr><td style="padding:3px 8px;font-size:9px;color:#546e7a">Per-Day Structure ($/MMBtu/day)</td>
+          <td style="text-align:right;padding:3px 8px;color:#546e7a">—</td>
+          <td style="text-align:right;padding:3px 8px;font-size:10px;color:${shapeCol}">${perDay!=null?(perDay>=0?'+':'')+perDay.toFixed(5):'—'}</td></tr>
+        <tr style="border-top:1px solid #1e3a5f"><td style="padding:4px 8px;font-size:9px;color:#546e7a">Curve Shape</td>
+          <td style="text-align:right;padding:4px 8px;color:#546e7a">—</td>
+          <td style="text-align:right;padding:4px 8px;font-weight:700;color:${shapeCol}">${shapeLabel}</td></tr>
+      </tbody>
+    </table>
+
+    <div class="f-sec" style="margin-top:16px">COST ADJUSTMENTS ($/MMBtu)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px">
+      <div><span class="f-lbl">HEDGING COST</span><input class="f-inp" style="width:100%" type="number" step="0.001" value="${MS.hedgeCost||0}" onchange="MS.hedgeCost=+this.value;msSave();renderMktStr()"></div>
+      <div><span class="f-lbl">CHARTER COST</span><input class="f-inp" style="width:100%" type="number" step="0.001" value="${MS.charterCost||0}" onchange="MS.charterCost=+this.value;msSave();renderMktStr()"></div>
+      <div><span class="f-lbl">BOG COST</span><input class="f-inp" style="width:100%" type="number" step="0.001" value="${MS.bogCost||0}" onchange="MS.bogCost=+this.value;msSave();renderMktStr()"></div>
+      <div><span class="f-lbl">QUALITY ADJ</span><input class="f-inp" style="width:100%" type="number" step="0.001" value="${MS.qualAdj||0}" onchange="MS.qualAdj=+this.value;msSave();renderMktStr()"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Pricing formulas + daily table -->
+  <div style="padding:16px">
+    <div class="f-sec">SECTION 3 — DEAL PRICING FORMULA</div>
+    <div style="font-size:9px;color:#546e7a;margin-bottom:10px">Days from AP mid × per-day structure → premium/discount · $/MMBtu</div>
+
+    <table style="border-collapse:collapse;width:100%;margin-bottom:16px">
+      <thead><tr style="border-bottom:1px solid #1e3a5f">
+        <th style="text-align:left;font-size:9px;color:#546e7a;padding:4px 6px">CONTRACT MONTH</th>
+        <th style="text-align:right;font-size:9px;color:#546e7a;padding:4px 6px">DAYS FROM AP MID</th>
+        <th style="text-align:right;font-size:9px;color:#546e7a;padding:4px 6px">STRUCT ADJ</th>
+        <th style="text-align:right;font-size:9px;color:#546e7a;padding:4px 6px">EST PRICE</th>
+        <th style="text-align:left;font-size:9px;color:#4fc3f7;padding:4px 6px">SUGGESTED FORMULA</th>
+      </tr></thead><tbody>
+      ${[
+        {lbl:nearLbl,basePx:nearPx,isNear:true},
+        {lbl:farLbl, basePx:farPx, isNear:false},
+        m3Lbl?{lbl:m3Lbl,basePx:m3Px,isNear:false}:null
+      ].filter(Boolean).map((r,ri)=>{
+        const d=daysToMid(r.lbl);
+        const adj=adjFor(r.lbl);
+        const ep=estPx(r.basePx,r.lbl);
+        const f=fmla(r.lbl,r.basePx,adj);
+        const cols=['#4fc3f7','#ffb74d','#81c784'];
+        return`<tr style="border-bottom:0.5px solid #0d1a2e">
+          <td style="padding:5px 6px;font-size:10px;font-weight:600;color:${cols[ri]}">${MS.buySell||'Sell'} at ${r.lbl} ${idx}</td>
+          <td style="text-align:right;padding:5px 6px;font-size:10px;color:#c8d6e5">${d!=null?d:'—'}</td>
+          <td style="text-align:right;padding:5px 6px;font-size:10px;color:${adj&&adj>=0?'#4ade80':'#f87171'}">${adj!=null?(adj>=0?'+':'')+adj.toFixed(3):'—'}</td>
+          <td style="text-align:right;padding:5px 6px;font-size:10px;color:#c8d6e5">${ep!=null?ep.toFixed(3):'—'}</td>
+          <td style="padding:5px 6px;font-size:10px;font-weight:700;color:#facc15;letter-spacing:.5px">${f}</td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table>
+
+    ${(MS.hedgeCost||MS.charterCost||MS.bogCost||MS.qualAdj)?`<div style="font-size:9px;color:#546e7a;margin-bottom:12px">Cost adj included in formula: hedge ${MS.hedgeCost>=0?'+':''}${(MS.hedgeCost||0).toFixed(3)} · charter ${(MS.charterCost||0)>=0?'+':''}${(MS.charterCost||0).toFixed(3)} · BOG ${(MS.bogCost||0)>=0?'+':''}${(MS.bogCost||0).toFixed(3)} · qual ${(MS.qualAdj||0)>=0?'+':''}${(MS.qualAdj||0).toFixed(3)}</div>`:''}
+
+    <div class="f-sec">SECTION 4 — DAILY FAIR VALUE · $/MMBtu</div>
+    <div style="font-size:9px;color:#546e7a;margin-bottom:8px">Linear interpolation from near-month day 1 → AP end date · <span style="color:#4ade80">■</span> = within AP window</div>
+    ${dvRows?`<div style="max-height:360px;overflow-y:auto;border:1px solid #1e3a5f;border-radius:2px">
+      <table style="border-collapse:collapse;width:100%">
+        <thead style="position:sticky;top:0;background:#070b14;z-index:1"><tr>
+          <th style="text-align:left;font-size:9px;color:#546e7a;padding:4px 8px;border-bottom:1px solid #1e3a5f">DATE</th>
+          <th style="text-align:right;font-size:9px;color:#546e7a;padding:4px 6px;border-bottom:1px solid #1e3a5f">DAY #</th>
+          <th style="text-align:right;font-size:9px;color:#4fc3f7;padding:4px 6px;border-bottom:1px solid #1e3a5f">FAIR VALUE</th>
+          <th style="text-align:right;font-size:9px;color:#546e7a;padding:4px 6px;border-bottom:1px solid #1e3a5f">VS M1</th>
+          <th style="text-align:right;font-size:9px;color:#546e7a;padding:4px 6px;border-bottom:1px solid #1e3a5f">PERIOD</th>
+        </tr></thead><tbody>${dvRows}</tbody>
+      </table></div>`
+    :`<div style="padding:20px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">Set AP start + end dates and select contract months to generate the daily fair value table</div>`}
+  </div>
+  </div>`;
+}
 function cpForceReset(){
   ['cp_fp','cp_phys','cp_freight','cp_freight_ver','cp_phys_ov','cp_liqfee',
    'cp_hist_snaps','cp_global_arb_idx','cp_cogh_mode','cp_hh_slope'
@@ -9523,11 +9799,12 @@ window.gdClearAllCache = function(){
 };
 
 function gdRerenderActive(){
-  // Find which main tab is active and re-render
   const active = document.querySelector('.ga-tab-sec.active');
   if(!active) return;
   const id = active.id;
-  if(id==='ga-tab-eugas'){
+  if(id==='ga-tab-dashboard'){
+    renderGaDashboard();
+  } else if(id==='ga-tab-eugas'){
     const activeSub = document.querySelector('#ga-eugas-subtabs .ga-stab.active');
     const sub = activeSub?.textContent?.toLowerCase().includes('pipeline')?'pipeline':
                 activeSub?.textContent?.toLowerCase().includes('lng')?'lngimp':'balance';
@@ -9546,6 +9823,150 @@ function gdRerenderActive(){
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// GAS & LNG ANALYTICS — DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════
+function renderGaDashboard(){
+  const b=document.getElementById('ga-dashboard-body');if(!b)return;
+  // Ensure live data is loaded
+  if(!window.gaInitDone) gaInitAll();
+
+  // ── Helper: get latest storage fill % ──
+  function getStoragePct(){
+    if(!GD||!GD.storage||!Object.keys(GD.storage).length)return null;
+    const dates=Object.keys(GD.storage).sort();
+    const latest=GD.storage[dates[dates.length-1]];
+    if(!latest)return null;
+    // latest is {stored, cap} or numeric in mcm
+    if(typeof latest==='object'&&latest.pct!=null)return latest.pct;
+    if(typeof latest==='object'&&latest.stored&&latest.cap)return+(latest.stored/latest.cap*100).toFixed(1);
+    return null;
+  }
+  function getStorageLatestDate(){
+    if(!GD||!GD.storage)return null;
+    const dates=Object.keys(GD.storage).sort();
+    return dates[dates.length-1]||null;
+  }
+  function getStorageFill(){
+    if(!GD||!GD.storage)return null;
+    const dates=Object.keys(GD.storage).sort();
+    const latest=GD.storage[dates[dates.length-1]];
+    if(!latest)return null;
+    if(typeof latest==='object'&&latest.stored!=null)return latest.stored;
+    return null;
+  }
+  function getStorageCap(){
+    if(!GD||!GD.storage)return null;
+    const dates=Object.keys(GD.storage).sort();
+    const latest=GD.storage[dates[dates.length-1]];
+    if(typeof latest==='object'&&latest.cap!=null)return latest.cap;
+    return null;
+  }
+
+  // ── Helper: get latest LNG regas ──
+  function getLNGLatest(){
+    if(!GD||!GD.lngTotal||!Object.keys(GD.lngTotal).length)return null;
+    const dates=Object.keys(GD.lngTotal).sort();
+    const recent=dates.slice(-7);
+    const vals=recent.map(d=>GD.lngTotal[d]).filter(v=>v!=null&&!isNaN(v));
+    if(!vals.length)return null;
+    return{val:+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(0),date:dates[dates.length-1]};
+  }
+
+  // ── FP curve data from cp_fp ──
+  const fp=cpGet('cp_fp',null)||CP_SEED_PRICES;
+  const jkmM1=fp.JKM[0],ttfM1=fp.TTF[0],hhM1=fp.HH?fp.HH[0]:null;
+  const jkmM2=fp.JKM[1],ttfM2=fp.TTF[1];
+  const jkmTtf=jkmM1!=null&&ttfM1!=null?+(jkmM1-ttfM1).toFixed(3):null;
+  const jkmStr=jkmM1!=null&&jkmM2!=null?+(jkmM1-jkmM2).toFixed(3):null;
+  const ttfStr=ttfM1!=null&&ttfM2!=null?+(ttfM1-ttfM2).toFixed(3):null;
+
+  const storagePct=getStoragePct();
+  const storageFill=getStorageFill();
+  const storageCap=getStorageCap();
+  const storageDate=getStorageLatestDate();
+  const lngLatest=getLNGLatest();
+
+  function kpi(label,val,unit,note,col,detail){
+    const vStr=val!=null?val:'—';
+    const c=col||'#4fc3f7';
+    return`<div class="ga-kpi">
+      <div class="ga-kpi-lbl">${label}</div>
+      <div class="ga-kpi-val" style="color:${c}">${vStr}<span class="ga-kpi-unit"> ${unit||''}</span></div>
+      ${note?`<div class="ga-kpi-note">${note}</div>`:''}
+      ${detail?`<div class="ga-kpi-note" style="margin-top:3px">${detail}</div>`:''}
+    </div>`;
+  }
+
+  function arrow(v){return v==null?'':v>0?'▲':v<0?'▼':'►';}
+  function signCol(v,positiveGood=true){if(v==null)return'#546e7a';if(v>0)return positiveGood?'#4ade80':'#f87171';if(v<0)return positiveGood?'#f87171':'#4ade80';return'#c8d6e5';}
+
+  // Storage bar
+  const barPct=storagePct!=null?Math.min(storagePct,100):0;
+  const barCol=barPct>70?'#4ade80':barPct>40?'#facc15':'#f87171';
+
+  // JKM curve shape
+  const jkmShape=jkmStr!=null?(jkmStr>0?'Backwardation ▼':'Contango ▲'):'—';
+  const ttfShape=ttfStr!=null?(ttfStr>0?'Backwardation ▼':'Contango ▲'):'—';
+
+  b.innerHTML=`
+  <div style="padding:18px 20px">
+
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:16px">
+      <div style="font-size:10px;letter-spacing:2px;color:var(--b)">GAS & LNG ANALYTICS · DASHBOARD</div>
+      <div style="font-size:8px;color:#3d5070">Live data where available · curves from loaded EOD</div>
+    </div>
+
+    <!-- ROW 1: Forward Curve KPIs -->
+    <div class="ga-sec">FORWARD CURVE SNAPSHOT · $/MMBtu <span style="font-size:8px;color:#3d5070;font-weight:400;letter-spacing:0">from cp_fp · ${ML[0]} prompt</span></div>
+    <div class="ga-g4" style="margin-bottom:20px">
+      ${kpi('JKM M1',jkmM1!=null?jkmM1.toFixed(3):null,'$/MMBtu',ML[0],'#4fc3f7')}
+      ${kpi('TTF M1',ttfM1!=null?ttfM1.toFixed(3):null,'$/MMBtu',ML[0],'#81c784')}
+      ${hhM1!=null?kpi('HH M1',hhM1.toFixed(3),'$/MMBtu',ML[0],'#ffb74d'):''}
+      ${kpi('JKM−TTF Spread',jkmTtf!=null?(jkmTtf>=0?'+':'')+jkmTtf.toFixed(3):null,'$/MMBtu',ML[0],signCol(jkmTtf))}
+    </div>
+
+    <!-- ROW 2: Curve Structure -->
+    <div class="ga-sec">CURVE STRUCTURE · M1 vs M2</div>
+    <div class="ga-g4" style="margin-bottom:20px">
+      ${kpi('JKM M1−M2',jkmStr!=null?(jkmStr>=0?'+':'')+jkmStr.toFixed(3):null,'$/MMBtu',jkmShape,signCol(jkmStr))}
+      ${kpi('TTF M1−M2',ttfStr!=null?(ttfStr>=0?'+':'')+ttfStr.toFixed(3):null,'$/MMBtu',ttfShape,signCol(ttfStr))}
+      ${kpi('JKM M2',jkmM2!=null?jkmM2.toFixed(3):null,'$/MMBtu',ML[1],'#546e7a')}
+      ${kpi('TTF M2',ttfM2!=null?ttfM2.toFixed(3):null,'$/MMBtu',ML[1],'#546e7a')}
+    </div>
+
+    <!-- ROW 3: EU Fundamentals -->
+    <div class="ga-sec">EU FUNDAMENTALS <span class="ga-tag ga-tag-live">LIVE</span><span style="font-size:8px;color:#3d5070;font-weight:400;letter-spacing:0;margin-left:8px">GIE AGSI+ · ${storageDate||'loading…'}</span></div>
+    <div class="ga-g4" style="margin-bottom:20px">
+      <div class="ga-kpi" style="grid-column:span 2">
+        <div class="ga-kpi-lbl">EU STORAGE FILL LEVEL</div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <div class="ga-kpi-val" style="color:${barCol}">${storagePct!=null?storagePct.toFixed(1)+'%':'—'}</div>
+          ${storageFill&&storageCap?`<span class="ga-kpi-unit">${(storageFill/1000).toFixed(0)} / ${(storageCap/1000).toFixed(0)} TWh</span>`:''}
+        </div>
+        <div class="ga-stor-bar-bg" style="margin-top:8px"><div style="width:${barPct}%;height:100%;background:${barCol};transition:width .4s"></div></div>
+        <div class="ga-kpi-note">5Y range context available in EU Storage tab</div>
+      </div>
+      ${kpi('LNG REGAS (7d avg)',lngLatest?+(lngLatest.val/1000).toFixed(1):null,'TWh/d',lngLatest?'as of '+lngLatest.date:'loading…','#ffb74d')}
+      <div class="ga-kpi">
+        <div class="ga-kpi-lbl">DATA STATUS</div>
+        <div id="ga-bal-sources" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+        <div class="ga-kpi-note" style="margin-top:6px">Click REFRESH ALL to update</div>
+      </div>
+    </div>
+
+    <!-- ROW 4: Quick Nav -->
+    <div class="ga-sec">QUICK NAVIGATION</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${[['LNG BALANCE','lngbal'],['EU GAS BALANCE','eugas'],['EU STORAGE','storage'],['LNG REGAS','regas'],['SIGNPOSTS','signposts']].map(([l,id])=>
+        `<button class="gbtn" onclick="gaMainTab('${id}',document.getElementById('gmtab-${id}'))">${l} →</button>`
+      ).join('')}
+    </div>
+
+  </div>`;
+  // Update status dots now that element exists
+  setTimeout(gaUpdateStatusDots,100);
+}
 function gaSetRefreshBtn(loading){
   const b=document.getElementById('ga-refresh-btn');if(!b)return;
   b.textContent=loading?'⟳ LOADING...':'↺ REFRESH ALL';b.disabled=loading;
@@ -10347,6 +10768,54 @@ function indInit() {
   setTimeout(renderBalance, 50);
 }
 window.indInit = indInit;
+
+function lngbalCountry(cty,btn){
+  // Toggle between China and India panes
+  document.querySelectorAll('#lngbal-cty-bar .cs-tab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  document.getElementById('lngbal-china').style.display=cty==='china'?'':'none';
+  document.getElementById('lngbal-india').style.display=cty==='india'?'':'none';
+  if(cty==='india')indInit();
+}
+window.lngbalCountry=lngbalCountry;
+
+function indBuildShell(){
+  return`
+  <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS &amp; LNG ANALYTICS · INDIA SIGNPOSTS</div>
+  <div style="display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px">
+    <div style="padding:10px 16px;font-size:10px;letter-spacing:1px;color:var(--b);border-bottom:2px solid var(--b)">INDIA GAS BALANCE</div>
+  </div>
+  <div id="ind-balance-body">
+    <div style="padding:24px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">
+      Load India gas balance data by uploading a CSV via the file upload button in the top bar<br>
+      <span style="color:#546e7a">(CSV key: india_gas_balance · columns: Month, Production, LNG_Imports, Pipeline_Imports, Demand, Storage)</span>
+    </div>
+  </div>`;
+}
+
+function renderBalance(){
+  const el=document.getElementById('ind-balance-body');if(!el)return;
+  let raw;
+  try{const s=localStorage.getItem('lng_india_gb_v1');raw=s?JSON.parse(s):null;}catch{raw=null;}
+  if(!raw||!raw.data||!raw.data.length){
+    el.innerHTML=`<div style="padding:24px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">
+      No India gas balance data loaded yet.<br>Upload a CSV via the top-bar file upload (key: india_gas_balance).
+    </div>`;
+    return;
+  }
+  const rows=raw.data;
+  const cols=Object.keys(rows[0]||{}).filter(k=>k!=='Month'&&k!=='month');
+  const updated=raw.ts?new Date(raw.ts).toISOString().slice(0,10):'unknown';
+  el.innerHTML=`
+  <div style="font-size:9px;color:#546e7a;margin-bottom:10px">${rows.length} months loaded · updated ${updated}</div>
+  <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+  <table class="ga-tbl"><thead><tr>
+    <th class="L">MONTH</th>${cols.map(c=>`<th>${c.replace(/_/g,' ')}</th>`).join('')}
+  </tr></thead><tbody>
+    ${rows.map(r=>`<tr><td class="L">${r.Month||r.month||'—'}</td>${cols.map(c=>`<td>${r[c]!=null?r[c]:'-'}</td>`).join('')}</tr>`).join('')}
+  </tbody></table></div>`;
+}
+window.renderBalance=renderBalance;
 
 
 
