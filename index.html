@@ -329,8 +329,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
     <div class="cards-grid">
       <div class="mod-card" onclick="shellNav('physical','freight')"><span class="card-num">01</span><div class="card-ttl">Freight Rate Calculator</div><div class="card-desc">Voyage cost estimation across global LNG shipping routes with BLNG curves and per-month positioning</div><span class="s-tag tag-phy">PHYSICAL</span></div>
       <div class="mod-card" onclick="shellNav('physical','cargo')"><span class="card-num">02</span><div class="card-ttl">LNG Global Netback</div><div class="card-desc">USGC/WAF/Oman arb, DES pricing, FOB netback matrix and global cargo economics</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','regas')"><span class="card-num">03</span><div class="card-ttl">EU Regas Model</div><div class="card-desc">European regasification terminal pricing, cost graphs, netback analysis and slot valuation</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','acer')"><span class="card-num">04</span><div class="card-ttl">Historical ACER Price</div><div class="card-desc">ACER daily DES physical NWE · SE · EU — seasonal scatter vs history 2023–2026</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','mktstr')"><span class="card-num">03</span><div class="card-ttl">Market Structure Pricing</div><div class="card-desc">Near/far curve structure, per-day roll and pricing formula generation for JKM and TTF deals</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','regas')"><span class="card-num">04</span><div class="card-ttl">EU Regas Model</div><div class="card-desc">European regasification terminal pricing, cost graphs, netback analysis and slot valuation</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','acer')"><span class="card-num">05</span><div class="card-ttl">Historical ACER Price</div><div class="card-desc">ACER daily DES physical NWE · SE · EU — seasonal scatter vs history 2023–2026</div><span class="s-tag tag-phy">PHYSICAL</span></div>
     </div>
   </div>
   <div class="mod-group">
@@ -7298,9 +7299,14 @@ function msPxFor(mo){
 }
 function msMidDate(mo){
   const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const m3=mo.slice(0,3),yr=2000+parseInt(mo.slice(-2),10);
+  const m3=mo?mo.slice(0,3):'',yr=mo?2000+parseInt(mo.slice(-2),10):0;
   const mi=MO.indexOf(m3);if(mi<0)return null;
-  return new Date(yr,mi,15);
+  // Use UTC to avoid timezone display drift
+  return new Date(Date.UTC(yr,mi,15));
+}
+function msMidDateStr(mo){
+  const d=msMidDate(mo);if(!d)return null;
+  return d.toISOString().slice(0,10); // always YYYY-MM-15 regardless of timezone
 }
 function renderMktStr(){
   const w=document.getElementById('mktstr-wrap');if(!w)return;
@@ -7318,8 +7324,8 @@ function renderMktStr(){
   const shapeCol=isContango===null?'#546e7a':isContango?'#f87171':'#4ade80';
 
   // AP dates
-  const apS=MS.apStart?new Date(MS.apStart):null;
-  const apE=MS.apEnd  ?new Date(MS.apEnd)  :null;
+  const apS=MS.apStart?new Date(MS.apStart+'T00:00:00Z'):null;
+  const apE=MS.apEnd  ?new Date(MS.apEnd  +'T00:00:00Z'):null;
   const apMid=apS&&apE?new Date((apS.getTime()+apE.getTime())/2):null;
   const apWin=apS&&apE?Math.round((apE-apS)/86400000)+1:null;
 
@@ -7357,7 +7363,7 @@ function renderMktStr(){
   // Daily fair value table (interpolation between near and far mid-dates)
   let dvRows='';
   if(nearPx!=null&&farPx!=null&&nearD&&farD&&apE){
-    const startD=new Date(nearD.getFullYear(),nearD.getMonth(),1);
+    const startD=new Date(Date.UTC(nearD.getUTCFullYear(),nearD.getUTCMonth(),1));
     const endD=apE;
     let d=new Date(startD);let row=0;
     while(d<=endD&&row<70){
@@ -7365,17 +7371,17 @@ function renderMktStr(){
       const fv=+(nearPx+(farPx-nearPx)*t).toFixed(3);
       const vsM1=nearPx!=null?+(fv-nearPx).toFixed(4):null;
       const inAP=apS&&apE&&d>=apS&&d<=apE;
-      const mo=d.getMonth(),yr=d.getFullYear();
       const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const period=`${MO[mo]}-${String(yr).slice(-2)}`;
+      const period=`${MO[d.getUTCMonth()]}-${String(d.getUTCFullYear()).slice(-2)}`;
+      const dateStr=d.toISOString().slice(0,10);
       dvRows+=`<tr style="${inAP?'background:#0d2a1a;':''}" >
-        <td style="color:${inAP?'#4ade80':'#8a9bb5'};padding:2px 8px;font-size:10px">${d.toISOString().slice(0,10)}</td>
+        <td style="color:${inAP?'#4ade80':'#8a9bb5'};padding:2px 8px;font-size:10px">${dateStr}</td>
         <td style="text-align:right;padding:2px 6px;color:${inAP?'#c8d6e5':'#546e7a'};font-size:10px">${row+1}</td>
         <td style="text-align:right;padding:2px 6px;font-size:10px;color:#4fc3f7">${fv.toFixed(3)}</td>
         <td style="text-align:right;padding:2px 6px;font-size:10px;color:${vsM1>=0?'#4ade80':'#f87171'}">${vsM1!=null?(vsM1>=0?'+':'')+vsM1.toFixed(4):'-'}</td>
         <td style="text-align:right;padding:2px 6px;font-size:9px;color:${inAP?'#4ade80':'#3d5070'}">${inAP?'◀ '+period:period}</td>
       </tr>`;
-      d.setDate(d.getDate()+1);row++;
+      d=new Date(d.getTime()+86400000);row++;
     }
   }
 
@@ -7420,7 +7426,7 @@ function renderMktStr(){
       <div><span class="f-lbl">AP START DATE</span><input class="f-inp" style="width:100%" type="date" value="${MS.apStart||''}" onchange="MS.apStart=this.value;msSave();renderMktStr()"></div>
       <div><span class="f-lbl">AP END DATE</span><input class="f-inp" style="width:100%" type="date" value="${MS.apEnd||''}" onchange="MS.apEnd=this.value;msSave();renderMktStr()"></div>
     </div>
-    ${apMid?`<div style="font-size:9px;color:#546e7a;margin-bottom:12px">AP window: <b style="color:#8a9bb5">${apWin} days</b> · Mid-point: <b style="color:#8a9bb5">${apMid.toISOString().slice(0,10)}</b></div>`:''}
+  ${apMid?`<div style="font-size:9px;color:#546e7a;margin-bottom:12px">AP window: <b style="color:#8a9bb5">${apWin} days</b> · Mid-point: <b style="color:#8a9bb5">${apMid.toISOString().slice(0,10)}</b></div>`:''}
 
     <div class="f-sec" style="margin-top:4px">SECTION 2 — MARKET STRUCTURE · ${unit}</div>
     ${mode==='curve'?`
@@ -7445,8 +7451,8 @@ function renderMktStr(){
         <th style="text-align:right;font-size:9px;color:#ffb74d;padding:4px 8px;border-bottom:1px solid #1e3a5f">${farLbl||'FAR'}</th>
       </tr></thead><tbody>
         <tr><td style="padding:3px 8px;font-size:9px;color:#546e7a">Mid-Month Date</td>
-          <td style="text-align:right;padding:3px 8px;font-size:10px;color:#8a9bb5">${nearD?nearD.toISOString().slice(0,10):'—'}</td>
-          <td style="text-align:right;padding:3px 8px;font-size:10px;color:#8a9bb5">${farD?farD.toISOString().slice(0,10):'—'}</td></tr>
+          <td style="text-align:right;padding:3px 8px;font-size:10px;color:#8a9bb5">${msMidDateStr(nearLbl)||'—'}</td>
+          <td style="text-align:right;padding:3px 8px;font-size:10px;color:#8a9bb5">${msMidDateStr(farLbl)||'—'}</td></tr>
         <tr><td style="padding:3px 8px;font-size:9px;color:#546e7a">${idx} Price ($/MMBtu)</td>
           <td style="text-align:right;padding:3px 8px;font-size:13px;font-weight:600;color:#4fc3f7">${nearPx!=null?nearPx.toFixed(3):'—'}</td>
           <td style="text-align:right;padding:3px 8px;font-size:13px;font-weight:600;color:#ffb74d">${farPx!=null?farPx.toFixed(3):'—'}</td></tr>
@@ -9569,11 +9575,15 @@ async function gdLoadPipelineYearFast(year){
             const mcm=(parseFloat(d.value||0)||0)*ENTSOG_TO_MCM;
             if(!GD.pipeline[route][mo]) GD.pipeline[route][mo]={mcm:0,days:0};
             GD.pipeline[route][mo].mcm+=mcm; GD.pipeline[route][mo].days+=1;
+            // Daily store — needed for dashboard latest-day values
+            if(!GD.pipeDaily[route]) GD.pipeDaily[route]={};
+            if(!GD.pipeDaily[route][date]) GD.pipeDaily[route][date]=0;
+            GD.pipeDaily[route][date]+=mcm;
           });
         }catch(e){ console.warn(`ENTSOG ${route}/${label}: ${e.message}`); }
         await new Promise(r=>setTimeout(r,400));
       }
-      // Re-render after each route completes
+      // Re-render after each route completes so dashboard updates progressively
       gdRerenderActive();
     }
     gaUpdateStatusDots();
@@ -9828,143 +9838,213 @@ function gdRerenderActive(){
 // ══════════════════════════════════════════════════════════════════════════
 function renderGaDashboard(){
   const b=document.getElementById('ga-dashboard-body');if(!b)return;
-  // Ensure live data is loaded
   if(!window.gaInitDone) gaInitAll();
 
-  // ── Helper: get latest storage fill % ──
-  function getStoragePct(){
-    if(!GD||!GD.storage||!Object.keys(GD.storage).length)return null;
-    const dates=Object.keys(GD.storage).sort();
-    const latest=GD.storage[dates[dates.length-1]];
-    if(!latest)return null;
-    // latest is {stored, cap} or numeric in mcm
-    if(typeof latest==='object'&&latest.pct!=null)return latest.pct;
-    if(typeof latest==='object'&&latest.stored&&latest.cap)return+(latest.stored/latest.cap*100).toFixed(1);
+  // ── Data helpers ────────────────────────────────────────────────────────
+
+  // Latest daily storage record {pct, twh, inj, wdr, net, date}
+  function latestStorDaily(){
+    if(!GD.storDaily||!Object.keys(GD.storDaily).length)return null;
+    const dates=Object.keys(GD.storDaily).sort();
+    const d=GD.storDaily[dates[dates.length-1]];
+    return d?{...d,date:dates[dates.length-1]}:null;
+  }
+
+  // Latest daily LNG sendout {sendGWh, dtrsGWh, date}
+  function latestLngDaily(){
+    if(!GD.lngDaily||!Object.keys(GD.lngDaily).length)return null;
+    const dates=Object.keys(GD.lngDaily).sort();
+    const d=GD.lngDaily[dates[dates.length-1]];
+    return d?{...d,date:dates[dates.length-1]}:null;
+  }
+
+  // Latest pipeline value for a route in mcm/d — daily preferred, monthly avg fallback
+  function latestPipe(route){
+    const pd=GD.pipeDaily[route];
+    if(pd&&Object.keys(pd).length){
+      const dates=Object.keys(pd).sort();
+      const lat=dates[dates.length-1];
+      return{mcm:pd[lat],date:lat,isDaily:true};
+    }
+    // Monthly fallback: last available month avg
+    const pm=GD.pipeline[route];
+    if(pm&&Object.keys(pm).length){
+      const months=Object.keys(pm).sort();
+      const lat=months[months.length-1];
+      const{mcm,days}=pm[lat];
+      return{mcm:days>0?mcm/days:0,date:lat,isDaily:false};
+    }
     return null;
   }
-  function getStorageLatestDate(){
-    if(!GD||!GD.storage)return null;
-    const dates=Object.keys(GD.storage).sort();
-    return dates[dates.length-1]||null;
+
+  // GWh/d → mcm/d
+  const gwh2mcm=v=>v!=null?+(v/10.55).toFixed(1):null;
+
+  // ── Pull values ─────────────────────────────────────────────────────────
+  const stor=latestStorDaily();
+  const lng=latestLngDaily();
+  const pipNor=latestPipe('norway');
+  // Algeria = italy + spain combined
+  function algCombined(){
+    const routes=['algeria_italy','algeria_spain'];
+    // Try daily first (both must have daily for combined daily)
+    const dailies=routes.map(r=>GD.pipeDaily[r]);
+    if(dailies.every(d=>d&&Object.keys(d).length)){
+      const dates0=Object.keys(dailies[0]).sort();
+      const dates1=Object.keys(dailies[1]).sort();
+      const lat=dates0[dates0.length-1]>dates1[dates1.length-1]?dates1[dates1.length-1]:dates0[dates0.length-1];
+      return{mcm:(dailies[0][lat]||0)+(dailies[1][lat]||0),date:lat,isDaily:true};
+    }
+    // Monthly fallback
+    const months0=Object.keys(GD.pipeline.algeria_italy||{}).sort();
+    const months1=Object.keys(GD.pipeline.algeria_spain||{}).sort();
+    if(!months0.length&&!months1.length)return null;
+    const lat=(months0[months0.length-1]||'')>(months1[months1.length-1]||'')?months1[months1.length-1]:months0[months0.length-1];
+    const m0=GD.pipeline.algeria_italy[lat]||{mcm:0,days:0};
+    const m1=GD.pipeline.algeria_spain[lat]||{mcm:0,days:0};
+    const days=Math.max(m0.days,m1.days,1);
+    return{mcm:(m0.mcm+m1.mcm)/days,date:lat,isDaily:false};
   }
-  function getStorageFill(){
-    if(!GD||!GD.storage)return null;
-    const dates=Object.keys(GD.storage).sort();
-    const latest=GD.storage[dates[dates.length-1]];
-    if(!latest)return null;
-    if(typeof latest==='object'&&latest.stored!=null)return latest.stored;
-    return null;
+  const pipAlg=algCombined();
+  const pipTap=latestPipe('tap');
+  const pipUkr=latestPipe('russia'); // Russia route = Ukraine corridor entry points
+
+  // ── Derived values ──────────────────────────────────────────────────────
+  const storPct=stor?+stor.pct.toFixed(1):null;
+  // net: positive = net withdrawal, negative = net injection (AGSI convention)
+  const netRaw=stor?stor.net:null;          // GWh/d
+  const netMcm=netRaw!=null?gwh2mcm(netRaw):null; // mcm/d
+  const isWithdrawal=netMcm!=null?netMcm>0.5:null;
+  const isInjection =netMcm!=null?netMcm<-0.5:null;
+  const netLabel=isWithdrawal?'Withdrawal':isInjection?'Injection':'Balanced';
+  const netCol=isWithdrawal?'#f87171':isInjection?'#4ade80':'#facc15';
+
+  const lngMcm=lng?gwh2mcm(lng.sendGWh):null;
+  // LNG character: rough EU seasonal benchmarks
+  function lngChar(v){
+    if(v==null)return{txt:'—',col:'#546e7a'};
+    if(v>280)return{txt:'VERY HIGH',col:'#f87171'};
+    if(v>200)return{txt:'HIGH',col:'#fb923c'};
+    if(v>130)return{txt:'MODERATE',col:'#facc15'};
+    if(v>70) return{txt:'LOW',col:'#4ade80'};
+    return{txt:'VERY LOW',col:'#81c784'};
   }
-  function getStorageCap(){
-    if(!GD||!GD.storage)return null;
-    const dates=Object.keys(GD.storage).sort();
-    const latest=GD.storage[dates[dates.length-1]];
-    if(typeof latest==='object'&&latest.cap!=null)return latest.cap;
-    return null;
-  }
+  const lngCh=lngChar(lngMcm);
 
-  // ── Helper: get latest LNG regas ──
-  function getLNGLatest(){
-    if(!GD||!GD.lngTotal||!Object.keys(GD.lngTotal).length)return null;
-    const dates=Object.keys(GD.lngTotal).sort();
-    const recent=dates.slice(-7);
-    const vals=recent.map(d=>GD.lngTotal[d]).filter(v=>v!=null&&!isNaN(v));
-    if(!vals.length)return null;
-    return{val:+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(0),date:dates[dates.length-1]};
-  }
-
-  // ── FP curve data from cp_fp ──
-  const fp=cpGet('cp_fp',null)||CP_SEED_PRICES;
-  const jkmM1=fp.JKM[0],ttfM1=fp.TTF[0],hhM1=fp.HH?fp.HH[0]:null;
-  const jkmM2=fp.JKM[1],ttfM2=fp.TTF[1];
-  const jkmTtf=jkmM1!=null&&ttfM1!=null?+(jkmM1-ttfM1).toFixed(3):null;
-  const jkmStr=jkmM1!=null&&jkmM2!=null?+(jkmM1-jkmM2).toFixed(3):null;
-  const ttfStr=ttfM1!=null&&ttfM2!=null?+(ttfM1-ttfM2).toFixed(3):null;
-
-  const storagePct=getStoragePct();
-  const storageFill=getStorageFill();
-  const storageCap=getStorageCap();
-  const storageDate=getStorageLatestDate();
-  const lngLatest=getLNGLatest();
-
-  function kpi(label,val,unit,note,col,detail){
-    const vStr=val!=null?val:'—';
-    const c=col||'#4fc3f7';
-    return`<div class="ga-kpi">
-      <div class="ga-kpi-lbl">${label}</div>
-      <div class="ga-kpi-val" style="color:${c}">${vStr}<span class="ga-kpi-unit"> ${unit||''}</span></div>
-      ${note?`<div class="ga-kpi-note">${note}</div>`:''}
-      ${detail?`<div class="ga-kpi-note" style="margin-top:3px">${detail}</div>`:''}
-    </div>`;
-  }
-
-  function arrow(v){return v==null?'':v>0?'▲':v<0?'▼':'►';}
-  function signCol(v,positiveGood=true){if(v==null)return'#546e7a';if(v>0)return positiveGood?'#4ade80':'#f87171';if(v<0)return positiveGood?'#f87171':'#4ade80';return'#c8d6e5';}
-
-  // Storage bar
-  const barPct=storagePct!=null?Math.min(storagePct,100):0;
+  // Storage bar colour
+  const barPct=storPct!=null?Math.min(storPct,100):0;
   const barCol=barPct>70?'#4ade80':barPct>40?'#facc15':'#f87171';
 
-  // JKM curve shape
-  const jkmShape=jkmStr!=null?(jkmStr>0?'Backwardation ▼':'Contango ▲'):'—';
-  const ttfShape=ttfStr!=null?(ttfStr>0?'Backwardation ▼':'Contango ▲'):'—';
+  // ── FP curve snapshot from cp_fp ────────────────────────────────────────
+  const fp=cpGet('cp_fp',null)||CP_SEED_PRICES;
+  const jkmM1=fp.JKM[0],ttfM1=fp.TTF[0];
+  const jkmTtf=jkmM1!=null&&ttfM1!=null?+(jkmM1-ttfM1).toFixed(3):null;
+  const jkmStr=fp.JKM[1]!=null?+(jkmM1-fp.JKM[1]).toFixed(3):null;
+  const ttfStr=fp.TTF[1]!=null?+(ttfM1-fp.TTF[1]).toFixed(3):null;
+
+  // ── Render helpers ──────────────────────────────────────────────────────
+  function dateTag(d,isDaily){
+    if(!d)return'<span style="color:#3d5070;font-size:8px">loading…</span>';
+    const label=isDaily===false?d+' avg':d;
+    return`<span style="color:#3d5070;font-size:8px">${label}</span>`;
+  }
+  function box(content){
+    return`<div style="background:#070f1e;border:1px solid #1e3a5f;border-radius:3px;padding:14px 16px">${content}</div>`;
+  }
+  function lbl(t){return`<div style="font-size:8px;letter-spacing:1.5px;color:#546e7a;margin-bottom:6px">${t}</div>`;}
+  function bigVal(v,unit,col){
+    const c=col||'#c8d6e5';
+    return`<div style="font-size:22px;font-weight:700;color:${c};line-height:1;margin-bottom:3px">${v!=null?v:'—'}<span style="font-size:11px;font-weight:400;color:#546e7a;margin-left:3px">${unit||''}</span></div>`;
+  }
+  function subLine(t,col){return`<div style="font-size:10px;color:${col||'#546e7a'};margin-top:2px">${t}</div>`;}
+  function pipeBox(title,data,col){
+    const v=data?+data.mcm.toFixed(1):null;
+    return box(`
+      ${lbl(title)}
+      ${bigVal(v!=null?v.toFixed(1):null,'mcm/d',v!=null&&v>0?col:'#546e7a')}
+      ${subLine(data?dateTag(data.date,data.isDaily):'<span style="color:#3d5070;font-size:8px">loading…</span>')}
+    `);
+  }
 
   b.innerHTML=`
-  <div style="padding:18px 20px">
+  <div style="padding:18px 20px 24px">
 
-    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:16px">
-      <div style="font-size:10px;letter-spacing:2px;color:var(--b)">GAS & LNG ANALYTICS · DASHBOARD</div>
-      <div style="font-size:8px;color:#3d5070">Live data where available · curves from loaded EOD</div>
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:18px;border-bottom:1px solid #0d1a2e;padding-bottom:12px">
+      <div style="font-size:10px;letter-spacing:2px;color:var(--b);font-weight:700">EU FUNDAMENTALS DASHBOARD</div>
+      <div style="font-size:8px;color:#3d5070">Latest available · GIE AGSI+ · GIE ALSI · ENTSOG</div>
+      <div id="ga-bal-sources" style="display:flex;gap:8px;margin-left:auto;align-items:center"></div>
     </div>
 
-    <!-- ROW 1: Forward Curve KPIs -->
-    <div class="ga-sec">FORWARD CURVE SNAPSHOT · $/MMBtu <span style="font-size:8px;color:#3d5070;font-weight:400;letter-spacing:0">from cp_fp · ${ML[0]} prompt</span></div>
-    <div class="ga-g4" style="margin-bottom:20px">
-      ${kpi('JKM M1',jkmM1!=null?jkmM1.toFixed(3):null,'$/MMBtu',ML[0],'#4fc3f7')}
-      ${kpi('TTF M1',ttfM1!=null?ttfM1.toFixed(3):null,'$/MMBtu',ML[0],'#81c784')}
-      ${hhM1!=null?kpi('HH M1',hhM1.toFixed(3),'$/MMBtu',ML[0],'#ffb74d'):''}
-      ${kpi('JKM−TTF Spread',jkmTtf!=null?(jkmTtf>=0?'+':'')+jkmTtf.toFixed(3):null,'$/MMBtu',ML[0],signCol(jkmTtf))}
-    </div>
+    <!-- ROW 1: Storage -->
+    <div style="font-size:8px;letter-spacing:2px;color:#4fc3f7;margin-bottom:8px">STORAGE</div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:16px">
 
-    <!-- ROW 2: Curve Structure -->
-    <div class="ga-sec">CURVE STRUCTURE · M1 vs M2</div>
-    <div class="ga-g4" style="margin-bottom:20px">
-      ${kpi('JKM M1−M2',jkmStr!=null?(jkmStr>=0?'+':'')+jkmStr.toFixed(3):null,'$/MMBtu',jkmShape,signCol(jkmStr))}
-      ${kpi('TTF M1−M2',ttfStr!=null?(ttfStr>=0?'+':'')+ttfStr.toFixed(3):null,'$/MMBtu',ttfShape,signCol(ttfStr))}
-      ${kpi('JKM M2',jkmM2!=null?jkmM2.toFixed(3):null,'$/MMBtu',ML[1],'#546e7a')}
-      ${kpi('TTF M2',ttfM2!=null?ttfM2.toFixed(3):null,'$/MMBtu',ML[1],'#546e7a')}
-    </div>
-
-    <!-- ROW 3: EU Fundamentals -->
-    <div class="ga-sec">EU FUNDAMENTALS <span class="ga-tag ga-tag-live">LIVE</span><span style="font-size:8px;color:#3d5070;font-weight:400;letter-spacing:0;margin-left:8px">GIE AGSI+ · ${storageDate||'loading…'}</span></div>
-    <div class="ga-g4" style="margin-bottom:20px">
-      <div class="ga-kpi" style="grid-column:span 2">
-        <div class="ga-kpi-lbl">EU STORAGE FILL LEVEL</div>
-        <div style="display:flex;align-items:baseline;gap:8px">
-          <div class="ga-kpi-val" style="color:${barCol}">${storagePct!=null?storagePct.toFixed(1)+'%':'—'}</div>
-          ${storageFill&&storageCap?`<span class="ga-kpi-unit">${(storageFill/1000).toFixed(0)} / ${(storageCap/1000).toFixed(0)} TWh</span>`:''}
+      ${box(`
+        ${lbl('EU STORAGE FILL LEVEL')}
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px">
+          ${bigVal(storPct!=null?storPct+'%':null,'',barCol)}
+          ${stor?`<span style="font-size:10px;color:#546e7a">${stor.twh!=null?(stor.twh/1000).toFixed(0):'-'} TWh stored</span>`:''}
         </div>
-        <div class="ga-stor-bar-bg" style="margin-top:8px"><div style="width:${barPct}%;height:100%;background:${barCol};transition:width .4s"></div></div>
-        <div class="ga-kpi-note">5Y range context available in EU Storage tab</div>
-      </div>
-      ${kpi('LNG REGAS (7d avg)',lngLatest?+(lngLatest.val/1000).toFixed(1):null,'TWh/d',lngLatest?'as of '+lngLatest.date:'loading…','#ffb74d')}
-      <div class="ga-kpi">
-        <div class="ga-kpi-lbl">DATA STATUS</div>
-        <div id="ga-bal-sources" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
-        <div class="ga-kpi-note" style="margin-top:6px">Click REFRESH ALL to update</div>
-      </div>
+        <div style="height:10px;background:#0d1a2e;border:1px solid #1e3a5f;border-radius:2px;overflow:hidden;margin-bottom:6px">
+          <div style="width:${barPct}%;height:100%;background:${barCol};transition:width .5s"></div>
+        </div>
+        ${subLine(stor?dateTag(stor.date,true):'loading…')}
+      `)}
+
+      ${box(`
+        ${lbl('NET INJECTION / WITHDRAWAL')}
+        ${bigVal(netMcm!=null?Math.abs(netMcm).toFixed(1):null,'mcm/d',netCol)}
+        ${subLine(`<span style="font-weight:700;color:${netCol}">${netLabel}</span>${stor?' · '+dateTag(stor.date,true):''}`)}
+        ${subLine(netMcm!=null?`(${gwh2mcm(stor.inj)?.toFixed(1)||'-'} inj · ${gwh2mcm(stor.wdr)?.toFixed(1)||'-'} wdr GWh→mcm)`:'',undefined)}
+      `)}
+
+      <!-- Storage context placeholder -->
+      ${box(`
+        ${lbl('STORAGE vs 5Y RANGE')}
+        <div style="font-size:10px;color:#3d5070;margin-top:10px;line-height:1.7">5Y range context<br>available in<br>EU Storage tab</div>
+        <div style="margin-top:10px"><button class="gbtn sm" onclick="gaMainTab('storage',document.getElementById('gmtab-storage'))">OPEN →</button></div>
+      `)}
+
     </div>
 
-    <!-- ROW 4: Quick Nav -->
-    <div class="ga-sec">QUICK NAVIGATION</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      ${[['LNG BALANCE','lngbal'],['EU GAS BALANCE','eugas'],['EU STORAGE','storage'],['LNG REGAS','regas'],['SIGNPOSTS','signposts']].map(([l,id])=>
-        `<button class="gbtn" onclick="gaMainTab('${id}',document.getElementById('gmtab-${id}'))">${l} →</button>`
-      ).join('')}
+    <!-- ROW 2: LNG -->
+    <div style="font-size:8px;letter-spacing:2px;color:#ffb74d;margin-bottom:8px">LNG SENDOUT</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+
+      ${box(`
+        ${lbl('EU LNG SENDOUT')}
+        ${bigVal(lngMcm!=null?lngMcm.toFixed(1):null,'mcm/d','#ffb74d')}
+        ${subLine(lng?dateTag(lng.date,true):'loading…')}
+      `)}
+
+      ${box(`
+        ${lbl('SENDOUT CHARACTER')}
+        <div style="font-size:22px;font-weight:700;color:${lngCh.col};line-height:1;margin-bottom:3px">${lngCh.txt}</div>
+        ${subLine(`${lngMcm!=null?lngMcm.toFixed(1)+' mcm/d · ':''}< 70 very low · 70–130 low · 130–200 moderate · 200–280 high`)}
+      `)}
+
+    </div>
+
+    <!-- ROW 3: Pipeline imports -->
+    <div style="font-size:8px;letter-spacing:2px;color:#81c784;margin-bottom:8px">PIPELINE IMPORTS TO EUROPE</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+      ${pipeBox('NORWAY','#4fc3f7',pipNor)}
+      ${pipeBox('ALGERIA (TOTAL)','#81c784',pipAlg)}
+      ${pipeBox('AZERBAIJAN (TAP)','#ffb74d',pipTap)}
+      ${pipeBox('UKRAINE CORRIDOR','#f48fb1',pipUkr)}
+    </div>
+
+    <!-- ROW 4: Paper curve context -->
+    <div style="font-size:8px;letter-spacing:2px;color:#546e7a;margin-bottom:8px">FORWARD CURVE · $/MMBtu · from loaded EOD (cp_fp · ${ML[0]} prompt)</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+      ${box(`${lbl('JKM M1')}${bigVal(jkmM1!=null?jkmM1.toFixed(3):null,'$/MMBtu','#4fc3f7')}${subLine(ML[0])}`)}
+      ${box(`${lbl('TTF M1')}${bigVal(ttfM1!=null?ttfM1.toFixed(3):null,'$/MMBtu','#81c784')}${subLine(ML[0])}`)}
+      ${box(`${lbl('JKM−TTF')}${bigVal(jkmTtf!=null?(jkmTtf>=0?'+':'')+jkmTtf.toFixed(3):null,'$/MMBtu',jkmTtf!=null?(jkmTtf>0?'#4ade80':'#f87171'):'#546e7a')}${subLine(ML[0])}`)}
+      ${box(`${lbl('JKM M1−M2')}${bigVal(jkmStr!=null?(jkmStr>=0?'+':'')+jkmStr.toFixed(3):null,'$/MMBtu',jkmStr!=null?(jkmStr>0?'#4ade80':'#f87171'):'#546e7a')}${subLine(jkmStr!=null?(jkmStr>0?'Backwardation':'Contango'):'—')}`)}
+      ${box(`${lbl('TTF M1−M2')}${bigVal(ttfStr!=null?(ttfStr>=0?'+':'')+ttfStr.toFixed(3):null,'$/MMBtu',ttfStr!=null?(ttfStr>0?'#4ade80':'#f87171'):'#546e7a')}${subLine(ttfStr!=null?(ttfStr>0?'Backwardation':'Contango'):'—')}`)}
     </div>
 
   </div>`;
-  // Update status dots now that element exists
   setTimeout(gaUpdateStatusDots,100);
 }
 function gaSetRefreshBtn(loading){
