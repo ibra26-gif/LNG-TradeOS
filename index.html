@@ -281,6 +281,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
 #acer-wrap .divider{border-top:1px solid #131e30;margin:2px 0 0}
 #acer-wrap .fn{font-size:9px;color:#1e3050;padding:5px 20px 14px;line-height:1.75}
 #acer-wrap #acer-sYr .b.on{background:#0d2040;color:#00e5ff;border-color:#007a9a}
+#acer-wrap .ubtn{display:inline-flex;align-items:center;gap:6px}
 </style>
 </head>
 <body>
@@ -2486,7 +2487,7 @@ const ML=(function(){
 // ══ SHELL ══
 let finLoaded=false;
 const PH_T={freight:'FREIGHT RATE CALCULATOR',cargo:'CARGO PRICING',regas:'EU REGAS MODEL',acer:'HISTORICAL ACER'};
-const PH_D={freight:'Voyage cost estimation across global LNG shipping routes with BLNG curves',cargo:'USGC/WAF/Oman arb, DES pricing, FOB netback matrix, India pricing and historical basis',regas:'European regasification terminal pricing, cost graphs, netback analysis and slot valuation',acer:'ACER daily DES physical NWE · SE · EU — seasonal scatter vs history, 2023–2026'};
+const PH_D={freight:'Voyage cost estimation across global LNG shipping routes with BLNG curves',cargo:'USGC/WAF/Oman arb, DES pricing, FOB netback matrix, India pricing and historical basis',regas:'European regasification terminal pricing, cost graphs, netback analysis and slot valuation',acer:'ACER daily DES physical NWE · SE · EU — seasonal scatter all daily obs, 2023–2026'};
 const GA_T={lngbal:'GLOBAL LNG BALANCES & SIGNPOSTS',eugas:'EU GAS BALANCE',storage:'EU STORAGE',regas:'LNG REGAS',signposts:'MARKET SIGNPOSTS'};
 const GA_D={lngbal:'Key LNG country balances and pricing signals',eugas:'Pipeline imports, domestic production, LNG flows and EU gas demand — seasonal views',storage:'EU and country storage levels, seasonal comparison and injection/withdrawal — GIE AGSI+',regas:'Terminal utilisation heatmap, tank stocks, sendout and country aggregate — GIE AGGI+',signposts:'LNG arrivals, hydro reservoir levels, nuclear availability and 2026 maintenance tracker'};
 const PV_T={single:'SINGLE DEAL VALUATION',strips:'STRIPS VALUATION',portfolio:'PORTFOLIO VALUATION'};
@@ -10346,10 +10347,11 @@ window.indInit = indInit;
 </div>
 
 <div class="ubar">
-  <input class="inp w" id="acer-folderId" value="18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq" placeholder="ACER Report (Drive folder ID)">
-  <input class="inp n" id="acer-apiKey"   value="AIzaSyAcEeqXFFvX3JIb-HHbtHSdtCSFGqDpLnw" placeholder="API key">
-  <button class="ubtn" onclick="acer_loadPDF()">↺ UPDATE</button>
-  <span id="acer-pdfSt" class="st">· upload today's YYMMDD_LNGPA.pdf to the ACER Report Drive folder then click update</span>
+  <label class="ubtn" style="cursor:pointer">
+    ↑ LOAD PDF
+    <input type="file" accept=".pdf" style="display:none" onchange="acer_handleFile(this)">
+  </label>
+  <span id="acer-pdfSt" class="st">· select today's YYMMDD_LNGPA.pdf from your downloads</span>
 </div>
 
 <div class="sec">
@@ -10371,7 +10373,7 @@ window.indInit = indInit;
 
 <div class="sec">
   <div class="ctrl">
-    <span class="stitle">Seasonal Physical $/MMBtu</span>
+    <span class="stitle">Seasonal Physical $/MMBtu — all daily observations</span>
     <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
       <div class="btns" id="acer-sIdx">
         <button class="b nwe on" onclick="acer_setIdx('s','nwe',this)">NWE</button>
@@ -10387,32 +10389,29 @@ window.indInit = indInit;
       </div>
     </div>
   </div>
-  <div class="cw" style="height:215px"><canvas id="acer-seasChart"></canvas></div>
+  <div class="cw" style="height:240px"><canvas id="acer-seasChart"></canvas></div>
 </div>
 
 <div class="fn">
-  Physical = ACER DES Spot − TTF implied (EU DES − Benchmark, ICE Endex FM) · $/MMBtu = EUR/MWh × 1.09 ÷ 3.41214 · Seasonal band = 10–90th pct + median, 2023–2025 baseline · Year buttons toggle — click multiple to overlay years · colour intensity + dash pattern encode year · Source: ACER TERMINAL
+  Physical = ACER DES Spot − TTF implied · $/MMBtu = EUR/MWh × 1.09 ÷ 3.41214 · Scatter = all 730 daily obs by calendar month · Band = 10–90th pct, median 2023–2025 · Year buttons highlight specific year · Tooltip shows delivery month (M+1) · Source: ACER TERMINAL
 </div>
 
 </div>
 <script>
 
 const ACER_MTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-// Colours
 const ACER_GC='rgba(255,255,255,0.05)';
-const ACER_TC='#6a8faf';   // x-axis tick labels — brighter slate
+const ACER_TC='#c8dff0';   // crisp tick labels
 
 const ACER_PCOL={nwe:'#00b4d8',se:'#f77f00',eu:'#b5e48c'};
-const ACER_PAL ={nwe:'rgba(0,180,216,',se:'rgba(247,127,0,',eu:'rgba(181,228,140,'};
+const ACER_PAL={nwe:'rgba(0,180,216,',se:'rgba(247,127,0,',eu:'rgba(181,228,140,'};
 
-// Year scatter colours: each row is [line/median, scatter fill, pointBorderColor]
-// Brightness encodes recency, dash encodes year on median line
+// Year overlay: each year has a colour per index + dash + size
 const ACER_YR={
-  '2026':{dash:[],     w:2,   r:3.5, alpha:0.9, nwe:'#00e5ff', se:'#ffaa44', eu:'#d4ffaa'},
-  '2025':{dash:[6,2],  w:1.8, r:3,   alpha:0.7, nwe:'#00b4d8', se:'#f77f00', eu:'#b5e48c'},
-  '2024':{dash:[4,3],  w:1.6, r:2.5, alpha:0.55,nwe:'#0088aa', se:'#cc6200', eu:'#8ac86a'},
-  '2023':{dash:[2,4],  w:1.4, r:2,   alpha:0.4, nwe:'#005c7a', se:'#994800', eu:'#629048'},
+  '2026':{dash:[],    w:2,  r:5,  nwe:'#00e5ff',se:'#ffaa44',eu:'#d4ffaa'},
+  '2025':{dash:[6,2], w:1.8,r:4,  nwe:'#00b4d8',se:'#f77f00',eu:'#b5e48c'},
+  '2024':{dash:[4,3], w:1.5,r:3.5,nwe:'#0088aa',se:'#cc6200',eu:'#8ac86a'},
+  '2023':{dash:[2,4], w:1.3,r:3,  nwe:'#005c7a',se:'#994800',eu:'#629048'},
 };
 
 // Period table
@@ -10420,10 +10419,10 @@ const ACER_P=[{v:"all",l:"ALL"},{v:"r30",l:"30D",type:"roll",days:30},{v:"r90",l
 
 function acer_buildDD(sel){
   const G=[
-    {lb:'\u2014 Rolling \u2014', kk:['all','r30','r90','r180','r365','r730']},
-    {lb:'\u2014 Season \u2014',  kk:['Win-25','Sum-25','Win-24','Sum-24','Win-23','Sum-23']},
-    {lb:'\u2014 Quarter \u2014', kk:['Q1-26','Q4-25','Q3-25','Q2-25','Q1-25','Q4-24','Q3-24','Q2-24','Q1-24','Q4-23','Q3-23','Q2-23']},
-    {lb:'\u2014 Month \u2014',   kk:ACER_P.filter(p=>p.type==='range'&&/^[A-Z][a-z]{2}-\d{2}$/.test(p.v)).map(p=>p.v)}
+    {lb:'\u2014 Rolling \u2014',kk:['all','r30','r90','r180','r365','r730']},
+    {lb:'\u2014 Season \u2014', kk:['Win-25','Sum-25','Win-24','Sum-24','Win-23','Sum-23']},
+    {lb:'\u2014 Quarter \u2014',kk:['Q1-26','Q4-25','Q3-25','Q2-25','Q1-25','Q4-24','Q3-24','Q2-24','Q1-24','Q4-23','Q3-23','Q2-23']},
+    {lb:'\u2014 Month \u2014',  kk:ACER_P.filter(p=>p.type==='range'&&/^[A-Z][a-z]{2}-\d{2}$/.test(p.v)).map(p=>p.v)}
   ];
   let h='';
   for(const g of G){
@@ -10457,28 +10456,27 @@ function acer_hBand(f){
 }
 function acer_sh(idx){return{nwe:idx==='nwe'||idx==='all',se:idx==='se'||idx==='all',eu:idx==='eu'||idx==='all'};}
 
-// ── x-axis config shared ──────────────────────────────────────────────────
-function acer_xAxis(type='category'){
-  const border={display:true,color:'rgba(255,255,255,0.35)',width:1};
-  const ticks={color:'#b8cfe0',font:{size:9,weight:'500'},padding:7};
-  if(type==='category'){
-    return{
-      grid:{color:'rgba(255,255,255,0.04)',drawTicks:false},
-      border,ticks,
-    };
-  }
+// ── Shared axis builders ──────────────────────────────────────────────────
+function acer_xCat(){
   return{
-    type:'linear', min:-0.45, max:11.45,
-    grid:{color:'rgba(255,255,255,0.04)',drawTicks:false},
-    border,
-    ticks:{...ticks,stepSize:1,callback:v=>Number.isInteger(v)?ACER_MTHS[v]:''},
+    grid:{color:ACER_GC,drawTicks:false},
+    border:{display:true,color:'rgba(255,255,255,0.55)',width:1},
+    ticks:{color:ACER_TC,font:{size:9,weight:'600'},padding:6},
   };
 }
-function acer_yAxis(){
+function acer_xLin(){
   return{
-    grid:{color:'rgba(255,255,255,0.04)'},
+    type:'linear',min:-0.45,max:11.45,
+    grid:{color:ACER_GC,drawTicks:false},
+    border:{display:true,color:'rgba(255,255,255,0.55)',width:1},
+    ticks:{color:ACER_TC,font:{size:9,weight:'600'},padding:6,stepSize:1,callback:v=>Number.isInteger(v)?ACER_MTHS[v]:''},
+  };
+}
+function acer_yAx(){
+  return{
+    grid:{color:ACER_GC},
     border:{display:false},
-    ticks:{color:'#b8cfe0',font:{size:9,weight:'500'},callback:v=>(v>=0?'+':'')+v.toFixed(1)},
+    ticks:{color:ACER_TC,font:{size:9,weight:'600'},callback:v=>(v>=0?'+':'')+v.toFixed(1)},
   };
 }
 
@@ -10495,95 +10493,87 @@ function acer_renderHist(){
   ds.push({data:lbs.map(()=>0),borderColor:'rgba(255,255,255,0.12)',borderWidth:1,borderDash:[2,4],pointRadius:0,fill:false});
   if(acer_hC)acer_hC.destroy();
   const ctx=document.getElementById('acer-histChart');if(!ctx)return;
-  acer_hC=new Chart(ctx,{type:'line',data:{labels:lbs,datasets:ds},
-    options:{responsive:true,maintainAspectRatio:false,animation:{duration:120},
-      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,
-        filter:i=>i.datasetIndex<ds.length-1,
-        callbacks:{
-          title: items => {
-            const d = items[0].label;
-            // Show current month and what they're pricing (M+1 delivery)
-            const dt = new Date(d);
-            const tradeM = ACER_MTHS[dt.getMonth()];
-            const delivM = ACER_MTHS[(dt.getMonth()+1)%12];
-            return `${d}  |  ${tradeM} traded \u2192 ${delivM} delivery`;
-          },
-          label: c=>`${c.dataset.label}: ${c.parsed.y>=0?'+':''}${c.parsed.y.toFixed(3)} \$/MMBtu`
-        }
-      }},
-      scales:{x:acer_xAxis('category'), y:acer_yAxis()}
-    }});
+  acer_hC=new Chart(ctx,{type:'line',data:{labels:lbs,datasets:ds},options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:120},
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,
+      filter:i=>i.datasetIndex<ds.length-1,
+      callbacks:{
+        title:items=>{
+          const dt=new Date(items[0].label);
+          return `${items[0].label}  |  ${ACER_MTHS[dt.getMonth()]} traded \u2192 ${ACER_MTHS[(dt.getMonth()+1)%12]} delivery`;
+        },
+        label:c=>`${c.dataset.label}: ${c.parsed.y>=0?'+':''}${c.parsed.y.toFixed(3)} $/MMBtu`
+      }
+    }},
+    scales:{x:acer_xCat(),y:acer_yAx()}
+  }});
 }
 
-// ── Seasonal chart — daily scatter + band ─────────────────────────────────
+// ── Seasonal chart — always-on daily scatter cloud + year highlights ───────
 function acer_renderSeas(){
   const ctx=document.getElementById('acer-seasChart');if(!ctx)return;
   const s=acer_sh(acer_sIdx);
   const activeYrs=['2026','2025','2024','2023'].filter(y=>acer_sYrs.has(y));
+  const highlightedDates=new Set(
+    activeYrs.flatMap(yr=>ACER_D.filter(r=>r.d.startsWith(yr)).map(r=>r.d))
+  );
   const ds=[];
 
-  // Band (line, x as numeric index {x,y})
   for(const [f,show] of [['nwe',s.nwe],['se',s.se],['eu',s.eu]]){
     if(!show)continue;
     const B=acer_hBand(f);
-    // hi fill → lo (band)
-    ds.push({type:'line',data:B.hi.map((y,i)=>({x:i,y})),borderColor:'transparent',backgroundColor:ACER_PAL[f]+'0.1)',fill:'+1',pointRadius:0,tension:0.3,order:10});
-    ds.push({type:'line',data:B.lo.map((y,i)=>({x:i,y})),borderColor:ACER_PAL[f]+'0.25)',borderWidth:1,backgroundColor:'transparent',fill:false,pointRadius:0,tension:0.3,borderDash:[2,3],order:10});
+    // Band fill
+    ds.push({type:'line',data:B.hi.map((y,i)=>({x:i,y})),borderColor:'transparent',backgroundColor:ACER_PAL[f]+'0.08)',fill:'+1',pointRadius:0,tension:0.3,order:20});
+    ds.push({type:'line',data:B.lo.map((y,i)=>({x:i,y})),borderColor:ACER_PAL[f]+'0.2)',borderWidth:1,backgroundColor:'transparent',fill:false,pointRadius:0,tension:0.3,borderDash:[2,3],order:20});
     // Median line
     const da=(f==='se'&&(s.nwe||s.eu))?[5,3]:(f==='eu'&&(s.nwe||s.se))?[2,2]:[];
-    ds.push({type:'line',label:`${f.toUpperCase()} hist median`,data:B.med.map((y,i)=>({x:i,y})),borderColor:ACER_PCOL[f],borderWidth:1.5,pointRadius:3,pointBackgroundColor:ACER_PCOL[f],tension:0.3,fill:false,borderDash:da,order:5});
-  }
+    ds.push({type:'line',label:`${f.toUpperCase()} median`,data:B.med.map((y,i)=>({x:i,y})),borderColor:ACER_PCOL[f],borderWidth:1.5,pointRadius:0,tension:0.3,fill:false,borderDash:da,order:10});
 
-  // Zero reference line
-  ds.push({type:'line',data:Array.from({length:12},(_,i)=>({x:i,y:0})),borderColor:'rgba(255,255,255,0.12)',borderWidth:1,borderDash:[2,4],pointRadius:0,fill:false,order:10});
+    // ── ALL daily points — always visible as faint cloud ──────────────────
+    const allPts=ACER_D.map(r=>({x:+r.d.substring(5,7)-1, y:r[f], d:r.d}));
+    // Dim out highlighted points so they don't overlap visually
+    const bgPts = activeYrs.length>0
+      ? allPts.filter(p=>!highlightedDates.has(p.d))
+      : allPts;
+    ds.push({type:'scatter',data:bgPts,
+      pointRadius:1.8, pointBackgroundColor:ACER_PAL[f]+'0.28)',
+      borderColor:'transparent',borderWidth:0,order:15});
 
-  // Daily scatter per selected year
-  for(const yr of activeYrs){
-    const ys=ACER_YR[yr];
-    for(const [f,show] of [['nwe',s.nwe],['se',s.se],['eu',s.eu]]){
-      if(!show)continue;
+    // ── Year highlights on top ────────────────────────────────────────────
+    for(const yr of activeYrs){
+      const ys=ACER_YR[yr];
       const col=ys[f];
-      const pts=ACER_D.filter(r=>r.d.startsWith(yr)).map(r=>({
-        x: +r.d.substring(5,7)-1,
-        y: r[f],
-        date: r.d
-      }));
+      const pts=ACER_D.filter(r=>r.d.startsWith(yr)).map(r=>({x:+r.d.substring(5,7)-1,y:r[f],d:r.d}));
       ds.push({type:'scatter',label:`${f.toUpperCase()} ${yr}`,data:pts,
-        pointRadius:ys.r, pointBackgroundColor:col+'cc',
-        borderColor:col, borderWidth:0.5,
-        order:1});
+        pointRadius:ys.r,pointBackgroundColor:col,
+        borderColor:col,borderWidth:0.8,order:1});
     }
   }
+  // Zero line
+  ds.push({type:'line',data:Array.from({length:12},(_,i)=>({x:i,y:0})),
+    borderColor:'rgba(255,255,255,0.12)',borderWidth:1,borderDash:[2,4],pointRadius:0,fill:false,order:20});
 
   if(acer_sC)acer_sC.destroy();
-  acer_sC=new Chart(ctx,{
-    type:'scatter',
-    data:{datasets:ds},
-    options:{responsive:true,maintainAspectRatio:false,animation:{duration:120},
-      plugins:{legend:{display:false},tooltip:{
-        mode:'nearest', intersect:true,
-        callbacks:{
-          title: items => {
-            if(!items.length)return '';
-            const raw=items[0].raw;
-            const m=Math.round(raw.x);
-            const delivM=ACER_MTHS[(m+1)%12];
-            // Show date if available (scatter points have .date)
-            const dateStr=raw.date?`  ${raw.date}`:'';
-            return `${ACER_MTHS[m]}${dateStr}  \u2192  delivery ${delivM}`;
-          },
-          label: c => {
-            const v=c.raw.y;
-            return `${c.dataset.label}: ${v>=0?'+':''}${v.toFixed(3)} \$/MMBtu`;
-          }
+  acer_sC=new Chart(ctx,{type:'scatter',data:{datasets:ds},options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:120},
+    plugins:{legend:{display:false},tooltip:{
+      mode:'nearest',intersect:true,
+      callbacks:{
+        title:items=>{
+          if(!items.length)return '';
+          const raw=items[0].raw;
+          const m=Math.round(raw.x);
+          const dateStr=raw.d?`  ${raw.d}`:'';
+          return `${ACER_MTHS[m]}${dateStr}  \u2192  delivery ${ACER_MTHS[(m+1)%12]}`;
+        },
+        label:c=>{
+          if(c.raw.y==null)return null;
+          return `${c.dataset.label||'hist'}: ${c.raw.y>=0?'+':''}${c.raw.y.toFixed(3)} $/MMBtu`;
         }
-      }},
-      scales:{
-        x: acer_xAxis('linear'),
-        y: acer_yAxis()
       }
-    }
-  });
+    }},
+    scales:{x:acer_xLin(),y:acer_yAx()}
+  }});
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────
@@ -10596,34 +10586,31 @@ function acer_setIdx(chart,v,el){
 function acer_toggleYr(yr,el){
   if(acer_sYrs.has(yr))acer_sYrs.delete(yr);
   else acer_sYrs.add(yr);
-  el.classList.toggle('on', acer_sYrs.has(yr));
+  el.classList.toggle('on',acer_sYrs.has(yr));
   acer_renderSeas();
 }
 
-// ── PDF update ────────────────────────────────────────────────────────────
-async function acer_loadPDF(){
-  const fid=document.getElementById('acer-folderId').value.trim();
-  const key=document.getElementById('acer-apiKey').value.trim();
+// ── PDF — direct file input (no Drive needed) ─────────────────────────────
+function acer_handleFile(input){
+  const file=input.files[0];if(!file)return;
   const st=document.getElementById('acer-pdfSt');
-  st.className='st spin'; st.textContent='\u00b7 fetching\u2026';
-  try{
-    const lr=await fetch(`https://www.googleapis.com/drive/v3/files?q='${fid}'+in+parents+and+trashed=false&orderBy=modifiedTime+desc&pageSize=50&fields=files(id,name)&key=${key}`);
-    if(!lr.ok)throw new Error('Drive '+lr.status);
-    const f=(await lr.json()).files?.find(x=>/\d{6}_LNGPA\.pdf$/i.test(x.name));
-    if(!f)throw new Error("No YYMMDD_LNGPA.pdf — upload to the \"ACER Report\" Drive folder first");
-    const dr=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${key}`);
-    if(!dr.ok)throw new Error('Fetch '+dr.status);
-    const row=await acer_parsePDF(f.name, await dr.arrayBuffer());
-    if(!row)throw new Error('Parse failed');
-    const i=ACER_D.findIndex(x=>x.d===row.d);
-    if(i>=0)ACER_D[i]=row;else ACER_D.push(row);
-    ACER_D.sort((a,b)=>a.d.localeCompare(b.d));
-    const last=ACER_D[ACER_D.length-1];
-    st.className='st ok';
-    st.textContent=`\u00b7 ${row.d} \u00b7 NWE${row.nwe>=0?'+':''}${row.nwe.toFixed(3)} SE${row.se>=0?'+':''}${row.se.toFixed(3)} EU${row.eu>=0?'+':''}${row.eu.toFixed(3)}${row.tx<5?' \u26a0 tx='+row.tx:''}`;
-    document.getElementById('acer-lastUpdate').textContent=`${ACER_D[0].d} \u2192 ${last.d} \u00b7 ${ACER_D.length} sessions`;
-    acer_renderHist(); acer_renderSeas();
-  }catch(e){st.className='st err'; st.textContent='\u00b7 '+e.message;}
+  st.className='st spin'; st.textContent='\u00b7 parsing '+file.name+'\u2026';
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    try{
+      const row=await acer_parsePDF(file.name, e.target.result);
+      if(!row)throw new Error('Could not parse prices from PDF — check file is a valid LNGPA report');
+      const i=ACER_D.findIndex(x=>x.d===row.d);
+      if(i>=0)ACER_D[i]=row;else ACER_D.push(row);
+      ACER_D.sort((a,b)=>a.d.localeCompare(b.d));
+      const last=ACER_D[ACER_D.length-1];
+      st.className='st ok';
+      st.textContent=`\u00b7 ${row.d} \u00b7 NWE${row.nwe>=0?'+':''}${row.nwe.toFixed(3)} SE${row.se>=0?'+':''}${row.se.toFixed(3)} EU${row.eu>=0?'+':''}${row.eu.toFixed(3)}${row.tx<5?' \u26a0 tx='+row.tx:''}`;
+      document.getElementById('acer-lastUpdate').textContent=`${ACER_D[0].d} \u2192 ${last.d} \u00b7 ${ACER_D.length} sessions`;
+      acer_renderHist(); acer_renderSeas();
+    }catch(err){st.className='st err';st.textContent='\u00b7 '+err.message;}
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 async function acer_parsePDF(fname,buf){
