@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -358,6 +359,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
       <button class="sbtn" onclick="document.getElementById('fileInput2').click()" style="margin-left:auto">+ ADD FILES</button>
       <button class="sbtn" style="color:#4fc3f7" onclick="MCP_AVAILABLE?fAuthGate(()=>loadPricesFromGmail(true)):alert('Gmail scrape requires Claude.ai — use + ADD FILES instead.')">📧 + GMAIL</button>
       <button class="sbtn" onclick="exportToExcel()" style="color:#22c55e">↓ EXPORT XLSX</button>
+      <button class="sbtn" onclick="syncNewFiles(false)" style="color:#4fc3f7">↺ SYNC</button>
       <button class="sbtn red" id="clearCacheBtn">↺ CLEAR CACHE</button>
       <input type="file" id="fileInput2" multiple accept=".xlsx,.xls" style="display:none">
     </div>
@@ -7825,11 +7827,13 @@ function rgExportITM(){
 // ══ DRIVE AUTO-LOAD (via Vercel proxy — API key is server-side, never exposed) ══
 function showManualDrop(){const da=$id('dz-auto'),dm=$id('dz-manual');if(da)da.style.display='none';if(dm)dm.style.display='flex';setupDrop();}
 function setP(pct,title,sub){const pf=$id('progfill'),pt=$id('progtxt'),dt=$id('dz-auto-title');if(pf)pf.style.width=pct+'%';if(title&&dt)dt.textContent=title;if(sub&&pt)pt.textContent=sub;}
-async function lFiles(){
+const PRICE_FOLDER_ID='18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
+async function lFiles(afterDate=null){
   const all=[];let pt=null;
   do{
-    let url=`/api/drive?action=list`;
+    let url=`/api/drive?action=list&folderId=${PRICE_FOLDER_ID}&filter=xlsx`;
     if(pt)url+=`&pageToken=${encodeURIComponent(pt)}`;
+    if(afterDate)url+=`&after=${encodeURIComponent(afterDate)}`;
     const r=await fetch(url);
     if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Drive API error');}
     const d=await r.json();
@@ -7838,11 +7842,60 @@ async function lFiles(){
   }while(pt);
   return all;
 }
-let _driveLoading=false;
+let _driveLoading=false,_driveSyncing=false;
+
+// ── Incremental sync: fetches only files newer than latest cached date ────
+async function syncNewFiles(silent=true){
+  if(_driveSyncing)return;
+  _driveSyncing=true;
+  const st=$id('stext');
+  if(!silent&&st)st.textContent=`${sDates.length} DATES · SYNCING DRIVE…`;
+  try{
+    const latestCached=sDates.length?sDates[sDates.length-1]:null;
+    // Pass latestCached as afterDate so Drive only returns files modified after it
+    const files=await lFiles(latestCached);
+    const newFiles=files.filter(f=>{
+      const date=pDFN(f.name);if(!date)return false;
+      const key=toStr(date);return!aD[key];
+    });
+    if(!newFiles.length){
+      if(st)st.textContent=`${sDates.length} DATES · EOD ${fmtD(sDates[sDates.length-1])} · ✓ UP TO DATE`;
+      _driveSyncing=false;return;
+    }
+    let added=0;
+    for(const f of newFiles){
+      const date=pDFN(f.name);if(!date)continue;
+      const key=toStr(date);
+      try{
+        const resp=await fetch(`/api/drive?action=file&id=${f.id}`);if(!resp.ok)continue;
+        const buf=await toAB(resp);if(buf.byteLength<5000)continue;
+        const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B))continue;
+        const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}
+      }catch(e){}
+    }
+    if(added>0){sDates=Object.keys(aD).sort();sCache();rAdd();}
+    const eod=sDates.length?fmtD(sDates[sDates.length-1]):'';
+    if(st)st.textContent=`${sDates.length} DATES · EOD ${eod} · ${added>0?`+${added} NEW ✓`:'✓ UP TO DATE'}`;
+  }catch(e){
+    if(st)st.textContent=`${sDates.length} DATES · SYNC ERROR: ${e.message}`;
+  }
+  _driveSyncing=false;
+}
+
 async function lDrive(){
   if(finLoaded||_driveLoading)return;
   _driveLoading=true;
-  if(lCache()){showAnalyticsUI();initUI();const st=$id('stext');if(st)st.textContent=sDates.length+' DATES (cached)';if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}return;}
+  // ── Returning user: serve from cache immediately, sync new files in background
+  if(lCache()){
+    showAnalyticsUI();initUI();
+    const st=$id('stext');
+    if(st)st.textContent=`${sDates.length} DATES · EOD ${fmtD(sDates[sDates.length-1])} · CHECKING DRIVE…`;
+    if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}
+    _driveLoading=false;
+    syncNewFiles(true); // silent background sync
+    return;
+  }
+  // ── Fresh visitor: full load from Drive ──────────────────────────────────
   try{
     setP(5,'CONNECTING TO GOOGLE DRIVE','Listing files...');
     const files=await lFiles();
@@ -7855,7 +7908,10 @@ async function lDrive(){
         const date=pDFN(f.name);if(!date){sk++;return;}
         const key=toStr(date);if(aD[key]){done++;return;}
         try{const resp=await fetch(`/api/drive?action=file&id=${f.id}`);if(!resp.ok){sk++;return;}
-          const buf=await toAB(resp);if(buf.byteLength<5000){sk++;return;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){sk++;return;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;plog(`OK: ${f.name}`);}else sk++;}catch(e){sk++;}done++;
+          const buf=await toAB(resp);if(buf.byteLength<5000){sk++;return;}
+          const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){sk++;return;}
+          const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;plog(`OK: ${f.name}`);}else sk++;
+        }catch(e){sk++;}done++;
       }));
       setP(10+(Math.min(done,files.length)/files.length)*86,'LOADING',`${added} loaded · ${sk} skipped`);
     }
@@ -7865,10 +7921,10 @@ async function lDrive(){
     setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},600);
   }catch(e){
     plog('Drive error: '+e.message,true);
-    const fb=$id('fallback-btn'),ds=$id('drive-spinner'),dt=$id('dz-auto-title'),pt=$id('progtxt');
+    const fb=$id('fallback-btn'),ds=$id('drive-spinner'),dt=$id('dz-auto-title'),pt_=$id('progtxt');
     if(fb)fb.style.display='block';if(ds)ds.style.display='none';
     if(dt)dt.textContent='COULD NOT LOAD FROM DRIVE';
-    if(pt)pt.textContent='Click below to load manually.';
+    if(pt_)pt_.textContent='Click below to load manually.';
     _driveLoading=false;
   }
 }
@@ -7878,7 +7934,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(cc)cc.addEventListener('click',clearCache);
   if(fi2)fi2.addEventListener('change',()=>{if(fi2.files.length)handleFiles([...fi2.files],true);});
   setupDrop();
-  if(lCache()){showAnalyticsUI();initUI();const st=$id('stext');if(st)st.textContent=sDates.length+' DATES (cached)';}
+  if(lCache()){showAnalyticsUI();initUI();const st=$id('stext');if(st)st.textContent=`${sDates.length} DATES · EOD ${fmtD(sDates[sDates.length-1])} · CHECKING DRIVE…`;syncNewFiles(true);}
 });
 
 
