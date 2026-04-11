@@ -1,73 +1,87 @@
+// api/drive.js — Vercel serverless function
+// Proxies Google Drive API to avoid exposing the API key client-side.
+// Supports:
+//   ?action=list               → list xlsx files in the price folder
+//   ?action=file&id=FILE_ID    → download a specific file by Drive ID
+// Optional params for list:
+//   &folderId=FOLDER_ID        → override default folder (fallback: env var or hardcoded)
+//   &filter=xlsx               → restrict to .xlsx / .xls files (always applied)
+//   &after=YYYY-MM-DD          → only return files modified after this date (incremental sync)
+//   &pageToken=TOKEN           → pagination
 
-// Vercel serverless proxy for Google Drive API
-// API key lives server-side in GOOGLE_API_KEY env variable — never exposed to browser
-// CORS handled by your own domain — works on all browsers including Safari
-
+const DEFAULT_FOLDER = process.env.DRIVE_PRICE_FOLDER_ID || '18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
 const API_KEY = process.env.GOOGLE_API_KEY;
-const FOLDER_ID = '18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
 
-module.exports = async (req, res) => {
-  // CORS headers — allow requests from your domain
+export default async function handler(req, res) {
+  // CORS — allow requests from lngtradeos.com and localhost dev
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'no-store');
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (!API_KEY) {
-    res.status(500).json({ error: 'GOOGLE_API_KEY environment variable not set' });
-    return;
+    return res.status(500).json({ error: 'GOOGLE_API_KEY not configured in Vercel environment variables.' });
   }
 
-  const { action, id, pageToken } = req.query;
+  const { action, id, pageToken, folderId, after } = req.query;
+  const folder = folderId || DEFAULT_FOLDER;
 
-  try {
-    // ── LIST FILES in LNG Curves folder ──
-    if (action === 'list') {
-      const q = encodeURIComponent(
-        `'${FOLDER_ID}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false`
-      );
-      let url = `https://www.googleapis.com/drive/v3/files?q=${q}&key=${API_KEY}&fields=files(id,name),nextPageToken&pageSize=200&orderBy=name`;
-      if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+  // ── LIST: return xlsx files in folder, optionally filtered by modified date ──
+  if (action === 'list') {
+    // Always restrict to xlsx/xls to avoid returning PNGs and other assets
+    const mimeFilter = [
+      "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+      "mimeType='application/vnd.ms-excel'",
+      "name contains '.xlsx'",
+      "name contains '.xls'"
+    ].join(' or ');
 
-      const r = await fetch(url);
-      const data = await r.json();
+    let q = `'${folder}' in parents and trashed=false and (${mimeFilter})`;
 
-      if (!r.ok) {
-        res.status(r.status).json({ error: data.error?.message || 'Drive list failed' });
-        return;
-      }
-
-      res.status(200).json(data);
-
-    // ── DOWNLOAD a specific file by ID ──
-    } else if (action === 'file' && id) {
-      // Validate id is a safe Drive file ID (alphanumeric + dash + underscore)
-      if (!/^[a-zA-Z0-9_\-]+$/.test(id)) {
-        res.status(400).json({ error: 'Invalid file ID' });
-        return;
-      }
-
-      const url = `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${API_KEY}`;
-      const r = await fetch(url);
-
-      if (!r.ok) {
-        res.status(r.status).json({ error: `Drive file fetch failed: ${r.status}` });
-        return;
-      }
-
-      const buffer = await r.arrayBuffer();
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.status(200).send(Buffer.from(buffer));
-
-    } else {
-      res.status(400).json({ error: 'Invalid action. Use action=list or action=file&id=FILE_ID' });
+    // Incremental sync: only files modified after the given date
+    if (after) {
+      // after is YYYY-MM-DD; Drive modifiedTime is RFC3339
+      q += ` and modifiedTime > '${after}T12:00:00'`;
     }
 
-  } catch (err) {
-    console.error('Drive proxy error:', err);
-    res.status(500).json({ error: err.message || 'Internal proxy error' });
+    const params = new URLSearchParams({
+      q,
+      fields: 'nextPageToken,files(id,name,size,modifiedTime)',
+      orderBy: 'name asc',
+      pageSize: '1000',
+      key: API_KEY,
+    });
+    if (pageToken) params.set('pageToken', pageToken);
+
+    try {
+      const r = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`);
+      const data = await r.json();
+      if (!r.ok) return res.status(r.status).json(data);
+      return res.status(200).json(data);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
+
+  // ── FILE: download raw bytes of a specific Drive file ──
+  if (action === 'file' && id) {
+    try {
+      const r = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&key=${API_KEY}`
+      );
+      if (!r.ok) {
+        const err = await r.text();
+        return res.status(r.status).json({ error: `Drive download failed: ${err}` });
+      }
+      const buf = await r.arrayBuffer();
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Length', buf.byteLength);
+      return res.send(Buffer.from(buf));
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  return res.status(400).json({ error: 'Invalid action. Use action=list or action=file&id=FILE_ID' });
+}
