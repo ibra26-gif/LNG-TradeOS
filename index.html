@@ -10349,7 +10349,7 @@ window.indInit = indInit;
   <input class="inp w" id="acer-folderId" value="18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq" placeholder="ACER Report (Drive folder ID)">
   <input class="inp n" id="acer-apiKey"   value="AIzaSyAcEeqXFFvX3JIb-HHbtHSdtCSFGqDpLnw" placeholder="API key">
   <button class="ubtn" onclick="acer_loadPDF()">↺ UPDATE</button>
-  <span id="acer-pdfSt" class="st">· upload today's YYMMDD_LNGPA.pdf to the 'ACER Report' Drive folder then click update</span>
+  <span id="acer-pdfSt" class="st">· upload today's YYMMDD_LNGPA.pdf to the ACER Report Drive folder then click update</span>
 </div>
 
 <div class="sec">
@@ -10610,7 +10610,7 @@ async function acer_loadPDF(){
     const lr=await fetch(`https://www.googleapis.com/drive/v3/files?q='${fid}'+in+parents+and+trashed=false&orderBy=modifiedTime+desc&pageSize=50&fields=files(id,name)&key=${key}`);
     if(!lr.ok)throw new Error('Drive '+lr.status);
     const f=(await lr.json()).files?.find(x=>/\d{6}_LNGPA\.pdf$/i.test(x.name));
-    if(!f)throw new Error('No YYMMDD_LNGPA.pdf — upload to the 'ACER Report' folder first');
+    if(!f)throw new Error("No YYMMDD_LNGPA.pdf — upload to the \"ACER Report\" Drive folder first");
     const dr=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${key}`);
     if(!dr.ok)throw new Error('Fetch '+dr.status);
     const row=await acer_parsePDF(f.name, await dr.arrayBuffer());
