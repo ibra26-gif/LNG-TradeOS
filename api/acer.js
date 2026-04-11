@@ -37,7 +37,7 @@ export default async function handler(req) {
     // ── LIST: scrape the TERMINAL index page for all available file IDs ──
     if (action === 'list') {
       const res = await fetch(BASE, { headers });
-      if (!res.ok) throw new Error(`ACER list ${res.status}`);
+     if(!f)throw new Error("No YYMMDD_LNGPA.pdf — upload to the \"ACER Report\" Drive folder first");
       const html = await res.text();
 
       // Extract file links: /terminal/price_assessments/file/{N}
