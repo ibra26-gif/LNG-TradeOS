@@ -406,7 +406,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
             <div class="csep"></div>
             <button class="cr-detect" onclick="cDetect('rolling')">DETECT</button>
           </div>
-          <div style="padding:0 0 10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center" id="cr-chips"></div>
+          <div id="cr-pairs-wrap" style="margin-bottom:10px"></div>
           <div id="cr-detect-panel" style="display:none;margin-bottom:10px"></div>
           <div class="acard">
             <div class="ctitle">ROLLING CORRELATION&nbsp;<span id="cr-badge"></span><span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
@@ -466,6 +466,31 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
             <div class="ctitle" id="cm-title">CROSS-TENOR CORRELATION MATRIX<span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
             <div style="overflow-x:auto"><table class="ctbl" id="cmMatrix" style="font-size:10px"></table></div>
           </div>
+
+        <div style="margin-top:16px;padding:14px 16px;background:#0a0f1e;border:1px solid #151e30;border-left:2px solid #2d7cff">
+          <div style="font-size:9px;letter-spacing:.15em;color:#2d7cff;margin-bottom:12px">HOW TO READ THIS SECTION</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;font-size:9px;line-height:1.7;color:#5a6882">
+            <div>
+              <div style="color:#c8cfe0;font-size:9px;letter-spacing:.1em;margin-bottom:6px">ROLLING TAB</div>
+              Bar height = Pearson r or Spearman r. Range -1 to +1. Solid bars = statistically significant (p&lt;0.05). Faded bars = insufficient data to trust the number. A bar near 0 = indices moved independently. Near +1 = moved together. Negative = moved in opposite directions.<br><br>
+              Stability sigma: std dev of rolling r over time. Low (e.g. 0.05) = consistent relationship. High (e.g. 0.25) = correlation regime switches between periods.
+            </div>
+            <div>
+              <div style="color:#c8cfe0;font-size:9px;letter-spacing:.1em;margin-bottom:6px">ANALYSIS TAB — LAG / LEAD</div>
+              X-axis = lag in days (-10 to +10). Peak bar = optimal lag. If peak is at +2, Index A today predicts Index B in 2 days. If peak is at 0, the indices move synchronously with no timing edge.<br><br>
+              A lag gain of &lt;0.05 over synchronous r is noise. A gain of &gt;0.10 is worth investigating as a timing signal.
+            </div>
+            <div>
+              <div style="color:#c8cfe0;font-size:9px;letter-spacing:.1em;margin-bottom:6px">ANALYSIS TAB — SCATTER</div>
+              Each dot = one day. Orange line = regression. r = relationship strength. R2 = variance explained: R2=0.55 means one index explains 55% of the other's daily moves. Beta slope = how much B moves per unit of A. Tight cluster = reliable. Dispersed cloud = weak or regime-dependent regardless of r.
+            </div>
+            <div>
+              <div style="color:#c8cfe0;font-size:9px;letter-spacing:.1em;margin-bottom:6px">MATRIX TAB</div>
+              Cell: r (top) + sigma stability (bottom). Blue intensity = positive correlation. Red = negative. Faded = not significant, treat as zero. Cross-tenor: compare different delivery months — high r across tenors means the arb relationship persists regardless of delivery timing.<br><br>
+              DETECT scans for: breakdowns (r dropped &gt;0.25 vs 90D avg), developing correlations, unusual lags, and insignificant cells.
+            </div>
+          </div>
+        </div>
         </div>
       </div>
 
@@ -7397,33 +7422,57 @@ function cSetMethodA(m){CR.methodA=m;[$id('ca-pearson'),$id('ca-spearman')].forE
 function cSetMethodM(m){CR.methodM=m;[$id('cm-pearson'),$id('cm-spearman')].forEach(b=>b.classList.remove('on'));$id('cm-'+m).classList.add('on');cUpdMatrix();}
 
 // ── Rolling tab ───────────────────────────────────────────────────────────
-function cBuildChips(){
-  const wrap=$id('cr-chips');if(!wrap)return;
+function cBuildPairRows(){
+  const wrap=$id('cr-pairs-wrap');if(!wrap)return;
   wrap.innerHTML='';
   CR.pairs.forEach((p,i)=>{
     const col=CR_COLORS[i%CR_COLORS.length];
-    const chip=document.createElement('span');
-    chip.className='cr-chip';
-    chip.innerHTML=`<span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>${INST[p.i1]?.label||p.i1} ${tvL(p.t1)} / ${INST[p.i2]?.label||p.i2} ${tvL(p.t2)}<span class="cr-chip-x" onclick="cRemovePair(${i})">×</span>`;
-    wrap.appendChild(chip);
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:6px 10px;background:#0a0f1e;border:1px solid #151e30';
+    // colour dot
+    const dot=document.createElement('span');
+    dot.style.cssText=`width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0`;
+    // Index A
+    const si1=document.createElement('select');
+    si1.style.cssText='background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-family:inherit;font-size:10px;padding:3px 6px';
+    bIS(si1);si1.value=p.i1;
+    si1.onchange=()=>{CR.pairs[i].i1=si1.value;cUpdRolling();};
+    // Tenor A
+    const st1=document.createElement('select');
+    st1.style.cssText='background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-family:inherit;font-size:10px;padding:3px 6px';
+    bTS(st1,true);st1.value=p.t1;
+    st1.onchange=()=>{CR.pairs[i].t1=st1.value;cUpdRolling();};
+    // VS label
+    const vs=document.createElement('span');
+    vs.textContent='VS';vs.style.cssText='font-size:9px;color:#3d5070;letter-spacing:.1em';
+    // Index B
+    const si2=document.createElement('select');
+    si2.style.cssText='background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-family:inherit;font-size:10px;padding:3px 6px';
+    bIS(si2);si2.value=p.i2;
+    si2.onchange=()=>{CR.pairs[i].i2=si2.value;cUpdRolling();};
+    // Tenor B
+    const st2=document.createElement('select');
+    st2.style.cssText='background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-family:inherit;font-size:10px;padding:3px 6px';
+    bTS(st2,true);st2.value=p.t2;
+    st2.onchange=()=>{CR.pairs[i].t2=st2.value;cUpdRolling();};
+    // Remove btn (only if more than 1 pair)
+    const rm=document.createElement('button');
+    rm.textContent='×';rm.style.cssText='background:none;border:none;color:#3d5070;cursor:pointer;font-size:14px;padding:0 4px;margin-left:auto';
+    rm.onclick=()=>{if(CR.pairs.length>1){CR.pairs.splice(i,1);cBuildPairRows();cUpdRolling();}};
+    row.append(dot,si1,st1,vs,si2,st2,rm);
+    wrap.appendChild(row);
   });
-  // Add pair button with selects
-  const addBtn=document.createElement('button');
-  addBtn.className='cr-add';
-  addBtn.textContent='+ ADD PAIR';
-  addBtn.onclick=()=>cAddPairDialog();
-  wrap.appendChild(addBtn);
+  // Add pair button
+  if(CR.pairs.length<6){
+    const addBtn=document.createElement('button');
+    addBtn.className='cr-add';addBtn.textContent='+ ADD PAIR';
+    addBtn.onclick=()=>{
+      CR.pairs.push({i1:'JKM',t1:'r1',i2:'HH',t2:'r1'});
+      cBuildPairRows();cUpdRolling();
+    };
+    wrap.appendChild(addBtn);
+  }
 }
-function cAddPairDialog(){
-  if(CR.pairs.length>=6){alert('Max 6 pairs');return;}
-  const i1=prompt('Index A (JKM/TTF/HH/NBP/Brent/Dated/Slope/SP_JT/SP_JH/SP_TH/SP_JN/SP_HN/SP_TN):','JKM');
-  if(!i1||!INST[i1]){alert('Unknown index');return;}
-  const i2=prompt('Index B:','HH');
-  if(!i2||!INST[i2]){alert('Unknown index');return;}
-  CR.pairs.push({i1,t1:'r1',i2,t2:'r1'});
-  cBuildChips();cUpdRolling();
-}
-function cRemovePair(i){CR.pairs.splice(i,1);cBuildChips();cUpdRolling();}
 
 function cUpdRolling(){
   if(!sDates||!sDates.length)return;
@@ -7576,7 +7625,7 @@ function cInitMatrix(){
     label.style.cssText='font-size:9px;color:#3d5070;white-space:nowrap;display:flex;align-items:center;gap:5px';
     const sel=document.createElement('select');
     sel.style.cssText='background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-family:inherit;font-size:9px;padding:3px 6px';
-    bTS(sel,false);
+    bTS(sel,true);
     sel.value=CR.matTenors[k]||'r1';
     sel.onchange=()=>{CR.matTenors[k]=sel.value;cUpdMatrix();};
     label.appendChild(document.createTextNode(INST[k]?.label||k+': '));
@@ -7711,7 +7760,7 @@ function cExportMatrix(){
 
 // ── Init ──────────────────────────────────────────────────────────────────
 function cInit(){
-  cBuildChips();
+  cBuildPairRows();
   cInitAnalysis();
   cInitMatrix();
   cUpdRolling();
