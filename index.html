@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7900,11 +7899,22 @@ async function lDrive(){
     setP(5,'CONNECTING TO GOOGLE DRIVE','Listing files...');
     const files=await lFiles();
     if(!files.length)throw new Error('No files found in Drive folder.');
-    setP(10,'LOADING',`${files.length} files found — downloading...`);
+    // ── Deduplicate by parsed date — keep only the first file per date ──────
+    // This eliminates duplicate naming variants (e.g. 13.02.26 vs 13.02.2026)
+    // before any file is downloaded, avoiding wasted fetches entirely.
+    const dateMap = new Map();
+    for(const f of files){
+      const date = pDFN(f.name);
+      if(!date) continue;
+      const key = toStr(date);
+      if(!dateMap.has(key)) dateMap.set(key, f); // keep first occurrence, skip rest
+    }
+    const deduped = [...dateMap.values()];
+    setP(10,'LOADING',`${deduped.length} unique dates (${files.length - deduped.length} duplicates skipped) — downloading...`);
     $id('parselog').style.display='block';
-    const B=3;let done=0,added=0,sk=0;
-    for(let i=0;i<files.length;i+=B){
-      await Promise.all(files.slice(i,i+B).map(async f=>{
+    const B=15;let done=0,added=0,sk=0;
+    for(let i=0;i<deduped.length;i+=B){
+      await Promise.all(deduped.slice(i,i+B).map(async f=>{
         const date=pDFN(f.name);if(!date){sk++;return;}
         const key=toStr(date);if(aD[key]){done++;return;}
         try{const resp=await fetch(`/api/drive?action=file&id=${f.id}`);if(!resp.ok){sk++;return;}
@@ -7913,7 +7923,7 @@ async function lDrive(){
           const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;plog(`OK: ${f.name}`);}else sk++;
         }catch(e){sk++;}done++;
       }));
-      setP(10+(Math.min(done,files.length)/files.length)*86,'LOADING',`${added} loaded · ${sk} skipped`);
+      setP(10+(Math.min(done,deduped.length)/deduped.length)*86,'LOADING',`${added} loaded · ${sk} skipped`);
     }
     sDates=Object.keys(aD).sort();
     if(!sDates.length)throw new Error('No valid data parsed from Drive files.');
