@@ -352,7 +352,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
       <div class="mod-card" onclick="shellNav('gasanalytics','eugas')"><span class="card-num">02</span><div class="card-ttl">EU Gas Balance</div><div class="card-desc">Pipeline imports, domestic production, LNG imports and demand — seasonal and monthly views</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','storage')"><span class="card-num">03</span><div class="card-ttl">EU Storage</div><div class="card-desc">EU &amp; country storage levels, seasonal comparison, injection/withdrawal flows — GIE AGSI+</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','regas')"><span class="card-num">04</span><div class="card-ttl">LNG Regas Terminals</div><div class="card-desc">Utilisation heatmap, tank stocks, sendout seasonal and country aggregate — GIE AGGI+</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
-      <div class="mod-card" onclick="shellNav('gasanalytics','signposts')"><span class="card-num">05</span><div class="card-ttl">Market Signposts</div><div class="card-desc">LNG arrivals, hydro reservoir levels, nuclear availability and maintenance &amp; outage tracker</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
+      <div class="mod-card" onclick="shellNav('gasanalytics','lngvc')"><span class="card-num">05</span><div class="card-ttl">LNG Value Chain</div><div class="card-desc">EU LNG imports, regasification utilisation, sendout and tank inventory — GIE ALSI</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
     </div>
   </div>
   <div class="mod-group">
@@ -600,7 +600,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
     <button class="gmtab" id="gmtab-storage" onclick="gaMainTab('storage',this)">EU STORAGE</button>
     <button class="gmtab" id="gmtab-regas"  onclick="gaMainTab('regas',this)">LNG REGAS</button>
     <button class="gmtab" id="gmtab-lngvc"  onclick="gaMainTab('lngvc',this)">LNG VALUE CHAIN</button>
-    <button class="gmtab" id="gmtab-signposts" onclick="gaMainTab('signposts',this)">SIGNPOSTS</button>
   </div>
 
   <!-- TAB 1: CHINA SIGNPOSTS -->
@@ -2445,18 +2444,6 @@ window.csGBUpdate = csGBUpdate;
     <div id="ga-lngvc-pane" style="padding:16px 18px"></div>
   </div>
 
-  <div id="ga-tab-signposts" class="ga-tab-sec">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 32px;text-align:center;gap:14px">
-      <div style="font-size:48px">⚡</div>
-      <div style="color:var(--b);font-size:14px;letter-spacing:2px">MARKET SIGNPOSTS</div>
-      <div style="color:var(--td);font-size:10px;max-width:480px;line-height:1.8">
-        LNG arrivals · Nuclear availability · Hydro reservoir levels · Maintenance &amp; outage tracker<br>
-        <span style="color:#3d5070">Module in development — data sources being wired</span>
-      </div>
-      <div style="border:1px solid rgba(77,158,245,.13);padding:14px 28px;font-size:9px;color:var(--td);letter-spacing:1px;margin-top:8px">COMING SOON</div>
-    </div>
-  </div>
-
   <!-- Modal (keep) -->
   <div class="ga-modal-overlay" id="ga-modal">
     <div class="ga-modal-box">
@@ -2520,8 +2507,8 @@ const ML=(function(){
 let finLoaded=false;
 const PH_T={freight:'FREIGHT RATE CALCULATOR',cargo:'LNG GLOBAL NETBACK',mktstr:'MARKET STRUCTURE PRICING',regas:'EU REGAS MODEL',acer:'HISTORICAL ACER'};
 const PH_D={freight:'Voyage cost estimation across global LNG shipping routes with BLNG curves',cargo:'USGC/WAF/Oman arb, DES pricing, FOB netback matrix and global cargo economics',mktstr:'Near/far curve structure, per-day roll, pricing formula generation for JKM and TTF — leverages the loaded forward curve',regas:'European regasification terminal pricing, cost graphs, netback analysis and slot valuation',acer:'ACER daily DES physical NWE · SE · EU — seasonal scatter all daily obs, 2023–2026'};
-const GA_T={lngbal:'GLOBAL LNG BALANCES & SIGNPOSTS',eugas:'EU GAS BALANCE',storage:'EU STORAGE',regas:'LNG REGAS',signposts:'MARKET SIGNPOSTS'};
-const GA_D={lngbal:'Key LNG country balances and pricing signals',eugas:'Pipeline imports, domestic production, LNG flows and EU gas demand — seasonal views',storage:'EU and country storage levels, seasonal comparison and injection/withdrawal — GIE AGSI+',regas:'Terminal utilisation heatmap, tank stocks, sendout and country aggregate — GIE AGGI+',signposts:'LNG arrivals, hydro reservoir levels, nuclear availability and 2026 maintenance tracker'};
+const GA_T={lngbal:'GLOBAL LNG BALANCES & SIGNPOSTS',eugas:'EU GAS BALANCE',storage:'EU STORAGE',regas:'LNG REGAS'};
+const GA_D={lngbal:'Key LNG country balances and pricing signals',eugas:'Pipeline imports, domestic production, LNG flows and EU gas demand — seasonal views',storage:'EU and country storage levels, seasonal comparison and injection/withdrawal — GIE AGSI+',regas:'Terminal utilisation heatmap, tank stocks, sendout and country aggregate — GIE AGGI+'};
 const PV_T={single:'SINGLE DEAL VALUATION',strips:'STRIPS VALUATION',portfolio:'PORTFOLIO VALUATION'};
 const PV_D={single:'Full extrinsic and optionality valuation for individual LNG cargo contracts',strips:'Multi-cargo strip optionality decomposition',portfolio:'Aggregated P&L, exposure summary and blended optionality'};
 const TB_T={converter:'NATURAL GAS CONVERTER',gasspec:'GAS SPECIFICATIONS',portcosts:'PORT COST DATABASE'};
@@ -9053,6 +9040,7 @@ const ENTSOG_CORRIDOR_POINTS = {
     'Easington',            // Langeled — UK ✓
     'St. Fergus',           // FLAGS pipeline — UK ✓
     'Nybro',                // Danish landing ✓
+    'Dunkerque',            // Franpipe — France ✓ (~50-70 mcm/d)
   ],
   algeria_italy: [
     'Mazara del Vallo',     // TransMed — Italy ✓
@@ -9476,7 +9464,7 @@ const ENTSOG_TO_MCM = 1/(1e6*10.55);
 
 // ── ENTSOG corridor point labels (verified April 2026) ────────────────────────
 const PIPE_POINTS = {
-  norway:       ['Zeebrugge ZPT','Dornum GASPOOL','Emden (EPT1) (OGE)','Easington','St. Fergus','Nybro'],
+  norway:       ['Zeebrugge ZPT','Dornum GASPOOL','Emden (EPT1) (OGE)','Easington','St. Fergus','Nybro','Dunkerque'],
   algeria_italy:['Mazara del Vallo','Gela'],
   algeria_spain:['Almería','Tarifa'],
   tap:          ['Kipi (TR) / Kipi (GR)','Melendugno - IT / TAP'],
@@ -9970,12 +9958,6 @@ async function renderGaDashboard(){
       ${truckHtml}
     </div>
 
-    <!-- French Nuclear -->
-    <div style="margin-bottom:14px">
-      <div style="font-size:8px;letter-spacing:1.5px;color:#a78bfa;margin-bottom:6px">FRENCH NUCLEAR AVAILABILITY <span style="font-size:7px;background:rgba(167,139,250,0.1);color:#a78bfa;padding:1px 5px;border:1px solid rgba(167,139,250,0.2)">ENTSO-E</span></div>
-      <div id="db-fr-nuclear"><div style="font-size:9px;color:#3d5070;padding:8px;border:1px dashed #1e3a5f;text-align:center">Loading ENTSO-E…</div></div>
-    </div>
-
     <!-- Asia placeholders -->
     <div>
       <div style="font-size:8px;letter-spacing:1.5px;color:#546e7a;margin-bottom:6px">ASIA DEMAND SIGNALS</div>
@@ -10041,7 +10023,7 @@ async function renderGaDashboard(){
 
     <!-- Quick nav -->
     <div style="display:flex;gap:5px;flex-wrap:wrap">
-      ${[['LNG BALANCE','lngbal'],['EU GAS','eugas'],['STORAGE','storage'],['LNG REGAS','regas'],['LNG VALUE CHAIN','lngvc'],['SIGNPOSTS','signposts']].map(([l,id])=>
+      ${[['LNG BALANCE','lngbal'],['EU GAS','eugas'],['STORAGE','storage'],['LNG REGAS','regas'],['LNG VALUE CHAIN','lngvc']].map(([l,id])=>
         `<button class="gbtn sm" onclick="gaMainTab('${id}',document.getElementById('gmtab-${id}'))">${l} →</button>`
       ).join('')}
     </div>
@@ -10051,7 +10033,6 @@ async function renderGaDashboard(){
   setTimeout(()=>{
     gaUpdateStatusDots();
     _drawDbMiniCharts();
-    _loadFrNuclear();
   },120);
 }
 
@@ -10093,61 +10074,6 @@ function _drawDbMiniCharts(){
   }
 }
 
-async function _loadFrNuclear(){
-  const el=document.getElementById('db-fr-nuclear');if(!el)return;
-  // Running locally: CORS will block. Show clean informational note instead of red error.
-  if(IS_LOCAL){
-    el.innerHTML=`<div style="padding:8px 10px;background:#050c14;border:1px solid #1a2d4a;font-size:9px;color:#546e7a;line-height:1.6"><span style="color:#a78bfa;font-weight:700">ENTSO-E</span> · French Nuclear Availability<br><span style="color:#3d5070">Live on </span><span style="color:#4fc3f7">lngtradeos.com</span><span style="color:#3d5070"> · CORS blocked locally</span><br><span style="font-size:7px;color:#2d3d55">A75/A16 · 10YFR-RTE------C · Nuclear B14</span></div>`;
-    return;
-  }
-  const ENTSOE_KEY='5543d284-22f5-4467-969a-cd1d5b9ef39b';
-  const today=new Date();
-  const pStart=`${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}010000`;
-  const pEnd=`${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}2300`;
-  const cacheKey=`entsoe_fr_nuc_${today.toISOString().slice(0,7)}`;
-  let cached;
-  try{const c=sessionStorage.getItem(cacheKey);if(c)cached=JSON.parse(c);}catch{}
-  async function fetchNuclear(){
-    const url=`https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_KEY}&documentType=A75&processType=A16&in_Domain=10YFR-RTE------C&psrType=B14&periodStart=${pStart}&periodEnd=${pEnd}`;
-    const r=await fetch(url);
-    if(!r.ok) throw new Error(`ENTSO-E HTTP ${r.status}`);
-    const txt=await r.text();
-    const vals=[...txt.matchAll(/<quantity>(\d+(?:\.\d+)?)<\/quantity>/g)].map(m=>+m[1]);
-    if(!vals.length) throw new Error('No quantity values in XML');
-    const avg=+(vals.reduce((a,c)=>a+c,0)/vals.length/1000).toFixed(1);
-    const latest=+(vals[vals.length-1]/1000).toFixed(1);
-    const min=+(Math.min(...vals)/1000).toFixed(1);
-    const max=+(Math.max(...vals)/1000).toFixed(1);
-    return{avg,latest,min,max,n:vals.length,month:today.toISOString().slice(0,7)};
-  }
-  try{
-    const data=cached||await fetchNuclear();
-    if(!cached){try{sessionStorage.setItem(cacheKey,JSON.stringify(data));}catch{}}
-    const avail=data.max>0?+(data.latest/data.max*100).toFixed(0):null;
-    const ac=avail!=null?(avail>80?'#4ade80':avail>60?'#facc15':'#f87171'):'#a78bfa';
-    el.innerHTML=`
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:5px">
-      <div style="background:#050c14;padding:7px;border:1px solid #1e3a5f">
-        <div style="font-size:7px;color:#546e7a">LATEST</div>
-        <div style="font-size:15px;font-weight:700;color:${ac}">${data.latest} GW</div>
-        <div style="font-size:7px;color:#3d5070">${avail!=null?avail+'% of max':''}</div>
-      </div>
-      <div style="background:#050c14;padding:7px;border:1px solid #1e3a5f">
-        <div style="font-size:7px;color:#546e7a">MTD AVG</div>
-        <div style="font-size:15px;font-weight:700;color:#8a9bb5">${data.avg} GW</div>
-        <div style="font-size:7px;color:#3d5070">${data.month}</div>
-      </div>
-      <div style="background:#050c14;padding:7px;border:1px solid #1e3a5f">
-        <div style="font-size:7px;color:#546e7a">MTD RANGE</div>
-        <div style="font-size:12px;font-weight:600;color:#8a9bb5">${data.min}–${data.max} GW</div>
-        <div style="font-size:7px;color:#3d5070">${data.n} intervals</div>
-      </div>
-    </div>
-    <div style="font-size:7px;color:#3d5070">ENTSO-E A75/A16 · 10YFR-RTE------C · Nuclear B14</div>`;
-  }catch(e){
-    el.innerHTML=`<div style="padding:8px 10px;background:#050c14;border:1px solid rgba(248,113,113,0.2);font-size:9px;color:#f87171">ENTSO-E unavailable · ${e.message}</div>`;
-  }
-}
 // ══════════════════════════════════════════════════════════════════════════
 // LNG VALUE CHAIN — EU · imports → regasification → sendout
 // ══════════════════════════════════════════════════════════════════════════
@@ -10566,7 +10492,7 @@ function drawPipeDaily(route){
   }));
   gaMakeChart('pipe-main-chart','bar',{labels,datasets},{
     scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:20}},
-      y:{...GCD.scales.y,stacked:true,title:{display:true,text:guLbl(),color:'#3d5070',font:{size:9}}}}
+      y:{...GCD.scales.y,stacked:true,title:{display:true,text:guLbl().replace('/month','/d'),color:'#3d5070',font:{size:9}}}}
   });
   if(!GD.ok.pipeline) gdErr('pipe-chart-wrap','ENTSOG data not loaded yet — hit ↺ REFRESH ALL');
 }
@@ -11536,37 +11462,89 @@ window.lngbalCountry=lngbalCountry;
 function indBuildShell(){
   return`
   <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS &amp; LNG ANALYTICS · INDIA SIGNPOSTS</div>
-  <div style="display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px">
+  <div style="display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px">
     <div style="padding:10px 16px;font-size:10px;letter-spacing:1px;color:var(--b);border-bottom:2px solid var(--b)">INDIA GAS BALANCE</div>
-  </div>
-  <div id="ind-balance-body">
-    <div style="padding:24px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">
-      Load India gas balance data by uploading a CSV via the file upload button in the top bar<br>
-      <span style="color:#546e7a">(CSV key: india_gas_balance · columns: Month, Production, LNG_Imports, Pipeline_Imports, Demand, Storage)</span>
+    <div style="margin-left:auto;padding:0 12px;display:flex;align-items:center;gap:8px">
+      <label style="cursor:pointer;padding:5px 14px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(77,158,245,0.4);color:#4d9ef5;background:rgba(77,158,245,0.07);font-family:inherit">
+        ↑ UPLOAD CSV
+        <input type="file" accept=".csv" style="display:none" onchange="indLoadCsv(this)">
+      </label>
+      <span style="font-size:8px;color:#3d5070">CSV columns: month, prod_mmscm, rlng_mmscm, Power, CGD, Fertilizer, Refinery, Petrochem, LPGShrink, SteelDRI, PipelineIC, Other</span>
     </div>
-  </div>`;
+  </div>
+  <div id="ind-balance-body"></div>`;
 }
+
+function indLoadCsv(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const lines=e.target.result.trim().split('\n');
+      const headers=lines[0].split(',').map(h=>h.trim());
+      const indRows={};
+      for(let i=1;i<lines.length;i++){
+        const cells=lines[i].split(',').map(v=>v.trim());
+        const row={};
+        headers.forEach((h,j)=>row[h]=cells[j]||'');
+        const mo=row.month||row.Month||'';
+        if(!mo.match(/\d{4}-\d{2}/)) continue;
+        indRows[mo]={
+          prod:parseFloat(row.prod_mmscm)||null,
+          rlng:parseFloat(row.rlng_mmscm)||null,
+          Power:parseFloat(row.Power)||null,
+          CGD:parseFloat(row.CGD)||null,
+          Fertilizer:parseFloat(row.Fertilizer)||null,
+          Refinery:parseFloat(row.Refinery)||null,
+          Petrochem:parseFloat(row.Petrochem)||null,
+          LPGShrink:parseFloat(row.LPGShrink)||null,
+          SteelDRI:parseFloat(row.SteelDRI)||null,
+          PipelineIC:parseFloat(row.PipelineIC)||null,
+          Other:parseFloat(row.Other)||null,
+        };
+      }
+      const cnt=Object.keys(indRows).length;
+      if(cnt===0){alert('No valid rows found. Check month format is YYYY-MM.');return;}
+      localStorage.setItem('lng_india_gb_v1',JSON.stringify({ts:Date.now(),data:indRows}));
+      renderBalance();
+    }catch(err){alert('CSV parse error: '+err.message);}
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+window.indLoadCsv=indLoadCsv;
 
 function renderBalance(){
   const el=document.getElementById('ind-balance-body');if(!el)return;
   let raw;
   try{const s=localStorage.getItem('lng_india_gb_v1');raw=s?JSON.parse(s):null;}catch{raw=null;}
-  if(!raw||!raw.data||!raw.data.length){
+  if(!raw||!raw.data||Object.keys(raw.data).length===0){
     el.innerHTML=`<div style="padding:24px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">
-      No India gas balance data loaded yet.<br>Upload a CSV via the top-bar file upload (key: india_gas_balance).
+      No data loaded yet. Upload a CSV using the button above.
     </div>`;
     return;
   }
-  const rows=raw.data;
-  const cols=Object.keys(rows[0]||{}).filter(k=>k!=='Month'&&k!=='month');
-  const updated=raw.ts?new Date(raw.ts).toISOString().slice(0,10):'unknown';
+  // data is keyed by YYYY-MM
+  const months=Object.keys(raw.data).sort();
+  const firstRow=raw.data[months[0]]||{};
+  const cols=Object.keys(firstRow);
+  const updated=raw.ts?new Date(raw.ts).toLocaleDateString('en-GB'):'unknown';
+  // Column display labels
+  const colLbl={prod:'Production (mmscm)',rlng:'RLNG Imports (mmscm)',Power:'Power',CGD:'CGD',Fertilizer:'Fertilizer',Refinery:'Refinery',Petrochem:'Petrochem',LPGShrink:'LPG Shrink',SteelDRI:'Steel/DRI',PipelineIC:'Pipeline I/C',Other:'Other'};
   el.innerHTML=`
-  <div style="font-size:9px;color:#546e7a;margin-bottom:10px">${rows.length} months loaded · updated ${updated}</div>
-  <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+  <div style="font-size:9px;color:#546e7a;margin-bottom:10px">${months.length} months · updated ${updated}</div>
+  <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
   <table class="ga-tbl"><thead><tr>
-    <th class="L">MONTH</th>${cols.map(c=>`<th>${c.replace(/_/g,' ')}</th>`).join('')}
+    <th class="L" style="min-width:80px">MONTH</th>
+    ${cols.map(c=>`<th style="min-width:90px">${(colLbl[c]||c).toUpperCase()}</th>`).join('')}
   </tr></thead><tbody>
-    ${rows.map(r=>`<tr><td class="L">${r.Month||r.month||'—'}</td>${cols.map(c=>`<td>${r[c]!=null?r[c]:'-'}</td>`).join('')}</tr>`).join('')}
+    ${months.map(mo=>{
+      const r=raw.data[mo];
+      return`<tr><td class="L">${mo}</td>${cols.map(c=>{
+        const v=r[c]; const n=parseFloat(v);
+        return`<td>${v==null||v===''||isNaN(n)?'—':n.toFixed(0)}</td>`;
+      }).join('')}</tr>`;
+    }).join('')}
   </tbody></table></div>`;
 }
 window.renderBalance=renderBalance;
