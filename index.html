@@ -9958,6 +9958,12 @@ async function renderGaDashboard(){
       ${truckHtml}
     </div>
 
+    <!-- French Nuclear -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:8px;letter-spacing:1.5px;color:#a78bfa;margin-bottom:6px">FRENCH NUCLEAR AVAILABILITY <span style="font-size:7px;background:rgba(167,139,250,0.1);color:#a78bfa;padding:1px 5px;border:1px solid rgba(167,139,250,0.2)">ENTSO-E</span></div>
+      <div id="db-fr-nuclear"><div style="font-size:9px;color:#3d5070;padding:8px;border:1px dashed #1e3a5f;text-align:center">Loading ENTSO-E…</div></div>
+    </div>
+
     <!-- Asia placeholders -->
     <div>
       <div style="font-size:8px;letter-spacing:1.5px;color:#546e7a;margin-bottom:6px">ASIA DEMAND SIGNALS</div>
@@ -10033,6 +10039,7 @@ async function renderGaDashboard(){
   setTimeout(()=>{
     gaUpdateStatusDots();
     _drawDbMiniCharts();
+    _loadFrNuclear();
   },120);
 }
 
@@ -10071,6 +10078,84 @@ function _drawDbMiniCharts(){
       scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:7}},
         y:{...GCD.scales.y,title:{display:false}}}
     });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// FRENCH NUCLEAR — ENTSO-E via server proxy (CORS blocked in browser)
+// ══════════════════════════════════════════════════════════════════════════
+async function _loadFrNuclear(){
+  const el=document.getElementById('db-fr-nuclear'); if(!el) return;
+  const ENTSOE_KEY='5543d284-22f5-4467-969a-cd1d5b9ef39b';
+  const today=new Date();
+  const yr=today.getFullYear(), mo=String(today.getMonth()+1).padStart(2,'0'), dy=String(today.getDate()).padStart(2,'0');
+  const pStart=`${yr}${mo}010000`;
+  const pEnd=`${yr}${mo}${dy}2300`;
+  const cacheKey=`entsoe_fr_nuc_${yr}-${mo}`;
+  let cached;
+  try{const c=sessionStorage.getItem(cacheKey);if(c)cached=JSON.parse(c);}catch{}
+
+  async function fetchNuclear(){
+    // IS_LOCAL: direct fetch (will fail with CORS, shows error msg)
+    // Deployed: go via /api/entsoe proxy (server-side, no CORS)
+    let url, headers={};
+    if(IS_LOCAL){
+      url=`https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_KEY}&documentType=A75&processType=A16&in_Domain=10YFR-RTE------C&psrType=B14&periodStart=${pStart}&periodEnd=${pEnd}`;
+    } else {
+      // Vercel proxy: /api/entsoe?documentType=A75&...  (no token in URL — proxy adds it server-side)
+      url=`/api/entsoe?documentType=A75&processType=A16&in_Domain=10YFR-RTE------C&psrType=B14&periodStart=${pStart}&periodEnd=${pEnd}`;
+    }
+    const r=await fetch(url,{headers});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const txt=await r.text();
+    const vals=[...txt.matchAll(/<quantity>(\d+(?:\.\d+)?)<\/quantity>/g)].map(m=>+m[1]);
+    if(!vals.length) throw new Error('No data in response');
+    const avg=+(vals.reduce((a,c)=>a+c,0)/vals.length/1000).toFixed(1);
+    const latest=+(vals[vals.length-1]/1000).toFixed(1);
+    const min=+(Math.min(...vals)/1000).toFixed(1);
+    const max=+(Math.max(...vals)/1000).toFixed(1);
+    return{avg,latest,min,max,n:vals.length,month:`${yr}-${mo}`};
+  }
+
+  try{
+    if(IS_LOCAL){
+      // Local: CORS will block — show clean note instead of red error
+      el.innerHTML=`<div style="padding:8px 10px;background:#050c14;border:1px solid #1a2d4a;font-size:9px;color:#546e7a;line-height:1.6">
+        <span style="color:#a78bfa;font-weight:700">ENTSO-E</span> · French Nuclear Availability<br>
+        <span style="color:#3d5070">Live data via proxy on </span><span style="color:#4fc3f7">lngtradeos.com</span>
+        <span style="color:#3d5070"> · CORS blocked in local/file mode</span><br>
+        <span style="font-size:7px;color:#2d3d55">A75/A16 · 10YFR-RTE------C · Nuclear B14</span>
+      </div>`;
+      return;
+    }
+    const data=cached||await fetchNuclear();
+    if(!cached){try{sessionStorage.setItem(cacheKey,JSON.stringify(data));}catch{}}
+    const avail=data.max>0?+(data.latest/data.max*100).toFixed(0):null;
+    const ac=avail!=null?(avail>80?'#4ade80':avail>60?'#facc15':'#f87171'):'#a78bfa';
+    el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:5px">
+      <div style="background:#050c14;padding:7px;border:1px solid #1e3a5f">
+        <div style="font-size:7px;color:#546e7a">LATEST</div>
+        <div style="font-size:15px;font-weight:700;color:${ac}">${data.latest} GW</div>
+        <div style="font-size:7px;color:#3d5070">${avail!=null?avail+'% of max':''}</div>
+      </div>
+      <div style="background:#050c14;padding:7px;border:1px solid #1e3a5f">
+        <div style="font-size:7px;color:#546e7a">MTD AVG</div>
+        <div style="font-size:15px;font-weight:700;color:#8a9bb5">${data.avg} GW</div>
+        <div style="font-size:7px;color:#3d5070">${data.month}</div>
+      </div>
+      <div style="background:#050c14;padding:7px;border:1px solid #1e3a5f">
+        <div style="font-size:7px;color:#546e7a">MTD RANGE</div>
+        <div style="font-size:12px;font-weight:600;color:#8a9bb5">${data.min}–${data.max} GW</div>
+        <div style="font-size:7px;color:#3d5070">${data.n} intervals</div>
+      </div>
+    </div>
+    <div style="font-size:7px;color:#3d5070">ENTSO-E A75/A16 · 10YFR-RTE------C · Nuclear B14 · MTD ${data.month}</div>`;
+  }catch(e){
+    el.innerHTML=`<div style="padding:8px 10px;background:#050c14;border:1px solid rgba(248,113,113,0.2);font-size:9px;color:#f87171">
+      ENTSO-E unavailable · ${e.message}<br>
+      <span style="font-size:8px;color:#3d5070">Check /api/entsoe proxy is deployed on Vercel</span>
+    </div>`;
   }
 }
 
