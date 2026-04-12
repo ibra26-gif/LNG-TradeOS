@@ -589,7 +589,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
       <option value="quarterly">Quarterly</option>
     </select>
     <button class="gbtn grn" onclick="gaRefreshAll()" id="ga-refresh-btn">↺ REFRESH ALL</button>
-    <span class="ts" id="ga-ts-label">Not loaded</span>
+    <span class="ts" id="ga-ts-label">Loading…</span>
   </div>
 
   <!-- Main tabs -->
@@ -599,6 +599,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
     <button class="gmtab" id="gmtab-eugas"  onclick="gaMainTab('eugas',this)">EU GAS BALANCE</button>
     <button class="gmtab" id="gmtab-storage" onclick="gaMainTab('storage',this)">EU STORAGE</button>
     <button class="gmtab" id="gmtab-regas"  onclick="gaMainTab('regas',this)">LNG REGAS</button>
+    <button class="gmtab" id="gmtab-lngvc"  onclick="gaMainTab('lngvc',this)">LNG VALUE CHAIN</button>
     <button class="gmtab" id="gmtab-signposts" onclick="gaMainTab('signposts',this)">SIGNPOSTS</button>
   </div>
 
@@ -642,12 +643,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
       .cs-wf-item{display:flex;align-items:center;gap:8px;font-size:10px;color:#8a9bb5}
       .cs-wf-swatch{width:12px;height:12px;flex-shrink:0}
       .cs-divider{font-size:9px;letter-spacing:.15em;color:#4b5a72;margin:18px 0 12px;padding-bottom:6px;border-bottom:1px solid rgba(77,158,245,0.07)}
+      /* Country bar — separate class to avoid conflict with csTab() */
+      .cty-tab{padding:10px 18px;font-size:10px;letter-spacing:.1em;color:#6b7a99;cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;white-space:nowrap;transition:all .2s}
+      .cty-tab:hover{color:#dde4f0}.cty-tab.active{color:#4d9ef5;border-bottom-color:#4d9ef5}
     </style>
 
     <!-- Country selector -->
     <div id="lngbal-cty-bar" style="display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px">
-      <button id="lngbal-btn-china" class="cs-tab active" onclick="lngbalCountry('china',this)">CHINA</button>
-      <button id="lngbal-btn-india" class="cs-tab" onclick="lngbalCountry('india',this)">INDIA</button>
+      <button id="lngbal-btn-china" class="cty-tab active" onclick="lngbalCountry('china',this)">CHINA</button>
+      <button id="lngbal-btn-india" class="cty-tab" onclick="lngbalCountry('india',this)">INDIA</button>
     </div>
     <div id="lngbal-china">
     <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS &amp; LNG ANALYTICS · CHINA SIGNPOSTS</div>
@@ -2382,8 +2386,9 @@ window.csGBUpdate = csGBUpdate;
       setTimeout(csGBFetch, 500);
     }
     window.csGBInit = csGBInit;
+    window.csInit = csInit;  // must be global — gaMainTab checks typeof csInit
 
-    // Hook into existing gaMainTab to trigger init when section becomes visible
+    // Hook is kept for legacy but real routing is in gaMainTab (which overwrites this)
     const _origGaMainTab = window.gaMainTab;
     window.gaMainTab = function(id, btn) {
       if(_origGaMainTab) _origGaMainTab(id, btn);
@@ -2434,6 +2439,11 @@ window.csGBUpdate = csGBUpdate;
   </div>
 
   <!-- TAB 5: MARKET SIGNPOSTS -->
+
+  <!-- TAB 6: LNG VALUE CHAIN -->
+  <div id="ga-tab-lngvc" class="ga-tab-sec">
+    <div id="ga-lngvc-pane" style="padding:16px 18px"></div>
+  </div>
 
   <div id="ga-tab-signposts" class="ga-tab-sec">
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 32px;text-align:center;gap:14px">
@@ -2550,6 +2560,8 @@ function gaMainTab(id,btn){
   const sec=document.getElementById('ga-tab-'+id);if(sec)sec.classList.add('active');
   if(btn)btn.classList.add('active');
   if(id==='dashboard'){renderGaDashboard();return;}
+  if(id==='lngbal' && typeof csInit==='function') setTimeout(csInit,120);
+  if(id==='lngvc'){if(!window.gaInitDone)gaInitAll();setTimeout(renderLngVC,80);return;}
   if(!window.gaInitDone) gaInitAll();
   setTimeout(()=>Object.values(GA_CHARTS).forEach(c=>c&&c.resize()),80);
 }
@@ -8952,7 +8964,10 @@ const GIE_AGSI  = 'https://agsi.gie.eu/api';
 const GIE_AGGI  = 'https://aggi.gie.eu/api';
 // Proxy routing: GIE APIs need proxy (API key in headers, CORS blocked).
 // ENTSOG is public with open CORS — call directly from browser, no proxy needed.
-const IS_LOCAL = ['localhost','127.0.0.1'].includes(window.location.hostname);
+const IS_LOCAL = window.location.protocol === 'file:' || ['localhost','127.0.0.1',''].includes(window.location.hostname);
+function agsiUrl(q){ return IS_LOCAL?`${GIE_AGSI}?${q}`:`/api/agsi?${q}`; }
+function aggiUrl(q){ return IS_LOCAL?`${GIE_AGGI}?${q}`:`/api/aggi?${q}`; }
+function gieHdr(){ return IS_LOCAL?{'x-key':GIE_KEY}:{}; }
 // Helper kept for other uses but ENTSOG always goes direct
 function entsogProxyUrl(params){ return `/api/entsog?endpoint=operationaldata&${params}`; }
 
@@ -8971,9 +8986,7 @@ function guFmt(v,dp=2){ return v===null||isNaN(v)?'--':v.toFixed(dp); }
 // ── GIE AGSI+ (Underground Storage) ──────────────────────────────
 async function gaFetchGIE(params={}){
   const q=new URLSearchParams(params).toString();
-  const url=IS_LOCAL?`${GIE_AGSI}?${q}`:`/api/agsi?${q}`;
-  const headers=IS_LOCAL?{'x-key':GIE_KEY}:{};
-  const r=await fetch(url,{headers});
+  const r=await fetch(agsiUrl(q),{headers:gieHdr()});
   if(!r.ok) throw new Error(`GIE AGSI ${r.status}`);
   return r.json();
 }
@@ -8981,9 +8994,7 @@ async function gaFetchGIE(params={}){
 // ── GIE AGGI+ (LNG Terminals) ────────────────────────────────────
 async function gaFetchAGGI(params={}){
   const q=new URLSearchParams(params).toString();
-  const url=IS_LOCAL?`${GIE_AGGI}?${q}`:`/api/aggi?${q}`;
-  const headers=IS_LOCAL?{'x-key':GIE_KEY}:{};
-  const r=await fetch(url,{headers});
+  const r=await fetch(aggiUrl(q),{headers:gieHdr()});
   if(!r.ok) throw new Error(`GIE AGGI ${r.status}`);
   return r.json();
 }
@@ -9450,9 +9461,9 @@ const GD = {
   storage: {},
   // AGSI by country: {countryCode: {YYYY-MM: {pct, twh}}}
   storByCtry: {},
-  // GIE ALSI: {YYYY-MM: {sendGWh, dtrsGWh}} EU total
+  // GIE ALSI: {YYYY-MM: {sendGWh, dtrsGWh, statusGWh}} EU total
   lngTotal: {},
-  // ALSI by country: {code: {YYYY-MM: {sendGWh, dtrsGWh}}}
+  // ALSI by country: {code: {YYYY-MM: {sendGWh, dtrsGWh, statusGWh}}}
   lngByCtry: {},
   // Daily pipeline: {route: [{date, mcm}]} — last 90 days
   pipeDaily: {norway:[], algeria_italy:[], algeria_spain:[], tap:[], russia:[]},
@@ -9629,7 +9640,7 @@ async function gdLoadStorage(from, to){
     const cacheKey=`agsi_eu_${from.slice(0,7)}_${to.slice(0,7)}`;
     let series = gdCacheGet(cacheKey);
     if(!series){
-      const r = await fetch(`/api/agsi?type=eu&from=${from}&to=${to}&size=5000`);
+      const r = await fetch(agsiUrl(`type=eu&from=${from}&to=${to}&size=5000`),{headers:gieHdr()});
       if(!r.ok) throw new Error(`AGSI ${r.status}`);
       const j = await r.json();
       series = j?.data || [];
@@ -9664,7 +9675,7 @@ async function gdLoadStorageCountries(from, to){
       const cacheKey=`agsi_${code}_${from.slice(0,7)}_${to.slice(0,7)}`;
       let series = gdCacheGet(cacheKey);
       if(!series){
-        const r = await fetch(`/api/agsi?country=${code}&from=${from}&to=${to}&size=500`);
+        const r = await fetch(agsiUrl(`country=${code}&from=${from}&to=${to}&size=500`),{headers:gieHdr()});
         if(!r.ok){ console.warn(`AGSI ${code}: ${r.status}`); continue; }
         const j = await r.json();
         series = j?.data || [];
@@ -9692,7 +9703,7 @@ async function gdLoadLNG(from, to){
     const cacheKey=`alsi_eu_${from.slice(0,7)}_${to.slice(0,7)}`;
     let series = gdCacheGet(cacheKey);
     if(!series){
-      const r = await fetch(`/api/aggi?type=eu&from=${from}&to=${to}&size=5000`);
+      const r = await fetch(aggiUrl(`type=eu&from=${from}&to=${to}&size=5000`),{headers:gieHdr()});
       if(!r.ok) throw new Error(`ALSI ${r.status}`);
       const j = await r.json();
       series = j?.data || [];
@@ -9706,15 +9717,18 @@ async function gdLoadLNG(from, to){
       if(!mo||!date) return;
       const send=parseFloat(d.sendOut||d.sendout||0)||0;
       const dtrs=parseFloat(d.dtrs||0)||0;
-      if(!GD.lngTotal[mo]) GD.lngTotal[mo]={sendGWh:0,dtrsGWh:0};
+      const status=parseFloat(d.status||0)||0;
+      if(!GD.lngTotal[mo]) GD.lngTotal[mo]={sendGWh:0,dtrsGWh:0,statusGWh:0};
       GD.lngTotal[mo].sendGWh += send;
       GD.lngTotal[mo].dtrsGWh += dtrs;
+      GD.lngTotal[mo].statusGWh += status;
       // Store daily data for recent years (current + previous)
       const yr=+date.slice(0,4);
       if(yr>=curY-1){
-        if(!GD.lngDaily[date]) GD.lngDaily[date]={sendGWh:0,dtrsGWh:0};
+        if(!GD.lngDaily[date]) GD.lngDaily[date]={sendGWh:0,dtrsGWh:0,statusGWh:0};
         GD.lngDaily[date].sendGWh += send;
         GD.lngDaily[date].dtrsGWh += dtrs;
+        GD.lngDaily[date].statusGWh += status;
       }
     });
     if(Object.keys(GD.lngTotal).length) GD.ok.lng=true;
@@ -9729,7 +9743,7 @@ async function gdLoadLNGCountries(from, to){
       const cacheKey=`alsi_${code}_${from.slice(0,7)}_${to.slice(0,7)}`;
       let series = gdCacheGet(cacheKey);
       if(!series){
-        const r = await fetch(`/api/aggi?country=${code}&from=${from}&to=${to}&size=500`);
+        const r = await fetch(aggiUrl(`country=${code}&from=${from}&to=${to}&size=500`),{headers:gieHdr()});
         if(!r.ok){ console.warn(`ALSI ${code}: ${r.status}`); continue; }
         const j = await r.json();
         series = j?.data || [];
@@ -9743,9 +9757,11 @@ async function gdLoadLNGCountries(from, to){
         if(!mo) return;
         const send=parseFloat(d.sendOut||d.sendout||0)||0;
         const dtrs=parseFloat(d.dtrs||0)||0;
-        if(!GD.lngByCtry[code][mo]) GD.lngByCtry[code][mo]={sendGWh:0,dtrsGWh:0};
+        const status=parseFloat(d.status||0)||0;
+        if(!GD.lngByCtry[code][mo]) GD.lngByCtry[code][mo]={sendGWh:0,dtrsGWh:0,statusGWh:0};
         GD.lngByCtry[code][mo].sendGWh += send;
         GD.lngByCtry[code][mo].dtrsGWh += dtrs;
+        GD.lngByCtry[code][mo].statusGWh += status;
       });
     }catch(e){ console.warn(`ALSI ${code}:`,e.message); }
     await new Promise(r=>setTimeout(r,300));
@@ -9814,6 +9830,8 @@ function gdRerenderActive(){
   const id = active.id;
   if(id==='ga-tab-dashboard'){
     renderGaDashboard();
+  } else if(id==='ga-tab-lngvc'){
+    renderLngVC();
   } else if(id==='ga-tab-eugas'){
     const activeSub = document.querySelector('#ga-eugas-subtabs .ga-stab.active');
     const sub = activeSub?.textContent?.toLowerCase().includes('pipeline')?'pipeline':
@@ -10023,7 +10041,7 @@ async function renderGaDashboard(){
 
     <!-- Quick nav -->
     <div style="display:flex;gap:5px;flex-wrap:wrap">
-      ${[['LNG BALANCE','lngbal'],['EU GAS','eugas'],['STORAGE','storage'],['LNG REGAS','regas'],['SIGNPOSTS','signposts']].map(([l,id])=>
+      ${[['LNG BALANCE','lngbal'],['EU GAS','eugas'],['STORAGE','storage'],['LNG REGAS','regas'],['LNG VALUE CHAIN','lngvc'],['SIGNPOSTS','signposts']].map(([l,id])=>
         `<button class="gbtn sm" onclick="gaMainTab('${id}',document.getElementById('gmtab-${id}'))">${l} →</button>`
       ).join('')}
     </div>
@@ -10077,6 +10095,11 @@ function _drawDbMiniCharts(){
 
 async function _loadFrNuclear(){
   const el=document.getElementById('db-fr-nuclear');if(!el)return;
+  // Running locally: CORS will block. Show clean informational note instead of red error.
+  if(IS_LOCAL){
+    el.innerHTML=`<div style="padding:8px 10px;background:#050c14;border:1px solid #1a2d4a;font-size:9px;color:#546e7a;line-height:1.6"><span style="color:#a78bfa;font-weight:700">ENTSO-E</span> · French Nuclear Availability<br><span style="color:#3d5070">Live on </span><span style="color:#4fc3f7">lngtradeos.com</span><span style="color:#3d5070"> · CORS blocked locally</span><br><span style="font-size:7px;color:#2d3d55">A75/A16 · 10YFR-RTE------C · Nuclear B14</span></div>`;
+    return;
+  }
   const ENTSOE_KEY='5543d284-22f5-4467-969a-cd1d5b9ef39b';
   const today=new Date();
   const pStart=`${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}010000`;
@@ -10122,9 +10145,286 @@ async function _loadFrNuclear(){
     </div>
     <div style="font-size:7px;color:#3d5070">ENTSO-E A75/A16 · 10YFR-RTE------C · Nuclear B14</div>`;
   }catch(e){
-    el.innerHTML=`<div style="font-size:9px;color:#f87171;padding:8px;border:1px solid rgba(248,113,113,0.2)">${e.message.includes('Failed to fetch')||e.message.includes('NetworkError')?'CORS blocked in local file mode — works when deployed to lngtradeos.com':'ENTSO-E: '+e.message}</div>`;
+    el.innerHTML=`<div style="padding:8px 10px;background:#050c14;border:1px solid rgba(248,113,113,0.2);font-size:9px;color:#f87171">ENTSO-E unavailable · ${e.message}</div>`;
   }
 }
+// ══════════════════════════════════════════════════════════════════════════
+// LNG VALUE CHAIN — EU · imports → regasification → sendout
+// ══════════════════════════════════════════════════════════════════════════
+let _lngvcUnit='gwh';   // gwh | mcm | mtpm
+let _lngvcCtry='all';   // 'all' or country code
+let _lngvcRange='2y';   // '2y' | '1y' | 'ytd'
+
+function renderLngVC(){
+  const pane=document.getElementById('ga-lngvc-pane');if(!pane)return;
+  if(!GD.ok.lng){
+    pane.innerHTML=`<div style="padding:40px;text-align:center;color:#f59e0b;font-size:10px">ALSI data loading — hit ↺ REFRESH ALL if this persists</div>`;
+    if(!window.gaInitDone)gaInitAll();
+    return;
+  }
+
+  // ── Unit helpers ─────────────────────────────────────────────────────────
+  const GWH_MCM=1/10.55, GWH_MT=1/(13890/30); // GWh→mcm, GWh→mt/month
+  function conv(gwh){
+    if(gwh==null||isNaN(gwh))return null;
+    if(_lngvcUnit==='mcm')return+(gwh*GWH_MCM).toFixed(2);
+    if(_lngvcUnit==='mtpm')return+(gwh/13890*30).toFixed(4);
+    return+gwh.toFixed(1);
+  }
+  function uLbl(){return _lngvcUnit==='mcm'?'mcm/d':_lngvcUnit==='mtpm'?'mt/month':'GWh/d';}
+
+  // ── Country list — pre-filtered to those with data ────────────────────
+  const curY=new Date().getFullYear();
+  const availCtry=REGAS_COUNTRIES.filter(({code})=>{
+    const d=GD.lngByCtry[code];
+    return d&&Object.keys(d).some(mo=>mo>=`${curY-1}-01`&&(d[mo]?.sendGWh||0)>0);
+  });
+  const ctryList=availCtry.length>=2?availCtry:REGAS_COUNTRIES;
+  const ctryOpts=`<option value="all"${_lngvcCtry==='all'?' selected':''}>EU Aggregate</option>`
+    +ctryList.map(({code,name})=>`<option value="${code}"${code===_lngvcCtry?' selected':''}>${name}</option>`).join('');
+
+  // ── Date range ────────────────────────────────────────────────────────
+  const today=new Date();
+  function rangeStart(){
+    const d=new Date(today);
+    if(_lngvcRange==='2y')d.setFullYear(d.getFullYear()-2);
+    else if(_lngvcRange==='1y')d.setFullYear(d.getFullYear()-1);
+    else d.setMonth(0,1); // ytd
+    return d;
+  }
+
+  // ── Get monthly series for selected country/aggregate ─────────────────
+  function monthlyData(code){
+    if(code==='all') return GD.lngTotal; // {YYYY-MM:{sendGWh,dtrsGWh}}
+    return GD.lngByCtry[code]||{};
+  }
+  const mData=monthlyData(_lngvcCtry);
+  const rStart=rangeStart();
+  const rStartStr=rStart.toISOString().slice(0,7);
+
+  // All months in range
+  const allMos=Object.keys(mData).filter(mo=>mo>=rStartStr).sort();
+
+  // ── KPIs ─────────────────────────────────────────────────────────────
+  const latMo=allMos[allMos.length-1];
+  const latD=latMo?mData[latMo]:null;
+  const latDays=latMo?new Date(+latMo.slice(0,4),+latMo.slice(5,7),0).getDate():30;
+  const latSend=latD?conv(latD.sendGWh/latDays):null;
+  const latDtrs=latD?.dtrsGWh?conv(latD.dtrsGWh/latDays):null;
+  const latUtil=latD?.dtrsGWh&&latD.dtrsGWh>0?+(latD.sendGWh/latD.dtrsGWh*100).toFixed(1):null;
+
+  // YoY comparison
+  const lyMo=latMo?`${+latMo.slice(0,4)-1}-${latMo.slice(5,7)}`:null;
+  const lyD=lyMo?mData[lyMo]:null;
+  const lyDays=lyMo?new Date(+lyMo.slice(0,4),+lyMo.slice(5,7),0).getDate():30;
+  const lySend=lyD?conv(lyD.sendGWh/lyDays):null;
+  const yoy=latSend!=null&&lySend!=null?+(latSend-lySend).toFixed(2):null;
+  const yoyPct=yoy!=null&&lySend>0?+(yoy/lySend*100).toFixed(1):null;
+  const yoyCol=yoy==null?'#546e7a':yoy>0?'#f87171':'#4ade80'; // high sendout = bearish for price
+
+  // Top country by latest month
+  function topCtry(){
+    const entries=ctryList.map(({code,name})=>{
+      const d=GD.lngByCtry[code]?.[latMo];
+      return{name,send:d?d.sendGWh:0};
+    }).filter(e=>e.send>0).sort((a,b)=>b.send-a.send);
+    return entries[0]||null;
+  }
+  const top=_lngvcCtry==='all'?topCtry():null;
+
+  // ── Build monthly labels and datasets ────────────────────────────────
+  const seasYears=[curY,curY-1,curY-2];
+  const seasDatasets=seasYears.map((yr,i)=>({
+    label:`${yr}`,
+    data:GA_MO.map((_,m)=>{
+      const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
+      const d=mData[mo]; if(!d) return null;
+      const days=new Date(yr,m+1,0).getDate();
+      return conv(d.sendGWh/days);
+    }),
+    borderColor:GA_COLS[i],backgroundColor:i===0?GA_COLS[0]+'18':'transparent',
+    borderWidth:i===0?2.5:1.5,borderDash:i>0?[5,3]:undefined,
+    pointRadius:3,tension:.3,fill:i===0,spanGaps:false,
+  }));
+
+  // Time-series: monthly values in selected range
+  const tsLabels=allMos.map(mo=>{const[y,m]=mo.split('-');return GA_MO[+m-1]+(+m===1?`'${y.slice(2)}`:'');});
+  const tsVals=allMos.map(mo=>{const d=mData[mo];if(!d)return null;const days=new Date(+mo.slice(0,4),+mo.slice(5,7),0).getDate();return conv(d.sendGWh/days);});
+  const tsUtil=allMos.map(mo=>{const d=mData[mo];if(!d||!d.dtrsGWh||d.dtrsGWh===0)return null;return+(d.sendGWh/d.dtrsGWh*100).toFixed(1);});
+
+  // ── Heatmap: country × month (current year) ──────────────────────────
+  const hmMonths=Array.from({length:today.getMonth()+1},(_,m)=>({lbl:GA_MO[m],mo:`${curY}-${String(m+1).padStart(2,'0')}`}));
+  let heatmap=`<table style="border-collapse:collapse;font-size:9px;width:100%"><thead><tr>
+    <th style="text-align:left;padding:4px 8px;color:var(--td);font-weight:400;position:sticky;left:0;background:var(--bg2);min-width:130px">Country</th>
+    ${hmMonths.map(({lbl})=>`<th style="text-align:center;padding:4px 6px;color:var(--td);font-weight:400;min-width:62px">${lbl}</th>`).join('')}
+    </tr></thead><tbody>`;
+  ctryList.forEach(({code,name})=>{
+    const ctry=GD.lngByCtry[code];
+    heatmap+=`<tr><td style="position:sticky;left:0;background:var(--bg2);padding:4px 8px;color:var(--td)">${name}</td>`;
+    hmMonths.forEach(({mo})=>{
+      const d=ctry?.[mo];
+      if(!d){heatmap+=`<td style="text-align:center;padding:4px;color:#3d5070">--</td>`;return;}
+      const days=new Date(+mo.slice(0,4),+mo.slice(5,7),0).getDate();
+      const val=conv(d.sendGWh/days);
+      const util=d.dtrsGWh>0?Math.min(100,d.sendGWh/d.dtrsGWh*100):null;
+      const bg=util==null?'transparent':util<30?`rgba(248,113,113,0.4)`:util<60?`rgba(251,191,36,0.35)`:util<85?`rgba(79,195,247,0.35)`:`rgba(52,211,153,0.45)`;
+      heatmap+=`<td style="text-align:center;padding:4px;background:${bg};color:#f0f4ff" title="${util!=null?util.toFixed(0)+'% util':''}">${val!=null?val.toFixed(1):'--'}</td>`;
+    });
+    heatmap+='</tr>';
+  });
+  heatmap+='</tbody></table>';
+
+  // ── MoM change table ─────────────────────────────────────────────────
+  function momTable(){
+    const yrs=[curY,curY-1].filter(yr=>allMos.some(mo=>mo.startsWith(String(yr))));
+    let t=`<table style="border-collapse:collapse;font-size:9px;width:100%;min-width:700px"><thead><tr>
+      <th style="text-align:left;padding:4px 8px;color:var(--td);font-weight:400;min-width:90px;border-bottom:1px solid rgba(77,158,245,.1)">Year</th>
+      ${GA_MO.map(m=>`<th style="text-align:right;padding:4px 5px;color:var(--td);font-weight:400;min-width:54px;border-bottom:1px solid rgba(77,158,245,.1)">${m}</th>`).join('')}
+    </tr></thead><tbody>`;
+    yrs.forEach(yr=>{
+      const row=GA_MO.map((_,m)=>{
+        const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
+        const d=mData[mo]; if(!d) return null;
+        const days=new Date(yr,m+1,0).getDate();
+        return conv(d.sendGWh/days);
+      });
+      t+=`<tr><td style="padding:3px 8px;color:${yr===curY?'#4fc3f7':'#8a9bb5'};font-weight:${yr===curY?700:400}">${yr} (${uLbl()})</td>`;
+      row.forEach((v,m)=>{
+        if(v==null){t+=`<td style="text-align:right;padding:3px 5px;color:#3d5070">—</td>`;return;}
+        const prev=row[m-1];
+        const delta=prev!=null?+(v-prev).toFixed(2):null;
+        const dc=delta==null?'#546e7a':delta>0?'#4ade80':delta<0?'#f87171':'#c8d6e5';
+        t+=`<td style="text-align:right;padding:3px 5px">
+          <span style="color:#c8d6e5">${v.toFixed(1)}</span>
+          ${delta!=null?`<br><span style="font-size:8px;color:${dc}">${delta>0?'+':''}${delta.toFixed(1)}</span>`:''}
+        </td>`;
+      });
+      t+='</tr>';
+    });
+    return t+'</tbody></table>';
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────
+  pane.innerHTML=`
+  <!-- Controls bar -->
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(77,158,245,.1)">
+    <span style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--b)">LNG VALUE CHAIN</span>
+    <span style="font-size:8px;color:#3d5070">imports → regasification → sendout · GIE ALSI</span>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="ctrl-lbl">COUNTRY</span>
+      <select class="gsel" onchange="_lngvcCtry=this.value;renderLngVC()">${ctryOpts}</select>
+      <span class="ctrl-lbl">UNIT</span>
+      <select class="gsel" onchange="_lngvcUnit=this.value;renderLngVC()">
+        <option value="gwh"${_lngvcUnit==='gwh'?' selected':''}>GWh/d</option>
+        <option value="mcm"${_lngvcUnit==='mcm'?' selected':''}>mcm/d</option>
+        <option value="mtpm"${_lngvcUnit==='mtpm'?' selected':''}>mt/month</option>
+      </select>
+      <span class="ctrl-lbl">RANGE</span>
+      <select class="gsel" onchange="_lngvcRange=this.value;renderLngVC()">
+        <option value="2y"${_lngvcRange==='2y'?' selected':''}>2 Years</option>
+        <option value="1y"${_lngvcRange==='1y'?' selected':''}>1 Year</option>
+        <option value="ytd"${_lngvcRange==='ytd'?' selected':''}>YTD</option>
+      </select>
+      <span style="font-size:8px;color:${GD.ok.lng?'#34d399':'#f59e0b'}">${GD.ok.lng?'🟢 ALSI live':'🟡 loading'}</span>
+    </div>
+  </div>
+
+  <!-- KPI row -->
+  <div class="ga-g4" style="margin-bottom:14px">
+    <div class="ga-kpi">
+      <div class="ga-kpi-lbl">SENDOUT · ${latMo||'—'}</div>
+      <div class="ga-kpi-val" style="color:#4fc3f7">${latSend!=null?latSend.toFixed(1):'—'}<span class="ga-kpi-unit"> ${uLbl()}</span></div>
+      <div class="ga-kpi-note">${_lngvcCtry==='all'?'EU Aggregate':ctryList.find(c=>c.code===_lngvcCtry)?.name||''}</div>
+    </div>
+    <div class="ga-kpi">
+      <div class="ga-kpi-lbl">YoY CHANGE vs ${lyMo||'—'}</div>
+      <div class="ga-kpi-val" style="color:${yoyCol}">${yoy!=null?(yoy>0?'+':'')+yoy.toFixed(2):'—'}<span class="ga-kpi-unit"> ${uLbl()}</span></div>
+      <div class="ga-kpi-note">${yoyPct!=null?(yoyPct>0?'+':'')+yoyPct+'%':''}</div>
+    </div>
+    <div class="ga-kpi">
+      <div class="ga-kpi-lbl">UTILISATION · ${latMo||'—'}</div>
+      <div class="ga-kpi-val" style="color:${latUtil!=null?(latUtil>80?'#4ade80':latUtil>50?'#facc15':'#f87171'):'#546e7a'}">${latUtil!=null?latUtil+'%':'—'}</div>
+      <div class="ga-kpi-note">sendOut ÷ dtrs (capacity)</div>
+    </div>
+    <div class="ga-kpi">
+      <div class="ga-kpi-lbl">TOP COUNTRY · ${latMo||'—'}</div>
+      <div class="ga-kpi-val" style="color:#ffb74d;font-size:14px">${top?top.name:'—'}</div>
+      <div class="ga-kpi-note">${top?conv(top.send/latDays).toFixed(1)+' '+uLbl():''}</div>
+    </div>
+  </div>
+
+  <!-- Time series + Seasonal side by side -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+    <div class="ga-card">
+      <div class="ga-sec">LNG SENDOUT — TIME SERIES <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
+      <div class="ga-ch-wrap tall" style="height:240px"><canvas id="lngvc-ts-chart"></canvas></div>
+      <div class="ga-source">GIE ALSI · ${uLbl()} · ${_lngvcRange==='2y'?'2 years':_lngvcRange==='1y'?'1 year':'YTD'}</div>
+    </div>
+    <div class="ga-card">
+      <div class="ga-sec">SEASONAL COMPARISON <span class="ga-tag">GIE ALSI</span></div>
+      <div class="ga-ch-wrap tall" style="height:240px"><canvas id="lngvc-seas-chart"></canvas></div>
+      <div class="ga-source">GIE ALSI · Monthly · ${uLbl()}</div>
+    </div>
+  </div>
+
+  <!-- Utilisation time series -->
+  <div class="ga-card" style="margin-bottom:14px">
+    <div class="ga-sec">REGASIFICATION UTILISATION — sendOut ÷ dtrs × 100 <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
+    <div class="ga-ch-wrap" style="height:180px"><canvas id="lngvc-util-chart"></canvas></div>
+    <div style="display:flex;gap:12px;margin-top:6px;font-size:8px;color:#3d5070">
+      <span style="color:#f87171">■</span> &lt;30% low
+      <span style="color:#facc15">■</span> 30–60% moderate
+      <span style="color:#4fc3f7">■</span> 60–85% high
+      <span style="color:#4ade80">■</span> &gt;85% very high
+    </div>
+    <div class="ga-source">GIE ALSI · Daily Technical Reference Sendout (dtrs) used as capacity proxy</div>
+  </div>
+
+  <!-- Heatmap -->
+  <div class="ga-card" style="margin-bottom:14px">
+    <div class="ga-sec">UTILISATION HEATMAP — EU COUNTRIES · ${curY} <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
+    <div style="overflow-x:auto;padding:4px 0">${heatmap}</div>
+    <div class="ga-source">GIE ALSI · Red &lt;30% · Amber 30–60% · Blue 60–85% · Green &gt;85% · ${new Date().toLocaleDateString('en-GB')}</div>
+  </div>
+
+  <!-- MoM change table -->
+  <div class="ga-card">
+    <div class="ga-sec">MONTH-BY-MONTH CHANGE — LNG SENDOUT <span class="ga-tag">GIE ALSI</span></div>
+    <div style="overflow-x:auto">${momTable()}</div>
+    <div class="ga-source">GIE ALSI · ${uLbl()} · Δ vs previous month shown below each value</div>
+  </div>
+  `;
+
+  // Draw charts
+  setTimeout(()=>{
+    // Time series
+    gaMakeChart('lngvc-ts-chart','bar',{labels:tsLabels,datasets:[{
+      label:`LNG Sendout (${uLbl()})`,data:tsVals,
+      backgroundColor:'rgba(79,195,247,0.55)',borderColor:'#4fc3f7',borderWidth:1,
+    }]},{scales:{
+      x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:18}},
+      y:{...GCD.scales.y,title:{display:true,text:uLbl(),color:'#3d5070',font:{size:9}}}
+    }});
+
+    // Seasonal
+    gaMakeChart('lngvc-seas-chart','line',{labels:GA_MO,datasets:seasDatasets},{
+      scales:{
+        x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},
+        y:{...GCD.scales.y,title:{display:true,text:uLbl(),color:'#3d5070',font:{size:9}}}
+      }
+    });
+
+    // Utilisation line with colour bands
+    const utilCol=tsUtil.map(v=>v==null?'transparent':v<30?'rgba(248,113,113,0.8)':v<60?'rgba(251,191,36,0.8)':v<85?'rgba(79,195,247,0.8)':'rgba(52,211,153,0.8)');
+    gaMakeChart('lngvc-util-chart','bar',{labels:tsLabels,datasets:[{
+      label:'Utilisation %',data:tsUtil,backgroundColor:utilCol,borderWidth:0,
+    }]},{scales:{
+      x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:18}},
+      y:{...GCD.scales.y,min:0,max:100,title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}
+    }});
+  },60);
+}
+
 function gaSetRefreshBtn(loading){
   const b=document.getElementById('ga-refresh-btn');if(!b)return;
   b.textContent=loading?'⟳ LOADING...':'↺ REFRESH ALL';b.disabled=loading;
@@ -10795,146 +11095,235 @@ function renderStorInject(pane){
 }
 
 function renderStorLNG(pane){
-  // Pre-filter REGAS_COUNTRIES to those with meaningful ALSI data (last 2 years)
   const curY=new Date().getFullYear();
-  const twoYrMos=[];
-  for(let y=curY-1;y<=curY;y++) for(let m=1;m<=12;m++) twoYrMos.push(`${y}-${String(m).padStart(2,'0')}`);
+  const today=new Date();
+  // Pre-filter countries with data
   const availRegas=REGAS_COUNTRIES.filter(({code})=>{
     const d=GD.lngByCtry[code]; if(!d) return false;
-    return twoYrMos.some(mo=>d[mo]?.sendGWh>0);
+    return Object.keys(d).some(mo=>mo>=`${curY-1}-01`&&(d[mo]?.sendGWh||d[mo]?.statusGWh||0)>0);
   });
   const ctryList=availRegas.length>=2?availRegas:REGAS_COUNTRIES;
 
-  const sel=pane.querySelector('#stor-lng-ctry-sel')?.value || ctryList[0]?.code || 'fr';
-  const unitSel=pane.querySelector('#stor-lng-unit')?.value || 'gwh';
+  const sel=pane.querySelector('#stor-lng-ctry-sel')?.value||'all';
+  const viewSel=pane.querySelector('#stor-lng-view')?.value||'inventory'; // inventory | sendout
 
   if(!GD.ok.lng){
     pane.innerHTML=`<div style="padding:20px;color:#f59e0b;font-size:10px">ALSI data not loaded — hit ↺ REFRESH ALL</div>`;
-    gdLoadLNG(`${curY-1}-01-01`, new Date().toISOString().slice(0,10)).then(()=>renderStorLNG(pane));
+    if(!window.gaInitDone)gaInitAll();
     return;
   }
 
-  pane.innerHTML=`
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
-      <span class="ctrl-lbl">COUNTRY</span>
-      <select class="gsel" id="stor-lng-ctry-sel" onchange="renderStorLNG(document.getElementById('ga-stor-pane'))">
-        ${ctryList.map(({code,name})=>`<option value="${code}"${code===sel?' selected':''}>${name}</option>`).join('')}
-      </select>
-      <span class="ctrl-lbl" style="margin-left:8px">UNIT</span>
-      <select class="gsel" id="stor-lng-unit" onchange="renderStorLNG(document.getElementById('ga-stor-pane'))">
-        <option value="gwh"${unitSel==='gwh'?' selected':''}>GWh/d</option>
-        <option value="mcm"${unitSel==='mcm'?' selected':''}>mcm/d</option>
-        <option value="mtpm"${unitSel==='mtpm'?' selected':''}>mtpm</option>
-      </select>
-      <span style="font-size:8px;color:#3d5070;margin-left:auto">${ctryList.length} countries · GIE ALSI · last 2 years</span>
-    </div>
-
-    <div class="ga-card">
-      <div class="ga-sec">LNG SENDOUT — LAST 2 YEARS DAILY <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
-      <div class="ga-ch-wrap tall" style="height:300px"><canvas id="stor-lng-daily-chart"></canvas></div>
-      <div class="ga-source">GIE ALSI · sendOut · ${new Date().toLocaleDateString('en-GB')}</div>
-    </div>
-    <div class="ga-card" style="margin-top:12px">
-      <div class="ga-sec">LNG SENDOUT — SEASONAL COMPARISON · ${ctryList.find(c=>c.code===sel)?.name||sel}</div>
-      <div class="ga-ch-wrap" style="height:240px"><canvas id="stor-lng-seas-chart"></canvas></div>
-    </div>
-    <div class="ga-card" style="margin-top:12px">
-      <div class="ga-sec">MONTH-BY-MONTH CHANGE — LNG SENDOUT <span class="ga-tag">GIE ALSI</span></div>
-      <div id="stor-lng-mom-table" style="overflow-x:auto"></div>
-    </div>`;
-
-  // Conversion helpers
-  const GWH_TO_MCM=1/10.55, GWH_TO_MT=1/13890;
-  function conv(gwh){
-    if(gwh==null||isNaN(gwh)) return null;
-    if(unitSel==='mcm') return +(gwh*GWH_TO_MCM).toFixed(2);
-    if(unitSel==='mtpm') return +(gwh*GWH_TO_MT*30).toFixed(4);
-    return +gwh.toFixed(1);
+  // Helper: get monthly data for country or EU aggregate
+  function mData(code){
+    if(code==='all') return GD.lngTotal;
+    return GD.lngByCtry[code]||{};
   }
-  function unitLbl(){return unitSel==='mcm'?'mcm/d':unitSel==='mtpm'?'mt/month':'GWh/d';}
+  const data=mData(sel);
 
-  const ctryData=GD.lngByCtry[sel]||{};
+  // Conversion: ALSI inventory is in GWh total stock (not per day)
+  // ALSI sendOut is GWh/d
+  const GWH_MCM=1/10.55;
+  function convInv(gwh){ return gwh!=null&&!isNaN(gwh)?+(gwh*GWH_MCM).toFixed(0):null; } // GWh→mcm total
+  function convSend(gwh){ return gwh!=null&&!isNaN(gwh)?+gwh.toFixed(1):null; } // GWh/d
 
-  // Daily chart: last 2 years
-  const endD=new Date(), startD=new Date(endD); startD.setFullYear(startD.getFullYear()-2);
-  const dailyDates=[];
-  for(let d=new Date(startD);d<=endD;d.setDate(d.getDate()+1)) dailyDates.push(d.toISOString().slice(0,10));
+  const allMos=Object.keys(data).sort();
+  const latMo=allMos[allMos.length-1];
+  const latD=latMo?data[latMo]:null;
 
-  const dailyVals=dailyDates.map(date=>{
-    const daily=GD.lngDaily[date]; if(daily) return conv(daily.sendGWh);
-    const mo=date.slice(0,7);
-    const md=ctryData[mo]; if(!md) return null;
-    const days=new Date(+mo.slice(0,4),+mo.slice(5,7),0).getDate();
-    return conv(md.sendGWh/days);
-  });
-  // Downsample labels (show ~1 per week for 2yr = ~104 labels)
-  const dlbls=dailyDates.map((d,i)=>{
-    if(i%7===0){const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});}
-    return '';
-  });
+  // KPIs
+  const latInv=latD?.statusGWh>0?latD.statusGWh:null;
+  const latSend=latD?.sendGWh>0?latD.sendGWh:null;
+  const latDays=latMo?new Date(+latMo.slice(0,4),+latMo.slice(5,7),0).getDate():30;
+  const latSendPd=latSend?+(latSend/latDays).toFixed(1):null;
 
-  gaMakeChart('stor-lng-daily-chart','line',{
-    labels:dlbls,
-    datasets:[{label:`${ctryList.find(c=>c.code===sel)?.name||sel} sendout`,data:dailyVals,
-      borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,0.08)',
-      borderWidth:1.5,pointRadius:0,tension:.3,fill:true,spanGaps:true}]
-  },{scales:{
-    x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:24}},
-    y:{...GCD.scales.y,title:{display:true,text:unitLbl(),color:'#3d5070',font:{size:9}}}
-  }});
+  const lyMo=latMo?`${+latMo.slice(0,4)-1}-${latMo.slice(5,7)}`:null;
+  const lyD=lyMo?data[lyMo]:null;
+  const lyInv=lyD?.statusGWh>0?lyD.statusGWh:null;
+  const invYoy=latInv!=null&&lyInv!=null?+(latInv-lyInv).toFixed(0):null;
+  const invYoyCol=invYoy==null?'#546e7a':invYoy>0?'#4ade80':'#f87171';
 
-  // Seasonal monthly comparison (last 3 years)
-  const seasDatasets=[curY,curY-1,curY-2].map((yr,i)=>({
-    label:`${yr}`,
-    data:GA_MO.map((_,m)=>{
-      const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
-      const d=ctryData[mo]; if(!d) return null;
-      const days=new Date(yr,m+1,0).getDate();
-      if(unitSel==='mtpm') return conv(d.sendGWh/days);
-      return conv(d.sendGWh/days);
-    }),
-    borderColor:GA_COLS[i],backgroundColor:i===0?GA_COLS[0]+'18':'transparent',
-    borderWidth:i===0?2.5:1.5,borderDash:i>0?[5,3]:undefined,pointRadius:3,tension:.3,fill:i===0,spanGaps:false,
-  }));
-  gaMakeChart('stor-lng-seas-chart','line',{labels:GA_MO,datasets:seasDatasets},{
-    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},
-      y:{...GCD.scales.y,title:{display:true,text:unitLbl(),color:'#3d5070',font:{size:9}}}}
-  });
+  const ctryName=sel==='all'?'EU Aggregate':ctryList.find(c=>c.code===sel)?.name||sel;
 
-  // MoM table
-  const yearData={};
-  Object.keys(ctryData).forEach(mo=>{
-    const yr=+mo.slice(0,4); if(yr<curY-1) return;
-    if(!yearData[yr]) yearData[yr]={};
-    const d=ctryData[mo];
-    const days=new Date(yr,+mo.slice(5,7),0).getDate();
-    yearData[yr][mo]=d?+(conv(d.sendGWh/days)*100/100):null;
-  });
-  // Reuse buildStorMoMTable with unit label
-  const el=document.getElementById('stor-lng-mom-table'); if(!el) return;
-  const years=Object.keys(yearData).map(Number).sort((a,b)=>b-a);
-  let html=`<table style="border-collapse:collapse;font-size:9px;width:100%;min-width:700px">
-  <thead><tr>
-    <th style="text-align:left;padding:4px 8px;color:var(--td);font-weight:400;min-width:100px;border-bottom:1px solid rgba(77,158,245,.1)">Year</th>
-    ${GA_MO.map(m=>`<th style="text-align:right;padding:4px 5px;color:var(--td);font-weight:400;min-width:52px;border-bottom:1px solid rgba(77,158,245,.1)">${m}</th>`).join('')}
-  </tr></thead><tbody>`;
-  years.forEach(yr=>{
-    const row=GA_MO.map((_,m)=>yearData[yr]?.[`${yr}-${String(m+1).padStart(2,'0')}`]??null);
-    html+=`<tr><td style="padding:3px 8px;color:${yr===curY?'#4fc3f7':'#8a9bb5'};font-weight:${yr===curY?'700':'400'}">${yr} (${unitLbl()})</td>`;
-    row.forEach((v,m)=>{
-      if(v==null){html+=`<td style="text-align:right;padding:3px 5px;color:#3d5070">—</td>`;return;}
-      const prev=row[m-1];
-      const delta=prev!=null?+(v-prev).toFixed(2):null;
-      const dc=delta==null?'#546e7a':delta>0?'#4ade80':delta<0?'#f87171':'#c8d6e5';
-      html+=`<td style="text-align:right;padding:3px 5px">
-        <span style="color:#c8d6e5">${v.toFixed(1)}</span>
-        ${delta!=null?`<br><span style="color:${dc};font-size:8px">${delta>0?'+':''}${delta.toFixed(1)}</span>`:''}
-      </td>`;
+  pane.innerHTML=`
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
+    <span class="ctrl-lbl">COUNTRY</span>
+    <select class="gsel" id="stor-lng-ctry-sel" onchange="renderStorLNG(document.getElementById('ga-stor-pane'))">
+      <option value="all"${sel==='all'?' selected':''}>EU Aggregate</option>
+      ${ctryList.map(({code,name})=>`<option value="${code}"${code===sel?' selected':''}>${name}</option>`).join('')}
+    </select>
+    <span class="ctrl-lbl" style="margin-left:8px">VIEW</span>
+    <select class="gsel" id="stor-lng-view" onchange="renderStorLNG(document.getElementById('ga-stor-pane'))">
+      <option value="inventory"${viewSel==='inventory'?' selected':''}>Tank Inventory (GWh stock)</option>
+      <option value="sendout"${viewSel==='sendout'?' selected':''}>Sendout (GWh/d flow)</option>
+    </select>
+    <span style="font-size:8px;color:${GD.ok.lng?'#34d399':'#f59e0b'};margin-left:auto">${GD.ok.lng?'🟢 ALSI live':'🟡 loading'}</span>
+  </div>
+
+  <!-- KPI row -->
+  <div class="ga-g4" style="margin-bottom:12px">
+    <div class="ga-kpi">
+      <div class="ga-kpi-lbl">LNG IN TANKS · ${latMo||'—'}</div>
+      <div class="ga-kpi-val" style="color:#ffb74d">${latInv!=null?latInv.toFixed(0):'—'}<span class="ga-kpi-unit"> GWh</span></div>
+      <div class="ga-kpi-note">${latInv?convInv(latInv)+' mcm total stock':latInv==null?'status field not in data':''}</div>
+    </div>
+    <div class="ga-kpi">
+      <div class="ga-kpi-lbl">YoY INVENTORY · vs ${lyMo||'—'}</div>
+      <div class="ga-kpi-val" style="color:${invYoyCol}">${invYoy!=null?(invYoy>0?'+':'')+invYoy.toFixed(0):'—'}<span class="ga-kpi-unit"> GWh</span></div>
+      <div class="ga-kpi-note">${invYoy!=null&&lyInv?+(invYoy/lyInv*100).toFixed(1)+'% YoY':''}</div>
+    </div>
+    <div class="ga-kpi">
+      <div class="ga-kpi-lbl">SENDOUT · ${latMo||'—'}</div>
+      <div class="ga-kpi-val" style="color:#4fc3f7">${latSendPd!=null?latSendPd:'—'}<span class="ga-kpi-unit"> GWh/d</span></div>
+      <div class="ga-kpi-note">${latSend?+(latSend*GWH_MCM/latDays).toFixed(1)+' mcm/d avg':''}</div>
+    </div>
+    <div class="ga-kpi">
+      <div class="ga-kpi-lbl">DAYS OF COVER</div>
+      <div class="ga-kpi-val" style="color:#81c784">${latInv&&latSendPd&&latSendPd>0?+(latInv/latSendPd).toFixed(0):'—'}<span class="ga-kpi-unit"> days</span></div>
+      <div class="ga-kpi-note">stock ÷ daily sendout · ${ctryName}</div>
+    </div>
+  </div>
+
+  ${viewSel==='inventory'?`
+  <!-- Inventory time series -->
+  <div class="ga-card" style="margin-bottom:12px">
+    <div class="ga-sec">LNG TANK INVENTORY — ${ctryName} <span class="ga-tag ga-tag-live">GIE ALSI · status field</span></div>
+    <div style="font-size:8px;color:#3d5070;margin-bottom:6px">Total GWh of LNG physically held in cryogenic storage tanks. Distinct from sendout (flow rate).</div>
+    <div class="ga-ch-wrap tall" style="height:260px"><canvas id="stor-lng-inv-chart"></canvas></div>
+    <div class="ga-source">GIE ALSI · status (GWh stock) · not a daily flow rate</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+    <div class="ga-card">
+      <div class="ga-sec">INVENTORY SEASONAL <span class="ga-tag">3 years</span></div>
+      <div class="ga-ch-wrap" style="height:220px"><canvas id="stor-lng-inv-seas"></canvas></div>
+    </div>
+    <div class="ga-card">
+      <div class="ga-sec">SENDOUT OVERLAY <span class="ga-tag">GWh/d</span></div>
+      <div class="ga-ch-wrap" style="height:220px"><canvas id="stor-lng-send-overlay"></canvas></div>
+    </div>
+  </div>`:`
+  <!-- Sendout time series -->
+  <div class="ga-card" style="margin-bottom:12px">
+    <div class="ga-sec">LNG SENDOUT — ${ctryName} <span class="ga-tag ga-tag-live">GIE ALSI · sendOut field</span></div>
+    <div style="font-size:8px;color:#3d5070;margin-bottom:6px">Gas flowing from regasification terminal into the grid (GWh/d). A flow rate, not stock level.</div>
+    <div class="ga-ch-wrap tall" style="height:260px"><canvas id="stor-lng-send-chart"></canvas></div>
+    <div class="ga-source">GIE ALSI · sendOut GWh/d · ${new Date().toLocaleDateString('en-GB')}</div>
+  </div>
+  <div class="ga-card" style="margin-bottom:12px">
+    <div class="ga-sec">SENDOUT SEASONAL COMPARISON <span class="ga-tag">3 years</span></div>
+    <div class="ga-ch-wrap" style="height:220px"><canvas id="stor-lng-seas-chart"></canvas></div>
+  </div>`}
+
+  <!-- MoM table -->
+  <div class="ga-card">
+    <div class="ga-sec">MONTH-BY-MONTH CHANGE — ${viewSel==='inventory'?'LNG INVENTORY (GWh stock)':'LNG SENDOUT (GWh/d)'} <span class="ga-tag">GIE ALSI</span></div>
+    <div id="stor-lng-mom-table" style="overflow-x:auto"></div>
+  </div>`;
+
+  // Chart data
+  const mos2yr=allMos.filter(mo=>mo>=`${curY-2}-01`);
+  const moLabels=mos2yr.map(mo=>{const[y,m]=mo.split('-');return GA_MO[+m-1]+(+m===1?`'${y.slice(2)}`:'');});
+
+  setTimeout(()=>{
+    if(viewSel==='inventory'){
+      // Inventory time series
+      const invVals=mos2yr.map(mo=>data[mo]?.statusGWh||null);
+      gaMakeChart('stor-lng-inv-chart','line',{labels:moLabels,datasets:[{
+        label:`LNG Stock (GWh)`,data:invVals,borderColor:'#ffb74d',
+        backgroundColor:'rgba(255,183,77,0.12)',borderWidth:2,pointRadius:2,
+        tension:.3,fill:true,spanGaps:false
+      }]},{scales:{
+        x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:16}},
+        y:{...GCD.scales.y,title:{display:true,text:'GWh (stock)',color:'#3d5070',font:{size:9}}}
+      }});
+
+      // Seasonal inventory
+      const seasInv=[curY,curY-1,curY-2].map((yr,i)=>({
+        label:`${yr}`,
+        data:GA_MO.map((_,m)=>{
+          const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
+          return data[mo]?.statusGWh||null;
+        }),
+        borderColor:GA_COLS[i],backgroundColor:i===0?GA_COLS[0]+'18':'transparent',
+        borderWidth:i===0?2.5:1.5,borderDash:i>0?[5,3]:undefined,
+        pointRadius:3,tension:.3,fill:i===0,spanGaps:false,
+      }));
+      gaMakeChart('stor-lng-inv-seas','line',{labels:GA_MO,datasets:seasInv},{
+        scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},
+          y:{...GCD.scales.y,title:{display:true,text:'GWh stock',color:'#3d5070',font:{size:9}}}}
+      });
+
+      // Sendout overlay on same time range
+      const sendVals=mos2yr.map(mo=>{const d=data[mo];if(!d)return null;const dy=new Date(+mo.slice(0,4),+mo.slice(5,7),0).getDate();return d.sendGWh?+(d.sendGWh/dy).toFixed(1):null;});
+      gaMakeChart('stor-lng-send-overlay','bar',{labels:moLabels,datasets:[{
+        label:'Sendout (GWh/d)',data:sendVals,
+        backgroundColor:'rgba(79,195,247,0.5)',borderColor:'#4fc3f7',borderWidth:1
+      }]},{scales:{
+        x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:16}},
+        y:{...GCD.scales.y,title:{display:true,text:'GWh/d (flow)',color:'#3d5070',font:{size:9}}}
+      }});
+
+    } else {
+      // Sendout time series
+      const sendVals=mos2yr.map(mo=>{const d=data[mo];if(!d)return null;const dy=new Date(+mo.slice(0,4),+mo.slice(5,7),0).getDate();return d.sendGWh?+(d.sendGWh/dy).toFixed(1):null;});
+      gaMakeChart('stor-lng-send-chart','bar',{labels:moLabels,datasets:[{
+        label:'Sendout (GWh/d)',data:sendVals,
+        backgroundColor:'rgba(79,195,247,0.5)',borderColor:'#4fc3f7',borderWidth:1
+      }]},{scales:{
+        x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:16}},
+        y:{...GCD.scales.y,title:{display:true,text:'GWh/d',color:'#3d5070',font:{size:9}}}
+      }});
+
+      // Sendout seasonal
+      const seasSend=[curY,curY-1,curY-2].map((yr,i)=>({
+        label:`${yr}`,
+        data:GA_MO.map((_,m)=>{
+          const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
+          const d=data[mo];if(!d)return null;
+          const dy=new Date(yr,m+1,0).getDate();
+          return d.sendGWh?+(d.sendGWh/dy).toFixed(1):null;
+        }),
+        borderColor:GA_COLS[i],backgroundColor:i===0?GA_COLS[0]+'18':'transparent',
+        borderWidth:i===0?2.5:1.5,borderDash:i>0?[5,3]:undefined,
+        pointRadius:3,tension:.3,fill:i===0,spanGaps:false,
+      }));
+      gaMakeChart('stor-lng-seas-chart','line',{labels:GA_MO,datasets:seasSend},{
+        scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},
+          y:{...GCD.scales.y,title:{display:true,text:'GWh/d',color:'#3d5070',font:{size:9}}}}
+      });
+    }
+
+    // MoM change table — field depends on view
+    const el=document.getElementById('stor-lng-mom-table'); if(!el) return;
+    const field=viewSel==='inventory'?'statusGWh':'sendGWh';
+    const getVal=(mo)=>{
+      const d=data[mo]; if(!d) return null;
+      if(viewSel==='inventory') return d.statusGWh||null;
+      const dy=new Date(+mo.slice(0,4),+mo.slice(5,7),0).getDate();
+      return d.sendGWh?+(d.sendGWh/dy).toFixed(1):null;
+    };
+    const yrs=[curY,curY-1].filter(yr=>Object.keys(data).some(mo=>mo.startsWith(String(yr))));
+    const unit=viewSel==='inventory'?'GWh stock':'GWh/d';
+    let html=`<table style="border-collapse:collapse;font-size:9px;width:100%;min-width:700px"><thead><tr>
+      <th style="text-align:left;padding:4px 8px;color:var(--td);font-weight:400;min-width:110px;border-bottom:1px solid rgba(77,158,245,.1)">Year</th>
+      ${GA_MO.map(m=>`<th style="text-align:right;padding:4px 5px;color:var(--td);font-weight:400;min-width:52px;border-bottom:1px solid rgba(77,158,245,.1)">${m}</th>`).join('')}
+    </tr></thead><tbody>`;
+    yrs.forEach(yr=>{
+      const row=GA_MO.map((_,m)=>getVal(`${yr}-${String(m+1).padStart(2,'0')}`));
+      html+=`<tr><td style="padding:3px 8px;color:${yr===curY?'#4fc3f7':'#8a9bb5'};font-weight:${yr===curY?700:400}">${yr} (${unit})</td>`;
+      row.forEach((v,m)=>{
+        if(v==null){html+=`<td style="text-align:right;padding:3px 5px;color:#3d5070">—</td>`;return;}
+        const prev=row[m-1];
+        const delta=prev!=null?+(v-prev).toFixed(1):null;
+        const dc=delta==null?'#546e7a':delta>0?'#4ade80':delta<0?'#f87171':'#c8d6e5';
+        html+=`<td style="text-align:right;padding:3px 5px">
+          <span style="color:#c8d6e5">${v.toFixed(viewSel==='inventory'?0:1)}</span>
+          ${delta!=null?`<br><span style="color:${dc};font-size:8px">${delta>0?'+':''}${delta.toFixed(1)}</span>`:''}
+        </td>`;
+      });
+      html+='</tr>';
     });
-    html+='</tr>';
-  });
-  html+='</tbody></table>';
-  el.innerHTML=html;
+    el.innerHTML=html+'</tbody></table>';
+  },60);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -11124,19 +11513,23 @@ function gaCloseModal(){ const m=document.getElementById('ga-modal');if(m)m.clas
 function indInit() {
   var container = document.getElementById('ind-container');
   if (!container) return;
-  if (container.innerHTML.trim()) return;
-  container.innerHTML = indBuildShell();
+  // Always rebuild shell if empty; always re-run renderBalance (picks up new localStorage data)
+  if (!container.innerHTML.trim()) container.innerHTML = indBuildShell();
   setTimeout(renderBalance, 50);
 }
 window.indInit = indInit;
 
 function lngbalCountry(cty,btn){
-  // Toggle between China and India panes
-  document.querySelectorAll('#lngbal-cty-bar .cs-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#lngbal-cty-bar .cty-tab').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
   document.getElementById('lngbal-china').style.display=cty==='china'?'':'none';
   document.getElementById('lngbal-india').style.display=cty==='india'?'':'none';
-  if(cty==='india')indInit();
+  if(cty==='india'){
+    indInit();
+  } else {
+    // Re-init China charts — they can lose rendering context after display:none cycle
+    if(typeof csInit==='function') setTimeout(csInit,80);
+  }
 }
 window.lngbalCountry=lngbalCountry;
 
