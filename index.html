@@ -7934,12 +7934,24 @@ function buildEuHubChart(){
   if(!src.length) return;
   const lbls=src.map(ds=>eexD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
   const hubColors={THE:'#4fc3f7',PEG:'#ffb74d',PVB:'#81c784',PSV:'#f48fb1'};
-  const datasets=EEX_HUBS.map(hub=>({
-    label:INST[hub].label,
-    data:src.map(ds=>{const{date,rows}=eexD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?.[hub]??null;}),
-    borderColor:hubColors[hub],backgroundColor:'transparent',
-    borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true
-  }));
+
+  // Build TTF and NBP lookup from aD (M+1 rolling, same dates where available)
+  const ttfMap=new Map(gSR('TTF',1).map(d=>[toStr(d.date),d.value]));
+  const nbpMap=new Map(gSR('NBP',1).map(d=>[toStr(d.date),d.value]));
+
+  const datasets=[
+    // TTF from LNG EOD curves (dashed, grey-blue)
+    {label:'TTF',data:src.map(ds=>ttfMap.get(ds)??null),borderColor:'#90caf9',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:.3,spanGaps:true},
+    // NBP from LNG EOD curves (dashed, warm grey)
+    {label:'NBP',data:src.map(ds=>nbpMap.get(ds)??null),borderColor:'#b0bec5',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:.3,spanGaps:true},
+    // EEX hubs (solid)
+    ...EEX_HUBS.map(hub=>({
+      label:INST[hub].label,
+      data:src.map(ds=>{const{date,rows}=eexD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?.[hub]??null;}),
+      borderColor:hubColors[hub],backgroundColor:'transparent',
+      borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true
+    }))
+  ];
   if(eexChart)eexChart.destroy();
   eexChart=new Chart(canvas,{type:'line',data:{labels:lbls,datasets},options:{...CD,scales:{
     x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:20}},
