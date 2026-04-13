@@ -144,7 +144,7 @@ body{font-family:'IBM Plex Mono',monospace;background:var(--bg);color:var(--tx);
 .prog-bar{width:100%;height:2px;background:#151e30;overflow:hidden;margin-bottom:8px}
 .prog-fill{height:100%;background:#2d7cff;width:0%;transition:width .2s}
 .prog-txt{font-size:9px;color:#3d5070;letter-spacing:.08em;text-align:center;font-family:inherit}
-#parselog{max-height:150px;overflow-y:auto;background:#0a0f1e;border:1px solid #151e30;padding:8px 12px;font-size:9px;color:#3d5070;line-height:1.8;width:480px;max-width:90vw;display:none;font-family:inherit}
+
 #fin-analytics .asec{display:none}#fin-analytics .asec.active{display:block}
 .disc-wrap{max-width:780px;margin:0 auto;padding:48px 28px}
 .disc-wrap h2{font-size:14px;letter-spacing:.12em;color:var(--th);margin-bottom:6px;font-weight:600}
@@ -397,7 +397,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
       <div class="spinner" id="drive-spinner"></div>
       <div class="dz-title" id="dz-auto-title">CONNECTING TO GOOGLE DRIVE</div>
       <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" id="progfill"></div></div><div class="prog-txt" id="progtxt">Initialising...</div></div>
-      <div id="parselog"></div>
       <button class="dz-btn" id="fallback-btn" style="display:none" onclick="showManualDrop()">LOAD FILES MANUALLY INSTEAD</button>
       <button class="dz-btn" style="color:#4fc3f7;border-color:#1e3a5f;margin-top:8px" onclick="MCP_AVAILABLE?fAuthGate(()=>loadPricesFromGmail()):alert('Gmail scrape requires Claude.ai — use the file drop instead.')">📧 SCRAPE FROM GMAIL</button>
     </div>
@@ -434,27 +433,33 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
     <div class="amin">
       <div id="sec-dashboard" class="asec active">
         <div class="mgrid" id="dash-metrics"></div>
-        <!-- Global Gas Snapshot — from Jan 1 2026 -->
-        <div class="acard" style="margin-bottom:12px"><div class="ctitle">GLOBAL GAS SNAPSHOT — M+1 DAILY PRICES · $/MMBTU · FROM JAN 2026</div><div class="cw" style="height:280px"><canvas id="gas-snapshot-chart"></canvas></div></div>
-        <!-- European Gas Hub chart -->
-        <div class="acard" style="margin-bottom:12px">
-          <div class="ctitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span>EUROPEAN GAS HUB — M+1 DAILY PRICES · $/MMBTU · FROM JAN 2026</span>
-            <span id="eex-status" style="margin-left:auto;color:#3d5070;font-size:8px"></span>
+        <!-- Two charts side by side: Global Snapshot LEFT, EU Hub RIGHT -->
+        <div class="two-col" style="margin-bottom:12px">
+          <div class="acard"><div class="ctitle">GLOBAL GAS SNAPSHOT — M+1 · $/MMBTU · FROM JAN 2026</div><div class="cw" style="height:280px"><canvas id="gas-snapshot-chart"></canvas></div></div>
+          <div class="acard">
+            <div class="ctitle" style="display:flex;align-items:center;gap:8px">
+              <span>EUROPEAN GAS HUB — M+1 · $/MMBTU · FROM JAN 2026</span>
+              <span id="eex-status" style="margin-left:auto;color:#3d5070;font-size:8px"></span>
+            </div>
+            <div class="cw" style="height:280px"><canvas id="eu-hub-chart"></canvas></div>
+            <div style="font-size:8px;color:#3d5070;margin-top:4px">EEX Market Data Hub · EUR/MWh × 0.293071 × EUR/USD (from LNG EOD)</div>
           </div>
-          <div class="cw" style="height:280px"><canvas id="eu-hub-chart"></canvas></div>
-          <div style="font-size:8px;color:#3d5070;margin-top:4px">Source: EEX Market Data Hub · EUR/MWh × 0.293071 × EUR/USD (from LNG EOD curves) · Drop EEX_Gas_Curves.xlsx into Add Files to refresh</div>
         </div>
+        <!-- Correlation + DoD below -->
         <div class="two-col">
           <div class="acard"><div class="ctitle">CORRELATION MATRIX — M+1 · LOG RETURNS</div><div class="cnote">Pearson r on daily log returns. Blue = positive, red = negative.</div><div id="dash-corr" style="overflow-x:auto"></div></div>
-          <div>
-            <div class="acard" style="margin-bottom:10px"><div class="ctitle">DAY-ON-DAY CHANGES — LNG &amp; GLOBAL INDICES</div><div id="dash-dod" style="overflow-x:auto"></div></div>
-            <div class="acard"><div class="ctitle">DAY-ON-DAY CHANGES — EUROPEAN GAS HUBS · $/MMBTU</div><div id="dash-dod-eex" style="overflow-x:auto"><div style="color:#3d5070;font-size:9px;padding:8px">Load EEX Gas Curves file to see EU hub changes</div></div></div>
-          </div>
+          <div class="acard"><div class="ctitle">DAY-ON-DAY CHANGES — ALL INSTRUMENTS</div><div id="dash-dod" style="overflow-x:auto"></div></div>
         </div>
       </div>
       <div id="sec-historical" class="asec">
-        <div class="ctrl"><span class="cl">SERIES 1</span><select id="h-i1" onchange="updHist()"></select><select id="h-t1" onchange="updHist()"></select><span class="d1"></span><div class="csep"></div><span class="cl">SERIES 2</span><select id="h-i2" onchange="updHist()"></select><select id="h-t2" onchange="updHist()"></select><span class="d2"></span></div>
+        <div class="ctrl"><span class="cl">SERIES 1</span><select id="h-i1" onchange="updHist()"></select><select id="h-t1" onchange="updHist()"></select><span class="d1"></span><div class="csep"></div><span class="cl">SERIES 2</span><select id="h-i2" onchange="updHist()"></select><select id="h-t2" onchange="updHist()"></select><span class="d2"></span><div class="csep"></div><span class="cl">RANGE</span><div id="h-range-btns" style="display:flex;gap:3px">
+          <button class="cr-pill" id="h-rng-1m" onclick="setHistRange('1m',this)">1M</button>
+          <button class="cr-pill" id="h-rng-3m" onclick="setHistRange('3m',this)">3M</button>
+          <button class="cr-pill" id="h-rng-6m" onclick="setHistRange('6m',this)">6M</button>
+          <button class="cr-pill" id="h-rng-ytd" onclick="setHistRange('ytd',this)">YTD</button>
+          <button class="cr-pill" id="h-rng-1y" onclick="setHistRange('1y',this)">1Y</button>
+          <button class="cr-pill on" id="h-rng-all" onclick="setHistRange('all',this)">ALL</button>
+        </div></div>
         <div class="acard"><div class="ctitle">DAILY PRICE HISTORY — $/MMBTU</div><div class="cw" style="height:280px"><canvas id="hChart"></canvas></div></div>
         <div class="acard"><div class="ctitle" id="stats-title">STATISTICS</div><div style="overflow-x:auto"><table class="stbl" id="statsTable"></table></div></div>
       </div>
@@ -565,7 +570,14 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
       </div>
 
       <div id="sec-spread" class="asec">
-        <div class="ctrl"><span class="cl">INDEX 1</span><select id="sp-i1" onchange="updSpread()"></select><select id="sp-t1" onchange="updSpread()"></select><span class="d1"></span><div class="csep"></div><span class="cl">INDEX 2</span><select id="sp-i2" onchange="updSpread()"></select><select id="sp-t2" onchange="updSpread()"></select><span class="d2"></span></div>
+        <div class="ctrl"><span class="cl">INDEX 1</span><select id="sp-i1" onchange="updSpread()"></select><select id="sp-t1" onchange="updSpread()"></select><span class="d1"></span><div class="csep"></div><span class="cl">INDEX 2</span><select id="sp-i2" onchange="updSpread()"></select><select id="sp-t2" onchange="updSpread()"></select><span class="d2"></span><div class="csep"></div><span class="cl">RANGE</span><div style="display:flex;gap:3px">
+          <button class="cr-pill" id="sp-rng-1m" onclick="setSpreadRange('1m',this)">1M</button>
+          <button class="cr-pill" id="sp-rng-3m" onclick="setSpreadRange('3m',this)">3M</button>
+          <button class="cr-pill" id="sp-rng-6m" onclick="setSpreadRange('6m',this)">6M</button>
+          <button class="cr-pill" id="sp-rng-ytd" onclick="setSpreadRange('ytd',this)">YTD</button>
+          <button class="cr-pill" id="sp-rng-1y" onclick="setSpreadRange('1y',this)">1Y</button>
+          <button class="cr-pill on" id="sp-rng-all" onclick="setSpreadRange('all',this)">ALL</button>
+        </div></div>
         <div class="acard"><div class="ctitle" id="sp-title">SPREAD</div><div class="cw" style="height:280px"><canvas id="spChart"></canvas></div></div>
         <div class="acard"><div class="ctitle">INDIVIDUAL PRICE SERIES</div><div class="cw" style="height:220px"><canvas id="spLegsChart"></canvas></div></div>
       </div>
@@ -7585,6 +7597,34 @@ const CN={BRENT:['BRT SW','Brent SW'],TTF:['TTF FT','TTF'],TFU:['TFU'],EURUSD:['
 const aD={};let sDates=[];
 // EEX European Gas Curves — separate store from LNG EOD curves
 const eexD={};let eexDates=[];let eexChart=null;
+// Date range filter state
+let _histRange='all', _spRange='all';
+
+function rangeStart(range){
+  const t=new Date();
+  if(range==='1m'){t.setMonth(t.getMonth()-1);return t;}
+  if(range==='3m'){t.setMonth(t.getMonth()-3);return t;}
+  if(range==='6m'){t.setMonth(t.getMonth()-6);return t;}
+  if(range==='ytd'){return new Date(t.getFullYear(),0,1);}
+  if(range==='1y'){t.setFullYear(t.getFullYear()-1);return t;}
+  return null; // 'all'
+}
+function filterByRange(dates,range,getDate){
+  const cut=rangeStart(range); if(!cut) return dates;
+  return dates.filter(d=>(getDate?getDate(d):new Date(d))>=cut);
+}
+function setHistRange(r,btn){
+  _histRange=r;
+  document.querySelectorAll('#h-range-btns .cr-pill').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  updHist();
+}
+function setSpreadRange(r,btn){
+  _spRange=r;
+  document.querySelectorAll('#sec-spread .cr-pill').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  updSpread();
+}
 // Expose to window so cross-module checks (window.aD, window.sDates) work
 Object.defineProperty(window,'aD',{get:()=>aD,configurable:true});
 Object.defineProperty(window,'sDates',{get:()=>sDates,configurable:true});
@@ -7773,7 +7813,7 @@ function setupDrop(){
     if(files.length){handleFiles(files,false);fi.value='';}  // reset so same file re-triggers on Safari
   });
 }
-function plog(msg,warn=false){const el=$id('parselog');if(!el)return;el.style.display='block';el.innerHTML+=`<div style="color:${warn?'#ef4444':'#3d5070'}">${msg}</div>`;el.scrollTop=el.scrollHeight;}
+function plog(msg,warn=false){ /* log removed — progress bar only */ }
 async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.match(/\.xlsx?$/i));if(!xl.length){alert('No Excel files found.');return;}
   // Split EEX files from LNG curve files
   const eexFiles=xl.filter(f=>f.name.match(/EEX/i));
@@ -7834,11 +7874,10 @@ function buildDash(){
       dp=inst.unit==='$/bbl'?2:3;
     mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;
   });
-  // ── EU Hub DoD cards (from eexD) ─────────────────────────────────────────
+  // ── EU Hub cards — inline after global cards ─────────────────────────────
   if(eexDates.length>=2){
     const eld=eexDates[eexDates.length-1],epd=eexDates[eexDates.length-2];
     const em1=rPK(eexD[eld].date,1);
-    const sep=document.createElement('div');sep.style.cssText='width:100%;height:1px;background:#151e30;margin:6px 0 4px;grid-column:1/-1;';mg.appendChild(sep);
     EEX_HUBS.forEach(k=>{
       const inst=INST[k];
       const lv=eexD[eld].rows.find(r=>r.pk===em1)?.[k]??null;
@@ -7856,21 +7895,11 @@ function buildDash(){
   let cm=`<table class="ctbl"><thead><tr><th></th>${ck.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
   ck.forEach(a=>{cm+=`<tr><th style="text-align:left">${INST[a].label}</th>`;ck.forEach(b=>{if(a===b){cm+=`<td style="background:#151e30;color:#5a6882">1.00</td>`;return;}const{v1,v2}=al2(cs[a],cs[b]),r=pear(lRet(v1),lRet(v2));if(isNaN(r)){cm+=`<td style="color:#1e2d45">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;cm+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'}">${r.toFixed(2)}</td>`;});cm+=`</tr>`;});
   const dc=$id('dash-corr');if(dc)dc.innerHTML=cm+'</tbody></table>';
-  // ── DoD table — LNG instruments ──────────────────────────────────────────
+  // ── DoD table — all instruments ──────────────────────────────────────────
   const keys=['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH'],pks=lR.map(r=>r.pk).slice(0,12);
   let dod=`<table class="stbl" style="font-size:10px"><thead><tr><th>Contract</th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
   for(const pk of pks){const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);dod+=`<tr><td>${pkL(pk)}</td>${keys.map(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null,d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null,dp=(k==='Brent'||k==='Dated')?2:3;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;}).join('')}</tr>`;}
   const dd=$id('dash-dod');if(dd)dd.innerHTML=dod+'</tbody></table>';
-  // ── DoD table — EU Gas Hubs ──────────────────────────────────────────────
-  const dehEl=$id('dash-dod-eex'); if(!dehEl) return;
-  if(eexDates.length<2){dehEl.innerHTML=`<div style="color:#3d5070;font-size:9px;padding:8px">Load EEX Gas Curves file to see EU hub changes</div>`;return;}
-  const eld2=eexDates[eexDates.length-1],epd2=eexDates[eexDates.length-2];
-  const elR=eexD[eld2].rows,epR=eexD[epd2].rows;
-  const eAllPks=[...new Set([...elR,...epR].map(r=>r.pk))].sort().slice(0,12);
-  let eDod=`<div style="font-size:8px;color:#546e7a;margin-bottom:4px;letter-spacing:.08em">${fmtD(eld2)} vs ${fmtD(epd2)}</div>`;
-  eDod+=`<table class="stbl" style="font-size:10px"><thead><tr><th>Contract</th>${EEX_HUBS.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
-  for(const pk of eAllPks){const lr=elR.find(r=>r.pk===pk),pr=epR.find(r=>r.pk===pk);eDod+=`<tr><td>${pkL(pk)}</td>${EEX_HUBS.map(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null,d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(3):'—'}</td>`;}).join('')}</tr>`;}
-  dehEl.innerHTML=eDod+'</tbody></table>';
 }
 
 function buildGasSnapshot(){
@@ -7918,7 +7947,24 @@ function buildEuHubChart(){
     y:{title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}
   }}});
 }
-function updHist(){const i1=$id('h-i1').value,t1=$id('h-t1').value,i2=$id('h-i2').value,t2=$id('h-t2').value,has2=i2!=='none',s1=gS(i1,t1),s2=has2?gS(i2,t2):null;if(!s1.length)return;const u1=INST[i1].unit,u2=has2?INST[i2].unit:null,dual=has2&&u1!==u2,lbls=s1.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),ds=[{label:`${INST[i1].label} ${tvL(t1)}`,data:s1.map(d=>+d.value.toFixed(4)),borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:'y'}];if(has2&&s2){const m2=new Map(s2.map(d=>[toStr(d.date),d.value]));ds.push({label:`${INST[i2].label} ${tvL(t2)}`,data:s1.map(d=>{const v=m2.get(toStr(d.date));return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:dual?'y1':'y'});}const scales={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};if(dual)scales.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};if(hChart)hChart.destroy();const hc=$id('hChart');if(hc)hChart=new Chart(hc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales}});bStats(t1);}
+function updHist(){
+  const i1=$id('h-i1').value,t1=$id('h-t1').value,i2=$id('h-i2').value,t2=$id('h-t2').value,has2=i2!=='none';
+  let s1=gS(i1,t1),s2=has2?gS(i2,t2):null;
+  if(!s1.length) return;
+  // Apply date range filter
+  const cut=rangeStart(_histRange);
+  if(cut){s1=s1.filter(d=>d.date>=cut);if(s2)s2=s2.filter(d=>d.date>=cut);}
+  if(!s1.length) return;
+  const u1=INST[i1].unit,u2=has2?INST[i2].unit:null,dual=has2&&u1!==u2;
+  const lbls=s1.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+  const ds=[{label:`${INST[i1].label} ${tvL(t1)}`,data:s1.map(d=>+d.value.toFixed(4)),borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:'y'}];
+  if(has2&&s2){const m2=new Map(s2.map(d=>[toStr(d.date),d.value]));ds.push({label:`${INST[i2].label} ${tvL(t2)}`,data:s1.map(d=>{const v=m2.get(toStr(d.date));return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:dual?'y1':'y'});}
+  const scales={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};
+  if(dual)scales.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};
+  if(hChart)hChart.destroy();
+  const hc=$id('hChart');if(hc)hChart=new Chart(hc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales}});
+  bStats(t1);
+}
 function bStats(tv){const st=$id('stats-title');if(st)st.textContent='STATISTICS — '+tvL(tv);let html=`<thead><tr><th>Instrument</th><th>Current</th><th>Mean</th><th>Std Dev</th><th>Min</th><th>Max</th><th>N</th><th>Unit</th></tr></thead><tbody>`;INSTS.forEach(inst=>{const s=gS(inst.k,tv);if(!s.length){html+=`<tr><td>${inst.label}</td><td colspan="7" style="color:#3d5070">No data</td></tr>`;return;}const vals=s.map(d=>d.value),cur=vals[vals.length-1],mn=vals.reduce((a,b)=>a+b,0)/vals.length,std=Math.sqrt(vals.reduce((s,v)=>s+(v-mn)**2,0)/vals.length),dp=inst.unit==='$/bbl'?2:3;html+=`<tr><td>${inst.label}</td><td style="color:#c8cfe0">${cur.toFixed(dp)}</td><td>${mn.toFixed(dp)}</td><td>${std.toFixed(dp)}</td><td>${Math.min(...vals).toFixed(dp)}</td><td>${Math.max(...vals).toFixed(dp)}</td><td style="color:#3d5070">${vals.length}</td><td style="color:#3d5070;font-size:9px">${inst.unit}</td></tr>`;});const st2=$id('statsTable');if(st2)st2.innerHTML=html+'</tbody>';}
 
 const CD={responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#5a6882',font:{size:10,family:'IBM Plex Mono'},boxWidth:12,padding:12}},tooltip:{backgroundColor:'#0c1120',borderColor:'#1e2d45',borderWidth:1,titleColor:'#c8cfe0',bodyColor:'#8a9bb5',padding:10,titleFont:{family:'IBM Plex Mono',size:11},bodyFont:{family:'IBM Plex Mono',size:10}}},scales:{x:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{color:'#0f1824'}},y:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}};
@@ -8398,7 +8444,28 @@ function updFC(){
   const valid=v1.filter(v=>v!=null);if(valid.length){const fr=valid[0],bk=valid[valid.length-1],sp=bk-fr,mn=Math.min(...valid),mx=Math.max(...valid),avg=valid.reduce((a,b)=>a+b,0)/valid.length,shape=Math.abs(sp)<0.05?"FLAT":sp>0?"CONTANGO":"BACKWARDATION",sc=shape==="CONTANGO"?"#22c55e":shape==="BACKWARDATION"?"#ef4444":"#5a6882",fcs=$id("fc-stats");if(fcs)fcs.innerHTML=`<div class="mc"><div class="mc-name">FRONT</div><div class="mc-val" style="font-size:16px">${fr.toFixed(3)}</div></div><div class="mc"><div class="mc-name">BACK</div><div class="mc-val" style="font-size:16px">${bk.toFixed(3)}</div></div><div class="mc"><div class="mc-name">F-B SPREAD</div><div class="mc-val ${sp>=0?"pos":"neg"}" style="font-size:16px">${sp>=0?"+":""}${sp.toFixed(3)}</div></div><div class="mc"><div class="mc-name">SHAPE</div><div class="mc-val" style="color:${sc};font-size:13px">${shape}</div></div>`;}
 }
 function updSea(){if(!sDates.length)return;const inst=$id('sea-i').value,type=$id('sea-type').value,unit=INST[inst].unit,st=$id('sea-title');if(st)st.textContent=INST[inst].label+' — SEASONAL · YEAR OVER YEAR ('+unit+')';const yd={};if(type==='fwd'){const lat=sDates[sDates.length-1];aD[lat].rows.forEach(r=>{const[y,m]=r.pk.split('-');if(!yd[+y])yd[+y]={};if(r[inst]!=null)yd[+y][+m-1]=r[inst];});}else{sDates.forEach(ds=>{const{date,rows}=aD[ds],yr=date.getFullYear(),mo=date.getMonth(),pk=rPK(date,1),row=rows.find(r=>r.pk===pk);if(!row||row[inst]==null)return;if(!yd[yr])yd[yr]={};if(yd[yr][mo]===undefined)yd[yr][mo]=row[inst];});}const years=Object.keys(yd).map(Number).sort(),dsets=years.map((yr,idx)=>({label:String(yr),data:MA.map((_,mo)=>yd[yr][mo]!==undefined?+yd[yr][mo].toFixed(4):null),borderColor:SC[idx%SC.length],backgroundColor:'transparent',borderWidth:2,pointRadius:4,tension:.3,spanGaps:false}));if(seaChart)seaChart.destroy();const sc=$id('seaChart');if(sc)seaChart=new Chart(sc.getContext('2d'),{type:'line',data:{labels:MA,datasets:dsets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});let tbl=`<thead><tr><th>Month</th>${years.map(y=>`<th>${y}</th>`).join('')}${years.slice(0,-1).map((y,i)=>`<th>${y}→${years[i+1]}</th>`).join('')}</tr></thead><tbody>`;MA.forEach((m,mo)=>{tbl+=`<tr><td>${m}</td>${years.map(yr=>`<td>${yd[yr][mo]!==undefined?yd[yr][mo].toFixed(3):'—'}</td>`).join('')}`;for(let i=0;i<years.length-1;i++){const a=yd[years[i]][mo],b=yd[years[i+1]][mo];tbl+=a!==undefined&&b!==undefined?`<td class="${b-a>=0?'pos':'neg'}">${b-a>=0?'+':''}${(b-a).toFixed(3)}</td>`:`<td style="color:#3d5070">—</td>`;}tbl+=`</tr>`;});const st2=$id('sea-tbl');if(st2)st2.innerHTML=tbl+'</tbody>';}
-function updSpread(){const i1=$id('sp-i1').value,t1=$id('sp-t1').value,i2=$id('sp-i2').value,t2=$id('sp-t2').value;if(!i1||!i2||!t1||!t2)return;const s1=gS(i1,t1),s2=gS(i2,t2);if(!s1.length||!s2.length)return;const u1=INST[i1].unit,u2=INST[i2].unit,lbl1=INST[i1].label+' '+tvL(t1),lbl2=INST[i2].label+' '+tvL(t2),sU=(u1===u2)?u1:'mixed units',m2=new Map(s2.map(d=>[toStr(d.date),d.value])),aligned=[];s1.forEach(d=>{const v2=m2.get(toStr(d.date));if(v2!=null)aligned.push({date:d.date,v1:d.value,v2,spread:+(d.value-v2).toFixed(4)});});if(!aligned.length)return;const lbls=aligned.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),spreads=aligned.map(d=>d.spread),spt=$id('sp-title');if(spt)spt.textContent=lbl1+' MINUS '+lbl2+' ('+sU+')';if(spChart)spChart.destroy();const sp=$id('spChart');if(sp)spChart=new Chart(sp.getContext('2d'),{type:'bar',data:{labels:lbls,datasets:[{label:'Spread ('+sU+')',data:spreads,backgroundColor:spreads.map(v=>v>=0?'rgba(45,124,255,0.7)':'rgba(239,68,68,0.7)'),borderWidth:0,borderRadius:1}]},options:{...CD,plugins:{...CD.plugins,legend:{display:false}},scales:{x:CD.scales.x,y:{title:{display:true,text:sU,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});const dualL=u1!==u2,sL={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#2d7cff',font:{size:9}},ticks:{color:'#2d7cff',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};if(dualL)sL.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};if(spLegsChart)spLegsChart.destroy();const slc=$id('spLegsChart');if(slc)spLegsChart=new Chart(slc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:[{label:lbl1,data:aligned.map(d=>+d.v1.toFixed(4)),borderColor:'#2d7cff',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:'y'},{label:lbl2,data:aligned.map(d=>+d.v2.toFixed(4)),borderColor:'#f59e0b',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:dualL?'y1':'y'}]},options:{...CD,scales:sL}});}
+function updSpread(){
+  const i1=$id('sp-i1').value,t1=$id('sp-t1').value,i2=$id('sp-i2').value,t2=$id('sp-t2').value;
+  if(!i1||!i2||!t1||!t2) return;
+  const s1=gS(i1,t1),s2=gS(i2,t2);
+  if(!s1.length||!s2.length) return;
+  const u1=INST[i1].unit,u2=INST[i2].unit,lbl1=INST[i1].label+' '+tvL(t1),lbl2=INST[i2].label+' '+tvL(t2),sU=(u1===u2)?u1:'mixed units';
+  const m2=new Map(s2.map(d=>[toStr(d.date),d.value]));
+  let aligned=[];
+  s1.forEach(d=>{const v2=m2.get(toStr(d.date));if(v2!=null)aligned.push({date:d.date,v1:d.value,v2,spread:+(d.value-v2).toFixed(4)});});
+  // Apply date range filter
+  const cut=rangeStart(_spRange);
+  if(cut) aligned=aligned.filter(d=>d.date>=cut);
+  if(!aligned.length) return;
+  const lbls=aligned.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),spreads=aligned.map(d=>d.spread);
+  const spt=$id('sp-title');if(spt)spt.textContent=lbl1+' MINUS '+lbl2+' ('+sU+')';
+  if(spChart)spChart.destroy();
+  const sp=$id('spChart');if(sp)spChart=new Chart(sp.getContext('2d'),{type:'bar',data:{labels:lbls,datasets:[{label:'Spread ('+sU+')',data:spreads,backgroundColor:spreads.map(v=>v>=0?'rgba(45,124,255,0.7)':'rgba(239,68,68,0.7)'),borderWidth:0,borderRadius:1}]},options:{...CD,plugins:{...CD.plugins,legend:{display:false}},scales:{x:CD.scales.x,y:{title:{display:true,text:sU,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});
+  const dualL=u1!==u2,sL={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#2d7cff',font:{size:9}},ticks:{color:'#2d7cff',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};
+  if(dualL)sL.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};
+  if(spLegsChart)spLegsChart.destroy();
+  const slc=$id('spLegsChart');if(slc)spLegsChart=new Chart(slc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:[{label:lbl1,data:aligned.map(d=>+d.v1.toFixed(4)),borderColor:'#2d7cff',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:'y'},{label:lbl2,data:aligned.map(d=>+d.v2.toFixed(4)),borderColor:'#f59e0b',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:dualL?'y1':'y'}]},options:{...CD,scales:sL}});
+}
 function exportToExcel(){if(!sDates.length){alert('No data.');return;}const wb=XLSX.utils.book_new(),ik=INSTS.map(i=>i.k),headers=['Date',...ik.map(k=>INST[k].label+' M+1')],rows=[headers];sDates.forEach(ds=>{const{date,rows:dr}=aD[ds],m1=rPK(date,1),row=[date.toLocaleDateString('en-GB')];ik.forEach(k=>{const r=dr.find(r=>r.pk===m1);row.push(r&&r[k]!=null?r[k]:'');});rows.push(row);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Historical M+1');XLSX.writeFile(wb,'LNG_TradeOS_'+new Date().toLocaleDateString('en-GB').replace(/\//g,'.')+'.xlsx');}
 function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart,eexChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')cInit();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard'){buildGasSnapshot();buildEuHubChart();}},60);}
 function showAnalyticsUI(){const fd=$id('fin-dropzone'),fa=$id('fin-analytics');if(fd)fd.style.display='none';if(fa)fa.style.display='block';finLoaded=true;setTimeout(()=>{if(window.gaUpdatePriceBoxes)window.gaUpdatePriceBoxes();},200);}
@@ -9118,7 +9185,6 @@ async function lDrive(){
     }
     const deduped = [...dateMap.values()];
     setP(10,'LOADING',`${deduped.length} unique dates (${files.length - deduped.length} duplicates skipped) — downloading...`);
-    $id('parselog').style.display='block';
     const B=15;let done=0,added=0,sk=0;
     for(let i=0;i<deduped.length;i+=B){
       await Promise.all(deduped.slice(i,i+B).map(async f=>{
@@ -9127,7 +9193,7 @@ async function lDrive(){
         try{const resp=await fetch(`/api/drive?action=file&id=${f.id}`);if(!resp.ok){sk++;return;}
           const buf=await toAB(resp);if(buf.byteLength<5000){sk++;return;}
           const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){sk++;return;}
-          const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;plog(`OK: ${f.name}`);}else sk++;
+          const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;
         }catch(e){sk++;}done++;
       }));
       setP(10+(Math.min(done,deduped.length)/deduped.length)*86,'LOADING',`${added} loaded · ${sk} skipped`);
