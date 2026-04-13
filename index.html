@@ -428,7 +428,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
     </div>
     <div class="amin">
       <div id="sec-dashboard" class="asec active">
-        <div class="mgrid" id="dash-metrics"></div>
+        <div id="dash-metrics"></div>
         <!-- Two charts side by side: Global Snapshot LEFT, EU Hub RIGHT -->
         <div class="two-col" style="margin-bottom:12px">
           <div class="acard"><div class="ctitle">GLOBAL GAS SNAPSHOT — M+1 · $/MMBTU · FROM JAN 2026</div><div class="cw" style="height:280px"><canvas id="gas-snapshot-chart"></canvas></div></div>
@@ -7854,34 +7854,43 @@ function buildDash(){
   if(sDates.length<2) return;
   const ld=sDates[sDates.length-1],pd=sDates[sDates.length-2],lR=aD[ld].rows,pR=aD[pd].rows,m1=rPK(aD[ld].date,1);
   const mg=$id('dash-metrics'); if(!mg) return;
-  mg.innerHTML='';
-  // ── LNG / global instruments DoD cards ──────────────────────────────────
-  INSTS.filter(inst=>!EEX_HUBS.includes(inst.k)).forEach(inst=>{
-    const lv=lR.find(r=>r.pk===m1)?.[inst.k]??null,pv=pR.find(r=>r.pk===m1)?.[inst.k]??null,
-      chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null,
-      pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null,
-      cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼',
-      dp=inst.unit==='$/bbl'?2:3;
-    mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;
-  });
-  // ── EU Hub cards — always shown, live data or placeholder ───────────────
-  {
+
+  // ── Helper: render one mc card ─────────────────────────────────────────
+  function mcLNG(k){
+    const inst=INST[k];
+    const lv=lR.find(r=>r.pk===m1)?.[k]??null,pv=pR.find(r=>r.pk===m1)?.[k]??null;
+    const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null;
+    const pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null;
+    const cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼';
+    const dp=inst.unit==='$/bbl'?2:3;
+    return `<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;
+  }
+  function mcEEX(k){
+    const inst=INST[k];
     const hasEex=eexDates.length>=2;
     const eld=hasEex?eexDates[eexDates.length-1]:null;
     const epd=hasEex?eexDates[eexDates.length-2]:null;
     const em1=hasEex?rPK(eexD[eld].date,1):null;
-    EEX_HUBS.forEach(k=>{
-      const inst=INST[k];
-      const lv=hasEex?(eexD[eld].rows.find(r=>r.pk===em1)?.[k]??null):null;
-      const pv=hasEex?(eexD[epd].rows.find(r=>r.pk===em1)?.[k]??null):null;
-      const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null,
-        pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null,
-        cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼';
-      const valStr=lv!=null?lv.toFixed(3):'—';
-      const tenorStr=em1?`M+1 · ${pkL(em1)}`:'Add EEX file';
-      mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor" style="${!hasEex?'color:#f59e0b':''}">${tenorStr}</div><div class="mc-val" style="${!hasEex?'color:#3d5070;font-size:18px':''}">${valStr}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(3):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">$/MMBtu</span></div></div>`;
-    });
+    const lv=hasEex?(eexD[eld].rows.find(r=>r.pk===em1)?.[k]??null):null;
+    const pv=hasEex?(eexD[epd].rows.find(r=>r.pk===em1)?.[k]??null):null;
+    const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null;
+    const pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null;
+    const cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼';
+    const valStr=lv!=null?lv.toFixed(3):'—';
+    const tenorStr=em1?`M+1 · ${pkL(em1)}`:'Add EEX file';
+    return `<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor" style="${!hasEex?'color:#f59e0b':''}">${tenorStr}</div><div class="mc-val" style="${!hasEex?'color:#3d5070;font-size:18px':''}">${valStr}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(3):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">$/MMBtu</span></div></div>`;
   }
+
+  // ── Row 1: TTF · NBP · THE · PEG · PVB · PSV · TTF/NBP Spread · JKM/TTF Spread
+  const row1=['TTF','NBP'].map(mcLNG).join('')
+    +['THE','PEG','PVB','PSV'].map(mcEEX).join('')
+    +['SP_TN','SP_JT'].map(mcLNG).join('');
+
+  // ── Row 2: HH · JKM/HH Spread · TTF/HH Spread · Brent · Dated Brent · Slope
+  const row2=['HH','SP_JH','SP_TH','Brent','Dated','Slope'].map(mcLNG).join('');
+
+  mg.innerHTML=`<div class="mgrid" style="margin-bottom:6px">${row1}</div><div class="mgrid">${row2}</div>`;
+
   buildGasSnapshot();
   buildEuHubChart();
   // ── Correlation matrix ───────────────────────────────────────────────────
@@ -7889,7 +7898,7 @@ function buildDash(){
   let cm=`<table class="ctbl"><thead><tr><th></th>${ck.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
   ck.forEach(a=>{cm+=`<tr><th style="text-align:left">${INST[a].label}</th>`;ck.forEach(b=>{if(a===b){cm+=`<td style="background:#151e30;color:#5a6882">1.00</td>`;return;}const{v1,v2}=al2(cs[a],cs[b]),r=pear(lRet(v1),lRet(v2));if(isNaN(r)){cm+=`<td style="color:#1e2d45">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;cm+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'}">${r.toFixed(2)}</td>`;});cm+=`</tr>`;});
   const dc=$id('dash-corr');if(dc)dc.innerHTML=cm+'</tbody></table>';
-  // ── DoD table — all instruments ──────────────────────────────────────────
+  // ── DoD table ────────────────────────────────────────────────────────────
   const keys=['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH'],pks=lR.map(r=>r.pk).slice(0,12);
   let dod=`<table class="stbl" style="font-size:10px"><thead><tr><th>Contract</th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
   for(const pk of pks){const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);dod+=`<tr><td>${pkL(pk)}</td>${keys.map(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null,d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null,dp=(k==='Brent'||k==='Dated')?2:3;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;}).join('')}</tr>`;}
@@ -7901,19 +7910,43 @@ function buildGasSnapshot(){
   // Filter from Jan 1 2026
   const cutoff=new Date(2026,0,1);
   const filtDates=sDates.filter(ds=>aD[ds].date>=cutoff);
-  const src=filtDates.length>0?filtDates:sDates; // fallback to all if no 2026 data
+  const src=filtDates.length>0?filtDates:sDates;
   const lbls=src.map(ds=>aD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+
+  // Build diagonal hatch pattern for oil range band
+  function oilHatch(){
+    const pc=document.createElement('canvas');pc.width=8;pc.height=8;
+    const px=pc.getContext('2d');
+    px.clearRect(0,0,8,8);
+    px.strokeStyle='rgba(239,83,80,0.35)';px.lineWidth=1.5;
+    px.beginPath();px.moveTo(0,8);px.lineTo(8,0);px.stroke();
+    px.beginPath();px.moveTo(-2,10);px.lineTo(10,-2);px.stroke();
+    return canvas.getContext('2d').createPattern(pc,'repeat');
+  }
+  const hatch=oilHatch();
+
   const serDefs=[
-    {label:'TTF',color:'#4fc3f7',fn:row=>row.TTF},
-    {label:'JKM',color:'#81c784',fn:row=>row.JKM},
-    {label:'NBP',color:'#ffb74d',fn:row=>row.NBP},
+    {label:'TTF',   color:'#4fc3f7',fn:row=>row.TTF},
+    {label:'JKM',   color:'#81c784',fn:row=>row.JKM},
+    {label:'NBP',   color:'#ffb74d',fn:row=>row.NBP},
     {label:'115% HH',color:'#f48fb1',fn:row=>row.HH!=null?+(row.HH*1.15).toFixed(4):null},
-    {label:'14% Oil',color:'#ef5350',fn:row=>row.Brent!=null?+(row.Brent*0.14).toFixed(4):null},
+    {label:'14% Oil',color:'#ef5350',fn:row=>row.Brent!=null?+(row.Brent*0.14).toFixed(4):null,
+      fill:{target:'+1',above:hatch,below:hatch}},   // ← fill toward 11% Oil
     {label:'11% Oil',color:'#ce93d8',fn:row=>row.Brent!=null?+(row.Brent*0.11).toFixed(4):null}
   ];
-  const datasets=serDefs.map(s=>({label:s.label,data:src.map(ds=>{const{date,rows}=aD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?s.fn(row):null;}),borderColor:s.color,backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true}));
+  const datasets=serDefs.map(s=>({
+    label:s.label,
+    data:src.map(ds=>{const{date,rows}=aD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?s.fn(row):null;}),
+    borderColor:s.color,
+    backgroundColor:s.fill?undefined:'transparent',
+    fill:s.fill||false,
+    borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true
+  }));
   if(gasChart)gasChart.destroy();
-  gasChart=new Chart(canvas,{type:'line',data:{labels:lbls,datasets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:20}},y:{title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});
+  gasChart=new Chart(canvas,{type:'line',data:{labels:lbls,datasets},options:{...CD,scales:{
+    x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:20}},
+    y:{title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}
+  }}});
 }
 
 function buildEuHubChart(){
