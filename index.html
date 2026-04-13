@@ -393,12 +393,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
 <!-- FINANCIAL -->
 <section class="s-sec" id="section-financial">
   <div id="fin-dropzone">
-    <div id="dz-auto" style="display:flex;flex-direction:column;align-items:center;gap:16px">
-      <div class="spinner" id="drive-spinner"></div>
-      <div class="dz-title" id="dz-auto-title">CONNECTING TO GOOGLE DRIVE</div>
-      <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" id="progfill"></div></div><div class="prog-txt" id="progtxt">Initialising...</div></div>
-      <button class="dz-btn" id="fallback-btn" style="display:none" onclick="showManualDrop()">LOAD FILES MANUALLY INSTEAD</button>
-      <button class="dz-btn" style="color:#4fc3f7;border-color:#1e3a5f;margin-top:8px" onclick="MCP_AVAILABLE?fAuthGate(()=>loadPricesFromGmail()):alert('Gmail scrape requires Claude.ai — use the file drop instead.')">📧 SCRAPE FROM GMAIL</button>
+    <div id="dz-auto" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:0">
+      <div class="prog-wrap" style="width:480px;max-width:80vw"><div class="prog-bar"><div class="prog-fill" id="progfill"></div></div><div class="prog-txt" id="progtxt" style="text-align:center;margin-top:8px"></div></div>
+      <button class="dz-btn" id="fallback-btn" style="display:none;margin-top:24px" onclick="showManualDrop()">LOAD FILES MANUALLY</button>
     </div>
     <div id="dz-manual" style="display:none;flex-direction:column;align-items:center;gap:16px">
       <div class="dz" id="dz">
@@ -408,8 +405,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
         <button class="dz-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">SELECT FILES</button>
         <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
       </div>
-      <button class="dz-btn" style="color:#4fc3f7;border-color:#1e3a5f" onclick="MCP_AVAILABLE?fAuthGate(()=>loadPricesFromGmail()):alert('Gmail scrape requires Claude.ai — use the file drop instead.')">📧 SCRAPE FROM GMAIL INSTEAD</button>
-      <div class="prog-wrap" id="progwrap" style="display:none"><div class="prog-bar"><div class="prog-fill" id="progfill2"></div></div><div class="prog-txt" id="progtxt2">Parsing...</div></div>
+      <div class="prog-wrap" id="progwrap" style="display:none"><div class="prog-bar"><div class="prog-fill" id="progfill2"></div></div><div class="prog-txt" id="progtxt2"></div></div>
     </div>
   </div>
   <div id="fin-analytics" style="display:none">
@@ -5073,13 +5069,7 @@ function renderHistorical(){
 // Reads OB LNG EOD Curve emails, extracts JKM/TTF/NBP/HH prices into financial module
 async function loadPricesFromGmail(addMode=false){
   // Show progress in dropzone or alert
-  const logEl=document.getElementById('parselog');
-  const titleEl=document.getElementById('dz-auto-title');
-  const prog=(msg)=>{
-    console.log(msg);
-    if(logEl)logEl.innerHTML=`<div style="font-size:9px;color:#4fc3f7;letter-spacing:1px;text-align:center">${msg}</div>`;
-    if(titleEl&&!addMode)titleEl.textContent=msg;
-  };
+  const prog=(msg)=>{ console.log(msg); };
 
   function parseDateFromSubject(subj){
     const m=subj.match(/(\d{2})\.(\d{2})\.(\d{4})/);
@@ -7874,18 +7864,22 @@ function buildDash(){
       dp=inst.unit==='$/bbl'?2:3;
     mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;
   });
-  // ── EU Hub cards — inline after global cards ─────────────────────────────
-  if(eexDates.length>=2){
-    const eld=eexDates[eexDates.length-1],epd=eexDates[eexDates.length-2];
-    const em1=rPK(eexD[eld].date,1);
+  // ── EU Hub cards — always shown, live data or placeholder ───────────────
+  {
+    const hasEex=eexDates.length>=2;
+    const eld=hasEex?eexDates[eexDates.length-1]:null;
+    const epd=hasEex?eexDates[eexDates.length-2]:null;
+    const em1=hasEex?rPK(eexD[eld].date,1):null;
     EEX_HUBS.forEach(k=>{
       const inst=INST[k];
-      const lv=eexD[eld].rows.find(r=>r.pk===em1)?.[k]??null;
-      const pv=eexD[epd].rows.find(r=>r.pk===em1)?.[k]??null;
+      const lv=hasEex?(eexD[eld].rows.find(r=>r.pk===em1)?.[k]??null):null;
+      const pv=hasEex?(eexD[epd].rows.find(r=>r.pk===em1)?.[k]??null):null;
       const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null,
         pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null,
         cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼';
-      mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(em1)}</div><div class="mc-val">${lv!=null?lv.toFixed(3):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(3):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">$/MMBtu</span></div></div>`;
+      const valStr=lv!=null?lv.toFixed(3):'—';
+      const tenorStr=em1?`M+1 · ${pkL(em1)}`:'Add EEX file';
+      mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor" style="${!hasEex?'color:#f59e0b':''}">${tenorStr}</div><div class="mc-val" style="${!hasEex?'color:#3d5070;font-size:18px':''}">${valStr}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(3):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">$/MMBtu</span></div></div>`;
     });
   }
   buildGasSnapshot();
@@ -7925,8 +7919,13 @@ function buildGasSnapshot(){
 function buildEuHubChart(){
   const canvas=$id('eu-hub-chart'); if(!canvas) return;
   if(!eexDates.length){
-    const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
     if(eexChart){eexChart.destroy();eexChart=null;}
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#1e2d45';
+    ctx.font='11px IBM Plex Mono';
+    ctx.textAlign='center';
+    ctx.fillText('Drop EEX_Gas_Curves.xlsx via + ADD FILES to load EU hub data',canvas.width/2,canvas.height/2);
     return;
   }
   // Filter from Jan 1 2026
@@ -7950,11 +7949,16 @@ function buildEuHubChart(){
 function updHist(){
   const i1=$id('h-i1').value,t1=$id('h-t1').value,i2=$id('h-i2').value,t2=$id('h-t2').value,has2=i2!=='none';
   let s1=gS(i1,t1),s2=has2?gS(i2,t2):null;
-  if(!s1.length) return;
   // Apply date range filter
   const cut=rangeStart(_histRange);
   if(cut){s1=s1.filter(d=>d.date>=cut);if(s2)s2=s2.filter(d=>d.date>=cut);}
-  if(!s1.length) return;
+  if(!s1.length){
+    // No data — clear chart and show message
+    if(hChart){hChart.destroy();hChart=null;}
+    const hc=$id('hChart');
+    if(hc){const ctx=hc.getContext('2d');ctx.clearRect(0,0,hc.width,hc.height);ctx.fillStyle='#1e2d45';ctx.font='11px IBM Plex Mono';ctx.textAlign='center';ctx.fillText('No data for selected instrument — load EEX file for EU hubs',hc.width/2,hc.height/2);}
+    return;
+  }
   const u1=INST[i1].unit,u2=has2?INST[i2].unit:null,dual=has2&&u1!==u2;
   const lbls=s1.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
   const ds=[{label:`${INST[i1].label} ${tvL(t1)}`,data:s1.map(d=>+d.value.toFixed(4)),borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:'y'}];
@@ -9098,7 +9102,7 @@ function rgExportITM(){
 
 // ══ DRIVE AUTO-LOAD (via Vercel proxy — API key is server-side, never exposed) ══
 function showManualDrop(){const da=$id('dz-auto'),dm=$id('dz-manual');if(da)da.style.display='none';if(dm)dm.style.display='flex';setupDrop();}
-function setP(pct,title,sub){const pf=$id('progfill'),pt=$id('progtxt'),dt=$id('dz-auto-title');if(pf)pf.style.width=pct+'%';if(title&&dt)dt.textContent=title;if(sub&&pt)pt.textContent=sub;}
+function setP(pct,title,sub){const pf=$id('progfill'),pt=$id('progtxt');if(pf)pf.style.width=pct+'%';if(sub&&pt)pt.textContent=sub;}
 const PRICE_FOLDER_ID='18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
 async function lFiles(afterDate=null){
   const all=[];let pt=null;
@@ -9204,10 +9208,7 @@ async function lDrive(){
     setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},600);
   }catch(e){
     plog('Drive error: '+e.message,true);
-    const fb=$id('fallback-btn'),ds=$id('drive-spinner'),dt=$id('dz-auto-title'),pt_=$id('progtxt');
-    if(fb)fb.style.display='block';if(ds)ds.style.display='none';
-    if(dt)dt.textContent='COULD NOT LOAD FROM DRIVE';
-    if(pt_)pt_.textContent='Click below to load manually.';
+    const fb=$id('fallback-btn');if(fb)fb.style.display='block';
     _driveLoading=false;
   }
 }
