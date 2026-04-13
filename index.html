@@ -434,10 +434,23 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
     <div class="amin">
       <div id="sec-dashboard" class="asec active">
         <div class="mgrid" id="dash-metrics"></div>
-        <div class="acard" style="margin-bottom:12px"><div class="ctitle">GLOBAL GAS SNAPSHOT — M+1 DAILY PRICES · $/MMBTU</div><div class="cw" style="height:280px"><canvas id="gas-snapshot-chart"></canvas></div></div>
+        <!-- Global Gas Snapshot — from Jan 1 2026 -->
+        <div class="acard" style="margin-bottom:12px"><div class="ctitle">GLOBAL GAS SNAPSHOT — M+1 DAILY PRICES · $/MMBTU · FROM JAN 2026</div><div class="cw" style="height:280px"><canvas id="gas-snapshot-chart"></canvas></div></div>
+        <!-- European Gas Hub chart -->
+        <div class="acard" style="margin-bottom:12px">
+          <div class="ctitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>EUROPEAN GAS HUB — M+1 DAILY PRICES · $/MMBTU · FROM JAN 2026</span>
+            <span id="eex-status" style="margin-left:auto;color:#3d5070;font-size:8px"></span>
+          </div>
+          <div class="cw" style="height:280px"><canvas id="eu-hub-chart"></canvas></div>
+          <div style="font-size:8px;color:#3d5070;margin-top:4px">Source: EEX Market Data Hub · EUR/MWh × 0.293071 × EUR/USD (from LNG EOD curves) · Drop EEX_Gas_Curves.xlsx into Add Files to refresh</div>
+        </div>
         <div class="two-col">
           <div class="acard"><div class="ctitle">CORRELATION MATRIX — M+1 · LOG RETURNS</div><div class="cnote">Pearson r on daily log returns. Blue = positive, red = negative.</div><div id="dash-corr" style="overflow-x:auto"></div></div>
-          <div class="acard"><div class="ctitle">DAY-ON-DAY CHANGES — ALL INSTRUMENTS</div><div id="dash-dod" style="overflow-x:auto"></div></div>
+          <div>
+            <div class="acard" style="margin-bottom:10px"><div class="ctitle">DAY-ON-DAY CHANGES — LNG &amp; GLOBAL INDICES</div><div id="dash-dod" style="overflow-x:auto"></div></div>
+            <div class="acard"><div class="ctitle">DAY-ON-DAY CHANGES — EUROPEAN GAS HUBS · $/MMBTU</div><div id="dash-dod-eex" style="overflow-x:auto"><div style="color:#3d5070;font-size:9px;padding:8px">Load EEX Gas Curves file to see EU hub changes</div></div></div>
+          </div>
         </div>
       </div>
       <div id="sec-historical" class="asec">
@@ -7560,11 +7573,18 @@ async function toAB(src){
 const MA=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const SC=['#2d7cff','#22c55e','#f59e0b','#ef4444','#a78bfa','#38bdf8'];
 const CK='lngTradeOS_v5';
-const INSTS=[{k:'JKM',label:'JKM',unit:'$/MMBtu'},{k:'TTF',label:'TTF',unit:'$/MMBtu'},{k:'HH',label:'HH',unit:'$/MMBtu'},{k:'NBP',label:'NBP',unit:'$/MMBtu'},{k:'Brent',label:'Brent',unit:'$/bbl'},{k:'Dated',label:'Dated Brent',unit:'$/bbl'},{k:'Slope',label:'Slope',unit:'%'},{k:'SP_JT',label:'JKM/TTF Spread',unit:'$/MMBtu'},{k:'SP_JH',label:'JKM/HH Spread',unit:'$/MMBtu'},{k:'SP_TH',label:'TTF/HH Spread',unit:'$/MMBtu'},{k:'SP_JN',label:'JKM/NBP Spread',unit:'$/MMBtu'},{k:'SP_HN',label:'HH/NBP Spread',unit:'$/MMBtu'},{k:'SP_TN',label:'TTF/NBP Spread',unit:'$/MMBtu'}];
+const INSTS=[{k:'JKM',label:'JKM',unit:'$/MMBtu'},{k:'TTF',label:'TTF',unit:'$/MMBtu'},{k:'HH',label:'HH',unit:'$/MMBtu'},{k:'NBP',label:'NBP',unit:'$/MMBtu'},{k:'Brent',label:'Brent',unit:'$/bbl'},{k:'Dated',label:'Dated Brent',unit:'$/bbl'},{k:'Slope',label:'Slope',unit:'%'},{k:'SP_JT',label:'JKM/TTF Spread',unit:'$/MMBtu'},{k:'SP_JH',label:'JKM/HH Spread',unit:'$/MMBtu'},{k:'SP_TH',label:'TTF/HH Spread',unit:'$/MMBtu'},{k:'SP_JN',label:'JKM/NBP Spread',unit:'$/MMBtu'},{k:'SP_HN',label:'HH/NBP Spread',unit:'$/MMBtu'},{k:'SP_TN',label:'TTF/NBP Spread',unit:'$/MMBtu'},
+  {k:'THE',label:'THE (Germany)',unit:'$/MMBtu'},{k:'PEG',label:'PEG (France)',unit:'$/MMBtu'},{k:'PVB',label:'PVB (Spain)',unit:'$/MMBtu'},{k:'PSV',label:'PSV (Italy)',unit:'$/MMBtu'}];
 const INST={};INSTS.forEach(i=>INST[i.k]=i);
 const CI=['JKM','TTF','HH','NBP','Brent','Dated'];
+const EEX_HUBS=['THE','PEG','PVB','PSV'];
+const EEX_CK='eex_v1'; // localStorage cache key for EEX data
+const EEX_EURUSD_KEY='eex_eurusd';
+const EEX_MO={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
 const CN={BRENT:['BRT SW','Brent SW'],TTF:['TTF FT','TTF'],TFU:['TFU'],EURUSD:['EUR USD','EURUSD'],GBPUSD:['GBP USD','GBPUSD'],NBP:['NBP FT','NBP'],HH:['HHUB FT','HH'],DATED:['Outright Dated','Dated Brent'],JKM:['JKM'],SLOPE:['Brent JKM','Slope'],JKM_TFU:['JKM v TFU'],JKM_NBP:['JKM v NBP'],HH_NBP:['HH v NBP'],TTF_NBP:['TTF v NBP'],JKM_HH:['JKM v HH']};
 const aD={};let sDates=[];
+// EEX European Gas Curves — separate store from LNG EOD curves
+const eexD={};let eexDates=[];let eexChart=null;
 // Expose to window so cross-module checks (window.aD, window.sDates) work
 Object.defineProperty(window,'aD',{get:()=>aD,configurable:true});
 Object.defineProperty(window,'sDates',{get:()=>sDates,configurable:true});
@@ -7574,7 +7594,14 @@ function getPK(v){let d=null;if(v instanceof Date)d=v;else if(typeof v==='number
 function toNum(v){if(typeof v==='number'&&isFinite(v))return v;if(v instanceof Date){const s=(v.getTime()-new Date(Date.UTC(1899,11,30)).getTime())/86400000;if(s>0.3&&s<20)return+s.toFixed(6);}return null;}
 function toStr(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function fmtD(s){return new Date(s+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
-function pkL(pk){const[y,m]=pk.split('-');return MA[+m-1]+'-'+String(y).slice(2);}
+function pkL(pk){
+  if(!pk) return '—';
+  // EEX seasonal strips: W:2026 → Win-26, S:2027 → Sum-27, C:2027 → Cal-27
+  const mW=pk.match(/^W:(\d{4})$/); if(mW) return'Win-'+String(mW[1]).slice(2);
+  const mS=pk.match(/^S:(\d{4})$/); if(mS) return'Sum-'+String(mS[1]).slice(2);
+  const mC=pk.match(/^C:(\d{4})$/); if(mC) return'Cal-'+String(mC[1]).slice(2);
+  const[y,m]=pk.split('-');return MA[+m-1]+'-'+String(y).slice(2);
+}
 function fCol2(hdrs,cands){for(const c of cands){const i=hdrs.findIndex(h=>h&&String(h).trim()===c);if(i>=0)return i;}return-1;}
 function pDFN(name){
   // YYYY.MM.DD or YYYY-MM-DD or YYYY_MM_DD  (new Drive format: "OB LNG EOD Curve 2024.03.15.xlsx")
@@ -7604,9 +7631,128 @@ const sp_jh=jkm_hh_r!=null?jkm_hh_r:(jkm!=null&&hh!=null?+(jkm-hh).toFixed(4):nu
 // SP_TH: TTF/HH — HH v TTF column is date-formatted in Excel (unreadable by JS parser)
 // Use TFU - HH directly since TFU is already correctly parsed
 const sp_th=ttf!=null&&hh!=null?+(ttf-hh).toFixed(4):null;
-rows.push({pk,JKM:jkm,TTF:ttf,HH:hh,NBP:nbp,Brent:brent,Dated:dated,Slope:slope,SP_JT:sp_jt,SP_JH:sp_jh,SP_TH:sp_th,SP_JN:jkm_nbp,SP_HN:hh_nbp,SP_TN:ttf_nbp});}return rows;}
+rows.push({pk,JKM:jkm,TTF:ttf,HH:hh,NBP:nbp,Brent:brent,Dated:dated,Slope:slope,SP_JT:sp_jt,SP_JH:sp_jh,SP_TH:sp_th,SP_JN:jkm_nbp,SP_HN:hh_nbp,SP_TN:ttf_nbp,EURUSD:eu});}return rows;}
 function sCache(){try{const p={};for(const[k,v]of Object.entries(aD))p[k]={date:v.date.toISOString(),rows:v.rows};localStorage.setItem(CK,JSON.stringify(p));}catch(e){}}
 function lCache(){try{const raw=localStorage.getItem(CK);if(!raw)return false;const p=JSON.parse(raw);for(const[k,v]of Object.entries(p))aD[k]={date:new Date(v.date),rows:v.rows};sDates=Object.keys(aD).sort();return sDates.length>0;}catch(e){localStorage.removeItem(CK);return false;}}
+
+// ── EEX European Gas Curves cache ─────────────────────────────────────────
+function eex_sCache(){try{const p={};for(const[k,v]of Object.entries(eexD))p[k]={date:v.date.toISOString(),rows:v.rows};localStorage.setItem(EEX_CK,JSON.stringify(p));}catch(e){}}
+function eex_lCache(){try{const raw=localStorage.getItem(EEX_CK);if(!raw)return false;const p=JSON.parse(raw);for(const[k,v]of Object.entries(p))eexD[k]={date:new Date(v.date),rows:v.rows};eexDates=Object.keys(eexD).sort();return eexDates.length>0;}catch(e){localStorage.removeItem(EEX_CK);return false;}}
+
+// ── Parse EEX Gas Curves Excel file ───────────────────────────────────────
+// File format: Sheets THE/PSV/PEG/PVB, row 0=header, row 1=column names,
+// rows 2+ = data (Trade Date in col 0, contracts in subsequent cols)
+// Values in EUR/MWh → convert to $/MMBtu using EUR/USD rate
+// ── Get EUR/USD from LNG EOD curves (same or nearest prior date) ──────────
+function getEURUSD(dateStr){
+  // Same date
+  const row0=aD[dateStr]?.rows?.[0];
+  if(row0?.EURUSD>0.5) return row0.EURUSD;
+  // Nearest prior date
+  for(let i=sDates.length-1;i>=0;i--){
+    if(sDates[i]<=dateStr){
+      const r=aD[sDates[i]]?.rows?.[0];
+      if(r?.EURUSD>0.5) return r.EURUSD;
+    }
+  }
+  // Latest available regardless
+  for(let i=sDates.length-1;i>=0;i--){
+    const r=aD[sDates[i]]?.rows?.[0];
+    if(r?.EURUSD>0.5) return r.EURUSD;
+  }
+  return 1.09; // hard fallback
+}
+
+function parseEEXFile(buf){
+  const wb=XLSX.read(buf,{type:'array'});
+  const hubData={};
+
+  const EUR_TO_MMBTU=0.293071;
+
+  EEX_HUBS.forEach(hub=>{
+    const ws=wb.Sheets[hub]; if(!ws) return;
+    const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(data.length<3) return;
+    const hdrs=(data[1]||[]).map(h=>h?String(h).trim():'');
+
+    // Map column index → pk
+    // Monthly: "May-26" → "2026-05"
+    // Seasonal: "Win-26" → "W:2026", "Sum-27" → "S:2027", "Cal-27" → "C:2027"
+    const colPk={};
+    hdrs.forEach((h,i)=>{
+      if(i===0) return;
+      // Monthly: 3-letter month + hyphen + 2-digit year
+      const mMon=h.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{2})$/);
+      if(mMon){const mm=EEX_MO[mMon[1]],yy=+mMon[2],yyyy=yy>=50?1900+yy:2000+yy;colPk[i]=`${yyyy}-${mm}`;return;}
+      // Win strip: "Win-26" → W:2026
+      const mWin=h.match(/^Win-(\d{2})$/);
+      if(mWin){const yy=+mWin[1],yyyy=yy>=50?1900+yy:2000+yy;colPk[i]=`W:${yyyy}`;return;}
+      // Sum strip: "Sum-27" → S:2027
+      const mSum=h.match(/^Sum-(\d{2})$/);
+      if(mSum){const yy=+mSum[1],yyyy=yy>=50?1900+yy:2000+yy;colPk[i]=`S:${yyyy}`;return;}
+      // Cal strip: "Cal-27" → C:2027
+      const mCal=h.match(/^Cal-(\d{2})$/);
+      if(mCal){const yy=+mCal[1],yyyy=yy>=50?1900+yy:2000+yy;colPk[i]=`C:${yyyy}`;return;}
+    });
+    if(!Object.keys(colPk).length) return;
+
+    for(let r=2;r<data.length;r++){
+      const row=data[r]; if(!row||row[0]==null) continue;
+      let tradeDate=null;
+      const raw0=row[0];
+      if(typeof raw0==='number'){tradeDate=new Date(Math.round((raw0-25569)*86400*1000));}
+      else{
+        const s=String(raw0).trim();
+        const m1=s.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i);
+        const m2=s.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if(m1){const mo=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m1[2].toLowerCase());tradeDate=new Date(+m1[3],mo,+m1[1]);}
+        else if(m2){tradeDate=new Date(+m2[1],+m2[2]-1,+m2[3]);}
+      }
+      if(!tradeDate||isNaN(tradeDate)) continue;
+      const ds=toStr(tradeDate);
+      if(!hubData[ds]) hubData[ds]={date:tradeDate,pkMap:{}};
+      Object.entries(colPk).forEach(([ci,pk])=>{
+        const val=row[+ci];
+        if(val==null||val==='') return;
+        const eur=typeof val==='number'?val:parseFloat(val);
+        if(isNaN(eur)||eur<=0) return;
+        const usd=+(eur*EUR_TO_MMBTU*getEURUSD(ds)).toFixed(4);
+        if(!hubData[ds].pkMap[pk]) hubData[ds].pkMap[pk]={};
+        hubData[ds].pkMap[pk][hub]=usd;
+      });
+    }
+  });
+
+  let added=0;
+  Object.entries(hubData).forEach(([ds,{date,pkMap}])=>{
+    const rows=Object.entries(pkMap).map(([pk,hubs])=>({pk,...hubs})).sort((a,b)=>{
+      // Sort: monthly YYYY-MM first, then seasonals W:/S:/C:
+      const aM=a.pk.match(/^\d{4}-\d{2}$/),bM=b.pk.match(/^\d{4}-\d{2}$/);
+      if(aM&&bM) return a.pk.localeCompare(b.pk);
+      if(aM) return -1; if(bM) return 1;
+      return a.pk.localeCompare(b.pk);
+    });
+    if(!rows.length) return;
+    if(!eexD[ds]) added++;
+    eexD[ds]={date,rows};
+  });
+  eexDates=Object.keys(eexD).sort();
+  eex_sCache();
+  return added;
+}
+
+// ── EEX data access functions (mirrors gSR/gSF for EU hubs) ───────────────
+function eexGSR(inst,t){const out=[];for(const ds of eexDates){const{date,rows}=eexD[ds];const pk=rPK(date,t);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
+function eexGSF(inst,pk){const out=[];for(const ds of eexDates){const{date,rows}=eexD[ds];const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
+function eexGSS(inst,tv){const sea=gSeaP();const tObj=sea.find(s=>s.v===tv);if(!tObj)return[];const out=[];for(const ds of eexDates){const{date,rows}=eexD[ds];const val=gAgg(inst,tObj,rows);if(val!=null)out.push({date,value:val});}return out;}
+function eexGS(inst,tv){
+  if(tv.startsWith('r')) return eexGSR(inst,parseInt(tv.slice(1)));
+  // EEX strip pks: W:YYYY, S:YYYY, C:YYYY → direct lookup
+  if(tv.match(/^[WSC]:\d{4}$/)) return eexGSF(inst,tv);
+  if(tv.startsWith('win-')||tv.startsWith('sum-')||tv.startsWith('q')) return eexGSS(inst,tv);
+  return eexGSF(inst,tv);
+}
+
 function clearCache(){
   const pw=prompt('Enter password to clear cache:');
   if(pw===null)return; // cancelled
@@ -7628,14 +7774,25 @@ function setupDrop(){
   });
 }
 function plog(msg,warn=false){const el=$id('parselog');if(!el)return;el.style.display='block';el.innerHTML+=`<div style="color:${warn?'#ef4444':'#3d5070'}">${msg}</div>`;el.scrollTop=el.scrollHeight;}
-async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.match(/\.xlsx?$/i));if(!xl.length){alert('No Excel files found.');return;}if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$id('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of xl){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}try{const buf=await toAB(file);if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$id('progfill2');if(pf)pf.style.width=Math.round(done/xl.length*100)+'%';const pt=$id('progtxt2');if(pt)pt.textContent=`${done}/${xl.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
-function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();updHist();cInit();updSpread();updFC();updSea();}
+async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.match(/\.xlsx?$/i));if(!xl.length){alert('No Excel files found.');return;}
+  // Split EEX files from LNG curve files
+  const eexFiles=xl.filter(f=>f.name.match(/EEX/i));
+  const lngFiles=xl.filter(f=>!f.name.match(/EEX/i));
+  // Process EEX files
+  let eexAdded=0;
+  for(const file of eexFiles){
+    try{const buf=await toAB(file);if(buf.byteLength<5000)continue;const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B))continue;const n=parseEEXFile(buf);eexAdded+=n;}catch(e){console.warn('EEX parse error:',e);}
+  }
+  if(eexAdded>0){buildEuHubChart();buildDash();const st=document.getElementById('eex-status');if(st)st.textContent=`${eexDates.length} dates · last ${eexDates[eexDates.length-1]||'—'}`;}
+  if(!lngFiles.length){if(eexAdded>0)return;alert('No LNG curve files found (EEX files processed separately).');return;}
+  if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$id('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of lngFiles){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}try{const buf=await toAB(file);if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$id('progfill2');if(pf)pf.style.width=Math.round(done/lngFiles.length*100)+'%';const pt=$id('progtxt2');if(pt)pt.textContent=`${done}/${lngFiles.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
+function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();buildEuHubChart();updHist();cInit();updSpread();updFC();updSea();}
 function rPK(d,t){const r=new Date(d.getFullYear(),d.getMonth()+parseInt(t),1);return`${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}`;}
 function aPKs(){const s=new Set();for(const ds of sDates)aD[ds].rows.forEach(r=>s.add(r.pk));return[...s].sort();}
 function gSR(inst,t){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const pk=rPK(date,t);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
 function gSF(inst,pk){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
 function gSS(inst,tv){const sea=gSeaP();const tObj=sea.find(s=>s.v===tv);if(!tObj)return[];const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const val=gAgg(inst,tObj,rows);if(val!=null)out.push({date,value:val});}return out;}
-function gS(inst,tv){if(tv.startsWith('r'))return gSR(inst,parseInt(tv.slice(1)));if(tv.startsWith('win-')||tv.startsWith('sum-')||tv.startsWith('q'))return gSS(inst,tv);return gSF(inst,tv);}
+function gS(inst,tv){if(EEX_HUBS.includes(inst))return eexGS(inst,tv);if(tv.startsWith('r'))return gSR(inst,parseInt(tv.slice(1)));if(tv.startsWith('win-')||tv.startsWith('sum-')||tv.startsWith('q'))return gSS(inst,tv);return gSF(inst,tv);}
 function tvL(tv){if(tv.startsWith('r'))return'M+'+tv.slice(1);const s=gSeaP().find(x=>x.v===tv);if(s)return s.l;return pkL(tv);}
 function al2(s1,s2){const map=new Map(s2.map(d=>[toStr(d.date),d.value]));const v1=[],v2=[],dates=[];for(const d of s1){const k=toStr(d.date);if(map.has(k)){v1.push(d.value);v2.push(map.get(k));dates.push(d.date);}}return{v1,v2,dates};}
 function lRet(vals){const out=[];for(let i=1;i<vals.length;i++)out.push(vals[i]>0&&vals[i-1]>0?Math.log(vals[i]/vals[i-1]):null);return out;}
@@ -7643,12 +7800,124 @@ function pear(a,b){const p=[];for(let i=0;i<Math.min(a.length,b.length);i++)if(a
 function rCorr(s1,s2,win){const{v1,v2,dates}=al2(s1,s2);const l1=lRet(v1),l2=lRet(v2);const out=[];for(let i=win-1;i<l1.length;i++){const r=pear(l1.slice(i-win+1,i+1),l2.slice(i-win+1,i+1));if(!isNaN(r))out.push({date:dates[i+1],value:r});}return out;}
 function bIS(el,keys=null,wN=false){el.innerHTML=wN?'<option value="none">— None —</option>':'';const list=keys?INSTS.filter(i=>keys.includes(i.k)):INSTS;list.forEach(i=>el.innerHTML+=`<option value="${i.k}">${i.label}</option>`);}
 function bCS(el){el.innerHTML='';CI.forEach(k=>el.innerHTML+=`<option value="${k}">${INST[k].label}</option>`);}
-function bTS(el,wS=false){el.innerHTML='';[{v:'r1',l:'M+1'},{v:'r2',l:'M+2'},{v:'r3',l:'M+3'},{v:'r6',l:'M+6'}].forEach(o=>el.innerHTML+=`<option value="${o.v}">${o.l}</option>`);el.innerHTML+='<option disabled>── Monthly ──</option>';aPKs().forEach(pk=>el.innerHTML+=`<option value="${pk}">${pkL(pk)}</option>`);if(wS){el.innerHTML+='<option disabled>── Seasonal ──</option>';gSeaP().filter(s=>s.type==='seasonal').forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);el.innerHTML+='<option disabled>── Quarterly ──</option>';gSeaP().filter(s=>s.type==='quarterly').forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);}}
+function bTS(el,wS=false){el.innerHTML='';[{v:'r1',l:'M+1'},{v:'r2',l:'M+2'},{v:'r3',l:'M+3'},{v:'r6',l:'M+6'}].forEach(o=>el.innerHTML+=`<option value="${o.v}">${o.l}</option>`);el.innerHTML+='<option disabled>── Monthly ──</option>';aPKs().forEach(pk=>el.innerHTML+=`<option value="${pk}">${pkL(pk)}</option>`);if(wS){el.innerHTML+='<option disabled>── Seasonal ──</option>';gSeaP().filter(s=>s.type==='seasonal').forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);el.innerHTML+='<option disabled>── Quarterly ──</option>';gSeaP().filter(s=>s.type==='quarterly').forEach(s=>el.innerHTML+=`<option value="${s.v}">${s.l}</option>`);}
+  // EEX strips — Win/Sum/Cal as actually traded on EEX
+  if(eexDates.length){
+    const stripPks=new Set();
+    eexDates.forEach(ds=>(eexD[ds]?.rows||[]).forEach(r=>{if(r.pk.match(/^[WSC]:\d{4}$/))stripPks.add(r.pk);}));
+    if(stripPks.size){
+      el.innerHTML+='<option disabled>── EEX Strips ──</option>';
+      // Sort: monthly-equivalent order (Win then Sum then Cal per year)
+      [...stripPks].sort((a,b)=>{
+        const yr=pk=>{const m=pk.match(/^[WSC]:(\d{4})$/);return m?+m[1]:9999;};
+        const ord=pk=>{return pk.startsWith('W')?0:pk.startsWith('S')?1:2;};
+        const ya=yr(a),yb=yr(b);
+        return ya!==yb?ya-yb:ord(a)-ord(b);
+      }).forEach(pk=>el.innerHTML+=`<option value="${pk}">${pkL(pk)}</option>`);
+    }
+  }
+}
 function bDS(el,wN=false){el.innerHTML=wN?'<option value="none">— None —</option>':'';for(const ds of[...sDates].reverse())el.innerHTML+=`<option value="${ds}">${fmtD(ds)}</option>`;}
 function updStatus(){$id('sbar').style.display='flex';$id('stext').textContent=`${sDates.length} DATES — ${fmtD(sDates[0])} → ${fmtD(sDates[sDates.length-1])}`;}
-function initUI(){updStatus();bIS($id('h-i1'));bIS($id('h-i2'),null,true);$id('h-i2').value='TTF';bIS($id('fc-i'));bIS($id('sea-i'));bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();updHist();cInit();updSpread();updFC();updSea();}
-function buildDash(){if(sDates.length<2)return;const ld=sDates[sDates.length-1],pd=sDates[sDates.length-2],lR=aD[ld].rows,pR=aD[pd].rows,m1=rPK(aD[ld].date,1);const mg=$id('dash-metrics');if(!mg)return;mg.innerHTML='';INSTS.forEach(inst=>{const lv=lR.find(r=>r.pk===m1)?.[inst.k]??null,pv=pR.find(r=>r.pk===m1)?.[inst.k]??null,chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null,pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null,cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼',dp=inst.unit==='$/bbl'?2:3;mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;});buildGasSnapshot();const ck=CI,cs={};ck.forEach(k=>cs[k]=gSF(k,m1));let cm=`<table class="ctbl"><thead><tr><th></th>${ck.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;ck.forEach(a=>{cm+=`<tr><th style="text-align:left">${INST[a].label}</th>`;ck.forEach(b=>{if(a===b){cm+=`<td style="background:#151e30;color:#5a6882">1.00</td>`;return;}const{v1,v2}=al2(cs[a],cs[b]),r=pear(lRet(v1),lRet(v2));if(isNaN(r)){cm+=`<td style="color:#1e2d45">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;cm+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'}">${r.toFixed(2)}</td>`;});cm+=`</tr>`;});const dc=$id('dash-corr');if(dc)dc.innerHTML=cm+'</tbody></table>';const keys=['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH'],pks=lR.map(r=>r.pk).slice(0,12);let dod=`<table class="stbl" style="font-size:10px"><thead><tr><th>Contract</th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;for(const pk of pks){const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);dod+=`<tr><td>${pkL(pk)}</td>${keys.map(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null,d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null,dp=(k==='Brent'||k==='Dated')?2:3;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;}).join('')}</tr>`;}const dd=$id('dash-dod');if(dd)dd.innerHTML=dod+'</tbody></table>';}
-function buildGasSnapshot(){const canvas=$id('gas-snapshot-chart');if(!canvas||!sDates.length)return;const lbls=sDates.map(ds=>aD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));const serDefs=[{label:'TTF',color:'#4fc3f7',fn:row=>row.TTF},{label:'JKM',color:'#81c784',fn:row=>row.JKM},{label:'NBP',color:'#ffb74d',fn:row=>row.NBP},{label:'115% HH',color:'#f48fb1',fn:row=>row.HH!=null?+(row.HH*1.15).toFixed(4):null},{label:'14% Oil',color:'#ef5350',fn:row=>row.Brent!=null?+(row.Brent*0.14).toFixed(4):null},{label:'11% Oil',color:'#ce93d8',fn:row=>row.Brent!=null?+(row.Brent*0.11).toFixed(4):null}];const datasets=serDefs.map(s=>({label:s.label,data:sDates.map(ds=>{const{date,rows}=aD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?s.fn(row):null;}),borderColor:s.color,backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true}));if(gasChart)gasChart.destroy();gasChart=new Chart(canvas,{type:'line',data:{labels:lbls,datasets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:20}},y:{title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});}
+function initUI(){updStatus();bIS($id('h-i1'));bIS($id('h-i2'),null,true);$id('h-i2').value='TTF';bIS($id('fc-i'));bIS($id('sea-i'));bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();buildEuHubChart();updHist();cInit();updSpread();updFC();updSea();}
+function buildDash(){
+  if(sDates.length<2) return;
+  const ld=sDates[sDates.length-1],pd=sDates[sDates.length-2],lR=aD[ld].rows,pR=aD[pd].rows,m1=rPK(aD[ld].date,1);
+  const mg=$id('dash-metrics'); if(!mg) return;
+  mg.innerHTML='';
+  // ── LNG / global instruments DoD cards ──────────────────────────────────
+  INSTS.filter(inst=>!EEX_HUBS.includes(inst.k)).forEach(inst=>{
+    const lv=lR.find(r=>r.pk===m1)?.[inst.k]??null,pv=pR.find(r=>r.pk===m1)?.[inst.k]??null,
+      chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null,
+      pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null,
+      cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼',
+      dp=inst.unit==='$/bbl'?2:3;
+    mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;
+  });
+  // ── EU Hub DoD cards (from eexD) ─────────────────────────────────────────
+  if(eexDates.length>=2){
+    const eld=eexDates[eexDates.length-1],epd=eexDates[eexDates.length-2];
+    const em1=rPK(eexD[eld].date,1);
+    const sep=document.createElement('div');sep.style.cssText='width:100%;height:1px;background:#151e30;margin:6px 0 4px;grid-column:1/-1;';mg.appendChild(sep);
+    EEX_HUBS.forEach(k=>{
+      const inst=INST[k];
+      const lv=eexD[eld].rows.find(r=>r.pk===em1)?.[k]??null;
+      const pv=eexD[epd].rows.find(r=>r.pk===em1)?.[k]??null;
+      const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null,
+        pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null,
+        cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼';
+      mg.innerHTML+=`<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(em1)}</div><div class="mc-val">${lv!=null?lv.toFixed(3):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(3):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">$/MMBtu</span></div></div>`;
+    });
+  }
+  buildGasSnapshot();
+  buildEuHubChart();
+  // ── Correlation matrix ───────────────────────────────────────────────────
+  const ck=CI,cs={};ck.forEach(k=>cs[k]=gSF(k,m1));
+  let cm=`<table class="ctbl"><thead><tr><th></th>${ck.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
+  ck.forEach(a=>{cm+=`<tr><th style="text-align:left">${INST[a].label}</th>`;ck.forEach(b=>{if(a===b){cm+=`<td style="background:#151e30;color:#5a6882">1.00</td>`;return;}const{v1,v2}=al2(cs[a],cs[b]),r=pear(lRet(v1),lRet(v2));if(isNaN(r)){cm+=`<td style="color:#1e2d45">—</td>`;return;}const ab=Math.abs(r),bg=r>0?`rgba(45,124,255,${(ab*.7).toFixed(2)})`:`rgba(239,68,68,${(ab*.7).toFixed(2)})`;cm+=`<td style="background:${bg};color:${ab>.5?'#fff':'#c8cfe0'}">${r.toFixed(2)}</td>`;});cm+=`</tr>`;});
+  const dc=$id('dash-corr');if(dc)dc.innerHTML=cm+'</tbody></table>';
+  // ── DoD table — LNG instruments ──────────────────────────────────────────
+  const keys=['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH'],pks=lR.map(r=>r.pk).slice(0,12);
+  let dod=`<table class="stbl" style="font-size:10px"><thead><tr><th>Contract</th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
+  for(const pk of pks){const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);dod+=`<tr><td>${pkL(pk)}</td>${keys.map(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null,d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null,dp=(k==='Brent'||k==='Dated')?2:3;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;}).join('')}</tr>`;}
+  const dd=$id('dash-dod');if(dd)dd.innerHTML=dod+'</tbody></table>';
+  // ── DoD table — EU Gas Hubs ──────────────────────────────────────────────
+  const dehEl=$id('dash-dod-eex'); if(!dehEl) return;
+  if(eexDates.length<2){dehEl.innerHTML=`<div style="color:#3d5070;font-size:9px;padding:8px">Load EEX Gas Curves file to see EU hub changes</div>`;return;}
+  const eld2=eexDates[eexDates.length-1],epd2=eexDates[eexDates.length-2];
+  const elR=eexD[eld2].rows,epR=eexD[epd2].rows;
+  const eAllPks=[...new Set([...elR,...epR].map(r=>r.pk))].sort().slice(0,12);
+  let eDod=`<div style="font-size:8px;color:#546e7a;margin-bottom:4px;letter-spacing:.08em">${fmtD(eld2)} vs ${fmtD(epd2)}</div>`;
+  eDod+=`<table class="stbl" style="font-size:10px"><thead><tr><th>Contract</th>${EEX_HUBS.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
+  for(const pk of eAllPks){const lr=elR.find(r=>r.pk===pk),pr=epR.find(r=>r.pk===pk);eDod+=`<tr><td>${pkL(pk)}</td>${EEX_HUBS.map(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null,d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(3):'—'}</td>`;}).join('')}</tr>`;}
+  dehEl.innerHTML=eDod+'</tbody></table>';
+}
+
+function buildGasSnapshot(){
+  const canvas=$id('gas-snapshot-chart'); if(!canvas||!sDates.length) return;
+  // Filter from Jan 1 2026
+  const cutoff=new Date(2026,0,1);
+  const filtDates=sDates.filter(ds=>aD[ds].date>=cutoff);
+  const src=filtDates.length>0?filtDates:sDates; // fallback to all if no 2026 data
+  const lbls=src.map(ds=>aD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+  const serDefs=[
+    {label:'TTF',color:'#4fc3f7',fn:row=>row.TTF},
+    {label:'JKM',color:'#81c784',fn:row=>row.JKM},
+    {label:'NBP',color:'#ffb74d',fn:row=>row.NBP},
+    {label:'115% HH',color:'#f48fb1',fn:row=>row.HH!=null?+(row.HH*1.15).toFixed(4):null},
+    {label:'14% Oil',color:'#ef5350',fn:row=>row.Brent!=null?+(row.Brent*0.14).toFixed(4):null},
+    {label:'11% Oil',color:'#ce93d8',fn:row=>row.Brent!=null?+(row.Brent*0.11).toFixed(4):null}
+  ];
+  const datasets=serDefs.map(s=>({label:s.label,data:src.map(ds=>{const{date,rows}=aD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?s.fn(row):null;}),borderColor:s.color,backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true}));
+  if(gasChart)gasChart.destroy();
+  gasChart=new Chart(canvas,{type:'line',data:{labels:lbls,datasets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:20}},y:{title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});
+}
+
+function buildEuHubChart(){
+  const canvas=$id('eu-hub-chart'); if(!canvas) return;
+  if(!eexDates.length){
+    const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(eexChart){eexChart.destroy();eexChart=null;}
+    return;
+  }
+  // Filter from Jan 1 2026
+  const cutoff=new Date(2026,0,1);
+  const src=eexDates.filter(ds=>eexD[ds].date>=cutoff);
+  if(!src.length) return;
+  const lbls=src.map(ds=>eexD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+  const hubColors={THE:'#4fc3f7',PEG:'#ffb74d',PVB:'#81c784',PSV:'#f48fb1'};
+  const datasets=EEX_HUBS.map(hub=>({
+    label:INST[hub].label,
+    data:src.map(ds=>{const{date,rows}=eexD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?.[hub]??null;}),
+    borderColor:hubColors[hub],backgroundColor:'transparent',
+    borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true
+  }));
+  if(eexChart)eexChart.destroy();
+  eexChart=new Chart(canvas,{type:'line',data:{labels:lbls,datasets},options:{...CD,scales:{
+    x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:20}},
+    y:{title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}
+  }}});
+}
 function updHist(){const i1=$id('h-i1').value,t1=$id('h-t1').value,i2=$id('h-i2').value,t2=$id('h-t2').value,has2=i2!=='none',s1=gS(i1,t1),s2=has2?gS(i2,t2):null;if(!s1.length)return;const u1=INST[i1].unit,u2=has2?INST[i2].unit:null,dual=has2&&u1!==u2,lbls=s1.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),ds=[{label:`${INST[i1].label} ${tvL(t1)}`,data:s1.map(d=>+d.value.toFixed(4)),borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:'y'}];if(has2&&s2){const m2=new Map(s2.map(d=>[toStr(d.date),d.value]));ds.push({label:`${INST[i2].label} ${tvL(t2)}`,data:s1.map(d=>{const v=m2.get(toStr(d.date));return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.07)',borderWidth:1.8,pointRadius:2.5,tension:.3,fill:false,yAxisID:dual?'y1':'y'});}const scales={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};if(dual)scales.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};if(hChart)hChart.destroy();const hc=$id('hChart');if(hc)hChart=new Chart(hc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales}});bStats(t1);}
 function bStats(tv){const st=$id('stats-title');if(st)st.textContent='STATISTICS — '+tvL(tv);let html=`<thead><tr><th>Instrument</th><th>Current</th><th>Mean</th><th>Std Dev</th><th>Min</th><th>Max</th><th>N</th><th>Unit</th></tr></thead><tbody>`;INSTS.forEach(inst=>{const s=gS(inst.k,tv);if(!s.length){html+=`<tr><td>${inst.label}</td><td colspan="7" style="color:#3d5070">No data</td></tr>`;return;}const vals=s.map(d=>d.value),cur=vals[vals.length-1],mn=vals.reduce((a,b)=>a+b,0)/vals.length,std=Math.sqrt(vals.reduce((s,v)=>s+(v-mn)**2,0)/vals.length),dp=inst.unit==='$/bbl'?2:3;html+=`<tr><td>${inst.label}</td><td style="color:#c8cfe0">${cur.toFixed(dp)}</td><td>${mn.toFixed(dp)}</td><td>${std.toFixed(dp)}</td><td>${Math.min(...vals).toFixed(dp)}</td><td>${Math.max(...vals).toFixed(dp)}</td><td style="color:#3d5070">${vals.length}</td><td style="color:#3d5070;font-size:9px">${inst.unit}</td></tr>`;});const st2=$id('statsTable');if(st2)st2.innerHTML=html+'</tbody>';}
 
@@ -8110,11 +8379,28 @@ function cInit(){
 
 
 
-function updFC(){if(!sDates.length)return;const inst=$id('fc-i').value,d1=$id('fc-d1').value,d2=$id('fc-d2').value;if(!d1||!aD[d1])return;const unit=INST[inst].unit,rows1=aD[d1].rows,lbls=rows1.map(r=>pkL(r.pk)),v1=rows1.map(r=>r[inst]!=null?+r[inst].toFixed(4):null),fct=$id('fc-title');if(fct)fct.textContent=INST[inst].label+' FORWARD CURVE — '+fmtD(d1);const ds=[{label:fmtD(d1),data:v1,borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,.08)',borderWidth:2,pointRadius:3.5,tension:.3,fill:false}];if(d2!=='none'&&aD[d2]){const m2=new Map(aD[d2].rows.map(r=>[r.pk,r[inst]]));ds.push({label:fmtD(d2),data:rows1.map(r=>{const v=m2.get(r.pk);return v!=null?+v.toFixed(4):null;}),borderColor:'#f59e0b',borderDash:[6,4],borderWidth:2,pointRadius:3,tension:.3,fill:false});}if(fcChart)fcChart.destroy();const fcc=$id('fcChart');if(fcc)fcChart=new Chart(fcc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:24}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});const valid=v1.filter(v=>v!=null);if(valid.length){const fr=valid[0],bk=valid[valid.length-1],sp=bk-fr,mn=Math.min(...valid),mx=Math.max(...valid),avg=valid.reduce((a,b)=>a+b,0)/valid.length,shape=Math.abs(sp)<0.05?'FLAT':sp>0?'CONTANGO':'BACKWARDATION',sc=shape==='CONTANGO'?'#22c55e':shape==='BACKWARDATION'?'#ef4444':'#5a6882',fcs=$id('fc-stats');if(fcs)fcs.innerHTML=`<div class="mc"><div class="mc-name">FRONT</div><div class="mc-val" style="font-size:16px">${fr.toFixed(3)}</div></div><div class="mc"><div class="mc-name">BACK</div><div class="mc-val" style="font-size:16px">${bk.toFixed(3)}</div></div><div class="mc"><div class="mc-name">F-B SPREAD</div><div class="mc-val ${sp>=0?'pos':'neg'}" style="font-size:16px">${sp>=0?'+':''}${sp.toFixed(3)}</div></div><div class="mc"><div class="mc-name">SHAPE</div><div class="mc-val" style="color:${sc};font-size:13px">${shape}</div></div><div class="mc"><div class="mc-name">MIN</div><div class="mc-val" style="font-size:16px">${mn.toFixed(3)}</div></div><div class="mc"><div class="mc-name">MAX</div><div class="mc-val" style="font-size:16px">${mx.toFixed(3)}</div></div><div class="mc"><div class="mc-name">AVERAGE</div><div class="mc-val" style="font-size:16px">${avg.toFixed(3)}</div></div>`;}}
+function updFC(){
+  const inst=$id("fc-i").value,d1=$id("fc-d1").value,d2=$id("fc-d2").value;
+  const isEEX=EEX_HUBS.includes(inst);
+  const dStore=isEEX?eexD:aD,dDates=isEEX?eexDates:sDates;
+  if(!dDates.length) return;
+  const rd1=dStore[d1]?d1:dDates[dDates.length-1];
+  if(!rd1||!dStore[rd1]) return;
+  const unit=INST[inst].unit;
+  const rows1=dStore[rd1].rows.filter(r=>/^\d{4}-\d{2}$/.test(r.pk));
+  const lbls=rows1.map(r=>pkL(r.pk)),v1=rows1.map(r=>r[inst]!=null?+r[inst].toFixed(4):null);
+  const fct=$id("fc-title");if(fct)fct.textContent=INST[inst].label+" FORWARD CURVE — "+fmtD(rd1);
+  const ds=[{label:fmtD(rd1),data:v1,borderColor:"#2d7cff",backgroundColor:"rgba(45,124,255,.08)",borderWidth:2,pointRadius:3.5,tension:.3,fill:false}];
+  const candidates=[d2,dDates.length>1?dDates[dDates.length-2]:null];
+  const rd2=candidates.find(c=>c&&c!=="none"&&dStore[c])||null;
+  if(rd2){const rows2=dStore[rd2].rows.filter(r=>/^\d{4}-\d{2}$/.test(r.pk));const m2=new Map(rows2.map(r=>[r.pk,r[inst]]));ds.push({label:fmtD(rd2),data:rows1.map(r=>{const v=m2.get(r.pk);return v!=null?+v.toFixed(4):null;}),borderColor:"#f59e0b",borderDash:[6,4],borderWidth:2,pointRadius:3,tension:.3,fill:false});}
+  if(fcChart)fcChart.destroy();const fcc=$id("fcChart");if(fcc)fcChart=new Chart(fcc.getContext("2d"),{type:"line",data:{labels:lbls,datasets:ds},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:24}},y:{title:{display:true,text:unit,color:"#3d5070",font:{size:9}},ticks:{color:"#3d5070",font:{size:9,family:"IBM Plex Mono"}},grid:{color:"#0f1824"}}}}});
+  const valid=v1.filter(v=>v!=null);if(valid.length){const fr=valid[0],bk=valid[valid.length-1],sp=bk-fr,mn=Math.min(...valid),mx=Math.max(...valid),avg=valid.reduce((a,b)=>a+b,0)/valid.length,shape=Math.abs(sp)<0.05?"FLAT":sp>0?"CONTANGO":"BACKWARDATION",sc=shape==="CONTANGO"?"#22c55e":shape==="BACKWARDATION"?"#ef4444":"#5a6882",fcs=$id("fc-stats");if(fcs)fcs.innerHTML=`<div class="mc"><div class="mc-name">FRONT</div><div class="mc-val" style="font-size:16px">${fr.toFixed(3)}</div></div><div class="mc"><div class="mc-name">BACK</div><div class="mc-val" style="font-size:16px">${bk.toFixed(3)}</div></div><div class="mc"><div class="mc-name">F-B SPREAD</div><div class="mc-val ${sp>=0?"pos":"neg"}" style="font-size:16px">${sp>=0?"+":""}${sp.toFixed(3)}</div></div><div class="mc"><div class="mc-name">SHAPE</div><div class="mc-val" style="color:${sc};font-size:13px">${shape}</div></div>`;}
+}
 function updSea(){if(!sDates.length)return;const inst=$id('sea-i').value,type=$id('sea-type').value,unit=INST[inst].unit,st=$id('sea-title');if(st)st.textContent=INST[inst].label+' — SEASONAL · YEAR OVER YEAR ('+unit+')';const yd={};if(type==='fwd'){const lat=sDates[sDates.length-1];aD[lat].rows.forEach(r=>{const[y,m]=r.pk.split('-');if(!yd[+y])yd[+y]={};if(r[inst]!=null)yd[+y][+m-1]=r[inst];});}else{sDates.forEach(ds=>{const{date,rows}=aD[ds],yr=date.getFullYear(),mo=date.getMonth(),pk=rPK(date,1),row=rows.find(r=>r.pk===pk);if(!row||row[inst]==null)return;if(!yd[yr])yd[yr]={};if(yd[yr][mo]===undefined)yd[yr][mo]=row[inst];});}const years=Object.keys(yd).map(Number).sort(),dsets=years.map((yr,idx)=>({label:String(yr),data:MA.map((_,mo)=>yd[yr][mo]!==undefined?+yd[yr][mo].toFixed(4):null),borderColor:SC[idx%SC.length],backgroundColor:'transparent',borderWidth:2,pointRadius:4,tension:.3,spanGaps:false}));if(seaChart)seaChart.destroy();const sc=$id('seaChart');if(sc)seaChart=new Chart(sc.getContext('2d'),{type:'line',data:{labels:MA,datasets:dsets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});let tbl=`<thead><tr><th>Month</th>${years.map(y=>`<th>${y}</th>`).join('')}${years.slice(0,-1).map((y,i)=>`<th>${y}→${years[i+1]}</th>`).join('')}</tr></thead><tbody>`;MA.forEach((m,mo)=>{tbl+=`<tr><td>${m}</td>${years.map(yr=>`<td>${yd[yr][mo]!==undefined?yd[yr][mo].toFixed(3):'—'}</td>`).join('')}`;for(let i=0;i<years.length-1;i++){const a=yd[years[i]][mo],b=yd[years[i+1]][mo];tbl+=a!==undefined&&b!==undefined?`<td class="${b-a>=0?'pos':'neg'}">${b-a>=0?'+':''}${(b-a).toFixed(3)}</td>`:`<td style="color:#3d5070">—</td>`;}tbl+=`</tr>`;});const st2=$id('sea-tbl');if(st2)st2.innerHTML=tbl+'</tbody>';}
 function updSpread(){const i1=$id('sp-i1').value,t1=$id('sp-t1').value,i2=$id('sp-i2').value,t2=$id('sp-t2').value;if(!i1||!i2||!t1||!t2)return;const s1=gS(i1,t1),s2=gS(i2,t2);if(!s1.length||!s2.length)return;const u1=INST[i1].unit,u2=INST[i2].unit,lbl1=INST[i1].label+' '+tvL(t1),lbl2=INST[i2].label+' '+tvL(t2),sU=(u1===u2)?u1:'mixed units',m2=new Map(s2.map(d=>[toStr(d.date),d.value])),aligned=[];s1.forEach(d=>{const v2=m2.get(toStr(d.date));if(v2!=null)aligned.push({date:d.date,v1:d.value,v2,spread:+(d.value-v2).toFixed(4)});});if(!aligned.length)return;const lbls=aligned.map(d=>d.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})),spreads=aligned.map(d=>d.spread),spt=$id('sp-title');if(spt)spt.textContent=lbl1+' MINUS '+lbl2+' ('+sU+')';if(spChart)spChart.destroy();const sp=$id('spChart');if(sp)spChart=new Chart(sp.getContext('2d'),{type:'bar',data:{labels:lbls,datasets:[{label:'Spread ('+sU+')',data:spreads,backgroundColor:spreads.map(v=>v>=0?'rgba(45,124,255,0.7)':'rgba(239,68,68,0.7)'),borderWidth:0,borderRadius:1}]},options:{...CD,plugins:{...CD.plugins,legend:{display:false}},scales:{x:CD.scales.x,y:{title:{display:true,text:sU,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});const dualL=u1!==u2,sL={x:CD.scales.x,y:{position:'left',title:{display:true,text:u1,color:'#2d7cff',font:{size:9}},ticks:{color:'#2d7cff',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}};if(dualL)sL.y1={position:'right',title:{display:true,text:u2,color:'#f59e0b',font:{size:9}},ticks:{color:'#f59e0b',font:{size:9,family:'IBM Plex Mono'}},grid:{display:false}};if(spLegsChart)spLegsChart.destroy();const slc=$id('spLegsChart');if(slc)spLegsChart=new Chart(slc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:[{label:lbl1,data:aligned.map(d=>+d.v1.toFixed(4)),borderColor:'#2d7cff',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:'y'},{label:lbl2,data:aligned.map(d=>+d.v2.toFixed(4)),borderColor:'#f59e0b',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:dualL?'y1':'y'}]},options:{...CD,scales:sL}});}
 function exportToExcel(){if(!sDates.length){alert('No data.');return;}const wb=XLSX.utils.book_new(),ik=INSTS.map(i=>i.k),headers=['Date',...ik.map(k=>INST[k].label+' M+1')],rows=[headers];sDates.forEach(ds=>{const{date,rows:dr}=aD[ds],m1=rPK(date,1),row=[date.toLocaleDateString('en-GB')];ik.forEach(k=>{const r=dr.find(r=>r.pk===m1);row.push(r&&r[k]!=null?r[k]:'');});rows.push(row);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Historical M+1');XLSX.writeFile(wb,'LNG_TradeOS_'+new Date().toLocaleDateString('en-GB').replace(/\//g,'.')+'.xlsx');}
-function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')cInit();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard')buildGasSnapshot();},60);}
+function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart,eexChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')cInit();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard'){buildGasSnapshot();buildEuHubChart();}},60);}
 function showAnalyticsUI(){const fd=$id('fin-dropzone'),fa=$id('fin-analytics');if(fd)fd.style.display='none';if(fa)fa.style.display='block';finLoaded=true;setTimeout(()=>{if(window.gaUpdatePriceBoxes)window.gaUpdatePriceBoxes();},200);}
 
 // ══ EU REGAS MODULE v2 ══
@@ -8805,6 +9091,7 @@ async function lDrive(){
   if(finLoaded||_driveLoading)return;
   _driveLoading=true;
   // ── Returning user: serve from cache immediately, sync new files in background
+  eex_lCache(); // load EEX European gas curves cache (independent of LNG curves)
   if(lCache()){
     showAnalyticsUI();initUI();
     const st=$id('stext');
@@ -8864,6 +9151,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(cc)cc.addEventListener('click',clearCache);
   if(fi2)fi2.addEventListener('change',()=>{if(fi2.files.length)handleFiles([...fi2.files],true);});
   setupDrop();
+  eex_lCache(); // load EEX cache on page load
   if(lCache()){showAnalyticsUI();initUI();const st=$id('stext');if(st)st.textContent=`${sDates.length} DATES · EOD ${fmtD(sDates[sDates.length-1])} · CHECKING DRIVE…`;syncNewFiles(true);}
 });
 
