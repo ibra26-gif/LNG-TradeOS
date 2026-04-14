@@ -7850,12 +7850,20 @@ function bTS(el,wS=false){el.innerHTML='';[{v:'r1',l:'M+1'},{v:'r2',l:'M+2'},{v:
 function bDS(el,wN=false){el.innerHTML=wN?'<option value="none">— None —</option>':'';for(const ds of[...sDates].reverse())el.innerHTML+=`<option value="${ds}">${fmtD(ds)}</option>`;}
 function updStatus(){$id('sbar').style.display='flex';$id('stext').textContent=`${sDates.length} DATES — ${fmtD(sDates[0])} → ${fmtD(sDates[sDates.length-1])}`;}
 function initUI(){updStatus();bIS($id('h-i1'));bIS($id('h-i2'),null,true);$id('h-i2').value='TTF';bIS($id('fc-i'));bIS($id('sea-i'));bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();buildEuHubChart();updHist();cInit();updSpread();updFC();updSea();}
+// ── Get M+1 value for an instrument from aD on a given date (or nearest prior) ──
+function aDval(inst, dateStr){
+  const entry=aD[dateStr]||aD[sDates.filter(d=>d<=dateStr).slice(-1)[0]];
+  if(!entry) return null;
+  const m1=rPK(entry.date,1);
+  return entry.rows.find(r=>r.pk===m1)?.[inst]??null;
+}
+
 function buildDash(){
   if(sDates.length<2) return;
   const ld=sDates[sDates.length-1],pd=sDates[sDates.length-2],lR=aD[ld].rows,pR=aD[pd].rows,m1=rPK(aD[ld].date,1);
   const mg=$id('dash-metrics'); if(!mg) return;
 
-  // ── Helper: render one mc card ─────────────────────────────────────────
+  // ── Helper: LNG/global card ────────────────────────────────────────────
   function mcLNG(k){
     const inst=INST[k];
     const lv=lR.find(r=>r.pk===m1)?.[k]??null,pv=pR.find(r=>r.pk===m1)?.[k]??null;
@@ -7865,6 +7873,7 @@ function buildDash(){
     const dp=inst.unit==='$/bbl'?2:3;
     return `<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;
   }
+  // ── Helper: EEX hub card ───────────────────────────────────────────────
   function mcEEX(k){
     const inst=INST[k];
     const hasEex=eexDates.length>=2;
@@ -7880,16 +7889,38 @@ function buildDash(){
     const tenorStr=em1?`M+1 · ${pkL(em1)}`:'Add EEX file';
     return `<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor" style="${!hasEex?'color:#f59e0b':''}">${tenorStr}</div><div class="mc-val" style="${!hasEex?'color:#3d5070;font-size:18px':''}">${valStr}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(3):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">$/MMBtu</span></div></div>`;
   }
+  // ── Helper: EEX hub vs TTF spread card ────────────────────────────────
+  function mcEEXvsTTF(hubK, spreadLabel){
+    const hasEex=eexDates.length>=2;
+    if(!hasEex) return `<div class="mc"><div class="mc-name">${spreadLabel}</div><div class="mc-tenor" style="color:#f59e0b">Add EEX file</div><div class="mc-val" style="color:#3d5070;font-size:18px">—</div><div class="mc-row"><span class="mc-unit">$/MMBtu</span></div></div>`;
+    const eld=eexDates[eexDates.length-1],epd=eexDates[eexDates.length-2];
+    const em1=rPK(eexD[eld].date,1);
+    const hubLv=eexD[eld].rows.find(r=>r.pk===em1)?.[hubK]??null;
+    const hubPv=eexD[epd].rows.find(r=>r.pk===em1)?.[hubK]??null;
+    const ttfLv=aDval('TTF',eld),ttfPv=aDval('TTF',epd);
+    const lv=(hubLv!=null&&ttfLv!=null)?+(hubLv-ttfLv).toFixed(3):null;
+    const pv=(hubPv!=null&&ttfPv!=null)?+(hubPv-ttfPv).toFixed(3):null;
+    const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null;
+    const pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(1):null;
+    const cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼';
+    return `<div class="mc"><div class="mc-name">${spreadLabel}</div><div class="mc-tenor">M+1 · ${pkL(em1)}</div><div class="mc-val">${lv!=null?lv.toFixed(3):'—'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(3):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">$/MMBtu</span></div></div>`;
+  }
 
-  // ── Row 1: TTF · NBP · THE · PEG · PVB · PSV · TTF/NBP Spread · JKM/TTF Spread
-  const row1=['TTF','NBP'].map(mcLNG).join('')
-    +['THE','PEG','PVB','PSV'].map(mcEEX).join('')
-    +['SP_TN','SP_JT'].map(mcLNG).join('');
+  // ── Row 1: JKM · TTF · NBP · THE · PSV · PEG · PVB ──────────────────
+  const row1=mcLNG('JKM')+mcLNG('TTF')+mcLNG('NBP')
+    +mcEEX('THE')+mcEEX('PSV')+mcEEX('PEG')+mcEEX('PVB');
 
-  // ── Row 2: HH · JKM/HH Spread · TTF/HH Spread · Brent · Dated Brent · Slope
-  const row2=['HH','SP_JH','SP_TH','Brent','Dated','Slope'].map(mcLNG).join('');
+  // ── Row 2: HH · Brent · Dated Brent · Slope ──────────────────────────
+  const row2=['HH','Brent','Dated','Slope'].map(mcLNG).join('');
 
-  mg.innerHTML=`<div class="mgrid" style="margin-bottom:6px">${row1}</div><div class="mgrid">${row2}</div>`;
+  // ── Row 3: Spreads (LNG) + EU hub vs TTF spreads ──────────────────────
+  const row3=['SP_JT','SP_JH','SP_TH','SP_TN'].map(mcLNG).join('')
+    +mcEEXvsTTF('PSV','PSV/TTF Spread')
+    +mcEEXvsTTF('THE','THE/TTF Spread')
+    +mcEEXvsTTF('PEG','PEG/TTF Spread')
+    +mcEEXvsTTF('PVB','PVB/TTF Spread');
+
+  mg.innerHTML=`<div class="mgrid" style="margin-bottom:6px">${row1}</div><div class="mgrid" style="margin-bottom:6px">${row2}</div><div class="mgrid">${row3}</div>`;
 
   buildGasSnapshot();
   buildEuHubChart();
@@ -9149,6 +9180,9 @@ function rgExportITM(){
 function showManualDrop(){const da=$id('dz-auto'),dm=$id('dz-manual');if(da)da.style.display='none';if(dm)dm.style.display='flex';setupDrop();}
 function setP(pct,title,sub){const pf=$id('progfill'),pt=$id('progtxt');if(pf)pf.style.width=pct+'%';if(sub&&pt)pt.textContent=sub;}
 const PRICE_FOLDER_ID='18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
+const EEX_FOLDER_ID='1YIzYfFyANWtZJcxQsVQxZGX2w-kglZsY'; // European Gas Hub Curves folder
+let _eexLastModified=''; // track Drive file modification time to avoid redundant downloads
+
 async function lFiles(afterDate=null){
   const all=[];let pt=null;
   do{
@@ -9162,6 +9196,33 @@ async function lFiles(afterDate=null){
     pt=d.nextPageToken||null;
   }while(pt);
   return all;
+}
+
+// ── Sync EEX curves from dedicated Drive folder ────────────────────────────
+async function syncEEXDrive(force=false){
+  try{
+    const r=await fetch(`/api/drive?action=list&folderId=${EEX_FOLDER_ID}&filter=xlsx`);
+    if(!r.ok) return;
+    const d=await r.json();
+    const files=(d.files||[]).filter(f=>f.name.match(/\.xlsx?$/i));
+    if(!files.length) return;
+    // Sort by modifiedTime desc — take the most recent file
+    files.sort((a,b)=>((b.modifiedTime||'')>(a.modifiedTime||''))?1:-1);
+    const latest=files[0];
+    // Skip if we already have this version cached
+    if(!force && latest.modifiedTime && latest.modifiedTime===_eexLastModified && eexDates.length>0) return;
+    const resp=await fetch(`/api/drive?action=file&id=${latest.id}`);
+    if(!resp.ok) return;
+    const buf=await toAB(resp);
+    if(buf.byteLength<5000) return;
+    const n=parseEEXFile(buf);
+    if(n>0||eexDates.length>0){
+      _eexLastModified=latest.modifiedTime||'';
+      buildEuHubChart();buildDash();
+      const st=$id('eex-status');
+      if(st)st.textContent=`${eexDates.length} dates · last ${eexDates[eexDates.length-1]||'—'}`;
+    }
+  }catch(e){console.warn('EEX Drive sync:',e.message);}
 }
 let _driveLoading=false,_driveSyncing=false;
 
@@ -9195,6 +9256,8 @@ async function syncNewFiles(silent=true){
       }catch(e){}
     }
     if(added>0){sDates=Object.keys(aD).sort();sCache();rAdd();}
+    // ── Sync EEX curves from dedicated folder ────────────────────────────
+    await syncEEXDrive();
     const eod=sDates.length?fmtD(sDates[sDates.length-1]):'';
     if(st)st.textContent=`${sDates.length} DATES · EOD ${eod} · ${added>0?`+${added} NEW ✓`:'✓ UP TO DATE'}`;
   }catch(e){
@@ -9249,6 +9312,8 @@ async function lDrive(){
     }
     sDates=Object.keys(aD).sort();
     if(!sDates.length)throw new Error('No valid data parsed from Drive files.');
+    // ── Auto-load EEX curves from dedicated Drive folder ─────────────────
+    await syncEEXDrive(true); // force=true on fresh load
     sCache();setP(100,'READY',`${sDates.length} dates loaded`);
     setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},600);
   }catch(e){
@@ -9264,7 +9329,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(fi2)fi2.addEventListener('change',()=>{if(fi2.files.length)handleFiles([...fi2.files],true);});
   setupDrop();
   eex_lCache(); // load EEX cache on page load
-  if(lCache()){showAnalyticsUI();initUI();const st=$id('stext');if(st)st.textContent=`${sDates.length} DATES · EOD ${fmtD(sDates[sDates.length-1])} · CHECKING DRIVE…`;syncNewFiles(true);}
+  if(lCache()){showAnalyticsUI();initUI();const st=$id('stext');if(st)st.textContent=`${sDates.length} DATES · EOD ${fmtD(sDates[sDates.length-1])} · CHECKING DRIVE…`;syncNewFiles(true);syncEEXDrive();}
 });
 
 
