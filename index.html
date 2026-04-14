@@ -9270,33 +9270,31 @@ async function lDrive(){
   if(finLoaded||_driveLoading)return;
   _driveLoading=true;
   // ── Returning user: serve from cache immediately, sync new files in background
-  eex_lCache(); // load EEX European gas curves cache (independent of LNG curves)
+  eex_lCache();
   if(lCache()){
     showAnalyticsUI();initUI();
     const st=$id('stext');
     if(st)st.textContent=`${sDates.length} DATES · EOD ${fmtD(sDates[sDates.length-1])} · CHECKING DRIVE…`;
     if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}
     _driveLoading=false;
-    syncNewFiles(true); // silent background sync
+    syncNewFiles(true);
     return;
   }
   // ── Fresh visitor: full load from Drive ──────────────────────────────────
+  // Show fallback button only after 15s — not on first error
+  const fbTimer=setTimeout(()=>{const fb=$id('fallback-btn');if(fb)fb.style.display='block';},15000);
   try{
-    setP(5,'CONNECTING TO GOOGLE DRIVE','Listing files...');
+    setP(5,'','');
     const files=await lFiles();
     if(!files.length)throw new Error('No files found in Drive folder.');
-    // ── Deduplicate by parsed date — keep only the first file per date ──────
-    // This eliminates duplicate naming variants (e.g. 13.02.26 vs 13.02.2026)
-    // before any file is downloaded, avoiding wasted fetches entirely.
-    const dateMap = new Map();
+    const dateMap=new Map();
     for(const f of files){
-      const date = pDFN(f.name);
-      if(!date) continue;
-      const key = toStr(date);
-      if(!dateMap.has(key)) dateMap.set(key, f); // keep first occurrence, skip rest
+      const date=pDFN(f.name);if(!date)continue;
+      const key=toStr(date);
+      if(!dateMap.has(key))dateMap.set(key,f);
     }
-    const deduped = [...dateMap.values()];
-    setP(10,'LOADING',`${deduped.length} unique dates (${files.length - deduped.length} duplicates skipped) — downloading...`);
+    const deduped=[...dateMap.values()];
+    setP(10,'','');
     const B=15;let done=0,added=0,sk=0;
     for(let i=0;i<deduped.length;i+=B){
       await Promise.all(deduped.slice(i,i+B).map(async f=>{
@@ -9308,16 +9306,16 @@ async function lDrive(){
           const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;
         }catch(e){sk++;}done++;
       }));
-      setP(10+(Math.min(done,deduped.length)/deduped.length)*86,'LOADING',`${added} loaded · ${sk} skipped`);
+      setP(10+(Math.min(done,deduped.length)/deduped.length)*86,'','');
     }
     sDates=Object.keys(aD).sort();
     if(!sDates.length)throw new Error('No valid data parsed from Drive files.');
-    // ── Auto-load EEX curves from dedicated Drive folder ─────────────────
-    await syncEEXDrive(true); // force=true on fresh load
-    sCache();setP(100,'READY',`${sDates.length} dates loaded`);
+    await syncEEXDrive(true);
+    clearTimeout(fbTimer);
+    sCache();setP(100,'','');
     setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},600);
   }catch(e){
-    plog('Drive error: '+e.message,true);
+    clearTimeout(fbTimer);
     const fb=$id('fallback-btn');if(fb)fb.style.display='block';
     _driveLoading=false;
   }
