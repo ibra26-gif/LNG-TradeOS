@@ -8713,7 +8713,7 @@ function renderRegas(){
     <span style="color:#546e7a;font-size:9px">EUR/USD</span><input class="rg-inp" style="width:58px" type="number" step="0.01" value="${RG.eurUsd}" onchange="rgP('eurUsd',+this.value)">
     <span style="color:#546e7a;font-size:9px">EUA (€/t)</span><input class="rg-inp" style="width:55px" type="number" step="1" value="${RG.eua}" onchange="rgP('eua',+this.value)">
     <span style="color:#546e7a;font-size:9px">Cargo (MMBtu)</span><input class="rg-inp" style="width:88px" type="number" step="100000" value="${RG.cargo}" onchange="rgP('cargo',+this.value)">
-    <button class="f-btn sm" onclick="rgAutoLoadFromFinancial()" title="Sync hub curves from Financial Trading (OB EOD + EEX)">↺ SYNC CURVES</button><button class="f-btn sm" onclick="rgSyncPhysDiffs()" title="Sync physical DES diffs from LNG Global Netback">↺ SYNC PHYS DIFFS</button>
+    <button class="f-btn sm" onclick="rgAutoLoadFromFinancial()" title="Sync hub curves from Financial Trading (OB EOD + EEX)">↺ SYNC CURVES</button><button class="f-btn sm" onclick="rgClearCache()" style="border-color:#ef5350;color:#ef5350" title="Clear cached prices — use if prices look wrong">⚠ RESET CACHE</button><button class="f-btn sm" onclick="rgSyncPhysDiffs()" title="Sync physical DES diffs from LNG Global Netback">↺ SYNC PHYS DIFFS</button>
     <button class="f-btn sm" onclick="rgExportITM()" style="border-color:#22c55e;color:#22c55e" title="Export ITM Monitor PDF">↓ ITM PDF</button>
   </div>
   <div class="rg-subnav">${RG_TABS.map((t,i)=>`<button class="rg-tab${RG.tab===i?' active':''}" onclick="rgTab(${i})">${t}${RG_LOCK_TABS.has(i)&&!RG_UNLOCK[i]?' 🔒':''}</button>`).join('')}</div>
@@ -9510,10 +9510,10 @@ function rgAutoLoadFromFinancial(){
       const pk=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
       const row=rows.find(r=>r.pk===pk);
       const eu=row?.['EUR/USD']||eurUsd,gbu=row?.['GBP/USD']||gbpUsd;
-      if(row?.TTF!=null){nc.TTF.push(+(row.TTF).toFixed(3));ttfN++;}
-      else nc.TTF.push(RG.ttfCurve[i]||46.0);  // fallback in €/MWh
-      nc.NBP.push(row?.NBP!=null?+(row.NBP*gbu*0.1).toFixed(3):+(nc.TTF[i]-0.165).toFixed(3));
-      nc.ZEE.push(+(nc.TTF[i]+0.015).toFixed(3));
+      if(row?.TTF!=null){nc.TTF.push(+(row.TTF*3.41214/eu).toFixed(3));ttfN++;}
+      else nc.TTF.push(RG.ttfCurve[i]>30?RG.ttfCurve[i]:46.0);  // fallback €/MWh
+      nc.NBP.push(row?.NBP!=null?+row.NBP.toFixed(3):+((nc.TTF[i]||46.0)*eu/3.412-0.165).toFixed(3));
+      nc.ZEE.push(+((nc.TTF[i]||46.0)*eu/3.412+0.015).toFixed(3));
     }
     msgs.push(`OB EOD (${ds}): TTF ${ttfN}/24 · NBP · EUR/USD=${eurUsd.toFixed(3)} · GBP/USD=${gbpUsd.toFixed(3)}`);
   }
@@ -9547,6 +9547,18 @@ function rgAutoLoadFromFinancial(){
 }
 
 // ── SYNC PHYSICAL DIFFS FROM LNG NETBACK ──
+function rgClearCache(){
+  if(!confirm('Clear all cached regas prices and reset to defaults?\nYou must SYNC CURVES again after this.'))return;
+  ['ttfCurve','hubCurves','hubSpreads','eurUsd','gbpUsd','eua'].forEach(k=>localStorage.removeItem('rg_'+k));
+  RG.ttfCurve=Array(24).fill(46.0);
+  RG.hubCurves=null;
+  RG.hubSpreads={...RG_SPREAD_DEF};
+  RG.eurUsd=1.17;RG.gbpUsd=1.34;
+  rgs('ttfCurve',RG.ttfCurve);
+  RG.tab=1;renderRegas();
+  alert('\u2705 Cache cleared.\nNow press \u21ba SYNC CURVES to reload prices from Financial Trading.');
+}
+
 function rgSyncPhysDiffs(){
   if(typeof CP==='undefined'||!CP||!CP.phys){alert('No physical diff data.\nOpen LNG Global Netback and load your DES curves first.');return;}
   const NWE=['zeebrugge','dunkerque','foscavaou','montoir','fostonkin','brunsbuttel','wilhelmshaven1','wilhelmshaven2','stade','gate'];
