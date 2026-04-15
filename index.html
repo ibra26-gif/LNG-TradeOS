@@ -12674,8 +12674,8 @@ function rgAutoLoadFromFinancial(){
       const row=rows.find(r=>r.pk===pk);
       ['THE','PEG','PSV','PVB'].forEach(hub=>{
         if(row&&row[hub]!=null){
-          // EEX rows are in €/MWh — convert to $/MMBtu
-          nc[hub][i]=+(row[hub]*eurUsd/3.412).toFixed(3);
+          // EEX rows already in $/MMBtu (parser converts on load)
+          nc[hub][i]=+(row[hub]).toFixed(3);
           eexN++;
         } else if(nc[hub][i]==null){
           // Fallback: TTF $/MMBtu + spread
