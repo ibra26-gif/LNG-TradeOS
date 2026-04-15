@@ -10042,9 +10042,21 @@ const STOR_COUNTRIES = [
 
 // ── ALSI LNG countries ─────────────────────────────────────────────────────────
 const REGAS_COUNTRIES = [
-  {code:'fr',name:'France'}, {code:'es',name:'Spain'}, {code:'it',name:'Italy'},
-  {code:'gb',name:'United Kingdom'}, {code:'be',name:'Belgium'},
-  {code:'nl',name:'Netherlands'}, {code:'de',name:'Germany'},
+  {code:'be',name:'Belgium'},
+  {code:'fr',name:'France'},
+  {code:'de',name:'Germany'},
+  {code:'gr',name:'Greece'},
+  {code:'hr',name:'Croatia'},
+  {code:'it',name:'Italy'},
+  {code:'fi',name:'Finland'},
+  {code:'lt',name:'Lithuania'},
+  {code:'mt',name:'Malta'},
+  {code:'nl',name:'Netherlands'},
+  {code:'pl',name:'Poland'},
+  {code:'pt',name:'Portugal'},
+  {code:'es',name:'Spain'},
+  {code:'tr',name:'Turkey'},
+  {code:'gb',name:'United Kingdom'},
 ];
 
 // ── localStorage cache helpers ────────────────────────────────────────────────
@@ -10175,15 +10187,47 @@ async function gdLoadPipelineYear(year){
 }
 
 // ── Load AGSI EU storage ───────────────────────────────────────────────────────
+// ── GIE AGGI+ paginated fetch (LNG terminals)
+async function aggiPaginated(queryBase){
+  const allData = [];
+  let page = 1, lastPage = 1;
+  do {
+    const r = await fetch(aggiUrl(`${queryBase}&size=300&page=${page}`), {headers: gieHdr()});
+    if(!r.ok) throw new Error(`GIE AGGI ${r.status}`);
+    const j = await r.json();
+    allData.push(...(j?.data||[]));
+    lastPage = parseInt(j?.last_page||j?.lastPage||1,10);
+    page++;
+    if(page <= lastPage) await new Promise(res=>setTimeout(res,300));
+  } while(page <= lastPage && page <= 50);
+  return allData;
+}
+
+// ── GIE AGSI+ paginated fetch (size capped at 300, loops last_page) ─────────
+async function agsiPaginated(queryBase){
+  const allData = [];
+  let page = 1;
+  let lastPage = 1;
+  do {
+    const q = `${queryBase}&size=300&page=${page}`;
+    const r = await fetch(agsiUrl(q), {headers: gieHdr()});
+    if(!r.ok) throw new Error(`GIE AGSI ${r.status}`);
+    const j = await r.json();
+    const rows = j?.data || [];
+    allData.push(...rows);
+    lastPage = parseInt(j?.last_page || j?.lastPage || 1, 10);
+    page++;
+    if(page > lastPage) break;
+    if(page > 1) await new Promise(res=>setTimeout(res, 300)); // rate limit courtesy
+  } while(page <= lastPage && page <= 50); // safety cap 50 pages
+  return allData;
+}
 async function gdLoadStorage(from, to){
   try{
     const cacheKey=`agsi_eu_${from.slice(0,7)}_${to.slice(0,7)}`;
     let series = gdCacheGet(cacheKey);
     if(!series){
-      const r = await fetch(agsiUrl(`type=eu&from=${from}&to=${to}&size=5000`),{headers:gieHdr()});
-      if(!r.ok) throw new Error(`AGSI ${r.status}`);
-      const j = await r.json();
-      series = j?.data || [];
+      series = await agsiPaginated(`type=eu&from=${from}&to=${to}`);
       const isCurMo = to.slice(0,7) >= new Date().toISOString().slice(0,7);
       if(series.length) gdCacheSet(cacheKey, series, isCurMo?6:0); // current month=6h, historical=permanent
     }
@@ -10215,10 +10259,7 @@ async function gdLoadStorageCountries(from, to){
       const cacheKey=`agsi_${code}_${from.slice(0,7)}_${to.slice(0,7)}`;
       let series = gdCacheGet(cacheKey);
       if(!series){
-        const r = await fetch(agsiUrl(`country=${code}&from=${from}&to=${to}&size=500`),{headers:gieHdr()});
-        if(!r.ok){ console.warn(`AGSI ${code}: ${r.status}`); continue; }
-        const j = await r.json();
-        series = j?.data || [];
+        series = await agsiPaginated(`country=${code}&from=${from}&to=${to}`);
         const isCurMo = to.slice(0,7) >= new Date().toISOString().slice(0,7);
       if(series.length) gdCacheSet(cacheKey, series, isCurMo?6:0); // current month=6h, historical=permanent
       }
@@ -10243,7 +10284,7 @@ async function gdLoadLNG(from, to){
     const cacheKey=`alsi_eu_${from.slice(0,7)}_${to.slice(0,7)}`;
     let series = gdCacheGet(cacheKey);
     if(!series){
-      const r = await fetch(aggiUrl(`type=eu&from=${from}&to=${to}&size=5000`),{headers:gieHdr()});
+      series = await aggiPaginated(`type=eu&from=${from}&to=${to}`);
       if(!r.ok) throw new Error(`ALSI ${r.status}`);
       const j = await r.json();
       series = j?.data || [];
@@ -10283,9 +10324,8 @@ async function gdLoadLNGCountries(from, to){
       const cacheKey=`alsi_${code}_${from.slice(0,7)}_${to.slice(0,7)}`;
       let series = gdCacheGet(cacheKey);
       if(!series){
-        const r = await fetch(aggiUrl(`country=${code}&from=${from}&to=${to}&size=500`),{headers:gieHdr()});
-        if(!r.ok){ console.warn(`ALSI ${code}: ${r.status}`); continue; }
-        const j = await r.json();
+        const j_raw = await aggiPaginated(`country=${code}&from=${from}&to=${to}`);
+        const j = {data: j_raw};
         series = j?.data || [];
         const isCurMo = to.slice(0,7) >= new Date().toISOString().slice(0,7);
       if(series.length) gdCacheSet(cacheKey, series, isCurMo?6:0); // current month=6h, historical=permanent
