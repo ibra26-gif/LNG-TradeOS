@@ -7513,8 +7513,17 @@ function renderMktStr(){
         m3Lbl?{lbl:m3Lbl,basePx:m3Px,isNear:false}:null
       ].filter(Boolean).map((r,ri)=>{
         const d=daysToMid(r.lbl);
-        const adj=adjFor(r.lbl);
-        const ep=estPx(r.basePx,r.lbl);
+        // For M3: use two-segment adj — Near→Far rate up to far mid, then Far→M3 rate beyond
+        let adj;
+        if(ri===2&&m3Px!=null&&farPx!=null&&daysBetween){
+          const dFar=daysToMid(farLbl);  // days AP mid → far mid
+          const daysM3Seg=Math.round((msMidDate(m3Lbl)-msMidDate(farLbl))/86400000); // far mid → m3 mid
+          const perDayM3=(farPx-m3Px)/daysM3Seg;  // Aug→Sep per-day structure
+          adj=+(dFar*perDay + daysM3Seg*perDayM3).toFixed(3);
+        } else {
+          adj=adjFor(r.lbl);
+        }
+        const ep=r.basePx!=null&&adj!=null?+(r.basePx+adj).toFixed(3):null;
         const f=fmla(r.lbl,r.basePx,adj);
         const cols=['#4fc3f7','#ffb74d','#81c784'];
         return`<tr style="border-bottom:0.5px solid #0d1a2e">
