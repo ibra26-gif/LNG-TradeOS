@@ -6436,7 +6436,7 @@ function cpSyncPrices(){
   CP.fp=newFp;cpSet('cp_fp',newFp);renderCargoTab();
   alert('✓ Prices synced from Financial Trading ('+count+' data points updated).');
 }
-function cpSyncFreight(){
+function cpSyncFreight(){if(typeof rgTsSet!=='undefined')rgTsSet('freight');
   if(!F.validatedMatrix){alert('No validated freight matrix. Go to Freight Calculator → ② Update The Curves → MATRIX → Validate & Freeze first.');return;}
   const vm=F.validatedMatrix;const newFr={...CP.freight};let count=0;
   // Iterate validated matrix entries and populate CP.freight
@@ -8973,7 +8973,21 @@ function rgDashboard(){
   const itmLabel=`${itmCnt} of ${itmAll.length} ITM · TTF ${fmm(ttf1)} $/MMBtu`;
   const beLabel=`Sorted by headroom (BUY if positive) · TTF ${fmm(ttf2)} $/MMBtu`;
 
-  return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:2px">
+
+  const _ts=steps=>steps.map(s=>{const l=rgTsLabel(s.k);return`<div title="${s.h}" style="display:flex;align-items:center;gap:4px;background:#0d1929;border:1px solid ${l.col}33;border-radius:4px;padding:3px 8px"><span>${l.dot}</span><span style="color:#546e7a;font-size:8px;margin-right:2px">${s.n}</span><span style="color:${l.col};font-size:9px;font-weight:600">${l.txt}</span></div>`;}).join('');
+  const statusBar=`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#080e1c;border:1px solid #1e3a5f;border-radius:6px;padding:7px 12px;margin-bottom:10px">
+    <span style="color:#546e7a;font-size:8px;letter-spacing:1.5px;font-weight:600;white-space:nowrap">DAILY WORKFLOW</span>
+    ${_ts([
+      {k:'freight',n:'① Freight',     h:'Load OB FFA Rates in Freight Calculator'},
+      {k:'flat',   n:'② Flat Prices', h:'↺ SYNC CURVES after loading OB EOD + EEX'},
+      {k:'phys',   n:'③ Phys Diffs',  h:'↺ SYNC PHYS DIFFS after updating LNG Netback'}
+    ])}
+    <div style="margin-left:auto;display:flex;gap:4px">
+      <button class="f-btn sm" onclick="rgAutoLoadFromFinancial()" style="font-size:8px;padding:2px 6px">↺ CURVES</button>
+      <button class="f-btn sm" onclick="rgSyncPhysDiffs()" style="font-size:8px;padding:2px 6px">↺ PHYS</button>
+    </div>
+  </div>`;
+  return statusBar+`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:2px">
 
   <div class="f-card" style="padding:14px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
@@ -9496,6 +9510,20 @@ function rgKB(){
     </div>`;
 }
 
+// ── WORKFLOW TIMESTAMPS ─────────────────────────────────────────
+function rgTsSet(key){try{localStorage.setItem('rg_ts_'+key,new Date().toISOString());}catch(e){}}
+function rgTsGet(key){try{return localStorage.getItem('rg_ts_'+key)||null;}catch(e){return null;}}
+function rgTsLabel(key){
+  const v=rgTsGet(key);
+  if(!v)return{txt:'Never',col:'#f44336',dot:'🔴'};
+  const d=new Date(v),now=new Date();
+  const diffH=(now-d)/3600000;
+  const time=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  const date=d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  if(diffH<24)return{txt:time+' today',col:'#4caf50',dot:'🟢'};
+  if(diffH<48)return{txt:time+' yesterday',col:'#ffb74d',dot:'🟡'};
+  return{txt:date,col:'#f44336',dot:'🔴'};
+}
 // ── SYNC FROM FINANCIAL TRADING (enhanced: OB EOD + EEX) ──
 function rgAutoLoadFromFinancial(){
   const hasOB=typeof sDates!=='undefined'&&sDates&&sDates.length;
@@ -9529,7 +9557,7 @@ function rgAutoLoadFromFinancial(){
       const pk=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
       const row=rows.find(r=>r.pk===pk);
       ['THE','PEG','PSV','PVB'].forEach(hub=>{
-        if(row?.[hub]!=null){nc[hub][i]=+(row[hub]*eurUsd/3.412).toFixed(3);eexN++;}
+        if(row?.[hub]!=null){nc[hub][i]=+(row[hub]*eurUsd/3.412).toFixed(3);eexN++;}  // eexD already in $/MMBtu
         else nc[hub][i]=(RG.hubCurves?.[hub]?.[i])||((nc.TTF[i]||46.0)*eurUsd/3.412+(RG.hubSpreads[hub]||0));
       });
     }
@@ -9546,6 +9574,7 @@ function rgAutoLoadFromFinancial(){
   });
   RG.ttfCurve=nc.TTF;RG.hubCurves=nc;RG.eurUsd=eurUsd;RG.gbpUsd=gbpUsd;
   rgs('ttfCurve',nc.TTF);rgs('hubCurves',nc);rgs('eurUsd',eurUsd);rgs('gbpUsd',gbpUsd);
+  rgTsSet('flat');
   RG.tab=1;renderRegas();
   setTimeout(()=>alert('✅ Hub Curves synced:\n\n'+msgs.join('\n')+'\n\nUse ↺ SYNC PHYS DIFFS to update DES differentials from LNG Netback.'),80);
 }
@@ -9565,97 +9594,65 @@ function rgClearCache(){
 
 function rgSyncPhysDiffs(){
   if(typeof CP==='undefined'||!CP||!CP.phys){alert('No physical diff data.\nOpen LNG Global Netback and load your DES curves first.');return;}
-  const NWE=['zeebrugge','dunkerque','foscavaou','montoir','fostonkin','brunsbuttel','wilhelmshaven1','wilhelmshaven2','stade','gate'];
-  const UK=['dragon','isleofgrain','southhook'];
-  const IB=['barcelona','cartagena','huelva','bilbao','mugardos','sagunto','sines'];
-  let n=0;
-  // Map physical diffs to secA regions AND terminal diffs
-  const physMap={nwe:CP.phys.nwe,the:CP.phys.nwe,peg:CP.phys.nwe,uk:CP.phys.uk,iberia:CP.phys.iberia};
-  Object.entries(physMap).forEach(([region,arr])=>{
-    if(!arr||!arr.length)return;
+  const phyOv=JSON.parse(localStorage.getItem('cp_phys_ov')||'{}');
+  function ovArr(key,fallback){return Array(24).fill(null).map((_,i)=>phyOv[key+'_'+i]!=null?+phyOv[key+'_'+i]:fallback?.[i]??null);}
+  function setSecA(region,arr){
+    if(!arr.some(v=>v!=null))return false;
     if(!RG.secA[region])RG.secA[region]=Array(24).fill(0);
     arr.forEach((v,i)=>{if(v!=null&&i<24)RG.secA[region][i]=v;});
     rgSecAtoTerminals(region);
-    n++;
-  });
-  // Italy, Baltic, SE Europe: keep existing (no CP.phys mapping)
-  [[NWE,CP.phys.nwe],[UK,CP.phys.uk],[IB,CP.phys.iberia]].forEach(([ids,arr])=>{
-    if(!arr||!arr.length)return;
-    ids.forEach(id=>{
-      const ex=RG.diffs[id]||Array(24).fill(0);
-      RG.diffs[id]=Array(24).fill(0).map((_,i)=>arr[i]!=null?arr[i]:ex[i]);
-    });
-  });
-  rgs('rgDiffs',RG.diffs);rgRT();
-  alert(`✅ Physical diffs synced for ${n} terminals from LNG Netback.\n\nItaly · Baltic · SE Europe: update manually in TTF Differential tab.`);
-}
+    return true;
+  }
+  function setTerms(ids,arr){ids.forEach(id=>{const ex=RG.diffs[id]||Array(24).fill(0);RG.diffs[id]=arr.map((v,i)=>v!=null?v:ex[i]);});}
+  const synced=[],manual=[];
 
-// ── ITM PDF SNAPSHOT ──
-function rgExportITM(){
-  const mi=RG.selMonth;
-  const res=RG.terminals.map(t=>{const hp=rgHP(t.hub,mi),des=rgDES(t.id,mi),v=rgVar(t,mi),diff=(RG.diffs[t.id]||[])[mi]||0,money=hp-v.total-des;return{t,hp,des,diff,varC:v.total,money,itm:money>0};}).sort((a,b)=>b.money-a.money);
-  const trows=res.map((r,i)=>`<tr class="${r.itm?'itm':'otm'}">
-    <td>${i+1}</td><td><b>${r.t.name}</b></td><td>${r.t.country}</td>
-    <td style="color:#1565c0;font-weight:bold">${r.t.hub}</td>
-    <td class="r" style="color:${r.diff<0?'#c62828':'#2e7d32'}">${r.diff.toFixed(2)}</td>
-    <td class="r">${fmm(r.des)}</td><td class="r">${fmm(r.varC)}</td>
-    <td class="r"><b>${fmm(r.hp)}</b></td>
-    <td class="r" style="color:${r.itm?'#2e7d32':'#c62828'};font-weight:bold">${r.money>=0?'+':''}${fmm(r.money)}</td>
-    <td style="color:${r.itm?'#2e7d32':'#c62828'};font-weight:bold;text-align:center">${r.itm?'✓ ITM':'✗ OTM'}</td>
-  </tr>`).join('');
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ITM Monitor — ${ML[mi]}</title><style>
-    *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10px;margin:20px;color:#111}
-    .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:2px solid #1a237e;padding-bottom:8px}
-    h1{font-size:14px;color:#1a237e;margin-bottom:2px}h2{font-size:9px;color:#666;font-weight:normal}
-    .snap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
-    .si{background:#f5f5f5;padding:6px 10px;border-left:3px solid #1a237e}.sl{font-size:7px;color:#999;text-transform:uppercase;letter-spacing:.5px}.sv{font-size:12px;font-weight:bold;color:#1a237e}
-    table{width:100%;border-collapse:collapse}th{background:#1a237e;color:#fff;padding:5px 7px;text-align:left;font-size:8px;letter-spacing:.5px}th.r,td.r{text-align:right}
-    td{padding:4px 7px;border-bottom:1px solid #eee}.itm{background:#f1f8e9}.otm{background:#fff8f8}
-    .ft{margin-top:10px;font-size:7.5px;color:#999;border-top:1px solid #ddd;padding-top:6px;display:flex;justify-content:space-between}
-    button{padding:5px 14px;background:#1a237e;color:#fff;border:none;cursor:pointer;font-size:9px}
-    @media print{button{display:none}@page{size:A4 landscape;margin:1.2cm}}
-  </style></head><body>
-  <div class="hdr">
-    <div><h1>LNG TradeOS™ — IN-THE-MONEY TERMINAL MONITOR</h1>
-    <h2>Month: <b>${ML[mi]}</b> &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} &nbsp;·&nbsp; © Ibrahim Mar — CONFIDENTIAL</h2></div>
-    <button onclick="window.print()">PRINT / SAVE PDF</button>
-  </div>
-  <div class="snap">
-    ${RG_HUBS.map(h=>`<div class="si"><div class="sl">${h}</div><div class="sv">${rgHP(h,mi).toFixed(3)}</div></div>`).join('')}
-    <div class="si"><div class="sl">EUR/USD</div><div class="sv">${RG.eurUsd}</div></div>
-    <div class="si"><div class="sl">EUA</div><div class="sv">€${RG.eua}/t</div></div>
-    <div class="si"><div class="sl">Cargo</div><div class="sv">${(RG.cargo/1e6).toFixed(1)}M MMBtu</div></div>
-    <div class="si" style="border-left-color:green"><div class="sl">ITM / Total</div><div class="sv" style="color:green">${res.filter(r=>r.itm).length} / ${res.length}</div></div>
-  </div>
-  <table><thead><tr><th>#</th><th>TERMINAL</th><th>COUNTRY</th><th>HUB</th><th class="r">TTF DIFF</th><th class="r">DES PRICE</th><th class="r">VAR COST</th><th class="r">HUB PRICE</th><th class="r">MONEYNESS</th><th>STATUS</th></tr></thead>
-  <tbody>${trows}</tbody></table>
-  <div class="ft"><span>Moneyness = Hub Price − Variable Costs − DES Price &nbsp;·&nbsp; Variable = GIK + Emission + Grid(V)</span><span>LNG TradeOS™ v1.3 &nbsp;·&nbsp; Proprietary &amp; Confidential &nbsp;·&nbsp; Ibrahim Mar</span></div>
-  </body></html>`;
-  const w=window.open('','_blank','width=1150,height=780');
-  if(!w){alert('Please allow popups for PDF export.');return;}
-  w.document.write(html);w.document.close();
-}
+  // NWE → secA nwe/the/peg + all NWE terminals
+  if(CP.phys.nwe?.length){
+    ['nwe','the','peg'].forEach(r=>setSecA(r,CP.phys.nwe));
+    setTerms(['zeebrugge','gate','brunsbuttel','wilhelmshaven1','wilhelmshaven2','stade','dunkerque','foscavaou','montoir','fostonkin'],CP.phys.nwe);
+    synced.push('NWE — Zeebrugge / Gate / Germany / France');
+  }
+  // UK
+  if(CP.phys.uk?.length){
+    setSecA('uk',CP.phys.uk);
+    setTerms(['dragon','isleofgrain','southhook'],CP.phys.uk);
+    synced.push('UK — Dragon / IoG / South Hook');
+  }
+  // Iberia
+  if(CP.phys.iberia?.length){
+    setSecA('iberia',CP.phys.iberia);
+    setTerms(['barcelona','cartagena','huelva','bilbao','mugardos','sagunto','sines'],CP.phys.iberia);
+    synced.push('Iberia — Spain / Portugal');
+  }
+  // Italy — from cp_phys_ov 'italy_i' overrides only; if not set keep existing value
+  const itArr=Array(24).fill(null).map((_,i)=>phyOv['italy_'+i]!=null?+phyOv['italy_'+i]:null);
+  if(setSecA('italy',itArr)){
+    setTerms(['adriatic','olttoscana','panigaglia','piombino','ravenna'],itArr);
+    const src='Netback overrides';
+    synced.push('Italy — 5 terminals ('+src+')');
+  }
+  // Revithoussa — 'rev_i' in cp_phys_ov
+  const revArr=ovArr('rev',CP.phys.nwe?.map(v=>v!=null?v-0.05:null));
+  if(setSecA('rev',revArr)){setTerms(['revithoussa'],revArr);synced.push('Revithoussa (SE Europe)');}
+  // KRK — 'krk_i'
+  const krkArr=ovArr('krk',CP.phys.nwe?.map(v=>v!=null?v-0.06:null));
+  if(setSecA('krk',krkArr)){setTerms(['krk'],krkArr);synced.push('KRK (SE Europe)');}
+  // Klaipeda — 'klaipeda_i'
+  const klaiArr=ovArr('klaipeda',CP.phys.nwe?.map(v=>v!=null?v-0.03:null));
+  if(setSecA('klai',klaiArr)){setTerms(['klaipeda'],klaiArr);synced.push('Klaipeda (Baltic)');}
+  // Swinoujscie — 'swino_i'
+  const swioArr=ovArr('swino',CP.phys.nwe?.map(v=>v!=null?v-0.05:null));
+  if(setSecA('swio',swioArr)){setTerms(['swinoujscie'],swioArr);synced.push('Swinoujscie (Baltic)');}
+  // Inkoo — 'inkoo_i'
+  const inkooArr=ovArr('inkoo',CP.phys.nwe?.map(v=>v!=null?v+0.02:null));
+  if(setSecA('inkoo',inkooArr)){setTerms(['inkoo'],inkooArr);synced.push('Inkoo (Baltic)');}
 
-// ══ DRIVE AUTO-LOAD (via Vercel proxy — API key is server-side, never exposed) ══
-function showManualDrop(){const da=$id('dz-auto'),dm=$id('dz-manual');if(da)da.style.display='none';if(dm)dm.style.display='flex';setupDrop();}
-function setP(pct,title,sub){const pf=$id('progfill'),pt=$id('progtxt');if(pf)pf.style.width=pct+'%';if(sub&&pt)pt.textContent=sub;}
-const PRICE_FOLDER_ID='18CJsgeFbLzmW3fV4I5XEz8nGsRHd7WQq';
-const EEX_FOLDER_ID='1YIzYfFyANWtZJcxQsVQxZGX2w-kglZsY'; // European Gas Hub Curves folder
-let _eexLastModified=''; // track Drive file modification time to avoid redundant downloads
-
-async function lFiles(afterDate=null){
-  const all=[];let pt=null;
-  do{
-    let url=`/api/drive?action=list&folderId=${PRICE_FOLDER_ID}&filter=xlsx`;
-    if(pt)url+=`&pageToken=${encodeURIComponent(pt)}`;
-    if(afterDate)url+=`&after=${encodeURIComponent(afterDate)}`;
-    const r=await fetch(url);
-    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Drive API error');}
-    const d=await r.json();
-    if(d.files)all.push(...d.files);
-    pt=d.nextPageToken||null;
-  }while(pt);
-  return all;
+  rgs('secA',RG.secA);rgs('rgDiffs',RG.diffs);
+  rgTsSet('phys');
+  rgRT();
+  if(!synced.length){alert('No physical diff data found. Open LNG Global Netback and update the Physical Differential tab first.');return;}
+  alert('\u2705 Physical diffs synced from LNG Netback:\n\n'
+    +synced.map(s=>'  \u2705 '+s).join('\n'));
 }
 
 // ── Sync EEX curves from dedicated Drive folder ────────────────────────────
