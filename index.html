@@ -8625,6 +8625,56 @@ const RG_UNLOCK={3:false,4:false,5:false,6:false,7:false,8:false,9:false};
 const RG_LOCK_TABS=new Set([3,4,5,6,7,8,9]);
 const RG_PW='@Moustapha1';
 
+// ── Section A regional diff structure ────────────────────────────
+const RG_SECA_REGIONS=[
+  {id:'nwe',  label:'DES NWE',     hub:'TTF', note:'Belgium · Netherlands · Germany'},
+  {id:'the',  label:'DES THE',     hub:'THE', note:'Germany THE hub'},
+  {id:'peg',  label:'DES PEG',     hub:'PEG', note:'France PEG hub'},
+  {id:'italy',label:'DES Italy',   hub:'PSV', note:'Adriatic · OLT · Panigaglia · Piombino · Ravenna'},
+  {id:'iberia',label:'DES Iberia', hub:'PVB', note:'Spain (6) · Portugal'},
+  {id:'uk',   label:'DES UK',      hub:'NBP', note:'Dragon · Isle of Grain · South Hook'},
+  {id:'rev',  label:'Revithoussa', hub:'TTF', note:'standalone'},
+  {id:'krk',  label:'KRK',         hub:'TTF', note:'standalone'},
+  {id:'klai', label:'Klaipeda',    hub:'TTF', note:'standalone'},
+  {id:'swio', label:'Swinoujscie', hub:'TTF', note:'standalone'},
+  {id:'inkoo',label:'Inkoo',       hub:'TTF', note:'standalone'},
+];
+const RG_SECA_MAP={
+  nwe:['zeebrugge','gate'],the:['brunsbuttel','wilhelmshaven1','wilhelmshaven2','stade'],
+  peg:['dunkerque','foscavaou','montoir','fostonkin'],
+  italy:['adriatic','olttoscana','panigaglia','piombino','ravenna'],
+  iberia:['barcelona','cartagena','huelva','bilbao','mugardos','sagunto','sines'],
+  uk:['dragon','isleofgrain','southhook'],
+  rev:['revithoussa'],krk:['krk'],klai:['klaipeda'],swio:['swinoujscie'],inkoo:['inkoo'],
+};
+const RG_SECA_DEF={
+  nwe:[-0.445,-0.500,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400],
+  the:[-0.445,-0.500,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400],
+  peg:[-0.445,-0.500,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400],
+  italy:[-0.247,-0.302,-0.204,-0.204,-0.206,-0.192,-0.185,-0.192,-0.218,-0.231,-0.242,-0.245,-0.245,-0.241,-0.238,-0.243,-0.269,-0.269,-0.269,-0.269,-0.269,-0.269],
+  iberia:[-0.500,-0.500,-0.500,-0.500,-0.500,-0.500,-0.500,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350],
+  uk:[-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450],
+  rev:[-0.301,-0.356,-0.257,-0.257,-0.259,-0.249,-0.244,-0.249,-0.267,-0.277,-0.285,-0.287,-0.287,-0.284,-0.282,-0.285,-0.305,-0.305,-0.305,-0.305,-0.305,-0.305],
+  krk:[-0.310,-0.365,-0.266,-0.266,-0.268,-0.258,-0.254,-0.258,-0.276,-0.285,-0.293,-0.294,-0.294,-0.291,-0.290,-0.293,-0.311,-0.311,-0.311,-0.311,-0.311,-0.311],
+  klai:[-0.282,-0.337,-0.238,-0.238,-0.241,-0.229,-0.223,-0.229,-0.250,-0.261,-0.270,-0.272,-0.272,-0.269,-0.267,-0.271,-0.292,-0.292,-0.292,-0.292,-0.292,-0.292],
+  swio:[-0.300,-0.355,-0.255,-0.255,-0.257,-0.248,-0.244,-0.248,-0.264,-0.273,-0.280,-0.282,-0.282,-0.279,-0.277,-0.280,-0.297,-0.297,-0.297,-0.297,-0.297,-0.297],
+  inkoo:[-0.245,-0.300,-0.201,-0.201,-0.204,-0.190,-0.183,-0.190,-0.215,-0.229,-0.240,-0.243,-0.243,-0.239,-0.236,-0.241,-0.268,-0.268,-0.268,-0.268,-0.268,-0.268],
+};
+function rgSecAtoTerminals(region){
+  const arr=RG.secA[region]||RG_SECA_DEF[region]||[];
+  (RG_SECA_MAP[region]||[]).forEach(tid=>{
+    if(!RG.diffs[tid])RG.diffs[tid]=Array(24).fill(0);
+    arr.forEach((v,i)=>{if(i<24)RG.diffs[tid][i]=v;});
+  });
+}
+function rgSetSecA(region,mi,v){
+  if(!RG.secA[region])RG.secA[region]=[...(RG_SECA_DEF[region]||Array(22).fill(0))];
+  RG.secA[region][mi]=v;
+  rgSecAtoTerminals(region);
+  rgs('secA',RG.secA);rgs('rgDiffs',RG.diffs);rgRT();
+}
+
+
 let RG={tab:0,eurUsd:1.17,gbpUsd:1.34,eua:72.59,cargo:3800000,ttfCurve:Array(24).fill(46.0),hubSpreads:{...RG_SPREAD_DEF},hubCurves:null,secA:{},dashMonth1:1,dashMonth2:1,nbkPrompt:false,nbkModel:'Black-76',diffs:{},terminals:[],selMonth:1,nbkTerm:'adriatic',nbkSlippage:0,nbkBunker:0.08,nbkCredit:0.05,nbkDeadFreight:0,nbkExtraShipping:0,nbkExtrinsic:false,nbkVol:25,nbkRawExt:0.15,nbkCapture:70,tsoOpex:0.02,gridCapex:0.05,impliedMon:{},cgUnit:'usd',cgShowTotal:false,cgMonth:1};
 
 function rgg(k,d){try{const v=localStorage.getItem('rg_'+k);return v?JSON.parse(v):d;}catch{return d;}}
@@ -8748,28 +8798,42 @@ function rgSetSpread(h,v){RG.hubSpreads[h]=v;rgs('hubSpreads',RG.hubSpreads);rgR
 
 // ── TAB 1: TTF DIFFERENTIAL ──
 function rgDiff(){
-  const rowsA=RG_T_DEF.map(t=>`<tr>
-    <td style="color:var(--th);font-size:10px">${t.name}</td>
-    <td style="color:#546e7a;font-size:9px">${t.country}</td>
-    <td style="color:#4fc3f7;font-size:9px">${t.hub}</td>
-    ${ML.map((_,i)=>{const d=(RG.diffs[t.id]||[])[i]||0;return`<td style="padding:1px 2px"><input class="rg-inp" style="width:50px;text-align:right;color:${d<0?'#f44336':d===0?'#c8d6e5':'#4caf50'}" type="number" step="0.01" value="${d.toFixed(2)}" onchange="rgSetDiff('${t.id}',${i},+this.value)"></td>`;}).join('')}
-  </tr>`).join('');
-  const rowsB=RG_T_DEF.map(t=>`<tr>
-    <td style="color:var(--th);font-size:10px">${t.name}</td>
-    <td style="color:#4fc3f7;font-size:9px">${t.hub}</td>
-    ${ML.map((_,i)=>`<td class="tr" style="color:#26c6da;font-size:10px">${rgDES(t.id,i).toFixed(3)}</td>`).join('')}
-  </tr>`).join('');
-  return`<div class="f-sec">SECTION A — TTF DIFFERENTIAL INPUTS ($/MMBtu) · Negative = discount to TTF</div>
-    <div style="color:#546e7a;font-size:9px;margin-bottom:10px">DES Price = TTF ($/MMBtu) + Differential. Red = negative (discount), green = premium.</div>
-    <div style="overflow-x:auto;margin-bottom:20px"><table class="rg-tbl"><thead><tr>
-      <th style="min-width:130px">TERMINAL</th><th>COUNTRY</th><th>HUB</th>
-      ${ML.map(m=>`<th class="tr" style="min-width:54px">${m}</th>`).join('')}
-    </tr></thead><tbody>${rowsA}</tbody></table></div>
-    <div class="f-sec">SECTION B — CALCULATED DES PRICES ($/MMBtu) = TTF + Differential</div>
-    <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
-      <th style="min-width:130px">TERMINAL</th><th>HUB</th>
-      ${ML.map(m=>`<th class="tr" style="min-width:54px">${m}</th>`).join('')}
-    </tr></thead><tbody>${rowsB}</tbody></table></div>`;
+  const ROLL8=getRollingMonths();
+  const mHdrs=ROLL8.map(i=>`<th class="tr" style="min-width:58px;color:#4fc3f7;font-size:9px">${ML[i]}</th>`).join('');
+  // Section A: 11 regional rows editable
+  const secARows=RG_SECA_REGIONS.map(r=>{
+    const arr=RG.secA[r.id]||RG_SECA_DEF[r.id]||[];
+    const cells=ROLL8.map(i=>{
+      const d=arr[i]!==undefined?arr[i]:0;
+      return`<td style="padding:1px 2px"><input class="rg-inp" style="width:56px;text-align:right;color:${d<0?'#f44336':d===0?'#c8d6e5':'#4caf50'}" type="number" step="0.01" value="${(+d).toFixed(3)}" onchange="rgSetSecA('${r.id}',${i},+this.value)"></td>`;
+    }).join('');
+    return`<tr><td style="color:#c8d6e5;font-size:10px;font-weight:600;padding:4px 8px">${r.label}</td><td style="color:#546e7a;font-size:9px;padding:4px 6px">${r.note}</td><td style="color:#4fc3f7;font-size:9px;padding:4px 6px">${r.hub}</td>${cells}</tr>`;
+  }).join('');
+  // Section B: per-terminal derived rows
+  const secBHdrs=ROLL8.map(i=>`<th class="tr" style="color:#4fc3f7;font-size:8px" colspan="2">${ML[i]}</th>`).join('');
+  const secBSubHdrs=ROLL8.map(()=>`<th class="tr" style="color:#546e7a;font-size:8px">DIFF</th><th class="tr" style="color:#26c6da;font-size:8px">DES $</th>`).join('');
+  const secBRows=RG_T_DEF.map(t=>{
+    const cells=ROLL8.map(i=>{
+      const isNA=t.id==='stade'&&i<2;
+      const d=isNA?null:((RG.diffs[t.id]||[])[i]||0);
+      const des=isNA?null:rgDES(t.id,i);
+      return`<td class="tr" style="color:${isNA?'#3d5070':d<0?'#f44336':'#4caf50'};font-size:9px">${isNA?'N/A':(+d).toFixed(3)}</td><td class="tr" style="color:#26c6da;font-size:9px">${isNA?'N/A':des.toFixed(3)}</td>`;
+    }).join('');
+    return`<tr><td style="color:${t.hub==='THE'?'#80cbc4':'var(--th)'};font-size:10px;padding:4px 8px">${t.name}</td><td style="color:#546e7a;font-size:9px;padding:4px 6px">${t.country}</td><td style="color:#4fc3f7;font-size:9px;padding:4px 6px">${t.hub}</td>${cells}</tr>`;
+  }).join('');
+  return`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    <span style="color:#4fc3f7;font-size:11px;font-weight:700;letter-spacing:2px">TTF DIFFERENTIAL</span>
+    <span style="color:#546e7a;font-size:9px">Rolling 8-month window · DES = TTF + Differential</span>
+  </div>
+  <div class="f-sec" style="color:#ffeb3b;margin-bottom:6px">SECTION A — REGIONAL INPUTS ($/MMBtu) — EDITABLE</div>
+  <div style="overflow-x:auto;margin-bottom:16px"><table class="rg-tbl"><thead><tr>
+    <th style="min-width:130px">REGION</th><th>COVERS</th><th>HUB</th>${mHdrs}
+  </tr></thead><tbody>${secARows}</tbody></table></div>
+  <div class="f-sec" style="color:#26c6da;margin-bottom:6px">SECTION B — TERMINAL DIFFERENTIALS & DES PRICES ($/MMBtu)</div>
+  <div style="overflow-x:auto"><table class="rg-tbl"><thead>
+    <tr><th style="min-width:130px">TERMINAL</th><th>COUNTRY</th><th>HUB</th>${secBHdrs}</tr>
+    <tr><th></th><th></th><th></th>${secBSubHdrs}</tr>
+  </thead><tbody>${secBRows}</tbody></table></div>`;
 }
 function rgSetDiff(tid,i,v){if(!RG.diffs[tid])RG.diffs[tid]=Array(24).fill(0);RG.diffs[tid][i]=v;rgs('rgDiffs',RG.diffs);rgRT();}
 
@@ -8842,7 +8906,7 @@ function rgCosts(){
 // ── TAB 4: ITM MONITOR ──
 function rgITM(){
   const mi=RG.selMonth;
-  const res=RG.terminals.map(t=>{const hp=rgHP(t.hub,mi),des=rgDES(t.id,mi),v=rgVar(t,mi),diff=(RG.diffs[t.id]||[])[mi]||0,money=hp-v.total-des;return{t,hp,des,diff,varC:v.total,money,itm:money>0};});
+  const res=RG.terminals.map(t=>{const v=rgVar(t,mi);if(v.suppressed)return null;const hp=rgHP(t.hub,mi),des=rgDES(t.id,mi);if(des===null)return null;const diff=(RG.diffs[t.id]||[])[mi]||0,money=hp-v.total-des;return{t,hp,des,diff,varC:v.total,money,itm:money>0};}).filter(Boolean);
   const ranked=[...res].sort((a,b)=>b.money-a.money);
   const rkMap={};ranked.forEach((r,i)=>rkMap[r.t.id]=i+1);
   const top10=ranked.slice(0,10).map(r=>r.t.id);
@@ -9144,27 +9208,7 @@ function rgKB(){
 }
 
 // ── SYNC FROM FINANCIAL TRADING (enhanced) ──
-function rgAutoLoadFromFinancial(){
-  if(!sDates||!sDates.length){alert('No financial data loaded. Open Financial Trading and load your EOD files first.');return;}
-  const latestDs=sDates[sDates.length-1],fwdRows=aD[latestDs].rows;
-  const newCurve=[];let nbpSum=0,nbpN=0;
-  for(let i=0;i<24;i++){
-    const now=new Date(),d2=new Date(now.getFullYear(),now.getMonth()+1+i,1);
-    const pk=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
-    const row=fwdRows.find(r=>r.pk===pk);
-    if(row&&row.TTF!=null){
-      newCurve.push(+(row.TTF*3.41214/RG.eurUsd).toFixed(3));
-      if(row.NBP!=null){nbpSum+=row.NBP-row.TTF;nbpN++;}
-    } else newCurve.push(RG.ttfCurve[i]||17.50);
-  }
-  RG.ttfCurve=newCurve;
-  if(nbpN>0){RG.hubSpreads.NBP=+(nbpSum/nbpN).toFixed(3);rgs('hubSpreads',RG.hubSpreads);}
-  rgs('ttfCurve',RG.ttfCurve);
-  // Navigate to Hub Curves tab
-  RG.tab=0;
-  renderRegas();
-  alert(`Hub Curves synced from ${latestDs}.\n\nTTF: ${newCurve.filter(v=>v>0).length}/24 months loaded.\nNBP spread auto-computed: ${RG.hubSpreads.NBP.toFixed(3)} $/MMBtu.\n\nPSV (premium ~0.68) · THE (premium ~0.03) · PEG (slight premium) · PVB (discount ~-0.17) · ZEE (slight premium)\n→ These remain spread-based using current Hub Curves settings.\n→ Adjust manually in Hub Curves tab as live data becomes available.`);
-}
+
 
 // ── ITM PDF SNAPSHOT ──
 function rgExportITM(){
@@ -12473,55 +12517,6 @@ function rgTsLabel(key){
   return{txt:date,col:'#f44336',dot:'🔴'};
 }
 
-// ── Section A regional diff structure ────────────────────────────
-const RG_SECA_REGIONS=[
-  {id:'nwe',  label:'DES NWE',     hub:'TTF', note:'Belgium · Netherlands · Germany'},
-  {id:'the',  label:'DES THE',     hub:'THE', note:'Germany THE hub'},
-  {id:'peg',  label:'DES PEG',     hub:'PEG', note:'France PEG hub'},
-  {id:'italy',label:'DES Italy',   hub:'PSV', note:'Adriatic · OLT · Panigaglia · Piombino · Ravenna'},
-  {id:'iberia',label:'DES Iberia', hub:'PVB', note:'Spain (6) · Portugal'},
-  {id:'uk',   label:'DES UK',      hub:'NBP', note:'Dragon · Isle of Grain · South Hook'},
-  {id:'rev',  label:'Revithoussa', hub:'TTF', note:'standalone'},
-  {id:'krk',  label:'KRK',         hub:'TTF', note:'standalone'},
-  {id:'klai', label:'Klaipeda',    hub:'TTF', note:'standalone'},
-  {id:'swio', label:'Swinoujscie', hub:'TTF', note:'standalone'},
-  {id:'inkoo',label:'Inkoo',       hub:'TTF', note:'standalone'},
-];
-const RG_SECA_MAP={
-  nwe:['zeebrugge','gate'],the:['brunsbuttel','wilhelmshaven1','wilhelmshaven2','stade'],
-  peg:['dunkerque','foscavaou','montoir','fostonkin'],
-  italy:['adriatic','olttoscana','panigaglia','piombino','ravenna'],
-  iberia:['barcelona','cartagena','huelva','bilbao','mugardos','sagunto','sines'],
-  uk:['dragon','isleofgrain','southhook'],
-  rev:['revithoussa'],krk:['krk'],klai:['klaipeda'],swio:['swinoujscie'],inkoo:['inkoo'],
-};
-const RG_SECA_DEF={
-  nwe:[-0.445,-0.500,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400],
-  the:[-0.445,-0.500,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400],
-  peg:[-0.445,-0.500,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400],
-  italy:[-0.247,-0.302,-0.204,-0.204,-0.206,-0.192,-0.185,-0.192,-0.218,-0.231,-0.242,-0.245,-0.245,-0.241,-0.238,-0.243,-0.269,-0.269,-0.269,-0.269,-0.269,-0.269],
-  iberia:[-0.500,-0.500,-0.500,-0.500,-0.500,-0.500,-0.500,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350],
-  uk:[-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450],
-  rev:[-0.301,-0.356,-0.257,-0.257,-0.259,-0.249,-0.244,-0.249,-0.267,-0.277,-0.285,-0.287,-0.287,-0.284,-0.282,-0.285,-0.305,-0.305,-0.305,-0.305,-0.305,-0.305],
-  krk:[-0.310,-0.365,-0.266,-0.266,-0.268,-0.258,-0.254,-0.258,-0.276,-0.285,-0.293,-0.294,-0.294,-0.291,-0.290,-0.293,-0.311,-0.311,-0.311,-0.311,-0.311,-0.311],
-  klai:[-0.282,-0.337,-0.238,-0.238,-0.241,-0.229,-0.223,-0.229,-0.250,-0.261,-0.270,-0.272,-0.272,-0.269,-0.267,-0.271,-0.292,-0.292,-0.292,-0.292,-0.292,-0.292],
-  swio:[-0.300,-0.355,-0.255,-0.255,-0.257,-0.248,-0.244,-0.248,-0.264,-0.273,-0.280,-0.282,-0.282,-0.279,-0.277,-0.280,-0.297,-0.297,-0.297,-0.297,-0.297,-0.297],
-  inkoo:[-0.245,-0.300,-0.201,-0.201,-0.204,-0.190,-0.183,-0.190,-0.215,-0.229,-0.240,-0.243,-0.243,-0.239,-0.236,-0.241,-0.268,-0.268,-0.268,-0.268,-0.268,-0.268],
-};
-function rgSecAtoTerminals(region){
-  const arr=RG.secA[region]||RG_SECA_DEF[region]||[];
-  (RG_SECA_MAP[region]||[]).forEach(tid=>{
-    if(!RG.diffs[tid])RG.diffs[tid]=Array(24).fill(0);
-    arr.forEach((v,i)=>{if(i<24)RG.diffs[tid][i]=v;});
-  });
-}
-function rgSetSecA(region,mi,v){
-  if(!RG.secA[region])RG.secA[region]=[...(RG_SECA_DEF[region]||Array(22).fill(0))];
-  RG.secA[region][mi]=v;
-  rgSecAtoTerminals(region);
-  rgs('secA',RG.secA);rgs('rgDiffs',RG.diffs);rgRT();
-}
-
 // ── Rolling 8-month selector ─────────────────────────────────────
 function getRollingMonths(){
   const now=new Date(),mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -12598,6 +12593,7 @@ function rgSyncPhysDiffs(){
 // rgHP: use hubCurves when loaded, fallback to spread
 var _orig_rgHP = (typeof rgHP !== 'undefined') ? rgHP : null;
 function rgHP(hub,mi){
+  if(hub==='TTF')return rgTTF(mi);  // TTF stored as €/MWh in ttfCurve — always convert via rgTTF
   if(RG.hubCurves&&RG.hubCurves[hub]&&RG.hubCurves[hub][mi]!=null)return RG.hubCurves[hub][mi];
   return rgTTF(mi)+(RG.hubSpreads[hub]||0);
 }
@@ -12635,69 +12631,42 @@ function rgDES(tid,mi){
 var _orig_rgAutoLoadFromFinancial = (typeof rgAutoLoadFromFinancial !== 'undefined') ? rgAutoLoadFromFinancial : null;
 function rgAutoLoadFromFinancial(){
   const hasOB=typeof sDates!=='undefined'&&sDates&&sDates.length;
-  const hasEEX=typeof eexDates!=='undefined'&&eexDates&&eexDates.length;
-  if(!hasOB&&!hasEEX){alert('No financial data loaded.\nOpen Financial Trading and load OB EOD + EEX files first.');return;}
+  if(!hasOB){alert('Load your OB EOD files in Financial Trading first.');return;}
+  const latestDs=sDates[sDates.length-1];
+  const fwdRows=aD[latestDs].rows;
   const nc={TTF:[],PEG:[],THE:[],PSV:[],PVB:[],NBP:[],ZEE:[]};
-  var eurUsd=RG.eurUsd||1.17,gbpUsd=RG.gbpUsd||1.34;
-  const msgs=[];
-  if(hasOB){
-    const ds=sDates[sDates.length-1],rows=aD[ds].rows;
-    // Pull EUR/USD and GBP/USD from first row that has them
-    rows.forEach(r=>{if(r['EUR/USD']&&!isNaN(r['EUR/USD']))eurUsd=+r['EUR/USD'];if(r['GBP/USD']&&!isNaN(r['GBP/USD']))gbpUsd=+r['GBP/USD'];});
-    let ttfN=0;
-    for(let i=0;i<24;i++){
-      const now=new Date(),d2=new Date(now.getFullYear(),now.getMonth()+1+i,1);
-      const pk=d2.getFullYear()+'-'+String(d2.getMonth()+1).padStart(2,'0');
-      const row=rows.find(r=>r.pk===pk);
-      const eu=row&&row['EUR/USD']?+row['EUR/USD']:eurUsd;
-      // row.TTF is already $/MMBtu (OB EOD loader converts); store as €/MWh for rgTTF
-      if(row&&row.TTF!=null){
-        nc.TTF.push(+(row.TTF*3.41214/eu).toFixed(3));
-        ttfN++;
-      } else {
-        nc.TTF.push(RG.ttfCurve[i]>10?RG.ttfCurve[i]:46.0);
-      }
-      // NBP: also $/MMBtu in OB EOD — store directly in hubCurves
-      const nbp=row&&row.NBP!=null?row.NBP:null;
-      nc.NBP.push(nbp!=null?+nbp.toFixed(3):null);
-      // ZEE: TTF$/MMBtu + 0.015
-      nc.ZEE.push(+((nc.TTF[i]||46.0)*eu/3.412+0.015).toFixed(3));
+  let eurUsd=RG.eurUsd||1.17, gbpUsd=RG.gbpUsd||1.34;
+  // Pull FX from OB EOD
+  fwdRows.forEach(r=>{if(r['EUR/USD'])eurUsd=+r['EUR/USD'];if(r['GBP/USD'])gbpUsd=+r['GBP/USD'];});
+  let ttfN=0, eexN=0;
+  for(let i=0;i<24;i++){
+    const now=new Date();
+    const d2=new Date(now.getFullYear(),now.getMonth()+1+i,1);
+    const pk=d2.getFullYear()+'-'+String(d2.getMonth()+1).padStart(2,'0');
+    const row=fwdRows.find(r=>r.pk===pk);
+    // TTF: row.TTF is $/MMBtu → store as €/MWh for rgTTF()
+    if(row&&row.TTF!=null){
+      nc.TTF.push(+(row.TTF*3.41214/eurUsd).toFixed(3));
+      ttfN++;
+    } else {
+      nc.TTF.push(RG.ttfCurve[i]>10?RG.ttfCurve[i]:46.0);
     }
-    msgs.push('OB EOD '+ds+': TTF '+ttfN+'/24 | EUR/USD='+eurUsd.toFixed(3)+' GBP/USD='+gbpUsd.toFixed(3));
-  }
-  if(hasEEX){
-    const ds=eexDates[eexDates.length-1],rows=eexD[ds].rows;
-    let eexN=0;
-    for(let i=0;i<24;i++){
-      const now=new Date(),d2=new Date(now.getFullYear(),now.getMonth()+1+i,1);
-      const pk=d2.getFullYear()+'-'+String(d2.getMonth()+1).padStart(2,'0');
-      const row=rows.find(r=>r.pk===pk);
-      ['THE','PEG','PSV','PVB'].forEach(hub=>{
-        if(row&&row[hub]!=null){
-          // EEX rows already in $/MMBtu (parser converts on load)
-          nc[hub][i]=+(row[hub]).toFixed(3);
-          eexN++;
-        } else if(nc[hub][i]==null){
-          // Fallback: TTF $/MMBtu + spread
-          nc[hub][i]=+((nc.TTF[i]||46.0)*eurUsd/3.412+(RG.hubSpreads[hub]||0)).toFixed(3);
-        }
-      });
-    }
-    msgs.push('EEX '+ds+': '+eexN+' values');
-  } else {
-    // No EEX — use spread fallback for all EEX hubs
+    // NBP: row.NBP is $/MMBtu → store directly
+    nc.NBP.push(row&&row.NBP!=null?+row.NBP.toFixed(3):null);
+    // ZEE: TTF $/MMBtu + spread
+    nc.ZEE.push(+((nc.TTF[i]||46.0)*eurUsd/3.412+0.015).toFixed(3));
+    // EEX hubs: use gS() which already returns $/MMBtu
     ['THE','PEG','PSV','PVB'].forEach(hub=>{
-      for(let i=0;i<24;i++){
-        if(nc[hub][i]==null)nc[hub][i]=+((nc.TTF[i]||46.0)*eurUsd/3.412+(RG.hubSpreads[hub]||0)).toFixed(3);
-      }
+      const pts=typeof gS==='function'?gS(hub,pk):[];
+      const latest=pts.length?pts[pts.length-1].value:null;
+      nc[hub][i]=latest!=null?+latest.toFixed(3):+((nc.TTF[i]||46.0)*eurUsd/3.412+(RG.hubSpreads[hub]||0)).toFixed(3);
+      if(latest!=null)eexN++;
     });
-    msgs.push('EEX not loaded — using spreads for THE/PEG/PSV/PVB');
   }
-  // Fill nulls and pad to 24
-  ['TTF','PEG','THE','PSV','PVB','NBP','ZEE'].forEach(hub=>{
-    while(nc[hub].length<24){const last=nc[hub][nc[hub].length-1];nc[hub].push(last!=null?last:46.0);}
-    for(let i=0;i<24;i++){if(nc[hub][i]==null)nc[hub][i]=+((nc.TTF[i]||46.0)*eurUsd/3.412+(RG.hubSpreads[hub]||0)).toFixed(3);}
-  });
+  // Pad NBP nulls
+  for(let i=0;i<24;i++){
+    if(nc.NBP[i]==null)nc.NBP[i]=+((nc.TTF[i]||46.0)*eurUsd/3.412+(RG.hubSpreads.NBP||0)).toFixed(3);
+  }
   RG.ttfCurve=nc.TTF;
   RG.hubCurves=nc;
   RG.eurUsd=eurUsd;
@@ -12707,8 +12676,9 @@ function rgAutoLoadFromFinancial(){
   rgs('eurUsd',eurUsd);
   rgs('gbpUsd',gbpUsd);
   rgTsSet('flat');
-  RG.tab=1;renderRegas();
-  setTimeout(function(){alert('Hub Curves synced:\n'+msgs.join('\n')+'\n\nPress SYNC PHYS DIFFS to update differentials.');},100);
+  RG.tab=1;
+  renderRegas();
+  setTimeout(()=>alert('Synced from '+latestDs+'.\nTTF: '+ttfN+'/24 | EEX: '+eexN+' values | EUR/USD='+eurUsd.toFixed(3)),100);
 }
 
 // ── Hub Curves tab — clean version without Hub Spreads panel ──────
