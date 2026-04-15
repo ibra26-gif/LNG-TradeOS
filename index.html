@@ -9500,7 +9500,7 @@ function gaDateLabel(d){return d.toLocaleDateString('en-GB',{month:'short',year:
 const GIE_KEY = '38d9c81ac0ef87d9b3485075f273d8fe';
 const ENTSOG_BASE = 'https://transparency.entsog.eu/api/v1';
 const GIE_AGSI  = 'https://agsi.gie.eu/api';
-const GIE_AGGI  = 'https://aggi.gie.eu/api';
+const GIE_AGGI  = 'https://alsi.gie.eu/api';
 // Proxy routing: GIE APIs need proxy (API key in headers, CORS blocked).
 // ENTSOG is public with open CORS — call directly from browser, no proxy needed.
 const IS_LOCAL = window.location.protocol === 'file:' || ['localhost','127.0.0.1',''].includes(window.location.hostname);
@@ -9780,7 +9780,7 @@ async function gaLoadENTSOGRoute(route,from,to,cacheResult=false){
     if(!raw){
       try{
         // ENTSOG: public API, open CORS — call directly (Vercel proxy times out on Hobby plan)
-        const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointLabel=${encodeURIComponent(label)}&from=${from}&to=${to}&periodType=day&timeZone=WET&limit=3000`;
+        const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointLabel=${encodeURIComponent(label)}&from=${from}&to=${to}&periodType=day&timeZone=WET&limit=-1`;
         const url=`${ENTSOG_BASE}/operationalDatas?${paramStr}`;
         const r=await fetch(url,{headers:{Accept:'application/json'}});
         if(!r.ok){ console.warn(`ENTSOG ${r.status} ${route} ${label}`); continue; }
