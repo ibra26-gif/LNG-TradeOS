@@ -8552,10 +8552,91 @@ function showAnalyticsUI(){const fd=$id('fin-dropzone'),fa=$id('fin-analytics');
 
 // ══ EU REGAS MODULE v2 ══
 // Tab layout: 0=DASHBOARD(open) 1=HUB CURVES(open) 2=TTF DIFF(open) 3=TARIFFS(🔒) 4=COSTS(🔒) 5=ITM(🔒) 6=COST GRAPH(🔒) 7=IMPLIED DES(🔒) 8=NETBACK(🔒) 9=KB(🔒)
-const RG_TABS=['DASHBOARD','HUB CURVES','TTF DIFFERENTIAL','TERMINAL TARIFFS','REGAS COSTS','ITM MONITOR','COST GRAPH','IMPLIED DES','NETBACK 🔒','KNOWLEDGE DB 🔒'];
+const RG_TABS=['DASHBOARD','HUB CURVES','TTF DIFFERENTIAL','TERMINAL TARIFFS','REGAS COSTS','ITM MONITOR','COST GRAPH','BREAKEVEN LEVEL','NETBACK 🔒','KNOWLEDGE DB 🔒'];
 const RG_HUBS=['TTF','ZEE','PEG','THE','PSV','PVB','NBP'];
 const RG_SPREAD_DEF={TTF:0,ZEE:0.051,PEG:-0.400,THE:0.034,PSV:0.680,PVB:-0.170,NBP:-0.165};
-const RG_DIFF_DEF={zeebrugge:-0.445,dunkerque:-0.445,foscavaou:-0.445,montoir:-0.445,fostonkin:-0.445,brunsbuttel:-0.445,wilhelmshaven1:-0.445,wilhelmshaven2:-0.445,gate:-0.445,adriatic:-0.247,olttoscana:-0.247,panigaglia:-0.247,piombino:-0.247,ravenna:-0.247,revithoussa:-0.301,krk:-0.310,klaipeda:-0.282,swinoujscie:-0.300,inkoo:-0.245,barcelona:-0.500,cartagena:-0.500,huelva:-0.500,bilbao:-0.500,mugardos:-0.500,sagunto:-0.500,sines:-0.500,dragon:-0.450,isleofgrain:-0.450,southhook:-0.450,stade:-0.445};
+
+// ── SECTION A: REGIONAL DIFF DEFINITIONS ──────────────────────
+const RG_SECA_REGIONS=[
+  {id:'nwe',  label:'DES NWE',    hub:'TTF', note:'Belgium · Netherlands · Germany (proxy)'},
+  {id:'the',  label:'DES THE',    hub:'THE', note:'Germany THE hub — user view'},
+  {id:'peg',  label:'DES PEG',    hub:'PEG', note:'France PEG hub — user view'},
+  {id:'italy',label:'DES Italy',  hub:'PSV', note:'Adriatic · OLT · Panigaglia · Piombino · Ravenna'},
+  {id:'iberia',label:'DES Iberia',hub:'PVB', note:'Spain (6) · Portugal'},
+  {id:'uk',   label:'DES UK',     hub:'NBP', note:'Dragon · Isle of Grain · South Hook'},
+  {id:'rev',  label:'Revithoussa',hub:'TTF', note:'standalone'},
+  {id:'krk',  label:'KRK',        hub:'TTF', note:'standalone'},
+  {id:'klai', label:'Klaipeda',   hub:'TTF', note:'standalone'},
+  {id:'swio', label:'Swinoujscie',hub:'TTF', note:'standalone'},
+  {id:'inkoo',label:'Inkoo',      hub:'TTF', note:'standalone'},
+];
+const RG_SECA_MAP={
+  nwe:  ['zeebrugge','gate'],
+  the:  ['brunsbuttel','wilhelmshaven1','wilhelmshaven2','stade'],
+  peg:  ['dunkerque','foscavaou','montoir','fostonkin'],
+  italy:['adriatic','olttoscana','panigaglia','piombino','ravenna'],
+  iberia:['barcelona','cartagena','huelva','bilbao','mugardos','sagunto','sines'],
+  uk:   ['dragon','isleofgrain','southhook'],
+  rev:  ['revithoussa'],krk:['krk'],klai:['klaipeda'],swio:['swinoujscie'],inkoo:['inkoo'],
+};
+const RG_SECA_DEF={
+  nwe:  [-0.445,-0.500,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400],
+  the:  [-0.445,-0.500,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400],
+  peg:  [-0.445,-0.500,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400,-0.400],
+  italy:[-0.247,-0.302,-0.204,-0.204,-0.206,-0.192,-0.185,-0.192,-0.218,-0.231,-0.242,-0.245,-0.245,-0.241,-0.238,-0.243,-0.269,-0.269,-0.269,-0.269,-0.269,-0.269],
+  iberia:[-0.500,-0.500,-0.500,-0.500,-0.500,-0.500,-0.500,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350,-0.350],
+  uk:   [-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450,-0.450],
+  rev:  [-0.301,-0.356,-0.257,-0.257,-0.259,-0.249,-0.244,-0.249,-0.267,-0.277,-0.285,-0.287,-0.287,-0.284,-0.282,-0.285,-0.305,-0.305,-0.305,-0.305,-0.305,-0.305],
+  krk:  [-0.310,-0.365,-0.266,-0.266,-0.268,-0.258,-0.254,-0.258,-0.276,-0.285,-0.293,-0.294,-0.294,-0.291,-0.290,-0.293,-0.311,-0.311,-0.311,-0.311,-0.311,-0.311],
+  klai: [-0.282,-0.337,-0.238,-0.238,-0.241,-0.229,-0.223,-0.229,-0.250,-0.261,-0.270,-0.272,-0.272,-0.269,-0.267,-0.271,-0.292,-0.292,-0.292,-0.292,-0.292,-0.292],
+  swio: [-0.300,-0.355,-0.255,-0.255,-0.257,-0.248,-0.244,-0.248,-0.264,-0.273,-0.280,-0.282,-0.282,-0.279,-0.277,-0.280,-0.297,-0.297,-0.297,-0.297,-0.297,-0.297],
+  inkoo:[-0.245,-0.300,-0.201,-0.201,-0.204,-0.190,-0.183,-0.190,-0.215,-0.229,-0.240,-0.243,-0.243,-0.239,-0.236,-0.241,-0.268,-0.268,-0.268,-0.268,-0.268,-0.268],
+};
+function rgSecAtoTerminals(region){
+  const arr=RG.secA[region]||RG_SECA_DEF[region]||[];
+  (RG_SECA_MAP[region]||[]).forEach(tid=>{
+    if(!RG.diffs[tid])RG.diffs[tid]=Array(24).fill(0);
+    arr.forEach((v,i)=>{if(i<24)RG.diffs[tid][i]=v;});
+  });
+}
+function rgSetSecA(region,mi,v){
+  if(!RG.secA[region])RG.secA[region]=[...(RG_SECA_DEF[region]||Array(22).fill(0))];
+  RG.secA[region][mi]=v;
+  rgSecAtoTerminals(region);
+  rgs('secA',RG.secA);rgs('rgDiffs',RG.diffs);rgRT();
+}
+const RG_DIFF_DEF={
+  zeebrugge:[-0.445,-0.5,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4],
+  dunkerque:[-0.445,-0.5,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4],
+  foscavaou:[-0.445,-0.5,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4],
+  montoir:[-0.445,-0.5,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4],
+  fostonkin:[-0.445,-0.5,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4],
+  brunsbuttel:[-0.445,-0.5,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4],
+  wilhelmshaven1:[-0.445,-0.5,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4],
+  wilhelmshaven2:[-0.445,-0.5,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4],
+  stade:[-0.445,-0.5,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4],
+  gate:[-0.445,-0.5,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4,-0.4],
+  adriatic:[-0.247,-0.302,-0.204,-0.204,-0.206,-0.192,-0.185,-0.192,-0.218,-0.231,-0.242,-0.245,-0.245,-0.241,-0.238,-0.243,-0.269,-0.269,-0.269,-0.269,-0.269,-0.269],
+  olttoscana:[-0.247,-0.302,-0.204,-0.204,-0.206,-0.192,-0.185,-0.192,-0.218,-0.231,-0.242,-0.245,-0.245,-0.241,-0.238,-0.243,-0.269,-0.269,-0.269,-0.269,-0.269,-0.269],
+  panigaglia:[-0.247,-0.302,-0.204,-0.204,-0.206,-0.192,-0.185,-0.192,-0.218,-0.231,-0.242,-0.245,-0.245,-0.241,-0.238,-0.243,-0.269,-0.269,-0.269,-0.269,-0.269,-0.269],
+  piombino:[-0.247,-0.302,-0.204,-0.204,-0.206,-0.192,-0.185,-0.192,-0.218,-0.231,-0.242,-0.245,-0.245,-0.241,-0.238,-0.243,-0.269,-0.269,-0.269,-0.269,-0.269,-0.269],
+  ravenna:[-0.247,-0.302,-0.204,-0.204,-0.206,-0.192,-0.185,-0.192,-0.218,-0.231,-0.242,-0.245,-0.245,-0.241,-0.238,-0.243,-0.269,-0.269,-0.269,-0.269,-0.269,-0.269],
+  barcelona:[-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35],
+  cartagena:[-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35],
+  huelva:[-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35],
+  bilbao:[-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35],
+  mugardos:[-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35],
+  sagunto:[-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35],
+  sines:[-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35,-0.35],
+  dragon:[-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45],
+  isleofgrain:[-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45],
+  southhook:[-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45],
+  revithoussa:[-0.301,-0.356,-0.257,-0.257,-0.259,-0.249,-0.244,-0.249,-0.267,-0.277,-0.285,-0.287,-0.287,-0.284,-0.282,-0.285,-0.305,-0.305,-0.305,-0.305,-0.305,-0.305],
+  krk:[-0.31,-0.365,-0.266,-0.266,-0.268,-0.258,-0.254,-0.258,-0.276,-0.285,-0.293,-0.294,-0.294,-0.291,-0.29,-0.293,-0.311,-0.311,-0.311,-0.311,-0.311,-0.311],
+  klaipeda:[-0.282,-0.337,-0.238,-0.238,-0.241,-0.229,-0.223,-0.229,-0.25,-0.261,-0.27,-0.272,-0.272,-0.269,-0.267,-0.271,-0.292,-0.292,-0.292,-0.292,-0.292,-0.292],
+  swinoujscie:[-0.3,-0.355,-0.255,-0.255,-0.257,-0.248,-0.244,-0.248,-0.264,-0.273,-0.28,-0.282,-0.282,-0.279,-0.277,-0.28,-0.297,-0.297,-0.297,-0.297,-0.297,-0.297],
+  inkoo:[-0.245,-0.3,-0.201,-0.201,-0.204,-0.19,-0.183,-0.19,-0.215,-0.229,-0.24,-0.243,-0.243,-0.239,-0.236,-0.241,-0.268,-0.268,-0.268,-0.268,-0.268,-0.268]
+};
 const RG_T_DEF=[
   {id:'zeebrugge',name:'Zeebrugge',country:'Belgium',region:'NW Europe',op:'Fluxys',type:'Onshore',hub:'ZEE',gik:1.30,gik_cl:1.30,slot:624247,cqs:0.66,mar:0,tt:'lump_sum',trf:0},
   {id:'dunkerque',name:'Dunkerque',country:'France',region:'NW Europe',op:'Dunkerque LNG',type:'Onshore',hub:'PEG',gik:1.00,gik_cl:1.00,slot:0,cqs:0.75,mar:0,tt:'per_mmbtu',trf:0.3341},
@@ -8594,7 +8675,7 @@ const RG_UNLOCK={3:false,4:false,5:false,6:false,7:false,8:false,9:false};
 const RG_LOCK_TABS=new Set([3,4,5,6,7,8,9]); // tabs requiring password
 const RG_PW='@Moustapha1';
 
-let RG={tab:0,eurUsd:1.16,eua:92,cargo:3800000,ttfCurve:Array(24).fill(17.50),hubSpreads:{...RG_SPREAD_DEF},hubCurves:null,dashMonth1:1,dashMonth2:1,diffs:{},terminals:[],selMonth:1,nbkTerm:'adriatic',nbkSlippage:0,nbkBunker:0.08,nbkCredit:0.05,nbkDeadFreight:0,nbkExtraShipping:0,nbkExtrinsic:false,nbkVol:25,nbkRawExt:0.15,nbkCapture:70,tsoOpex:0.02,gridCapex:0.05,impliedMon:{},cgUnit:'usd',cgShowTotal:false,cgMonth:1};
+let RG={tab:0,eurUsd:1.16,gbpUsd:1.34,eua:92,cargo:3800000,ttfCurve:Array(24).fill(46.0),hubSpreads:{...RG_SPREAD_DEF},hubCurves:null,secA:{},dashMonth1:1,dashMonth2:1,diffs:{},terminals:[],selMonth:1,nbkTerm:'adriatic',nbkSlippage:0,nbkBunker:0.08,nbkCredit:0.05,nbkDeadFreight:0,nbkExtraShipping:0,nbkExtrinsic:false,nbkPrompt:false,nbkModel:'Black-76',nbkVol:25,nbkRawExt:0.15,nbkCapture:70,tsoOpex:0.02,gridCapex:0.05,impliedMon:{},cgUnit:'usd',cgShowTotal:false,cgMonth:1};
 
 function rgg(k,d){try{const v=localStorage.getItem('rg_'+k);return v?JSON.parse(v):d;}catch{return d;}}
 function rgs(k,v){try{localStorage.setItem('rg_'+k,JSON.stringify(v));}catch{}}
@@ -8605,11 +8686,21 @@ function initRegas(){
   RG.ttfCurve=rgg('ttfCurve',Array(24).fill(17.50));
   RG.hubSpreads=rgg('hubSpreads',{...RG_SPREAD_DEF});
   RG.hubCurves=rgg('hubCurves',null);
+  RG.secA=rgg('secA',{});
+  // init secA defaults and propagate
+  RG_SECA_REGIONS.forEach(r=>{
+    if(!RG.secA[r.id])RG.secA[r.id]=[...(RG_SECA_DEF[r.id]||Array(22).fill(0))];
+    rgSecAtoTerminals(r.id);
+  });
   if(RG.dashMonth1==null)RG.dashMonth1=RG.selMonth||1;
   if(RG.dashMonth2==null)RG.dashMonth2=RG.selMonth||1;
-  RG.eurUsd=rgg('eurUsd',1.16);RG.eua=rgg('eua',92);RG.cargo=rgg('cargo',3800000);
+  RG.eurUsd=rgg('eurUsd',1.16);RG.gbpUsd=rgg('gbpUsd',1.34);RG.eua=rgg('eua',92);RG.cargo=rgg('cargo',3800000);
   const sd=rgg('rgDiffs',{});
-  RG_T_DEF.forEach(t=>{RG.diffs[t.id]=sd[t.id]||Array(24).fill(RG_DIFF_DEF[t.id]||0);});
+  RG_T_DEF.forEach(t=>{
+    const def=RG_DIFF_DEF[t.id];
+    const defArr=Array.isArray(def)?[...def,...Array(Math.max(0,24-def.length)).fill(def[def.length-1]||0)]:Array(24).fill(def||0);
+    RG.diffs[t.id]=sd[t.id]||defArr;
+  });
   RG.cgUnit=rgg('cgUnit','usd');RG.cgShowTotal=false;RG.cgMonth=1;
   RG.tab=0;
   renderRegas();
@@ -8681,16 +8772,23 @@ function rgHP(hub,mi){
   if(RG.hubCurves&&RG.hubCurves[hub]&&RG.hubCurves[hub][mi]!=null)return RG.hubCurves[hub][mi];
   return rgTTF(mi)+(RG.hubSpreads[hub]||0);
 }
-function rgDES(tid,mi){return rgTTF(mi)+((RG.diffs[tid]||[])[mi]||0);}
+function rgDES(tid,mi){if(tid==='stade'&&mi<2)return null;return rgTTF(mi)+((RG.diffs[tid]||[])[mi]||0);}
 function rgVar(t,mi){
+  if(t.id==='stade'&&mi<2)return{gik:null,emiss:null,gridV:null,total:null,gikRate:null,suppressed:true};
   const hp=rgHP(t.hub,mi);
   const isWinter=['Oct','Nov','Dec','Jan','Feb','Mar'].some(m=>ML[mi]&&ML[mi].startsWith(m));
   const gikRate=isWinter&&t.gik_cl?t.gik_cl:t.gik;
   const gik=(gikRate/100)*hp/(1-gikRate/100);
   const emiss=t.cqs*RG.eua*RG.eurUsd/1000,gridV=t.hub==='NBP'?RG.tsoOpex:0;
-  return{gik,emiss,gridV,total:gik+emiss+gridV,gikRate};
+  const ukEtsFlagged=t.hub==='NBP';  // UK uses UK ETS not EU ETS — flagged
+  return{gik,emiss,gridV,total:gik+emiss+gridV,gikRate,ukEtsFlagged};
 }
-function rgFix(t){const fixCap=t.tt==='per_mmbtu'?t.trf*RG.eurUsd:t.slot*RG.eurUsd/RG.cargo,gridF=RG.gridCapex,marit=t.mar*RG.eurUsd/RG.cargo;return{fixCap,gridF,marit,total:fixCap+gridF+marit};}
+function rgFix(t,mi){
+  if(t.id==='stade'&&mi!=null&&mi<2)return{fixCap:null,gridF:null,marit:null,total:null,suppressed:true};
+  const fx=t.hub==='NBP'&&t.tt==='lump_sum'?RG.gbpUsd:RG.eurUsd;
+  const fixCap=t.tt==='per_mmbtu'?t.trf*RG.eurUsd:t.slot*fx/RG.cargo,gridF=RG.gridCapex,marit=t.mar*fx/RG.cargo;
+  return{fixCap,gridF,marit,total:fixCap+gridF+marit,gbpBased:t.hub==='NBP'&&t.tt==='lump_sum'};
+}
 function fmm(v,d=4){return v!=null&&!isNaN(v)?Number(v).toFixed(d):'-';}
 function msel(){return`<select class="f-sel" style="width:100px" onchange="RG.selMonth=+this.value;rgRT()">${ML.map((m,i)=>`<option value="${i}"${RG.selMonth===i?' selected':''}>${m}</option>`).join('')}</select>`;}
 
@@ -8713,10 +8811,22 @@ function rgHub(){
         <th>PERIOD</th><th class="tr">TTF (€/MWh)</th><th class="tr" style="color:#4fc3f7">TTF ($/MMBtu)</th>
         ${['ZEE','PEG','THE','PSV','PVB','NBP'].map(h=>`<th class="tr">${h} ($/MMBtu)</th>`).join('')}
       </tr></thead><tbody>${rows}</tbody></table></div>
-      <div style="min-width:320px"><div class="f-sec">HUB SPREADS vs TTF ($/MMBtu)</div>
-        <div style="color:#546e7a;font-size:9px;margin-bottom:10px;line-height:1.7">Hub Price = TTF ($/MMBtu) + Spread<br>PSV & THE: premium to TTF · PVB & NBP: discount<br>PEG & ZEE: near par. Auto-synced for TTF+NBP only.</div>
-        ${spreads}
-        <div style="margin-top:12px;color:#546e7a;font-size:9px;line-height:1.8">TTF conversion: €/MWh × EUR/USD / 3.41214 = $/MMBtu<br>EUR/USD: ${RG.eurUsd} · Reference: ${ML[RG.selMonth]}<br>TTF M+1: ${rgTTF(RG.selMonth).toFixed(4)} $/MMBtu</div>
+      <div style="min-width:280px">
+        <div class="f-sec" style="margin-bottom:8px">GLOBAL PARAMETERS</div>
+        <table class="rg-tbl" style="margin-bottom:14px"><tbody>
+          <tr><td style="color:#546e7a;font-size:9px">EUR/USD</td><td><input class="rg-inp" style="width:80px;text-align:right" type="number" step="0.001" value="${RG.eurUsd}" onchange="rgP('eurUsd',+this.value)"></td></tr>
+          <tr><td style="color:#546e7a;font-size:9px">GBP/USD <span style="color:#f44336;font-size:8px">(UK slots)</span></td><td><input class="rg-inp" style="width:80px;text-align:right" type="number" step="0.001" value="${RG.gbpUsd}" onchange="RG.gbpUsd=+this.value;rgs('gbpUsd',RG.gbpUsd);rgRT()"></td></tr>
+          <tr><td style="color:#546e7a;font-size:9px">EUA (€/tCO₂)</td><td><input class="rg-inp" style="width:80px;text-align:right" type="number" step="0.5" value="${RG.eua}" onchange="rgP('eua',+this.value)"></td></tr>
+          <tr><td style="color:#546e7a;font-size:9px">Cargo (MMBtu)</td><td><input class="rg-inp" style="width:88px;text-align:right" type="number" step="100000" value="${RG.cargo}" onchange="rgP('cargo',+this.value)"></td></tr>
+        </tbody></table>
+        <div class="f-sec" style="margin-bottom:8px">DATA STATUS</div>
+        <div style="font-size:9px;line-height:2">
+          <div style="color:#546e7a">TTF source: <span style="color:#4fc3f7">${RG.ttfCurve[0]>30?'✅ Synced (OB EOD)':'⚠️ Default — sync needed'}</span></div>
+          <div style="color:#546e7a">Hub curves: <span style="color:${RG.hubCurves?'#4caf50':'#f44336'}">${RG.hubCurves?'✅ EEX loaded':'⚠️ Using spreads'}</span></div>
+          <div style="color:#546e7a">EUR/USD: <span style="color:#c8d6e5">${RG.eurUsd}</span></div>
+          <div style="color:#546e7a">TTF M+1: <span style="color:#4fc3f7">${rgTTF(RG.selMonth).toFixed(3)} $/MMBtu</span></div>
+          <div style="color:#546e7a">TTF M+1 €: <span style="color:#c8d6e5">${(RG.ttfCurve[RG.selMonth]||0).toFixed(2)} €/MWh</span></div>
+        </div>
       </div>
     </div>`;
 }
@@ -8725,24 +8835,53 @@ function rgSetSpread(h,v){RG.hubSpreads[h]=v;rgs('hubSpreads',RG.hubSpreads);rgR
 
 // ── TAB 1: TTF DIFFERENTIAL ──
 function rgDiff(){
-  const rowsA=RG_T_DEF.map(t=>`<tr>
-    <td style="color:var(--th);font-size:10px">${t.name}</td>
-    <td style="color:#546e7a;font-size:9px">${t.country}</td>
-    <td style="color:#4fc3f7;font-size:9px">${t.hub}</td>
-    ${ML.map((_,i)=>{const d=(RG.diffs[t.id]||[])[i]||0;return`<td style="padding:1px 2px"><input class="rg-inp" style="width:50px;text-align:right;color:${d<0?'#f44336':d===0?'#c8d6e5':'#4caf50'}" type="number" step="0.01" value="${d.toFixed(2)}" onchange="rgSetDiff('${t.id}',${i},+this.value)"></td>`;}).join('')}
-  </tr>`).join('');
-  const rowsB=RG_T_DEF.map(t=>`<tr>
+  const ROLL8=getRollingMonths();
+  const mHdrs=ROLL8.map(i=>`<th class="tr" style="min-width:58px;color:#4fc3f7;font-size:9px">${ML[i]}</th>`).join('');
+  // Section A: 11 regional rows
+  const secARows=RG_SECA_REGIONS.map(r=>{
+    const arr=RG.secA[r.id]||RG_SECA_DEF[r.id]||[];
+    const cells=ROLL8.map(i=>{const d=arr[i]!==undefined?arr[i]:0;
+      return`<td style="padding:1px 2px"><input class="rg-inp" style="width:56px;text-align:right;color:${d<0?'#f44336':d===0?'#c8d6e5':'#4caf50'}" type="number" step="0.01" value="${(+d).toFixed(3)}" onchange="rgSetSecA('${r.id}',${i},+this.value)"></td>`;
+    }).join('');
+    return`<tr><td style="color:#c8d6e5;font-size:10px;font-weight:600;padding:4px 8px">${r.label}</td><td style="color:#546e7a;font-size:9px;padding:4px 6px">${r.note}</td><td style="color:#4fc3f7;font-size:9px;padding:4px 6px">${r.hub}</td>${cells}</tr>`;
+  }).join('');
+  // Section B: per-terminal computed rows
+  const secBRows=RG_T_DEF.map(t=>{
+    const cells=ROLL8.map(i=>{
+      const isNA=t.id==='stade'&&i<2;
+      const d=isNA?null:((RG.diffs[t.id]||[])[i]||0);
+      const des=isNA?null:rgDES(t.id,i);
+      return`<td class="tr" style="color:${isNA?'#3d5070':d<0?'#f44336':'#4caf50'};font-size:9px">${isNA?'N/A':(+d).toFixed(3)}</td><td class="tr" style="color:#26c6da;font-size:9px">${isNA?'N/A':des.toFixed(3)}</td>`;
+    }).join('');
+    const isGerm=t.hub==='THE';
+    return`<tr><td style="color:${isGerm?'#80cbc4':'var(--th)'};font-size:10px;padding:4px 8px">${t.name}</td><td style="color:#546e7a;font-size:9px;padding:4px 6px">${t.country}</td><td style="color:#4fc3f7;font-size:9px;padding:4px 6px">${t.hub}</td>${cells}</tr>`;
+  }).join('');
+  // Section B double headers
+  const secBHdrs=ROLL8.map(i=>`<th class="tr" style="min-width:56px;color:#4fc3f7;font-size:8px" colspan="2">${ML[i]}</th>`).join('');
+  const secBSubHdrs=ROLL8.map(()=>`<th class="tr" style="color:#546e7a;font-size:8px">DIFF</th><th class="tr" style="color:#26c6da;font-size:8px">DES $</th>`).join('');
+  return`
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <span style="color:#4fc3f7;font-size:11px;font-weight:700;letter-spacing:2px">TTF DIFFERENTIAL</span>
+      <span style="color:#546e7a;font-size:9px">Rolling 8-month window · DES Price = TTF ($/MMBtu) + Differential</span>
+    </div>
+    <div class="f-sec" style="color:#ffeb3b">SECTION A — REGIONAL DIFFERENTIAL INPUTS ($/MMBtu)</div>
+    <div style="color:#546e7a;font-size:9px;margin-bottom:8px">Enter your DES differential views by region. Section B auto-updates. Red = discount, green = premium vs TTF.</div>
+    <div style="overflow-x:auto;margin-bottom:20px"><table class="rg-tbl"><thead><tr>
+      <th style="min-width:130px">REGION</th><th>COVERS</th><th>HUB</th>${mHdrs}
+    </tr></thead><tbody>${secARows}</tbody></table></div>
+    <div class="f-sec" style="color:#26c6da">SECTION B — TERMINAL DIFFERENTIALS & DES PRICES ($/MMBtu)</div>
+    <div style="color:#546e7a;font-size:9px;margin-bottom:8px">Derived from Section A. Diff = differential vs TTF · DES $ = computed DES price in $/MMBtu</div>
+    <div style="overflow-x:auto"><table class="rg-tbl"><thead>
+      <tr><th style="min-width:130px">TERMINAL</th><th>COUNTRY</th><th>HUB</th>${secBHdrs}</tr>
+      <tr><th></th><th></th><th></th>${secBSubHdrs}</tr>
+    </thead><tbody>${secBRows}</tbody></table></div>`;
+}
+// OLD SECTION B comment (replaced above)
+function __OLD_RGDIFF_SECTION_B(){const rowsB=RG_T_DEF.map(t=>`<tr>
     <td style="color:var(--th);font-size:10px">${t.name}</td>
     <td style="color:#4fc3f7;font-size:9px">${t.hub}</td>
     ${ML.map((_,i)=>`<td class="tr" style="color:#26c6da;font-size:10px">${rgDES(t.id,i).toFixed(3)}</td>`).join('')}
-  </tr>`).join('');
-  return`<div class="f-sec">SECTION A — TTF DIFFERENTIAL INPUTS ($/MMBtu) · Negative = discount to TTF</div>
-    <div style="color:#546e7a;font-size:9px;margin-bottom:10px">DES Price = TTF ($/MMBtu) + Differential. Red = negative (discount), green = premium.</div>
-    <div style="overflow-x:auto;margin-bottom:20px"><table class="rg-tbl"><thead><tr>
-      <th style="min-width:130px">TERMINAL</th><th>COUNTRY</th><th>HUB</th>
-      ${ML.map(m=>`<th class="tr" style="min-width:54px">${m}</th>`).join('')}
-    </tr></thead><tbody>${rowsA}</tbody></table></div>
-    <div class="f-sec">SECTION B — CALCULATED DES PRICES ($/MMBtu) = TTF + Differential</div>
+  </tr>`).join('');return`<div class="f-sec">SECTION B — CALCULATED DES PRICES ($/MMBtu) = TTF + Differential</div>
     <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
       <th style="min-width:130px">TERMINAL</th><th>HUB</th>
       ${ML.map(m=>`<th class="tr" style="min-width:54px">${m}</th>`).join('')}
@@ -8799,7 +8938,7 @@ function rgDashboard(){
     return`<tr ${TR}>
       <td style="color:#546e7a;font-size:10px;text-align:center;padding:5px 4px">${i+1}</td>
       <td style="color:#c8d6e5;font-size:10px;font-weight:600;padding:5px 8px">${r.t.name}</td>
-      <td style="color:#546e7a;font-size:9px;padding:5px 6px">${r.t.country}</td>
+      <td style="color:#546e7a;font-size:9px;padding:5px 6px;white-space:nowrap">${r.t.country}</td>
       <td style="color:#4fc3f7;font-size:10px;padding:5px 6px">${r.t.hub}</td>
       <td style="color:#c8d6e5;font-size:10px;text-align:right;padding:5px 8px">${fmm(r.des)}</td>
       <td style="color:#546e7a;font-size:10px;text-align:right;padding:5px 8px">${fmm(r.varC)}</td>
@@ -8819,15 +8958,12 @@ function rgDashboard(){
   }).sort((a,b)=>b.hroom-a.hroom);
 
   const beRows=beAll.map(r=>{
-    const sc=r.ok?'#4caf50':'#f44336';
-    const bc=r.be>=0?'#81c784':'#ef9a9a';
+    const isNA=r.t.id==='stade'&&mi2<2;
+    const bc=isNA?'#3d5070':r.be>=0?'#81c784':'#ef9a9a';
     return`<tr ${TR}>
       <td style="color:#c8d6e5;font-size:10px;font-weight:600;padding:5px 8px">${r.t.name}</td>
       <td style="color:#4fc3f7;font-size:10px;padding:5px 6px">${r.t.hub}</td>
-      <td style="color:${bc};font-size:10px;font-weight:700;text-align:right;padding:5px 8px">${r.be>=0?'+':''}${fmm(r.be)}</td>
-      <td style="color:#c8d6e5;font-size:10px;text-align:right;padding:5px 8px">${fmm(r.mktD)}</td>
-      <td style="color:${r.hroom>=0?'#4caf50':'#f44336'};font-size:10px;font-weight:700;text-align:right;padding:5px 8px">${r.hroom>=0?'+':''}${fmm(r.hroom)}</td>
-      <td style="color:${sc};font-size:9px;text-align:center;padding:5px 6px">${r.ok?'✅ BUY':'❌ PASS'}</td>
+      <td style="color:${bc};font-size:10px;font-weight:700;text-align:right;padding:5px 8px">${isNA?'N/A (pre-Jul)':((r.be>=0?'+':'')+fmm(r.be))}</td>
     </tr>`;
   }).join('');
 
@@ -8848,7 +8984,7 @@ function rgDashboard(){
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse">
       <thead><tr>
-        <th ${TH}>#</th><th ${TH}>TERMINAL</th><th ${TH}>CTRY</th><th ${TH}>HUB</th>
+        <th ${TH}>#</th><th ${TH}>TERMINAL</th><th ${TH}>COUNTRY</th><th ${TH}>HUB</th>
         <th ${THR}>DES</th><th ${THR}>VarC</th><th ${THR}>Hub</th><th ${THR}>MONEY</th><th ${TH}>STATUS</th>
       </tr></thead>
       <tbody>${itmRows}</tbody>
@@ -8860,21 +8996,20 @@ function rgDashboard(){
   <div class="f-card" style="padding:14px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
       <div>
-        <div style="color:#ffeb3b;font-size:11px;font-weight:700;letter-spacing:2px">MAX WTP vs TTF</div>
-        <div style="color:#546e7a;font-size:8.5px;margin-top:2px">${beLabel}</div>
+        <div style="color:#ffeb3b;font-size:11px;font-weight:700;letter-spacing:2px">BREAKEVEN PRICE</div>
+        <div style="color:#546e7a;font-size:8.5px;margin-top:2px">Max DES differential (vs TTF) you are willing to pay · ${ML[mi2]}</div>
       </div>
       <div style="display:flex;align-items:center;gap:5px"><span style="color:#546e7a;font-size:8px">MONTH</span>${mSel('dashMonth2',mi2)}</div>
     </div>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse">
       <thead><tr>
-        <th ${TH}>TERMINAL</th><th ${TH}>HUB</th>
-        <th ${THR}>MAX WTP</th><th ${THR}>MKT DIFF</th><th ${THR}>HEADROOM</th><th ${TH}>SIGNAL</th>
+        <th ${TH}>TERMINAL</th><th ${TH}>HUB</th><th ${THR}>BREAKEVEN PRICE</th>
       </tr></thead>
       <tbody>${beRows}</tbody>
     </table>
     </div>
-    <div style="margin-top:6px;color:#3d5070;font-size:8px">$/MMBtu · Max WTP = Hub − VarCost − TTF · Headroom = Max WTP − Market Diff</div>
+    <div style="margin-top:6px;color:#3d5070;font-size:8px">$/MMBtu · Breakeven Price = Hub − VarCost − TTF · Positive = hub premium covers costs</div>
   </div>
 
   </div>`;
@@ -8883,23 +9018,24 @@ function rgDashboard(){
 // ── TAB 3: REGAS COSTS ──
 function rgCosts(){
   const mi=RG.selMonth;
-  const all=RG.terminals.map(t=>{const v=rgVar(t,mi),fx=rgFix(t);return{t,gik:v.gik,emiss:v.emiss,gridV:v.gridV,totVar:v.total,fixCap:fx.fixCap,gridF:fx.gridF,marit:fx.marit,totFix:fx.total,totAll:v.total+fx.total};});
-  const rkV=[...all].sort((a,b)=>a.totVar-b.totVar).map(x=>x.t.id);
-  const rkF=[...all].sort((a,b)=>a.fixCap-b.fixCap).map(x=>x.t.id);
-  const rkA=[...all].sort((a,b)=>a.totAll-b.totAll).map(x=>x.t.id);
+  const all=RG.terminals.map(t=>{const v=rgVar(t,mi),fx=rgFix(t,mi);const isNA=v.suppressed||fx.suppressed;return{t,gik:v.gik,emiss:v.emiss,gridV:v.gridV,totVar:v.total,fixCap:fx.fixCap,gridF:fx.gridF,marit:fx.marit,totFix:fx.total,totAll:isNA?null:v.total+fx.total,isNA};});
+  const validAll=all.filter(x=>!x.isNA);
+  const rkV=[...validAll].sort((a,b)=>a.totVar-b.totVar).map(x=>x.t.id);
+  const rkF=[...validAll].sort((a,b)=>a.fixCap-b.fixCap).map(x=>x.t.id);
+  const rkA=[...validAll].sort((a,b)=>a.totAll-b.totAll).map(x=>x.t.id);
   const rows=all.map(c=>`<tr>
     <td style="color:${c.t.tt==='per_mmbtu'&&c.t.hub==='THE'?'#ffeb3b':'var(--th)'};font-size:10px">${c.t.name}</td>
     <td style="color:#4fc3f7;font-size:9px">${c.t.hub}</td>
     <td class="tr">${c.t.gik.toFixed(2)}</td>
-    <td class="tr">${fmm(c.gik)}</td><td class="tr">${fmm(c.emiss)}</td><td class="tr" style="color:#546e7a">${fmm(c.gridV)}</td>
-    <td class="tr" style="background:#0d1f35;color:#4fc3f7;font-weight:700">${fmm(c.totVar)}</td>
-    <td class="tr" style="color:${c.t.tt==='per_mmbtu'?'#ffeb3b':'#c8d6e5'}">${fmm(c.fixCap)}</td>
-    <td class="tr" style="color:#546e7a">${fmm(c.gridF)}</td><td class="tr" style="color:#546e7a">${fmm(c.marit)}</td>
-    <td class="tr" style="background:#0d1f35;color:#81c784;font-weight:700">${fmm(c.totFix)}</td>
-    <td class="tr" style="background:#0d2a0d;color:#ffeb3b;font-weight:700">${fmm(c.totAll)}</td>
-    <td class="tr" style="color:#546e7a">${rkV.indexOf(c.t.id)+1}</td>
-    <td class="tr" style="color:#546e7a">${rkF.indexOf(c.t.id)+1}</td>
-    <td class="tr" style="color:#546e7a">${rkA.indexOf(c.t.id)+1}</td>
+    <td class="tr">${c.isNA?'N/A':fmm(c.gik)}</td><td class="tr">${c.isNA?'N/A':fmm(c.emiss)}</td><td class="tr" style="color:#546e7a">${c.isNA?'—':fmm(c.gridV)}</td>
+    <td class="tr" style="background:#0d1f35;color:#4fc3f7;font-weight:700">${c.isNA?'N/A':fmm(c.totVar)}</td>
+    <td class="tr" style="color:${c.t.tt==='per_mmbtu'?'#ffeb3b':'#c8d6e5'}" title="${c.t.hub==='NBP'?'GBP/USD used for slot cost':'EUR/USD used'}">${c.isNA?'N/A':(fmm(c.fixCap)+(c.t.hub==='NBP'?' £':''))}</td>
+    <td class="tr" style="color:#546e7a">${c.isNA?'—':fmm(c.gridF)}</td><td class="tr" style="color:#546e7a">${c.isNA?'—':fmm(c.marit)}</td>
+    <td class="tr" style="background:#0d1f35;color:#81c784;font-weight:700">${c.isNA?'N/A':fmm(c.totFix)}</td>
+    <td class="tr" style="background:#0d2a0d;color:#ffeb3b;font-weight:700">${c.isNA?'⛔ PRE-JUL':fmm(c.totAll)}</td>
+    <td class="tr" style="color:#546e7a">${c.isNA?'—':rkV.indexOf(c.t.id)+1||'—'}</td>
+    <td class="tr" style="color:#546e7a">${c.isNA?'—':rkF.indexOf(c.t.id)+1||'—'}</td>
+    <td class="tr" style="color:#546e7a">${c.isNA?'—':rkA.indexOf(c.t.id)+1||'—'}</td>
   </tr>`).join('');
   return`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
     <div class="f-sec" style="border:none;margin:0">SELECT MONTH</div>${msel()}
@@ -8917,57 +9053,163 @@ function rgCosts(){
   </tr></thead><tbody>${rows}</tbody></table></div>
   <div style="margin-top:10px;color:#546e7a;font-size:9px;line-height:1.8">
     GIK Cost = GIK% × Hub Price / (1 − GIK%) · Emission = Cqs × EUA × EUR/USD / 1000 · Grid(V) = TSO Opex (UK NBP only)<br>
-    FixCap: lump_sum → SlotCost × EUR/USD ÷ Cargo; per_mmbtu → Tariff × EUR/USD · Grid(F) = ${RG.gridCapex.toFixed(3)} · Maritime = Port cost × EUR/USD ÷ Cargo
+    FixCap: lump_sum → SlotCost × FX ÷ Cargo; per_mmbtu → Tariff × EUR/USD · Grid(F) = ${RG.gridCapex.toFixed(3)} · Maritime = Port cost × FX ÷ Cargo<br>
+    <span style="color:#f44336">£ = GBP/USD (${RG.gbpUsd}) used for UK NBP slot costs</span> · <span style="color:#ffb74d">* = EU ETS applied to UK terminals (UK ETS differs — indicative only)</span>
   </div>`;
 }
 
 // ── TAB 4: ITM MONITOR ──
-function rgITM(){
-  const mi=RG.selMonth;
-  const res=RG.terminals.map(t=>{const hp=rgHP(t.hub,mi),des=rgDES(t.id,mi),v=rgVar(t,mi),diff=(RG.diffs[t.id]||[])[mi]||0,money=hp-v.total-des;return{t,hp,des,diff,varC:v.total,money,itm:money>0};});
-  const ranked=[...res].sort((a,b)=>b.money-a.money);
-  const rkMap={};ranked.forEach((r,i)=>rkMap[r.t.id]=i+1);
-  const top10=ranked.slice(0,10).map(r=>r.t.id);
-  const rows=res.map(r=>`<tr style="${r.itm?'background:rgba(76,175,80,.07)':''}">
-    <td style="color:${r.itm?'#4caf50':'var(--th)'};font-size:10px;font-weight:${r.itm?700:400}">${r.t.name}</td>
-    <td style="color:#546e7a;font-size:9px">${r.t.country}</td>
-    <td style="color:#4fc3f7;font-size:9px">${r.t.hub}</td>
-    <td class="tr" style="color:${r.diff<0?'#f44336':r.diff===0?'#546e7a':'#4caf50'}">${r.diff.toFixed(2)}</td>
-    <td class="tr" style="color:#26c6da">${fmm(r.des)}</td>
-    <td class="tr">${fmm(r.varC)}</td>
-    <td class="tr" style="color:#ffeb3b;font-weight:700">${fmm(r.hp)}</td>
-    <td class="tr" style="color:${r.itm?'#4caf50':'#f44336'};font-weight:700;font-size:12px">${r.money>=0?'+':''}${fmm(r.money)}</td>
-    <td style="color:${r.itm?'#4caf50':'#f44336'};font-weight:700;font-size:10px;text-align:center">${r.itm?'ITM':'OTM'}</td>
-    <td class="tr" style="color:#546e7a">${rkMap[r.t.id]}</td>
-    <td style="color:#ffeb3b;font-size:9px;text-align:center">${top10.includes(r.t.id)?'★ TOP 10':''}</td>
-  </tr>`).join('');
-  const topRows=ranked.slice(0,10).map((r,i)=>`<tr><td style="color:#ffeb3b">${i+1}</td><td style="color:#4caf50;font-weight:700;font-size:10px">${r.t.name}</td><td style="color:#4fc3f7;font-size:9px">${r.t.hub}</td><td class="tr" style="color:#4caf50;font-weight:700">${r.money>=0?'+':''}${fmm(r.money)}</td></tr>`).join('');
-  return`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-    <div class="f-sec" style="border:none;margin:0">SELECT MONTH</div>${msel()}
-    <span style="color:#546e7a;font-size:9px">Moneyness = Hub Price − Variable Cost − DES Price</span>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 260px;gap:12px;margin-bottom:14px">
-    <div class="f-card"><div class="f-sec">TOP 10 ITM TERMINALS — ${ML[mi]}</div>
-      <table class="rg-tbl"><thead><tr><th>#</th><th>TERMINAL</th><th>HUB</th><th class="tr">MONEYNESS</th></tr></thead><tbody>${topRows}</tbody></table>
-    </div>
-    <div class="f-card"><div class="f-sec">MARKET SNAPSHOT — ${ML[mi]}</div>
-      ${RG_HUBS.map(h=>`<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px"><span style="color:#546e7a">${h}</span><span style="color:#4fc3f7;font-weight:700">${rgHP(h,mi).toFixed(3)}</span></div>`).join('')}
-      <div style="border-top:1px solid #1e3a5f;padding-top:8px;margin-top:6px">
-        <div style="font-size:9px;color:#4caf50">ITM: ${res.filter(r=>r.itm).length} terminals</div>
-        <div style="font-size:9px;color:#f44336">OTM: ${res.filter(r=>!r.itm).length} terminals</div>
-        <div style="font-size:9px;color:#546e7a;margin-top:4px">EUR/USD: ${RG.eurUsd} · EUA: €${RG.eua}/t</div>
-      </div>
-    </div>
-  </div>
-  <div class="f-sec">IN-THE-MONEY MONITOR — ALL TERMINALS</div>
-  <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
-    <th style="min-width:130px">TERMINAL</th><th>COUNTRY</th><th>HUB</th>
-    <th class="tr">TTF DIFF</th><th class="tr">DES PRICE</th><th class="tr">VAR COST</th>
-    <th class="tr">HUB PRICE</th><th class="tr">MONEYNESS</th><th>STATUS</th><th class="tr">RANK</th><th>TOP 10</th>
-  </tr></thead><tbody>${rows}</tbody></table></div>`;
+function getRollingMonths(){
+  // Find the 8 forward months starting from next calendar month
+  const now=new Date();
+  const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // Find M+1 in ML
+  const next=new Date(now.getFullYear(),now.getMonth()+1,1);
+  const lbl=`${mo[next.getMonth()]}-${String(next.getFullYear()).slice(2)}`;
+  let idx=ML.indexOf(lbl);
+  if(idx<0){
+    // fallback: use selMonth
+    idx=RG.selMonth;
+  }
+  // Return 8 month indices (capped at ML length)
+  return Array.from({length:8},(_,i)=>idx+i).filter(i=>i>=0&&i<ML.length);
 }
 
-// ── TAB 5: COST GRAPH (NEW) ──
+function msel8(){
+  const r8=getRollingMonths();
+  return`<select class="f-sel" onchange="RG.selMonth=+this.value;rgRT()">${r8.map(i=>`<option value="${i}"${RG.selMonth===i?' selected':''}>${ML[i]}</option>`).join('')}</select>`;
+}
+function rgITM(){
+  const mi=RG.selMonth; // kept for single-month detail panel
+  const SUPP=['cartagena','huelva','bilbao','mugardos','sagunto'];
+  const MONTHS8=getRollingMonths();
+
+  // ── Heatmap: terminals × 8 months ──────────────────────────────────
+  // Compute moneyness for each terminal × each of the 8 months
+  const termData=RG.terminals.map(t=>{
+    const months=MONTHS8.map(mj=>{
+      const hp=rgHP(t.hub,mj),des=rgDES(t.id,mj),v=rgVar(t,mj);
+      const money=hp-v.total-des;
+      return{mj,hp,des,varC:v.total,money,itm:money>0};
+    });
+    // rank by avg moneyness
+    const avgMoney=months.reduce((s,m)=>s+m.money,0)/months.length;
+    return{t,months,avgMoney,suppressed:SUPP.includes(t.id)};
+  }).sort((a,b)=>b.avgMoney-a.avgMoney);
+
+  // Color scale: green (ITM) to red (OTM), white=breakeven
+  function moneyColor(v){
+    if(v===null||v===undefined)return'#1a2d45';
+    const abs=Math.min(Math.abs(v),1.5)/1.5;
+    if(v>0){const g=Math.round(76+abs*120);return`rgba(30,${g+60},50,0.85)`;}
+    else if(v<0){const r=Math.round(150+abs*80);return`rgba(${r+50},30,30,0.85)`;}
+    return'#2a3f5f';
+  }
+
+  const heatRows=termData.map(({t,months,suppressed})=>{
+    const cells=months.map(({money,mj})=>{
+      if(money===null||isNaN(money))return`<td style="background:#1a2d45;color:#3d5070;font-size:9px;text-align:center">N/A</td>`;
+      const bg=moneyColor(money);
+      const txt=money>=0?`+${money.toFixed(2)}`:money.toFixed(2);
+      const fc=Math.abs(money)>0.3?'#ffffff':money>0?'#b9f6ca':'#ffcdd2';
+      return`<td style="background:${bg};color:${fc};font-size:9px;text-align:center;padding:4px 3px;font-weight:${Math.abs(money)>0.2?600:400}">${txt}</td>`;
+    }).join('');
+
+    const nameCol=suppressed?'#3d5070':(termData.find(d=>d.t.id===t.id)?.months.every(m=>m.itm)?'#4caf50':'#c8d6e5');
+    const supp=suppressed?'<span style="color:#3d5070;font-size:8px"> (→Bcn)</span>':'';
+    return`<tr style="border-bottom:1px solid #0d1929">
+      <td style="color:${nameCol};font-size:10px;padding:4px 8px;white-space:nowrap;font-weight:600">${t.name}${supp}</td>
+      <td style="color:#546e7a;font-size:9px;padding:4px 6px">${t.hub}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  // Month headers
+  const mHdrs=MONTHS8.map(mj=>`<th style="text-align:center;min-width:62px;color:#4fc3f7;font-size:9px;padding:5px 3px">${ML[mj]}</th>`).join('');
+
+  // ── Single-month detail panel (right side) ──────────────────────────
+  const res=RG.terminals.map(t=>{
+    const hp=rgHP(t.hub,mi),des=rgDES(t.id,mi),v=rgVar(t,mi),diff=(RG.diffs[t.id]||[])[mi]||0,money=hp-v.total-des;
+    return{t,hp,des,diff,varC:v.total,money,itm:money>0};
+  });
+  const itmCount=res.filter(r=>r.itm).length;
+  const ranked=[...res].sort((a,b)=>b.money-a.money);
+  const top5=ranked.slice(0,5).map((r,i)=>`<tr>
+    <td style="color:#ffeb3b;font-size:10px;text-align:center">${i+1}</td>
+    <td style="color:#4caf50;font-weight:600;font-size:10px">${r.t.name}</td>
+    <td style="color:#4fc3f7;font-size:9px">${r.t.hub}</td>
+    <td style="color:#4caf50;font-weight:700;font-size:10px;text-align:right">${r.money>=0?'+':''}${fmm(r.money)}</td>
+  </tr>`).join('');
+
+  const rollRange=MONTHS8.length>0?`${ML[MONTHS8[0]]} → ${ML[MONTHS8[MONTHS8.length-1]]}`:'-';
+
+  return`
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    <span style="color:#4fc3f7;font-size:11px;font-weight:700;letter-spacing:2px">ITM MONITOR</span>
+    <span style="color:#546e7a;font-size:9px">8-MONTH ROLLING WINDOW · ${rollRange}</span>
+    <span style="color:#546e7a;font-size:9px">·</span>
+    <span style="color:#4caf50;font-size:9px">${itmCount} ITM</span>
+    <span style="color:#f44336;font-size:9px">/ ${res.length} total</span>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+      <span style="color:#546e7a;font-size:8px">DETAIL MONTH</span>${msel()}
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 220px;gap:14px">
+
+    <!-- Heatmap -->
+    <div class="f-card" style="padding:10px">
+      <div style="color:#546e7a;font-size:8px;margin-bottom:8px">
+        Moneyness = Hub − VarCost − DES  ·  Green = ITM  ·  Red = OTM  ·  Auto-rolls each month  ·  Spain: Barcelona representative
+      </div>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="text-align:left;min-width:130px;color:#4fc3f7;font-size:9px;padding:5px 8px">TERMINAL</th>
+          <th style="text-align:left;min-width:44px;color:#4fc3f7;font-size:9px;padding:5px 6px">HUB</th>
+          ${mHdrs}
+        </tr></thead>
+        <tbody>${heatRows}</tbody>
+      </table>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:8px;font-size:8px;color:#546e7a">
+        <span style="display:inline-block;width:12px;height:10px;background:rgba(106,196,106,0.85);border-radius:2px;vertical-align:middle"></span> ITM (positive moneyness)
+        <span style="display:inline-block;width:12px;height:10px;background:rgba(220,80,80,0.85);border-radius:2px;vertical-align:middle"></span> OTM (negative moneyness)
+        <span style="color:#3d5070">→Bcn = Barcelona represents Spain</span>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div>
+      <div class="f-card" style="padding:10px;margin-bottom:10px">
+        <div style="color:#4fc3f7;font-size:10px;font-weight:700;margin-bottom:8px">TOP 5 — ${ML[mi]}</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th style="color:#546e7a;font-size:8px;padding:3px 4px">#</th>
+            <th style="color:#546e7a;font-size:8px;padding:3px 6px">TERMINAL</th>
+            <th style="color:#546e7a;font-size:8px;padding:3px 6px">HUB</th>
+            <th style="color:#546e7a;font-size:8px;padding:3px 6px;text-align:right">MONEY</th>
+          </tr></thead>
+          <tbody>${top5}</tbody>
+        </table>
+      </div>
+      <div class="f-card" style="padding:10px">
+        <div style="color:#ffeb3b;font-size:10px;font-weight:700;margin-bottom:8px">HUB PRICES — ${ML[mi]}</div>
+        ${RG_HUBS.map(hub=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:10px">
+          <span style="color:#546e7a">${hub}</span>
+          <span style="color:#4fc3f7;font-weight:700">${rgHP(hub,mi).toFixed(3)}</span>
+        </div>`).join('')}
+        <div style="border-top:1px solid #1e3a5f;margin-top:6px;padding-top:6px;font-size:9px;color:#546e7a">
+          EUR/USD ${RG.eurUsd} · EUA €${RG.eua}
+        </div>
+      </div>
+    </div>
+
+  </div>`;
+}
+
+
+// ── TAB 6: COST GRAPH ──
 function rgCostGraph(){
   const mi=RG.cgMonth,unit=RG.cgUnit||'usd',showTotal=!!RG.cgShowTotal;
   const toU=v=>unit==='eur'?+(v*3.41214/RG.eurUsd).toFixed(4):+v.toFixed(4);
@@ -8979,7 +9221,7 @@ function rgCostGraph(){
     return{name:t.name,id:t.id,isGerman:GERMAN.includes(t.id),varC,fixC,dispC:showTotal?varC+fixC:varC};
   }).sort((a,b)=>b.dispC-a.dispC);
 
-  const W=640,rowH=21,PL=158,PR=72,PT=48,PB=56;
+  const W=560,rowH=18,PL=150,PR=65,PT=40,PB=48;
   const H=PT+pts.length*rowH+PB;
   const maxVal=Math.max(...pts.map(d=>showTotal?d.varC+d.fixC:d.varC))*1.18||2;
   const xs=v=>PL+(v/maxVal)*(W-PL-PR);
@@ -9064,14 +9306,14 @@ function rgImplied(){
   }).join('');
   return`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
     <div class="f-sec" style="border:none;margin:0">SELECT MONTH</div>${msel()}
-    <span style="color:#546e7a;font-size:9px">Implied Diff = Hub − VarCost − Quoted Moneyness − TTF</span>
+    <span style="color:#546e7a;font-size:9px">Breakeven Level = Hub − VarCost − Quoted Moneyness − TTF · Positive = you can pay above TTF for DES</span>
   </div>
   <div class="f-grid f-g3" style="gap:8px;margin-bottom:14px">
     <div class="f-card"><div style="color:#4caf50;font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:5px">★ CHEAP — GOOD DEAL</div><div style="color:#546e7a;font-size:9px;line-height:1.7">Implied DES > Market DES · Basis > +0.05<br>Counterparty offering value vs market</div></div>
     <div class="f-card"><div style="color:#ffeb3b;font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:5px">◎ FAIR — IN LINE WITH MARKET</div><div style="color:#546e7a;font-size:9px;line-height:1.7">Implied ≈ Market Diff · Basis within ±0.05<br>Quote consistent with where DES trades</div></div>
     <div class="f-card"><div style="color:#f44336;font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:5px">✗ EXPENSIVE — BAD DEAL</div><div style="color:#546e7a;font-size:9px;line-height:1.7">Implied DES < Market DES · Basis < −0.05<br>Counterparty extracting value from DES</div></div>
   </div>
-  <div class="f-sec">IMPLIED DES ANALYSIS — ${ML[mi]} · All values $/MMBtu</div>
+  <div class="f-sec">BREAKEVEN LEVEL ANALYSIS — ${ML[mi]} · All values $/MMBtu</div>
   <div style="color:#546e7a;font-size:9px;margin-bottom:10px">Enter counterparty's quoted moneyness per terminal. Model back-solves the implied TTF differential and compares to your market DES.</div>
   <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
     <th style="min-width:130px">TERMINAL</th><th>HUB</th>
@@ -9096,7 +9338,26 @@ function rgNBK(){
   const totV=v.total+extras;
   const fx=rgFix(t);
   const intr=hp-des-totV;
-  const extV=RG.nbkExtrinsic?RG.nbkRawExt*RG.nbkCapture/100:0;
+  // Option pricing
+  const T=Math.max(mi-0,0.1)/12;
+  const sig=(RG.nbkVol||25)/100;
+  const F=intr,K=fx.total;
+  let rawExt=0;
+  if(!RG.nbkPrompt&&intr>0){
+    const model=RG.nbkModel||'Black-76';
+    if(model==='Black-76'&&F>0&&K>=0){
+      const d1=(Math.log(Math.max(F,0.0001)/Math.max(K,0.0001))+0.5*sig*sig*T)/(sig*Math.sqrt(T));
+      const d2=d1-sig*Math.sqrt(T);
+      const nd1=0.5*(1+erf(d1/Math.SQRT2)),nd2=0.5*(1+erf(d2/Math.SQRT2));
+      rawExt=Math.max(F*nd1-K*nd2,0);
+    } else if(model==='Gaussian'){
+      const sigN=sig*Math.abs(F)*Math.sqrt(T);
+      if(sigN>0){const z=(F-K)/sigN;rawExt=(F-K)*(0.5*(1+erf(z/Math.SQRT2)))+sigN*(1/Math.sqrt(2*Math.PI))*Math.exp(-z*z/2);}
+      else rawExt=Math.max(F-K,0);
+    } else if(model==='Manual'){rawExt=RG.nbkRawExt;}
+  }
+  function erf(x){const t=1/(1+0.3275911*Math.abs(x));const p=t*(0.254829592+t*(-0.284496736+t*(1.421413741+t*(-1.453152027+t*1.061405429))));const e=1-p*Math.exp(-x*x);return x>=0?e:-e;}
+  const extV=rawExt*(RG.nbkCapture||70)/100;
   const totVal=intr+extV,maxBid=totVal,recBid=maxBid*0.90;
   const cfPT=(hp-des-totV-fx.total)*RG.cargo/1e6;
   const col=v=>v>=0?'#4caf50':'#f44336';
@@ -9114,7 +9375,7 @@ function rgNBK(){
       </div>
     </div>
     <div class="f-card"><div class="f-sec">MARKET DATA</div>
-      ${[['TTF (€/MWh)',RG.ttfCurve[mi].toFixed(3),'#c8d6e5'],['EUR/USD',RG.eurUsd,'#c8d6e5'],['TTF ($/MMBtu)',rgTTF(mi).toFixed(4),'#4fc3f7'],['Hub Price ('+t.hub+')',hp.toFixed(4),'#ffeb3b'],['TTF Differential',diff.toFixed(3),'#f44336'],['DES Price',des.toFixed(4),'#26c6da']].map(([l,v2,c])=>`<div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px"><span style="color:#546e7a">${l}</span><span style="color:${c};font-weight:700">${v2}</span></div>`).join('')}
+      ${[['TTF (€/MWh)',(RG.ttfCurve[mi]||0).toFixed(2),'#c8d6e5'],['GBP/USD (UK)',RG.gbpUsd,'#c8d6e5'],['EUR/USD',RG.eurUsd,'#c8d6e5'],['TTF ($/MMBtu)',rgTTF(mi).toFixed(4),'#4fc3f7'],['Hub Price ('+t.hub+')',hp.toFixed(4),'#ffeb3b'],['TTF Differential',diff.toFixed(3),'#f44336'],['DES Price',des.toFixed(4),'#26c6da']].map(([l,v2,c])=>`<div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px"><span style="color:#546e7a">${l}</span><span style="color:${c};font-weight:700">${v2}</span></div>`).join('')}
     </div>
   </div>
   <div class="f-grid f-g2" style="margin-bottom:12px">
@@ -9136,12 +9397,19 @@ function rgNBK(){
   </div>
   <div class="f-grid f-g2" style="margin-bottom:12px">
     <div class="f-card"><div class="f-sec">EXTRINSIC VALUE (OPTIONALITY)</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <span style="color:#546e7a;font-size:9px">Include Extrinsic?</span>
-        <button class="f-btn sm${RG.nbkExtrinsic?' on':''}" onclick="RG.nbkExtrinsic=!RG.nbkExtrinsic;rgRT()">${RG.nbkExtrinsic?'YES':'NO'}</button>
-        <span style="color:#546e7a;font-size:9px">YES for slots 2+ months out</span>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <span style="color:#546e7a;font-size:9px">Prompt Slot?</span>
+        <button class="f-btn sm${RG.nbkPrompt?' on':''}" onclick="RG.nbkPrompt=!RG.nbkPrompt;rgRT()">${RG.nbkPrompt?'YES — No Extrinsic':'NO — Include Extrinsic'}</button>
       </div>
-      ${[['Volatility (annual %)',RG.nbkVol,'nbkVol',1],['Raw Extrinsic Value',RG.nbkRawExt,'nbkRawExt',0.001],['Capture Rate (%)',RG.nbkCapture,'nbkCapture',5]].map(([l,val,k,s])=>`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="color:#546e7a;font-size:9px">${l}</span><input class="rg-inp" style="width:80px;text-align:right" type="number" step="${s}" value="${val}" onchange="RG.${k}=+this.value;rgRT()"></div>`).join('')}
+      <div style="margin-bottom:8px">
+        <span style="color:#546e7a;font-size:9px">Pricing Model</span>
+        <div style="display:flex;gap:4px;margin-top:4px">
+          ${['Black-76','Gaussian','Manual'].map(m=>`<button class="f-btn sm${(RG.nbkModel||'Black-76')===m?' on':''}" onclick="RG.nbkModel='${m}';rgRT()">${m}</button>`).join('')}
+        </div>
+      </div>
+      ${[['Volatility (σ annual %)',RG.nbkVol,'nbkVol',1],['Time to Delivery (mo)',+(Math.max(mi-0,0.1)).toFixed(1),null,null],['K (Reserve = FixCap)',fx.total,null,null],['F (Spread = Intrinsic)',intr,null,null]].map(([l,val,k,s])=>`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="color:#546e7a;font-size:9px">${l}</span>${k?`<input class="rg-inp" style="width:70px;text-align:right" type="number" step="${s}" value="${val}" onchange="RG.${k}=+this.value;rgRT()">`:` <span style="color:#c8d6e5;font-size:10px">${typeof val==='number'?val.toFixed(3):val}</span>`}</div>`).join('')}
+      ${RG.nbkModel==='Manual'?`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="color:#546e7a;font-size:9px">Manual Ext Value</span><input class="rg-inp" style="width:70px;text-align:right" type="number" step="0.001" value="${RG.nbkRawExt}" onchange="RG.nbkRawExt=+this.value;rgRT()"></div>`:''}
+      ${[['Capture Rate (%)',RG.nbkCapture,'nbkCapture',5]].map(([l,val,k,s])=>`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="color:#546e7a;font-size:9px">${l}</span><input class="rg-inp" style="width:70px;text-align:right" type="number" step="${s}" value="${val}" onchange="RG.${k}=+this.value;rgRT()"></div>`).join('')}
       <div style="border-top:1px solid #1e3a5f;padding-top:6px;margin-top:4px;display:flex;justify-content:space-between"><span style="color:#a78bfa;font-weight:700">EXTRINSIC VALUE</span><span style="color:#a78bfa;font-weight:700">${fmm(extV)}</span></div>
     </div>
     <div class="f-card"><div class="f-sec">SLOT BID RECOMMENDATION</div>
@@ -9192,9 +9460,9 @@ function rgKB(){
     {n:'Inkoo',c:'Finland',gik:'3.0% FSRU own-use fuel — HIGHEST in model',cost:'2.46 €/MWh terminal + Gasgrid entry = MOST EXPENSIVE total',hub:'TTF (via Balticconnector)',access:'Annual procedure Jul-Aug. ~13 of 20 slots unbooked 2026.',notes:'MOST EXPENSIVE in model. 15-18% utilisation 2025.'},
     {n:'Spanish Terminals (6)',c:'Spain',gik:'~0.5%',cost:'CNMC: Fixed Term + Variable €17.00/GWh',hub:'PVB',access:'ATR short-term via Enagás. FCFS.',notes:'LARGEST EU LNG infra. LOWEST utilisation (~34%).'},
     {n:'Sines',c:'Portugal',gik:'~0.75%',cost:'ERSE-regulated',hub:'PVB (MIBGAS/Iberian)',access:'Contact REN Gas. FCFS.',notes:'Strategic Atlantic import point. Americas/WAF/Qatar cargoes.'},
-    {n:'Dragon LNG',c:'UK',gik:'0.30%',cost:'Ofgem-regulated + NGGT TSO Capex + TSO Opex',hub:'NBP',access:'NGGT capacity booking + terminal spot. PRISMA secondary.',notes:'UK UNIQUE: 4 cost components. NGGT TSO Opex variable ~0.02 $/MMBtu.'},
-    {n:'Isle of Grain',c:'UK',gik:'0.25%',cost:'Ofgem-regulated + NGGT (Capex + Opex)',hub:'NBP',access:'Secondary market via xoserve/PRISMA.',notes:'Centrica + ECP. NBP at discount to TTF (~1.40 $/MMBtu as of Mar-26).'},
-    {n:'South Hook',c:'UK',gik:'0.20% — LOWEST in Europe',cost:'Formula: max[(Pelec×1.08)+(Peac×2.33)+70.2] £/GWh. NTS Entry = £0/GWh.',hub:'NBP',access:'Long-term Qatari tolling. No spot.',notes:'NTS Entry Capacity = £0/GWh (unique among UK). Regas fee formula-based.'}
+    {n:'Dragon LNG',c:'UK',gik:'0.30%',cost:'Ofgem-regulated + NGGT TSO Capex + TSO Opex. GBP-denominated slot. ⚠️ EU ETS used as proxy.',hub:'NBP',access:'NGGT capacity booking + terminal spot. PRISMA secondary.',notes:'UK UNIQUE: 4 cost components. NGGT TSO Opex variable ~0.02 $/MMBtu. UK ETS applies (not EU ETS). Model uses EU ETS as indicative proxy.'},
+    {n:'Isle of Grain',c:'UK',gik:'0.25%',cost:'Ofgem-regulated + NGGT (Capex + Opex). GBP-denominated slot. ⚠️ EU ETS used as proxy.',hub:'NBP',access:'Secondary market via xoserve/PRISMA.',notes:'Centrica + ECP. NBP at persistent discount to TTF. UK ETS applies (not EU ETS). Model uses EU ETS as indicative proxy.'},
+    {n:'South Hook',c:'UK',gik:'0.20% — LOWEST in Europe',cost:'Public reserve price: ~£695/GWh ≈ £0.20/MMBtu. NTS Entry = £0/GWh (unique). Model: £450K slot (indicative — actual costs via bilateral/auction).',hub:'NBP',access:'Predominantly Qatari long-term tolling. Spot access limited — approach South Hook Gas directly.',notes:'NTS Entry = £0/GWh (unique in UK). Public auction reserve: £695.32/GWh. ⚠️ EU ETS used as proxy — UK ETS applies. GBP/USD used for slot costs.'}
   ];
   const rows=data.map(d=>`<tr>
     <td style="color:var(--th);font-size:10px;font-weight:500">${d.n}</td>
@@ -9242,8 +9510,8 @@ function rgAutoLoadFromFinancial(){
       const pk=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
       const row=rows.find(r=>r.pk===pk);
       const eu=row?.['EUR/USD']||eurUsd,gbu=row?.['GBP/USD']||gbpUsd;
-      if(row?.TTF!=null){nc.TTF.push(+(row.TTF*eu/3.412).toFixed(3));ttfN++;}
-      else nc.TTF.push(RG.ttfCurve[i]||17.50);
+      if(row?.TTF!=null){nc.TTF.push(+(row.TTF).toFixed(3));ttfN++;}
+      else nc.TTF.push(RG.ttfCurve[i]||46.0);  // fallback in €/MWh
       nc.NBP.push(row?.NBP!=null?+(row.NBP*gbu*0.1).toFixed(3):+(nc.TTF[i]-0.165).toFixed(3));
       nc.ZEE.push(+(nc.TTF[i]+0.015).toFixed(3));
     }
@@ -9272,8 +9540,8 @@ function rgAutoLoadFromFinancial(){
     while(nc[hub].length<24)nc[hub].push(nc[hub][nc[hub].length-1]||17.50);
     for(let i=0;i<24;i++)if(nc[hub][i]==null)nc[hub][i]=nc.TTF[i]+(RG.hubSpreads[hub]||0);
   });
-  RG.ttfCurve=nc.TTF;RG.hubCurves=nc;RG.eurUsd=eurUsd;
-  rgs('ttfCurve',nc.TTF);rgs('hubCurves',nc);rgs('eurUsd',eurUsd);
+  RG.ttfCurve=nc.TTF;RG.hubCurves=nc;RG.eurUsd=eurUsd;RG.gbpUsd=gbpUsd;
+  rgs('ttfCurve',nc.TTF);rgs('hubCurves',nc);rgs('eurUsd',eurUsd);rgs('gbpUsd',gbpUsd);
   RG.tab=1;renderRegas();
   setTimeout(()=>alert('✅ Hub Curves synced:\n\n'+msgs.join('\n')+'\n\nUse ↺ SYNC PHYS DIFFS to update DES differentials from LNG Netback.'),80);
 }
