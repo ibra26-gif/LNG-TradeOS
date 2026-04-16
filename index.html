@@ -12046,6 +12046,19 @@ function indGetData(){
   catch{return null;}
 }
 
+function lngbalCountry(cty,btn){
+  document.querySelectorAll('#lngbal-cty-bar .cty-tab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  document.getElementById('lngbal-china').style.display=cty==='china'?'':'none';
+  document.getElementById('lngbal-india').style.display=cty==='india'?'':'none';
+  if(cty==='india'){
+    indInit();
+  } else {
+    if(typeof csInit==='function') setTimeout(csInit,80);
+  }
+}
+window.lngbalCountry=lngbalCountry;
+
 function indInit(){
   const container=document.getElementById('ind-container');
   if(!container)return;
