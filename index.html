@@ -844,7 +844,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
 
     // Brent 3M avg by delivery month for LT formula (monthly Tab4)
     function getBrentMonthlyLT() {
-      if(typeof sDates==='undefined'||!sDates.length) return {};
+      if(typeof sDates==='undefined'||!sDates.length) {
+        // Fallback: use BRENT_HIST if available (global)
+        if(typeof BRENT_HIST!=='undefined') return Object.assign({},BRENT_HIST);
+        return {};
+      }
       const bMap = {};
       sDates.forEach(ds=>{ const d=aD[ds]?.date; if(!d)return; const pk=rPK(d,1); const row=(aD[ds].rows||[]).find(r=>r.pk===pk); if(row?.Brent!=null) bMap[ds]=row.Brent; });
       const first=new Date(sDates[0]), last=new Date(sDates[sDates.length-1]);
@@ -1509,7 +1513,7 @@ function csPricesUpdate(){
   const jkmM1=cpFP?.JKM?.[0]??null;
   const jkmDES=jkmM1!=null?+(jkmM1-0.15).toFixed(3):null;
 
-  // Brent — same pattern as csT2Update
+  // Brent — same pattern as csT2Update, with BRENT_HIST fallback
   let brentLatest=null;
   (sDates||[]).forEach(ds=>{
     if(brentLatest!=null) return;
@@ -1519,6 +1523,7 @@ function csPricesUpdate(){
     const row=(aD[ds]?.rows||[]).find(r=>r.pk===pk&&r.Brent!=null)||(aD[ds]?.rows||[]).find(r=>r.Brent!=null);
     if(row?.Brent!=null) brentLatest=row.Brent;
   });
+  if(brentLatest==null&&typeof brentFallback==='function') brentLatest=brentFallback();
   const ltFloor=brentLatest?+(brentLatest*0.11).toFixed(2):null;
   const ltCeil=brentLatest?+(brentLatest*0.14).toFixed(2):null;
 
@@ -2519,7 +2524,7 @@ window.csPricesUpdate=csPricesUpdate;
         <div class="ga-card">
           <div class="ga-sec">STORAGE ADJUSTMENT <span class="ga-tag">BCM · seasonal est.</span></div>
           <div class="ga-ch-wrap" style="height:220px"><canvas id="cn-gb-storage"></canvas></div>
-          <div class="ga-source">Positive = storage draw (supply boost) · Negative = injection (demand absorbed)</div>
+          <div class="ga-source">Amber bars ↑ = withdrawal (drawn from storage) · Teal bars ↓ = injection (into storage) · Seasonal est.</div>
         </div>
       </div>
 
@@ -2582,13 +2587,14 @@ window.csPricesUpdate=csPricesUpdate;
            plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}},
                     tooltip:{callbacks:{afterBody(items){const mo=filt[items[0].dataIndex].mo;const tot=totImports[items[0].dataIndex];if(!tot)return[];const lng=filt[items[0].dataIndex].lng||0;const pipe=filt[items[0].dataIndex].pipe||0;return[`LNG: ${(lng/tot*100).toFixed(1)}%`,`Pipeline: ${(pipe/tot*100).toFixed(1)}%`];}}}}});
 
-        // Chart 3: Storage adj
+        // Chart 3: Storage adj — amber = withdrawal, teal = injection
         const storV=filt.map(r=>CN_STOR_ADJ[r.mo.slice(5,7)]||0);
         gaMakeChart('cn-gb-storage','bar',{labels,datasets:[{
           label:'Storage Δ (BCM)',data:storV,
-          backgroundColor:storV.map(v=>v>0?'rgba(74,222,128,0.5)':'rgba(248,113,113,0.5)'),
-          borderColor:storV.map(v=>v>0?'#4ade80':'#f87171'),borderWidth:1,
-        }]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:'BCM',color:'#3d5070',font:{size:9}}}},plugins:{legend:{display:false}}});
+          backgroundColor:storV.map(v=>v>0?'rgba(255,183,77,0.55)':'rgba(77,208,225,0.55)'),
+          borderColor:storV.map(v=>v>0?'#ffb74d':'#4dd0e1'),borderWidth:1,
+        }]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:'BCM',color:'#3d5070',font:{size:9}}}},plugins:{legend:{display:false},
+          tooltip:{callbacks:{afterLabel(ctx){return ctx.raw>0?'↑ WITHDRAWAL (storage draw)':'↓ INJECTION (into storage)';}}}}});
 
         // Chart 4: Seasonal
         const curY=new Date().getFullYear();
@@ -2804,6 +2810,18 @@ const ML=(function(){
 })();
 
 // ══ SHELL ══
+// Brent monthly fallback ($/bbl) — used when EOD not loaded
+// Sources: ICE Brent M+1 monthly settlement averages, approximate
+const BRENT_HIST={
+'2024-01':78,'2024-02':82,'2024-03':85,'2024-04':88,'2024-05':82,
+'2024-06':83,'2024-07':82,'2024-08':79,'2024-09':74,
+'2024-10':75,'2024-11':73,'2024-12':73,
+'2025-01':79,'2025-02':76,'2025-03':73,'2025-04':68,'2025-05':65,
+'2025-06':67,'2025-07':72,'2025-08':70,'2025-09':68,
+'2025-10':71,'2025-11':73,'2025-12':74,
+'2026-01':77,'2026-02':75,'2026-03':72,'2026-04':62,
+};
+function brentFallback(){const d=new Date();for(let i=0;i<6;i++){const mo=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;if(BRENT_HIST[mo])return BRENT_HIST[mo];d.setMonth(d.getMonth()-1);}return null;}
 let finLoaded=false;
 const PH_T={freight:'FREIGHT RATE CALCULATOR',cargo:'LNG GLOBAL NETBACK',mktstr:'MARKET STRUCTURE PRICING',regas:'EU REGAS MODEL',acer:'HISTORICAL ACER'};
 const PH_D={freight:'Voyage cost estimation across global LNG shipping routes with BLNG curves',cargo:'USGC/WAF/Oman arb, DES pricing, FOB netback matrix and global cargo economics',mktstr:'Near/far curve structure, per-day roll, pricing formula generation for JKM and TTF — leverages the loaded forward curve',regas:'European regasification terminal pricing, cost graphs, netback analysis and slot valuation',acer:'ACER daily DES physical NWE · SE · EU — seasonal scatter all daily obs, 2023–2026'};
@@ -12689,10 +12707,10 @@ function renderIndPrices(el){
   const cpFP=cpGet('cp_fp',null);
   const jkmM1=cpFP?.JKM?.[0]??null;
   const jkmDES=jkmM1!=null?+(jkmM1-0.35).toFixed(3):null;
-  // Get latest Brent from EOD — same tenor logic as China signpost
+  // Get latest Brent from EOD — same tenor logic as China signpost, with BRENT_HIST fallback
   const brentLatest=(()=>{
     try{
-      if(!sDates||!sDates.length) return null;
+      if(!sDates||!sDates.length) return typeof brentFallback==='function'?brentFallback():null;
       for(const ds of [...sDates].reverse()){
         const d=aD[ds]?.date; if(!d) continue;
         const tenor=d.getDate()>=16?2:1;
@@ -12701,8 +12719,8 @@ function renderIndPrices(el){
         const row=rows.find(r=>r.pk===pk&&r.Brent!=null)||(rows.find(r=>r.Brent!=null));
         if(row?.Brent!=null) return row.Brent;
       }
-      return null;
-    }catch{return null;}
+      return typeof brentFallback==='function'?brentFallback():null;
+    }catch{return typeof brentFallback==='function'?brentFallback():null;}
   })();
   const ltFloor=brentLatest!=null?+(brentLatest*0.11).toFixed(2):null;
   const ltCeil=brentLatest!=null?+(brentLatest*0.14).toFixed(2):null;
