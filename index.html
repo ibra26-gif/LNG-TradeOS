@@ -618,7 +618,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
     <button class="gmtab active" id="gmtab-dashboard" onclick="gaMainTab('dashboard',this)">DASHBOARD</button>
     <button class="gmtab" id="gmtab-lngbal" onclick="gaMainTab('lngbal',this)">LNG BALANCE</button>
     <button class="gmtab" id="gmtab-eugas"  onclick="gaMainTab('eugas',this)">EU GAS BALANCE</button>
-    <button class="gmtab" id="gmtab-storage" onclick="gaMainTab('storage',this)">EU STORAGE</button>
+    
     <button class="gmtab" id="gmtab-regas"  onclick="gaMainTab('regas',this)">LNG REGAS</button>
     <button class="gmtab" id="gmtab-lngvc"  onclick="gaMainTab('lngvc',this)">LNG VALUE CHAIN</button>
   </div>
@@ -10270,8 +10270,14 @@ async function gdLoadStorageCountries(from, to){
         if(!mo) return;
         const pct=parseFloat(d.full)||0;
         const twh=parseFloat(d.gasInStorage)||0;
-        if(!GD.storByCtry[code][mo] || date>(GD.storByCtry[code][mo].date||''))
-          GD.storByCtry[code][mo]={pct,twh,date};
+        const inj=parseFloat(d.injection||d.inj)||0;
+        const wdr=parseFloat(d.withdrawal||d.wdr)||0;
+        if(!GD.storByCtry[code][mo] || date>(GD.storByCtry[code][mo].date||'')){
+          const prev=GD.storByCtry[code][mo];
+          GD.storByCtry[code][mo]={pct,twh,date,
+            inj_sum:(prev?.inj_sum||0)+inj, wdr_sum:(prev?.wdr_sum||0)+wdr,
+            days:(prev?.days||0)+1};
+        }
       });
     }catch(e){ console.warn(`AGSI ${code}:`,e.message); }
     await new Promise(r=>setTimeout(r,300));
@@ -10285,9 +10291,6 @@ async function gdLoadLNG(from, to){
     let series = gdCacheGet(cacheKey);
     if(!series){
       series = await aggiPaginated(`type=eu&from=${from}&to=${to}`);
-      if(!r.ok) throw new Error(`ALSI ${r.status}`);
-      const j = await r.json();
-      series = j?.data || [];
       const isCurMo = to.slice(0,7) >= new Date().toISOString().slice(0,7);
       if(series.length) gdCacheSet(cacheKey, series, isCurMo?6:0); // current month=6h, historical=permanent
     }
@@ -10324,8 +10327,7 @@ async function gdLoadLNGCountries(from, to){
       const cacheKey=`alsi_${code}_${from.slice(0,7)}_${to.slice(0,7)}`;
       let series = gdCacheGet(cacheKey);
       if(!series){
-        const j_raw = await aggiPaginated(`country=${code}&from=${from}&to=${to}`);
-        const j = {data: j_raw};
+        series = await aggiPaginated(`country=${code}&from=${from}&to=${to}`);;
         series = j?.data || [];
         const isCurMo = to.slice(0,7) >= new Date().toISOString().slice(0,7);
       if(series.length) gdCacheSet(cacheKey, series, isCurMo?6:0); // current month=6h, historical=permanent
