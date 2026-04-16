@@ -343,6 +343,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
       <div class="mod-card" onclick="shellNav('financial','spread')"><span class="card-num">04</span><div class="card-ttl">Spread Analysis</div><div class="card-desc">Inter-index spread analytics with individual leg charts and tenor selection</div><span class="s-tag tag-fin">FINANCIAL</span></div>
       <div class="mod-card" onclick="shellNav('financial','forward')"><span class="card-num">05</span><div class="card-ttl">Forward Curve</div><div class="card-desc">Full forward curve with two-date comparison and curve shape analytics</div><span class="s-tag tag-fin">FINANCIAL</span></div>
       <div class="mod-card" onclick="shellNav('financial','seasonal')"><span class="card-num">06</span><div class="card-ttl">Seasonal Analysis</div><div class="card-desc">Year-over-year seasonal profiles and monthly spread table</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','options')"><span class="card-num">07</span><div class="card-ttl">Option Pricing</div><div class="card-desc">BS, Gaussian &amp; Spread option pricers — verify broker quotes, Greeks, implied vol solver</div><span class="s-tag tag-fin">FINANCIAL</span></div>
     </div>
   </div>
   <div class="mod-group">
@@ -416,6 +417,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
       <button class="anl" onclick="showSec('spread',this)">SPREAD</button>
       <button class="anl" onclick="showSec('forward',this)">FORWARD CURVE</button>
       <button class="anl" onclick="showSec('seasonal',this)">SEASONAL</button>
+      <button class="anl" onclick="showSec('options',this)">OPTIONS PRICER</button>
     </div>
     <div class="sbar" id="sbar">
       <span class="sdot"></span><span id="stext"></span>
@@ -587,11 +589,29 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
         <div class="acard"><div class="ctitle" id="sea-title">SEASONAL — YEAR OVER YEAR</div><div class="cw" style="height:340px"><canvas id="seaChart"></canvas></div></div>
         <div class="acard"><div class="ctitle">YEAR-OVER-YEAR SPREAD TABLE</div><div style="overflow-x:auto"><table class="stbl" id="sea-tbl"></table></div></div>
       </div>
+
+      <!-- OPTIONS PRICER -->
+      <div id="sec-options" class="asec">
+        <div class="ctrl">
+          <span class="cl">MODEL</span>
+          <select id="opt-model" onchange="optRender()">
+            <option value="bs">BLACK-SCHOLES (Lognormal)</option>
+            <option value="gauss">GAUSSIAN / BACHELIER (Normal)</option>
+            <option value="spread">SPREAD OPTION (S₁ − S₂)</option>
+          </select>
+          <div class="csep"></div>
+          <span class="cl">TYPE</span>
+          <select id="opt-type" onchange="optCalc()"><option value="call">CALL</option><option value="put">PUT</option></select>
+          <div class="csep"></div>
+          <button class="sbtn" onclick="optCalc()">CALCULATE</button>
+          <button class="sbtn" onclick="optSolveIV()">SOLVE IMPLIED VOL</button>
+        </div>
+        <div id="opt-body" style="padding:14px 18px"></div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- GAS & LNG ANALYTICS -->
 <section class="s-sec" id="section-gasanalytics">
   <!-- Controls bar -->
   <div class="ga-topbar">
@@ -8855,7 +8875,7 @@ function updSpread(){
   const slc=$id('spLegsChart');if(slc)spLegsChart=new Chart(slc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:[{label:lbl1,data:aligned.map(d=>+d.v1.toFixed(4)),borderColor:'#2d7cff',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:'y'},{label:lbl2,data:aligned.map(d=>+d.v2.toFixed(4)),borderColor:'#f59e0b',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:dualL?'y1':'y'}]},options:{...CD,scales:sL}});
 }
 function exportToExcel(){if(!sDates.length){alert('No data.');return;}const wb=XLSX.utils.book_new(),ik=INSTS.map(i=>i.k),headers=['Date',...ik.map(k=>INST[k].label+' M+1')],rows=[headers];sDates.forEach(ds=>{const{date,rows:dr}=aD[ds],m1=rPK(date,1),row=[date.toLocaleDateString('en-GB')];ik.forEach(k=>{const r=dr.find(r=>r.pk===m1);row.push(r&&r[k]!=null?r[k]:'');});rows.push(row);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Historical M+1');XLSX.writeFile(wb,'LNG_TradeOS_'+new Date().toLocaleDateString('en-GB').replace(/\//g,'.')+'.xlsx');}
-function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart,eexChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')cInit();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard'){buildGasSnapshot();buildEuHubChart();}},60);}
+function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart,eexChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')cInit();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard'){buildGasSnapshot();buildEuHubChart();}if(id==='options')optRender();},60);}
 function showAnalyticsUI(){const fd=$id('fin-dropzone'),fa=$id('fin-analytics');if(fd)fd.style.display='none';if(fa)fa.style.display='block';finLoaded=true;setTimeout(()=>{if(window.gaUpdatePriceBoxes)window.gaUpdatePriceBoxes();},200);}
 
 // ══ EU REGAS MODULE v2 ══
@@ -12784,6 +12804,396 @@ window.renderBalance=renderBalance;
 
 
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OPTIONS PRICER MODULE — LNG TradeOS™
+// Black-Scholes (lognormal), Gaussian/Bachelier (normal), Spread (S1−S2)
+// All computation in-browser, no API dependency
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Math helpers ─────────────────────────────────────────────────────────────
+function _normPDF(x){return Math.exp(-0.5*x*x)/Math.sqrt(2*Math.PI);}
+function _normCDF(x){
+  if(x>6)return 1;if(x<-6)return 0;
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const sign=x<0?-1:1;x=Math.abs(x)/Math.sqrt(2);
+  const t=1/(1+p*x);const y=1-((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+  return 0.5*(1+sign*y);
+}
+
+// ── BS (Lognormal) ───────────────────────────────────────────────────────────
+function bsPrice(F,K,sigma,T,r,isCall){
+  const df=Math.exp(-r*T);
+  if(T<=0){const intr=isCall?Math.max(F-K,0):Math.max(K-F,0);return{price:df*intr,delta:isCall?(F>K?1:0):(F<K?-1:0),gamma:0,vega:0,theta:0};}
+  const sT=sigma*Math.sqrt(T);
+  const d1=(Math.log(F/K)+0.5*sigma*sigma*T)/sT;
+  const d2=d1-sT;
+  const Nd1=_normCDF(d1),Nd2=_normCDF(d2),nd1=_normPDF(d1);
+  let price,delta;
+  if(isCall){price=df*(F*Nd1-K*Nd2);delta=df*Nd1;}
+  else{price=df*(K*(1-Nd2)-F*(1-Nd1));delta=-df*(1-Nd1);}
+  const gamma=df*nd1/(F*sT);
+  const vega=df*F*nd1*Math.sqrt(T)/100; // per 1% vol
+  const theta=-(df*F*nd1*sigma/(2*Math.sqrt(T)))/250; // per trading day
+  return{price,delta,gamma,vega,theta,d1,d2,sT};
+}
+
+// ── Gaussian / Bachelier (Normal) ────────────────────────────────────────────
+function gaussPrice(F,K,sigmaDaily,T,r,isCall){
+  const df=Math.exp(-r*T);
+  const sigmaAnn=sigmaDaily*Math.sqrt(250);
+  if(T<=0){const intr=isCall?Math.max(F-K,0):Math.max(K-F,0);return{price:df*intr,delta:isCall?(F>K?1:0):(F<K?-1:0),gamma:0,vega:0,theta:0,sigmaAnn};}
+  const sT=sigmaAnn*Math.sqrt(T);
+  if(sT<1e-12){const intr=isCall?Math.max(F-K,0):Math.max(K-F,0);return{price:df*intr,delta:isCall?(F>K?1:0):(F<K?-1:0),gamma:0,vega:0,theta:0,sigmaAnn};}
+  const d=(F-K)/sT;
+  const Nd=_normCDF(d),nd=_normPDF(d);
+  let price,delta;
+  if(isCall){price=df*((F-K)*Nd+sT*nd);delta=df*Nd;}
+  else{price=df*((K-F)*(1-Nd)+sT*nd);delta=-df*(1-Nd);}
+  const gamma=df*nd/sT;
+  const vega=df*nd*Math.sqrt(T)/100;
+  const theta=-(df*sigmaAnn*nd/(2*Math.sqrt(T)))/250;
+  return{price,delta,gamma,vega,theta,d,sT,sigmaAnn};
+}
+
+// ── Spread Option (S1−S2, Gaussian on spread) ────────────────────────────────
+function spreadPrice(F1,F2,sig1,sig2,rho,K,T,r,isCall){
+  const df=Math.exp(-r*T);
+  const sg1d=F1*sig1/Math.sqrt(250), sg2d=F2*sig2/Math.sqrt(250); // daily $ vol
+  const spreadVol=Math.sqrt(sg1d*sg1d+sg2d*sg2d-2*rho*sg1d*sg2d); // daily spread vol
+  const sigSpAnn=spreadVol*Math.sqrt(250);
+  const fwdSpread=F1-F2;
+  if(T<=0){const intr=isCall?Math.max(fwdSpread-K,0):Math.max(K-fwdSpread,0);return{price:df*intr,deltaS1:0,deltaS2:0,gamma:0,vega:0,theta:0,spreadVol,sigSpAnn,fwdSpread};}
+  const sT=sigSpAnn*Math.sqrt(T);
+  if(sT<1e-12){const intr=isCall?Math.max(fwdSpread-K,0):Math.max(K-fwdSpread,0);return{price:df*intr,deltaS1:0,deltaS2:0,gamma:0,vega:0,theta:0,spreadVol,sigSpAnn,fwdSpread};}
+  const d=(fwdSpread-K)/sT;
+  const Nd=_normCDF(d),nd=_normPDF(d);
+  let price,deltaSpread;
+  if(isCall){price=df*((fwdSpread-K)*Nd+sT*nd);deltaSpread=df*Nd;}
+  else{price=df*((K-fwdSpread)*(1-Nd)+sT*nd);deltaSpread=-df*(1-Nd);}
+  const gamma=df*nd/sT;
+  const vega=df*nd*Math.sqrt(T)/100;
+  const theta=-(df*sigSpAnn*nd/(2*Math.sqrt(T)))/250;
+  return{price,deltaS1:deltaSpread,deltaS2:-deltaSpread,gamma,vega,theta,spreadVol,sigSpAnn,fwdSpread,d,sT};
+}
+
+// ── Implied Vol Solver (bisection) ───────────────────────────────────────────
+function bsImpliedVol(F,K,T,r,isCall,targetPrice){
+  let lo=0.001,hi=5.0;
+  for(let i=0;i<100;i++){
+    const mid=(lo+hi)/2;
+    const p=bsPrice(F,K,mid,T,r,isCall).price;
+    if(Math.abs(p-targetPrice)<1e-8)return mid;
+    if(p<targetPrice)lo=mid;else hi=mid;
+  }
+  return(lo+hi)/2;
+}
+function gaussImpliedVol(F,K,T,r,isCall,targetPrice){
+  let lo=0.001,hi=500;
+  for(let i=0;i<100;i++){
+    const mid=(lo+hi)/2;
+    const p=gaussPrice(F,K,mid,T,r,isCall).price;
+    if(Math.abs(p-targetPrice)<1e-8)return mid;
+    if(p<targetPrice)lo=mid;else hi=mid;
+  }
+  return(lo+hi)/2;
+}
+
+// ── Payoff chart ─────────────────────────────────────────────────────────────
+let _optPayoffChart=null;
+function optDrawPayoff(canvasId,F,K,premium,isCall,notional,model,extra){
+  if(_optPayoffChart){_optPayoffChart.destroy();_optPayoffChart=null;}
+  const c=document.getElementById(canvasId);if(!c)return;
+  const range=model==='spread'?Math.abs(extra?.fwdSpread||F)*0.5:F*0.5;
+  const center=model==='spread'?(extra?.fwdSpread||0):F;
+  const lo=center-range,hi=center+range;
+  const step=range/40;
+  const labels=[],payoffData=[],intrinsicData=[];
+  for(let s=lo;s<=hi+0.01;s+=step){
+    labels.push(s.toFixed(1));
+    const intr=isCall?Math.max(s-K,0):Math.max(K-s,0);
+    intrinsicData.push(+(intr*notional/100).toFixed(2));
+    payoffData.push(+((intr-premium)*notional/100).toFixed(2));
+  }
+  _optPayoffChart=new Chart(c,{type:'line',data:{labels,datasets:[
+    {label:'P&L',data:payoffData,borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,0.08)',borderWidth:2,pointRadius:0,fill:true,tension:0},
+    {label:'Intrinsic',data:intrinsicData,borderColor:'#3d5070',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false,tension:0},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:true,position:'top',labels:{color:'#5a6882',font:{size:9,family:'IBM Plex Mono'},boxWidth:10}},
+      tooltip:{backgroundColor:'#0c1120',borderColor:'#1e2d45',borderWidth:1,titleColor:'#c8cfe0',bodyColor:'#8a9bb5',padding:8,titleFont:{family:'IBM Plex Mono',size:10},bodyFont:{family:'IBM Plex Mono',size:9}}},
+    scales:{x:{title:{display:true,text:model==='spread'?'Spread at expiry':'Underlying at expiry',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:12},grid:{color:'#0f1824'}},
+      y:{title:{display:true,text:'P&L',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:8}},grid:{color:'#0f1824'}}}
+  }});
+}
+
+// ── UI Render ────────────────────────────────────────────────────────────────
+function optRender(){
+  const body=document.getElementById('opt-body');if(!body)return;
+  const model=document.getElementById('opt-model')?.value||'bs';
+  const today=new Date().toISOString().slice(0,10);
+
+  if(model==='bs'){
+    body.innerHTML=`
+    <div style="display:grid;grid-template-columns:380px 1fr;gap:16px">
+      <div>
+        <div class="ctitle">INPUTS — BLACK-SCHOLES</div>
+        <div class="acard" style="padding:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div><label class="cl">Forward (F)</label><input type="number" id="opt-F" value="76.79" step="0.01" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Strike (K)</label><input type="number" id="opt-K" value="77" step="0.01" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Implied Vol σ (annual)</label><input type="number" id="opt-sig" value="0.208" step="0.001" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Risk-free rate r</label><input type="number" id="opt-r" value="0.01" step="0.001" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">As-of Date</label><input type="date" id="opt-asof" value="${today}" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Maturity Date</label><input type="date" id="opt-mat" value="2026-12-31" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Notional</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Broker Price (for IV)</label><input type="number" id="opt-broker" value="" step="0.01" class="f-inp" style="width:100%" placeholder="optional"></div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button class="f-btn" onclick="optCalc()" style="flex:1">CALCULATE</button>
+            <button class="f-btn grn" onclick="optSolveIV()" style="flex:1">SOLVE IMPLIED VOL</button>
+          </div>
+        </div>
+        <div id="opt-results" style="margin-top:10px"></div>
+      </div>
+      <div>
+        <div class="ctitle">PAYOFF AT EXPIRY</div>
+        <div class="acard"><div style="height:320px"><canvas id="opt-payoff"></canvas></div></div>
+        <div id="opt-intermediates" style="margin-top:10px"></div>
+      </div>
+    </div>`;
+  } else if(model==='gauss'){
+    body.innerHTML=`
+    <div style="display:grid;grid-template-columns:380px 1fr;gap:16px">
+      <div>
+        <div class="ctitle">INPUTS — GAUSSIAN / BACHELIER</div>
+        <div class="acard" style="padding:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div><label class="cl">Forward (F)</label><input type="number" id="opt-F" value="5" step="0.01" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Strike (K)</label><input type="number" id="opt-K" value="0" step="0.01" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Gaussian Daily Vol σ_g</label><input type="number" id="opt-sig" value="1.5" step="0.01" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Risk-free rate r</label><input type="number" id="opt-r" value="0" step="0.001" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">As-of Date</label><input type="date" id="opt-asof" value="${today}" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Maturity Date</label><input type="date" id="opt-mat" value="2026-12-31" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Notional</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Broker Price (for IV)</label><input type="number" id="opt-broker" value="" step="0.01" class="f-inp" style="width:100%" placeholder="optional"></div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button class="f-btn" onclick="optCalc()" style="flex:1">CALCULATE</button>
+            <button class="f-btn grn" onclick="optSolveIV()" style="flex:1">SOLVE IMPLIED VOL</button>
+          </div>
+        </div>
+        <div id="opt-results" style="margin-top:10px"></div>
+      </div>
+      <div>
+        <div class="ctitle">PAYOFF AT EXPIRY</div>
+        <div class="acard"><div style="height:320px"><canvas id="opt-payoff"></canvas></div></div>
+        <div id="opt-intermediates" style="margin-top:10px"></div>
+      </div>
+    </div>`;
+  } else {
+    body.innerHTML=`
+    <div style="display:grid;grid-template-columns:420px 1fr;gap:16px">
+      <div>
+        <div class="ctitle">INPUTS — SPREAD OPTION (S₁ − S₂)</div>
+        <div class="acard" style="padding:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div><label class="cl">Forward S₁</label><input type="number" id="opt-F1" value="45" step="0.01" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Forward S₂</label><input type="number" id="opt-F2" value="46.5" step="0.01" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">BS Vol S₁ (annual)</label><input type="number" id="opt-sig1" value="0.30" step="0.001" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">BS Vol S₂ (annual)</label><input type="number" id="opt-sig2" value="0.25" step="0.001" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Correlation ρ</label><input type="number" id="opt-rho" value="0.6" step="0.01" min="-1" max="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Spread Strike K</label><input type="number" id="opt-K" value="0" step="0.01" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Risk-free rate r</label><input type="number" id="opt-r" value="0.015" step="0.001" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Notional</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">As-of Date</label><input type="date" id="opt-asof" value="${today}" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Maturity Date</label><input type="date" id="opt-mat" value="2026-08-31" class="f-inp" style="width:100%"></div>
+          </div>
+          <div style="margin-top:10px"><button class="f-btn" onclick="optCalc()" style="width:100%">CALCULATE</button></div>
+        </div>
+        <div id="opt-results" style="margin-top:10px"></div>
+      </div>
+      <div>
+        <div class="ctitle">SPREAD PAYOFF AT EXPIRY</div>
+        <div class="acard"><div style="height:320px"><canvas id="opt-payoff"></canvas></div></div>
+        <div id="opt-intermediates" style="margin-top:10px"></div>
+      </div>
+    </div>`;
+  }
+  optCalc();
+}
+
+// ── Calculate ────────────────────────────────────────────────────────────────
+function optCalc(){
+  const model=document.getElementById('opt-model')?.value||'bs';
+  const isCall=(document.getElementById('opt-type')?.value||'call')==='call';
+  const typeLbl=isCall?'CALL':'PUT';
+  const resEl=document.getElementById('opt-results');
+  const intEl=document.getElementById('opt-intermediates');
+  if(!resEl)return;
+
+  const asof=new Date(document.getElementById('opt-asof')?.value||Date.now());
+  const mat=new Date(document.getElementById('opt-mat')?.value||Date.now());
+  const T=Math.max((mat-asof)/(365.25*86400000),0);
+  const N=parseFloat(document.getElementById('opt-N')?.value)||100;
+
+  function row(lbl,call,put,note){
+    return`<tr><td style="text-align:left;color:#8a9bb5;padding:5px 10px;border-bottom:1px solid #151e30">${lbl}</td>
+    <td style="text-align:right;color:#2d7cff;padding:5px 10px;border-bottom:1px solid #151e30;font-weight:600">${call}</td>
+    <td style="text-align:right;color:#f59e0b;padding:5px 10px;border-bottom:1px solid #151e30;font-weight:600">${put}</td>
+    <td style="text-align:left;color:#3d5070;padding:5px 10px;border-bottom:1px solid #151e30;font-size:9px">${note||''}</td></tr>`;
+  }
+
+  if(model==='bs'){
+    const F=parseFloat(document.getElementById('opt-F')?.value)||0;
+    const K=parseFloat(document.getElementById('opt-K')?.value)||0;
+    const sig=parseFloat(document.getElementById('opt-sig')?.value)||0;
+    const r=parseFloat(document.getElementById('opt-r')?.value)||0;
+    const c=bsPrice(F,K,sig,T,r,true), p=bsPrice(F,K,sig,T,r,false);
+    const sT=sig*Math.sqrt(T);
+
+    resEl.innerHTML=`<div class="acard" style="padding:10px">
+    <div class="ctitle">${typeLbl} · BS LOGNORMAL</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Greek</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
+    ${row('Price',c.price.toFixed(4),p.price.toFixed(4),'Premium per unit')}
+    ${row('Price × N',(c.price*N/100).toFixed(2),(p.price*N/100).toFixed(2),'Notional-adjusted')}
+    ${row('Delta (%)',(c.delta*100).toFixed(2),(p.delta*100).toFixed(2),'∂Price/∂F')}
+    ${row('Vega (+1% σ)',c.vega.toFixed(4),p.vega.toFixed(4),'Sensitivity to +1% abs vol')}
+    ${row('Gamma',c.gamma.toFixed(6),p.gamma.toFixed(6),'∂²Price/∂F²')}
+    ${row('Theta (1 day)',c.theta.toFixed(4),p.theta.toFixed(4),'Daily time decay (/250)')}
+    ${row('Strangle',(c.price+p.price).toFixed(4),'',(isCall?'Call':'Put')+' + other leg')}
+    </table></div>`;
+
+    intEl.innerHTML=`<div class="acard" style="padding:10px">
+    <div class="ctitle">INTERMEDIATES</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:10px">
+      <div class="mc"><div class="mc-name">T (years)</div><div class="mc-val" style="font-size:14px">${T.toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">σ√T (sdev)</div><div class="mc-val" style="font-size:14px">${sT.toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">d₁</div><div class="mc-val" style="font-size:14px">${(c.d1||0).toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">d₂</div><div class="mc-val" style="font-size:14px">${(c.d2||0).toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${Math.exp(-r*T).toFixed(6)}</div></div>
+      <div class="mc"><div class="mc-name">F/K</div><div class="mc-val" style="font-size:14px">${(F/K).toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">Moneyness</div><div class="mc-val" style="font-size:14px;color:${F>K?'#4ade80':F<K?'#f87171':'#5a6882'}">${F>K?'ITM':F<K?'OTM':'ATM'}</div></div>
+      <div class="mc"><div class="mc-name">Equiv daily σ</div><div class="mc-val" style="font-size:14px">${(sig/Math.sqrt(250)*F).toFixed(3)}</div></div>
+    </div></div>`;
+
+    optDrawPayoff('opt-payoff',F,K,isCall?c.price:p.price,isCall,N,'bs');
+
+  } else if(model==='gauss'){
+    const F=parseFloat(document.getElementById('opt-F')?.value)||0;
+    const K=parseFloat(document.getElementById('opt-K')?.value)||0;
+    const sigD=parseFloat(document.getElementById('opt-sig')?.value)||0;
+    const r=parseFloat(document.getElementById('opt-r')?.value)||0;
+    const c=gaussPrice(F,K,sigD,T,r,true), p=gaussPrice(F,K,sigD,T,r,false);
+
+    resEl.innerHTML=`<div class="acard" style="padding:10px">
+    <div class="ctitle">${typeLbl} · GAUSSIAN / BACHELIER</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Greek</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
+    ${row('Price',c.price.toFixed(4),p.price.toFixed(4),'Bachelier closed-form')}
+    ${row('Price × N',(c.price*N/100).toFixed(2),(p.price*N/100).toFixed(2),'Notional-adjusted')}
+    ${row('Delta (%)',(c.delta*100).toFixed(2),(p.delta*100).toFixed(2),'∂Price/∂F')}
+    ${row('Vega (+1 ann.vol)',c.vega.toFixed(4),p.vega.toFixed(4),'Sensitivity to +1% annual vol')}
+    ${row('Gamma',c.gamma.toFixed(6),p.gamma.toFixed(6),'∂²Price/∂F²')}
+    ${row('Theta (1 day)',c.theta.toFixed(4),p.theta.toFixed(4),'Daily time decay')}
+    </table></div>`;
+
+    intEl.innerHTML=`<div class="acard" style="padding:10px">
+    <div class="ctitle">INTERMEDIATES</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:10px">
+      <div class="mc"><div class="mc-name">T (years)</div><div class="mc-val" style="font-size:14px">${T.toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">Annual Gauss Vol</div><div class="mc-val" style="font-size:14px">${c.sigmaAnn.toFixed(3)}</div></div>
+      <div class="mc"><div class="mc-name">σ_g × √(T×250)</div><div class="mc-val" style="font-size:14px">${c.sT.toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">d = (F−K)/σ√T</div><div class="mc-val" style="font-size:14px">${(c.d||0).toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${Math.exp(-r*T).toFixed(6)}</div></div>
+      <div class="mc"><div class="mc-name">DATM (F−K)</div><div class="mc-val" style="font-size:14px">${(F-K).toFixed(3)}</div></div>
+      <div class="mc"><div class="mc-name">Equiv BS Vol</div><div class="mc-val" style="font-size:14px">${F>0?(c.sigmaAnn/F).toFixed(4):'—'}</div></div>
+      <div class="mc"><div class="mc-name">Moneyness</div><div class="mc-val" style="font-size:14px;color:${F>K?'#4ade80':F<K?'#f87171':'#5a6882'}">${F>K?'ITM':F<K?'OTM':'ATM'}</div></div>
+    </div></div>`;
+
+    optDrawPayoff('opt-payoff',F,K,isCall?c.price:p.price,isCall,N,'gauss');
+
+  } else { // spread
+    const F1=parseFloat(document.getElementById('opt-F1')?.value)||0;
+    const F2=parseFloat(document.getElementById('opt-F2')?.value)||0;
+    const sig1=parseFloat(document.getElementById('opt-sig1')?.value)||0;
+    const sig2=parseFloat(document.getElementById('opt-sig2')?.value)||0;
+    const rho=parseFloat(document.getElementById('opt-rho')?.value)||0;
+    const K=parseFloat(document.getElementById('opt-K')?.value)||0;
+    const r=parseFloat(document.getElementById('opt-r')?.value)||0;
+    const c=spreadPrice(F1,F2,sig1,sig2,rho,K,T,r,true), p=spreadPrice(F1,F2,sig1,sig2,rho,K,T,r,false);
+
+    resEl.innerHTML=`<div class="acard" style="padding:10px">
+    <div class="ctitle">${typeLbl} · SPREAD (S₁ − S₂) GAUSSIAN</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Greek</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL (Long)</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT (Short)</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
+    ${row('Price',c.price.toFixed(4),p.price.toFixed(4),'Bachelier spread option')}
+    ${row('Price × N',(c.price*N/100).toFixed(2),(p.price*N/100).toFixed(2),'Notional-adjusted')}
+    ${row('Delta S₁ (%)',(c.deltaS1*100).toFixed(2),(p.deltaS1*100).toFixed(2),'∂Price/∂S₁')}
+    ${row('Delta S₂ (%)',(c.deltaS2*100).toFixed(2),(p.deltaS2*100).toFixed(2),'∂Price/∂S₂ = −Δ S₁')}
+    ${row('Vega σ-spread (+1%)',c.vega.toFixed(4),p.vega.toFixed(4),'Sensitivity to +1% spread vol')}
+    ${row('Gamma',c.gamma.toFixed(6),p.gamma.toFixed(6),'∂²Price/∂Spread²')}
+    ${row('Theta (1 day)',c.theta.toFixed(4),p.theta.toFixed(4),'Daily time decay')}
+    </table></div>`;
+
+    intEl.innerHTML=`<div class="acard" style="padding:10px">
+    <div class="ctitle">INTERMEDIATES</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:10px">
+      <div class="mc"><div class="mc-name">T (years)</div><div class="mc-val" style="font-size:14px">${T.toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">Fwd Spread S₁−S₂</div><div class="mc-val" style="font-size:14px">${c.fwdSpread.toFixed(3)}</div></div>
+      <div class="mc"><div class="mc-name">σ_spread (daily)</div><div class="mc-val" style="font-size:14px">${c.spreadVol.toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">σ_spread (annual)</div><div class="mc-val" style="font-size:14px">${c.sigSpAnn.toFixed(3)}</div></div>
+      <div class="mc"><div class="mc-name">σ_sp × √(T×250)</div><div class="mc-val" style="font-size:14px">${c.sT.toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">DATM</div><div class="mc-val" style="font-size:14px">${(c.fwdSpread-K).toFixed(3)}</div></div>
+      <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${Math.exp(-r*T).toFixed(6)}</div></div>
+      <div class="mc"><div class="mc-name">ρ</div><div class="mc-val" style="font-size:14px">${rho.toFixed(2)}</div></div>
+    </div></div>`;
+
+    optDrawPayoff('opt-payoff',F1,K,isCall?c.price:p.price,isCall,N,'spread',{fwdSpread:c.fwdSpread});
+  }
+}
+
+// ── Implied Vol Solver UI ────────────────────────────────────────────────────
+function optSolveIV(){
+  const model=document.getElementById('opt-model')?.value||'bs';
+  const isCall=(document.getElementById('opt-type')?.value||'call')==='call';
+  const brokerEl=document.getElementById('opt-broker');
+  const target=parseFloat(brokerEl?.value);
+  if(!target||isNaN(target)){alert('Enter a Broker Price to solve for implied vol.');return;}
+
+  const asof=new Date(document.getElementById('opt-asof')?.value||Date.now());
+  const mat=new Date(document.getElementById('opt-mat')?.value||Date.now());
+  const T=Math.max((mat-asof)/(365.25*86400000),0);
+  if(T<=0){alert('Option has expired — cannot solve IV.');return;}
+
+  const F=parseFloat(document.getElementById('opt-F')?.value)||0;
+  const K=parseFloat(document.getElementById('opt-K')?.value)||0;
+  const r=parseFloat(document.getElementById('opt-r')?.value)||0;
+
+  let iv;
+  if(model==='bs'){
+    iv=bsImpliedVol(F,K,T,r,isCall,target);
+    document.getElementById('opt-sig').value=iv.toFixed(4);
+  } else if(model==='gauss'){
+    iv=gaussImpliedVol(F,K,T,r,isCall,target);
+    document.getElementById('opt-sig').value=iv.toFixed(4);
+  } else {
+    alert('Implied vol solver not available for spread model.');return;
+  }
+
+  optCalc();
+
+  const resEl=document.getElementById('opt-results');
+  if(resEl) resEl.innerHTML+=`<div class="f-ok" style="margin-top:8px;font-size:10px">
+    IMPLIED VOL SOLVED: <b>${(iv*100).toFixed(2)}%</b> annual
+    · Broker price: ${target.toFixed(4)} · Model: ${model.toUpperCase()} ${isCall?'CALL':'PUT'}
+    · F=${F} K=${K} T=${T.toFixed(3)}yr
+  </div>`;
+}
+
+window.optRender=optRender;
+window.optCalc=optCalc;
+window.optSolveIV=optSolveIV;
 
 
 </script>
