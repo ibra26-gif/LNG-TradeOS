@@ -12126,11 +12126,8 @@ function indLoadCsv(input){
       }
       const cnt=Object.keys(newRows).length;
       if(cnt===0){alert('No valid rows found. Check month format is YYYY-MM.');return;}
-      // Proactively free space if needed
-      try{localStorage.setItem('_space_test','1');localStorage.removeItem('_space_test');}
-      catch(e){
-        Object.keys(localStorage).filter(k=>k.startsWith('gd2_')||k.startsWith('agsi_')||k.startsWith('alsi_')||k.startsWith('entsog_')).forEach(k=>localStorage.removeItem(k));
-      }
+      // Always clear stale GA cache before writing India data — India data must survive
+      try{Object.keys(localStorage).filter(k=>k.startsWith('gd2_')||k.startsWith('agsi_')||k.startsWith('alsi_')||k.startsWith('entsog_')||k.startsWith('ga_')).forEach(k=>localStorage.removeItem(k));}catch(e){}
       // Merge with existing (never replace, only add/update months)
       let existing={};
       try{const s=localStorage.getItem('lng_india_gb_v1');if(s)existing=JSON.parse(s).data||{};}catch{}
@@ -12293,22 +12290,24 @@ let _indPrRange='1Y';
 function renderIndPrices(el){
   const now=new Date();
   const curMo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  // M+1 label
   const m1Date=new Date(now.getFullYear(),now.getMonth()+1,1);
   const m1Label=GA_MO[m1Date.getMonth()]+'-'+String(m1Date.getFullYear()).slice(2);
 
-  // Get prices from CP forward curve (same source as Financial Trading dashboard)
+  // JKM M+1 from cp_fp (same as Financial Trading)
   const cpFP=cpGet('cp_fp',null);
-  const jkmM1=cpFP?.JKM?.[0]??null;   // index 0 = nearest contract = M+1
-  const brentM1=cpFP?.Brent?.[0]??cpFP?.BRENT?.[0]??null;
+  const jkmM1=cpFP?.JKM?.[0]??null;
   const jkmDES=jkmM1!=null?+(jkmM1-0.35).toFixed(3):null;
-  const ltFloor=brentM1!=null?+(brentM1*0.11).toFixed(2):null;
-  const ltCeil=brentM1!=null?+(brentM1*0.14).toFixed(2):null;
+
+  // Brent: get latest value from gSR history
+  const brentArr=(()=>{try{return gSR('Brent',1)||[];}catch{return[];}})();
+  const brentLatest=brentArr.length?brentArr[brentArr.length-1].value:null;
+  const ltFloor=brentLatest!=null?+(brentLatest*0.11).toFixed(2):null;
+  const ltCeil=brentLatest!=null?+(brentLatest*0.14).toFixed(2):null;
 
   const apmNow=IND_APM[curMo]||Object.values(IND_APM).pop();
   const dwNow=indDWPrice(curMo);
 
-  // Build date range for chart
+  // Build month range for chart
   const allAPMMos=Object.keys(IND_APM).sort();
   const cutoff={'3M':new Date(now.getFullYear(),now.getMonth()-2,1).toISOString().slice(0,7),
                 '6M':new Date(now.getFullYear(),now.getMonth()-5,1).toISOString().slice(0,7),
@@ -12318,24 +12317,16 @@ function renderIndPrices(el){
   const pMos=allAPMMos.filter(m=>m>=cutoff);
   const moLabels=pMos.map(m=>GA_MO[+m.slice(5,7)-1]+`-${m.slice(2,4)}`);
 
-  // JKM historical from gSR (returns [{date,value},...])
-  // gSR('JKM',1) = M+1 row across all loaded EOD dates
-  const jkmHist=(()=>{
-    try{
-      const arr=gSR('JKM',1)||[];
-      const byMo={};
-      arr.forEach(({date,value})=>{if(date&&value!=null)byMo[date.slice(0,7)]=value;});
-      return byMo;
-    }catch{return{};}
+  // JKM history by month from gSR (each loaded EOD file = one data point)
+  const jkmByMo=(()=>{
+    try{const byMo={};(gSR('JKM',1)||[]).forEach(({date,value})=>{if(date&&value!=null)byMo[date.slice(0,7)]=value;});return byMo;}catch{return{};}
   })();
-  const brentHist=(()=>{
-    try{
-      const arr=gSR('Brent',1)||[];
-      const byMo={};
-      arr.forEach(({date,value})=>{if(date&&value!=null)byMo[date.slice(0,7)]=value;});
-      return byMo;
-    }catch{return{};}
+  // Brent history by month
+  const brentByMo=(()=>{
+    try{const byMo={};brentArr.forEach(({date,value})=>{if(date&&value!=null)byMo[date.slice(0,7)]=value;});return byMo;}catch{return{};}
   })();
+
+  const hasLiveData=jkmDES!=null||brentLatest!=null;
 
   el.innerHTML=`
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
@@ -12352,10 +12343,10 @@ function renderIndPrices(el){
       <div class="ga-kpi-val" style="color:#81c784">$${IND_CIL_LOW}–${IND_CIL_HIGH}</div>
       <div class="ga-kpi-note" style="font-size:8px">${IND_CIL_NOTE}</div></div>
   </div>
-  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap">
     <span style="font-size:9px;color:#546e7a">RANGE</span>
     ${['3M','6M','1Y','2Y'].map(r=>`<button class="f-btn sm${_indPrRange===r?' on':''}" onclick="_indPrRange='${r}';renderIndPrices(document.getElementById('ind-tab-body'))">${r}</button>`).join('')}
-    ${brentM1!=null?`<span style="font-size:9px;color:#546e7a;margin-left:8px">Brent M1: $${brentM1.toFixed(2)} → LT band: $${ltFloor}–$${ltCeil}</span>`:'<span style="font-size:9px;color:#f59e0b;margin-left:8px">Load EOD files for live Brent/JKM</span>'}
+    ${brentLatest!=null?`<span style="font-size:9px;color:#546e7a;margin-left:8px">Brent: $${brentLatest.toFixed(2)} → LT band: $${ltFloor}–$${ltCeil}</span>`:'<span style="font-size:9px;color:#f59e0b;margin-left:8px">⚠ Load EOD files for Brent/JKM history</span>'}
   </div>
   <div class="ga-card">
     <div class="ga-sec">INDIA GAS SUPPLY STACK <span class="ga-tag">$/MMBTU (GCV)</span></div>
@@ -12367,22 +12358,21 @@ function renderIndPrices(el){
       <span style="font-size:9px;color:#546e7a">╌ CIL coal eff.</span>
     </div>
     <div class="ga-ch-wrap" style="height:280px"><canvas id="ind-price-chart"></canvas></div>
-    <div class="ga-source">APM & deepwater: PPAC (hardcoded) · JKM DES = JKM M+1 − $0.35 from EOD files · LT band = 11–14% × Brent · CIL: G10 ~$7.5–8.5/MMBtu</div>
+    <div class="ga-source">APM & deepwater: PPAC (hardcoded) · JKM DES = JKM M+1 − $0.35 · LT band = 11–14% × Brent · CIL: G10 ~$7.5–8.5/MMBtu · JKM/Brent history requires multiple EOD files loaded</div>
   </div>`;
 
   setTimeout(()=>{
     const apmVals=pMos.map(m=>IND_APM[m]||null);
     const dwVals=pMos.map(m=>indDWPrice(m));
-    // JKM: use hist for past months, current jkmDES for current/future
+    // JKM: historical from loaded EOD files, current from cp_fp
     const jkmVals=pMos.map(m=>{
-      const raw=jkmHist[m];
-      if(raw!=null) return+(raw-0.35).toFixed(3);
-      if(m===curMo&&jkmDES!=null) return jkmDES;
+      const h=jkmByMo[m];if(h!=null)return+(h-0.35).toFixed(3);
+      if(m===curMo&&jkmDES!=null)return jkmDES;
       return null;
     });
-    // Brent band
-    const ltFVals=pMos.map(m=>{const b=brentHist[m]||brentM1;return b?+(b*0.11).toFixed(2):null;});
-    const ltCVals=pMos.map(m=>{const b=brentHist[m]||brentM1;return b?+(b*0.14).toFixed(2):null;});
+    // Brent band: historical from gSR, latest as fallback for missing months
+    const ltFVals=pMos.map(m=>{const b=brentByMo[m]??brentLatest;return b?+(b*0.11).toFixed(2):null;});
+    const ltCVals=pMos.map(m=>{const b=brentByMo[m]??brentLatest;return b?+(b*0.14).toFixed(2):null;});
     const cilLow=pMos.map(()=>IND_CIL_LOW);
     const cilHigh=pMos.map(()=>IND_CIL_HIGH);
 
@@ -12396,7 +12386,7 @@ function renderIndPrices(el){
       {label:'CIL coal high',data:cilHigh,borderColor:'#546e7a',backgroundColor:'rgba(84,110,122,0.08)',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:'-1'},
       {label:'APM gas',data:apmVals,borderColor:'#4fc3f7',backgroundColor:'transparent',borderWidth:2,stepped:'before',pointRadius:0,spanGaps:true},
       {label:'Deepwater ceiling',data:dwVals,borderColor:'#ffb74d',backgroundColor:'transparent',borderWidth:2,stepped:'before',pointRadius:0,spanGaps:true},
-      {label:'JKM DES India',data:jkmVals,borderColor:'#c8d6e5',backgroundColor:'transparent',borderWidth:2.5,pointRadius:2,tension:.3,spanGaps:false},
+      {label:'JKM DES India',data:jkmVals,borderColor:'#c8d6e5',backgroundColor:'transparent',borderWidth:2.5,pointRadius:3,tension:.3,spanGaps:false},
     ]},{
       scales:{x:scX,y:scY},
       plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10,filter:i=>!['LT oil ceil','CIL coal high'].includes(i.text)}}}
