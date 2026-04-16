@@ -12174,133 +12174,193 @@ function renderIndBalance(el){
   }
   const allMos=Object.keys(raw.data).sort();
   const curY=new Date().getFullYear();
-  const cutoff={'1Y':`${curY-1}-01`,'3Y':`${curY-3}-01`,'5Y':`${curY-5}-01`}[_indRange]||'2000-01';
+
+  // ── Unit conversion ──────────────────────────────────────────────────────
+  function conv(mmscm, mo){
+    if(mmscm==null||isNaN(mmscm)) return null;
+    if(_indUnit==='mcmd'){
+      const days=mo?new Date(+mo.slice(0,4),+mo.slice(5,7),0).getDate():30;
+      return+(mmscm/days).toFixed(1);
+    }
+    if(_indUnit==='mtpm') return+(mmscm*0.00073).toFixed(1);
+    return+mmscm.toFixed(0);
+  }
+  function uLbl(){return _indUnit==='mcmd'?'mcm/d':_indUnit==='mtpm'?'mt/month':'mmscm';}
+
+  // ── Range filter ─────────────────────────────────────────────────────────
+  const now=new Date();
+  const cutoff={'3M':new Date(now.getFullYear(),now.getMonth()-2,1).toISOString().slice(0,7),
+                '1Y':new Date(now.getFullYear()-1,now.getMonth()+1,1).toISOString().slice(0,7),
+                '2Y':new Date(now.getFullYear()-2,now.getMonth()+1,1).toISOString().slice(0,7),
+  }[_indRange]||'2000-01';
   const mos=allMos.filter(m=>m>=cutoff);
   const latMo=mos[mos.length-1]||allMos[allMos.length-1];
-  const latD=raw.data[latMo]||{};
   const lyMo=`${+latMo.slice(0,4)-1}-${latMo.slice(5,7)}`;
+  const latD=raw.data[latMo]||{};
   const lyD=raw.data[lyMo]||{};
 
-  function pct(a,b){if(!b||b===0)return'';const d=+(((a-b)/b)*100).toFixed(1);return`<span style="font-size:9px;color:${d>0?'#4ade80':'#f87171'}">${d>0?'+':''}${d}% YoY</span>`;}
-
-  const latProd=latD.prod||latD.total_supply||null;
-  const latRlng=latD.rlng||null;
-  const latDem=latD.total_demand||null;
-  const latGap=latProd!=null&&latRlng!=null&&latDem!=null?((latProd+latRlng)-latDem):null;
-
-  // Charts: using Chart.js via ga chartMake util gaMakeChart
-  // sector breakdown for KPI note
+  function pctYoY(a,b){if(!a||!b) return'';const d=+(((a-b)/b)*100).toFixed(1);return`<span style="font-size:9px;color:${d>0?'#4ade80':'#f87171'}">${d>0?'+':''}${d}% YoY</span>`;}
+  const latProd=latD.prod||null, latRlng=latD.rlng||null, latDem=latD.total_demand||null;
+  const latGap=latProd!=null&&latRlng!=null&&latDem!=null?(latProd+latRlng-latDem):null;
   const topSectors=IND_SECTORS.map(s=>({s,v:parseFloat(latD[s])||0})).sort((a,b)=>b.v-a.v).slice(0,3);
-  const topNote=topSectors.map(({s,v})=>`${IND_SECTOR_LBLS[s]} ${latDem?(v/latDem*100).toFixed(0):'?'}%`).join(' · ');
-
-  const u=indULbl();
-  const cv=v=>v!=null?indConv(v).toLocaleString():'—';
+  const topNote=latDem?topSectors.map(({s,v})=>`${IND_SECTOR_LBLS[s]} ${(v/latDem*100).toFixed(0)}%`).join(' · '):'';
+  const u=uLbl();
 
   el.innerHTML=`
   <!-- Controls -->
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
     <span style="font-size:9px;color:#546e7a">RANGE</span>
-    ${['1Y','3Y','5Y','All'].map(r=>`<button class="f-btn sm${_indRange===r?' on':''}" onclick="_indRange='${r}';renderIndBalance(document.getElementById('ind-tab-body'))">${r}</button>`).join('')}
+    ${['3M','1Y','2Y'].map(r=>`<button class="f-btn sm${_indRange===r?' on':''}" onclick="_indRange='${r}';renderIndBalance(document.getElementById('ind-tab-body'))">${r}</button>`).join('')}
     <span style="font-size:9px;color:#546e7a;margin-left:8px">UNIT</span>
-    ${['mmscm','mt'].map(u2=>`<button class="f-btn sm${_indUnit===u2?' on':''}" onclick="_indUnit='${u2}';renderIndBalance(document.getElementById('ind-tab-body'))">${u2==='mt'?'mt/month':'mmscm'}</button>`).join('')}
+    ${[['mmscm','mmscm'],['mcmd','mcm/d'],['mtpm','mt/month']].map(([k,l])=>`<button class="f-btn sm${_indUnit===k?' on':''}" onclick="_indUnit='${k}';renderIndBalance(document.getElementById('ind-tab-body'))">${l}</button>`).join('')}
     <span style="font-size:9px;color:#3d5070;margin-left:auto">${mos.length} months · ${allMos[0]} → ${allMos[allMos.length-1]}</span>
   </div>
 
   <!-- KPIs -->
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
     <div class="ga-kpi"><div class="ga-kpi-lbl">Domestic prod · ${latMo}</div>
-      <div class="ga-kpi-val" style="color:#4fc3f7">${cv(latProd)}<span class="ga-kpi-unit"> ${u}</span></div>
-      <div class="ga-kpi-note">${pct(latProd,lyD.prod||lyD.total_supply)}</div></div>
+      <div class="ga-kpi-val" style="color:#4fc3f7">${latProd!=null?conv(latProd,latMo).toLocaleString():'—'}<span class="ga-kpi-unit"> ${u}</span></div>
+      <div class="ga-kpi-note">${pctYoY(latProd,lyD.prod)}</div></div>
     <div class="ga-kpi"><div class="ga-kpi-lbl">RLNG imports · ${latMo}</div>
-      <div class="ga-kpi-val" style="color:#ffb74d">${cv(latRlng)}<span class="ga-kpi-unit"> ${u}</span></div>
-      <div class="ga-kpi-note">${pct(latRlng,lyD.rlng)}</div></div>
+      <div class="ga-kpi-val" style="color:#1D9E75">${latRlng!=null?conv(latRlng,latMo).toLocaleString():'—'}<span class="ga-kpi-unit"> ${u}</span></div>
+      <div class="ga-kpi-note">${pctYoY(latRlng,lyD.rlng)}</div></div>
     <div class="ga-kpi"><div class="ga-kpi-lbl">Total demand · ${latMo}</div>
-      <div class="ga-kpi-val" style="color:#c8d6e5">${cv(latDem)}<span class="ga-kpi-unit"> ${u}</span></div>
+      <div class="ga-kpi-val" style="color:#c8d6e5">${latDem!=null?conv(latDem,latMo).toLocaleString():'—'}<span class="ga-kpi-unit"> ${u}</span></div>
       <div class="ga-kpi-note" style="font-size:8px">${topNote}</div></div>
     <div class="ga-kpi"><div class="ga-kpi-lbl">Supply gap</div>
-      <div class="ga-kpi-val" style="color:${latGap!=null&&latGap>=0?'#4ade80':'#f87171'}">${latGap!=null?(latGap>=0?'+':'')+indConv(latGap).toLocaleString():'—'}<span class="ga-kpi-unit"> ${u}</span></div>
+      <div class="ga-kpi-val" style="color:${latGap!=null&&latGap>=0?'#4ade80':'#f87171'}">${latGap!=null?(latGap>=0?'+':'')+conv(latGap,latMo).toLocaleString():'—'}<span class="ga-kpi-unit"> ${u}</span></div>
       <div class="ga-kpi-note">Supply − Demand</div></div>
   </div>
 
-  <!-- Main chart: supply vs demand -->
+  <!-- Chart 1: Supply vs Demand + Surplus/Deficit -->
   <div class="ga-card" style="margin-bottom:10px">
     <div class="ga-sec">SUPPLY vs DEMAND <span class="ga-tag">PPAC · ${u}</span></div>
-    <div class="ga-ch-wrap" style="height:220px"><canvas id="ind-main-chart"></canvas></div>
-    <div class="ga-source">Domestic production (blue) + RLNG imports (teal) stacked · Total demand (dashed line) · ${u}</div>
+    <div class="ga-ch-wrap" style="height:200px"><canvas id="ind-main-chart"></canvas></div>
+    <div style="height:1px;background:rgba(77,158,245,.1);margin:6px 0"></div>
+    <div class="ga-sec" style="font-size:8.5px;margin-top:4px">SURPLUS / DEFICIT <span class="ga-tag">${u}</span></div>
+    <div class="ga-ch-wrap" style="height:80px"><canvas id="ind-gap-chart"></canvas></div>
+    <div class="ga-source">Domestic (blue) + RLNG (teal) stacked · Demand (dashed) · Gap = supply − demand</div>
   </div>
 
-  <!-- Row 2 -->
+  <!-- Charts 2+3 side by side -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
     <div class="ga-card">
       <div class="ga-sec">DEMAND BY SECTOR <span class="ga-tag">PPAC · ${u}</span></div>
-      <div class="ga-ch-wrap" style="height:200px"><canvas id="ind-sector-chart"></canvas></div>
+      <div class="ga-ch-wrap" style="height:220px"><canvas id="ind-sector-chart"></canvas></div>
+      <div class="ga-source">Hover for % of total demand</div>
     </div>
     <div class="ga-card">
-      <div class="ga-sec">RLNG SHARE OF SUPPLY <span class="ga-tag">%</span></div>
-      <div class="ga-ch-wrap" style="height:200px"><canvas id="ind-rlng-chart"></canvas></div>
-      <div class="ga-source">RLNG ÷ (Domestic + RLNG) × 100</div>
+      <div class="ga-sec">RLNG SHARE OF SUPPLY <span class="ga-tag">100% stacked</span></div>
+      <div class="ga-ch-wrap" style="height:220px"><canvas id="ind-rlng-chart"></canvas></div>
+      <div class="ga-source">Hover: RLNG % + Domestic %</div>
     </div>
   </div>
 
-  <!-- Seasonal -->
+  <!-- Chart 4: Seasonal — LOCAL controls -->
   <div class="ga-card">
-    <div class="ga-sec">SEASONAL COMPARISON <span class="ga-tag">Jan–Dec</span></div>
+    <div class="ga-sec">SEASONAL COMPARISON <span class="ga-tag">Jan–Dec · independent range</span></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
       <span style="font-size:9px;color:#546e7a">SERIES</span>
-      ${[['supply','Total supply'],['rlng','RLNG'],['prod','Domestic prod'],['Power','Power'],['Fertilizer','Fertilizer'],['CGD','CGD']].map(([k,l])=>`<button class="f-btn sm${_indSeries===k?' on':''}" onclick="_indSeries='${k}';renderIndBalance(document.getElementById('ind-tab-body'))">${l}</button>`).join('')}
+      ${[['supply','Total supply'],['rlng','RLNG'],['prod','Domestic'],['Power','Power'],['Fertilizer','Fertilizer'],['CGD','CGD']].map(([k,l])=>`<button class="f-btn sm${_indSeries===k?' on':''}" onclick="_indSeries='${k}';renderIndBalance(document.getElementById('ind-tab-body'))">${l}</button>`).join('')}
       <span style="font-size:9px;color:#546e7a;margin-left:8px">YEARS</span>
-      ${Array.from({length:5},(_,i)=>curY-i).map(yr=>{const on=(!_indSeasYrs&&yr>=curY-2)||(_indSeasYrs&&_indSeasYrs.includes(yr));return`<button class="f-btn sm${on?' on':''}" onclick="indToggleSeasYr(${yr})">${yr}</button>`;}).join('')}
+      ${Array.from({length:5},(_,i)=>curY-i).map(yr=>{
+        const on=(!_indSeasYrs&&yr>=curY-2)||(_indSeasYrs&&_indSeasYrs.includes(yr));
+        return`<button class="f-btn sm${on?' on':''}" onclick="indToggleSeasYr(${yr})">${yr}</button>`;
+      }).join('')}
     </div>
-    <div class="ga-ch-wrap" style="height:200px"><canvas id="ind-seas-chart"></canvas></div>
-    <div class="ga-source">PPAC via CSV upload</div>
+    <div class="ga-ch-wrap" style="height:220px"><canvas id="ind-seas-chart"></canvas></div>
+    <div class="ga-source">PPAC via CSV upload · year toggles affect this chart only</div>
   </div>`;
 
-  // Draw charts
+  // ── Draw charts ────────────────────────────────────────────────────────────
   setTimeout(()=>{
     const labels=mos.map(m=>{const[y,mn]=m.split('-');return GA_MO[+mn-1]+(mn==='01'?`'${y.slice(2)}`:'');});
-    const prodVals=mos.map(m=>indConv(raw.data[m]?.prod||raw.data[m]?.total_supply||null));
-    const rlngVals=mos.map(m=>indConv(raw.data[m]?.rlng||null));
-    const demVals=mos.map(m=>indConv(raw.data[m]?.total_demand||null));
+    const prodVals=mos.map(m=>conv(raw.data[m]?.prod||null,m));
+    const rlngVals=mos.map(m=>conv(raw.data[m]?.rlng||null,m));
+    const demVals=mos.map(m=>conv(raw.data[m]?.total_demand||null,m));
+    const gapVals=mos.map(m=>{
+      const d=raw.data[m]; if(!d) return null;
+      const g=(d.prod||0)+(d.rlng||0)-(d.total_demand||0);
+      return conv(g,m);
+    });
 
     const scX={...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:16}};
 
-    // Main chart
+    // Chart 1a: supply vs demand
     gaMakeChart('ind-main-chart','bar',{labels,datasets:[
-      {label:`Domestic (${u})`,data:prodVals,backgroundColor:'rgba(79,195,247,0.55)',borderColor:'#4fc3f7',borderWidth:1,stack:'supply'},
-      {label:`RLNG (${u})`,data:rlngVals,backgroundColor:'rgba(29,158,117,0.6)',borderColor:'#1D9E75',borderWidth:1,stack:'supply'},
+      {label:`Domestic (${u})`,data:prodVals,backgroundColor:'rgba(79,195,247,0.55)',borderColor:'#4fc3f7',borderWidth:1,stack:'s'},
+      {label:`RLNG (${u})`,data:rlngVals,backgroundColor:'rgba(29,158,117,0.6)',borderColor:'#1D9E75',borderWidth:1,stack:'s'},
       {label:`Demand (${u})`,data:demVals,type:'line',borderColor:'#ffb74d',borderWidth:2,borderDash:[4,2],pointRadius:0,fill:false,order:-1},
-    ]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}});
+    ]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},
+       plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}});
 
-    // Sector stacked
+    // Chart 1b: surplus/deficit
+    gaMakeChart('ind-gap-chart','bar',{labels,datasets:[{
+      label:`Gap (${u})`,
+      data:gapVals,
+      backgroundColor:gapVals.map(v=>v!=null&&v>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)'),
+      borderColor:gapVals.map(v=>v!=null&&v>=0?'#4ade80':'#f87171'),
+      borderWidth:1,
+    }]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},
+        plugins:{legend:{display:false}}});
+
+    // Chart 2: demand by sector with % tooltip
+    const totalByMo=mos.map(m=>raw.data[m]?.total_demand||null);
     const sectDs=IND_SECTORS.map((s,i)=>({
       label:IND_SECTOR_LBLS[s],
-      data:mos.map(m=>indConv(raw.data[m]?.[s]||null)),
+      data:mos.map(m=>conv(raw.data[m]?.[s]||null,m)),
       backgroundColor:IND_SECTOR_COLS[i]+'99',borderColor:IND_SECTOR_COLS[i],borderWidth:0.5,stack:'d',
     }));
-    gaMakeChart('ind-sector-chart','bar',{labels,datasets:sectDs},{scales:{x:scX,y:{...GCD.scales.y,stacked:true,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:8},boxWidth:8,padding:4}}}});
+    gaMakeChart('ind-sector-chart','bar',{labels,datasets:sectDs},{
+      scales:{x:scX,y:{...GCD.scales.y,stacked:true,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},
+      plugins:{
+        legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:8},boxWidth:8,padding:4}},
+        tooltip:{callbacks:{
+          afterBody(items){
+            const mo=mos[items[0].dataIndex];
+            const tot=raw.data[mo]?.total_demand;
+            if(!tot) return[];
+            return IND_SECTORS.map((s,i)=>{
+              const v=raw.data[mo]?.[s]||0;
+              return`${IND_SECTOR_LBLS[s]}: ${conv(v,mo)?.toLocaleString()||'—'} ${u} (${(v/tot*100).toFixed(1)}%)`;
+            });
+          }
+        }}
+      }
+    });
 
-    // RLNG share
-    const rlngShare=mos.map(m=>{const r=raw.data[m];if(!r)return null;const tot=(r.prod||r.total_supply||0)+(r.rlng||0);return tot?+((r.rlng||0)/tot*100).toFixed(1):null;});
-    gaMakeChart('ind-rlng-chart','line',{labels,datasets:[{label:'RLNG %',data:rlngShare,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.1)',borderWidth:2,pointRadius:1,fill:true,tension:.3,spanGaps:true}]},{scales:{x:scX,y:{...GCD.scales.y,min:0,max:50,title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}}});
+    // Chart 3: 100% stacked RLNG/Domestic
+    const rlngPct=mos.map(m=>{const d=raw.data[m];if(!d) return null;const tot=(d.prod||0)+(d.rlng||0);return tot?+((d.rlng||0)/tot*100).toFixed(1):null;});
+    const domPct=mos.map(m=>{const d=raw.data[m];if(!d) return null;const tot=(d.prod||0)+(d.rlng||0);return tot?+((d.prod||0)/tot*100).toFixed(1):null;});
+    gaMakeChart('ind-rlng-chart','bar',{labels,datasets:[
+      {label:'RLNG %',data:rlngPct,backgroundColor:'rgba(29,158,117,0.7)',borderColor:'#1D9E75',borderWidth:0.5,stack:'p'},
+      {label:'Domestic %',data:domPct,backgroundColor:'rgba(79,195,247,0.45)',borderColor:'#4fc3f7',borderWidth:0.5,stack:'p'},
+    ]},{scales:{x:scX,y:{...GCD.scales.y,min:0,max:100,stacked:true,title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}},
+       plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}},
+    });
 
-    // Seasonal
+    // Chart 4: seasonal (local year selection)
     const seasYrs=_indSeasYrs&&_indSeasYrs.length?[..._indSeasYrs].sort((a,b)=>b-a):[curY,curY-1,curY-2];
     function seasVal(yr,m,s){
       const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
       const d=raw.data[mo];if(!d)return null;
-      if(s==='supply')return indConv((d.prod||d.total_supply||0)+(d.rlng||0));
-      if(s==='rlng')return indConv(d.rlng||null);
-      if(s==='prod')return indConv(d.prod||d.total_supply||null);
-      return indConv(d[s]||null);
+      if(s==='supply')return conv((d.prod||0)+(d.rlng||0),mo);
+      if(s==='rlng')return conv(d.rlng||null,mo);
+      if(s==='prod')return conv(d.prod||null,mo);
+      return conv(d[s]||null,mo);
     }
     const seasDs=seasYrs.map((yr,i)=>({
       label:String(yr),
       data:Array.from({length:12},(_,m)=>seasVal(yr,m,_indSeries)),
       borderColor:GA_COLS[i],backgroundColor:GA_COLS[i]+(i===0?'22':'00'),
       borderWidth:i===0?2.5:1.5,borderDash:i>0?[5,3]:undefined,
-      pointRadius:2,tension:.3,spanGaps:true,
+      pointRadius:2,tension:.3,spanGaps:false,
     }));
-    gaMakeChart('ind-seas-chart','line',{labels:GA_MO,datasets:seasDs},{scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}});
+    gaMakeChart('ind-seas-chart','line',{labels:GA_MO,datasets:seasDs},{
+      scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},
+              y:{...GCD.scales.y,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},
+      plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}
+    });
   },80);
 }
 
@@ -12312,62 +12372,59 @@ function renderIndPrices(el){
   const m1Date=new Date(now.getFullYear(),now.getMonth()+1,1);
   const m1Label=`${GA_MO[m1Date.getMonth()]}-${String(m1Date.getFullYear()).slice(2)}`;
 
-  // Live prices from cp_fp (same as Financial Trading EOD)
   const cpFP=cpGet('cp_fp',null);
   const jkmM1=cpFP?.JKM?.[0]??null;
   const jkmDES=jkmM1!=null?+(jkmM1-0.35).toFixed(3):null;
-  const brentM1=(() => {
-    try{ const arr=gSR('Brent',1)||[]; return arr.length?arr[arr.length-1].value:null; }catch{return null;}
-  })();
-  const ltFloor=brentM1!=null?+(brentM1*0.11).toFixed(2):null;
-  const ltCeil=brentM1!=null?+(brentM1*0.14).toFixed(2):null;
+  const brentArr=(()=>{try{return gSR('Brent',1)||[];}catch{return[];}})();
+  const brentLatest=brentArr.length?brentArr[brentArr.length-1].value:null;
+  const ltFloor=brentLatest!=null?+(brentLatest*0.11).toFixed(2):null;
+  const ltCeil=brentLatest!=null?+(brentLatest*0.14).toFixed(2):null;
   const apmNow=IND_APM[curMo]||Object.values(IND_APM).pop();
   const dwNow=indDWPrice(curMo);
-  // Period labels
   const dwPeriod=(()=>{for(const b of IND_DEEPWATER)if(curMo>=b.from&&curMo<=b.to)return`${GA_MO[+b.from.slice(5,7)-1]}-${b.from.slice(2,4)} – ${GA_MO[+b.to.slice(5,7)-1]}-${b.to.slice(2,4)}`;return'';})();
-  const apmPeriodNote=`${GA_MO[now.getMonth()]} ${now.getFullYear()}`;
 
-  const row=(color,label,note,right)=>`
-    <div style="display:flex;align-items:center;gap:0;border-radius:6px;overflow:hidden;margin-bottom:8px">
-      <div style="width:4px;background:${color};align-self:stretch;flex-shrink:0;border-radius:4px 0 0 4px"></div>
-      <div style="flex:1;background:${color}18;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-        <span style="font-size:12px;color:${color};font-weight:500">${label}</span>
-        <span style="font-size:11px;color:#8a9bb5;text-align:right">${right}</span>
+  const box=(color,label,value,note)=>`
+    <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;margin-bottom:10px">
+      <div style="width:4px;background:${color};flex-shrink:0"></div>
+      <div style="flex:1;background:${color}14;padding:14px 18px">
+        <div style="font-size:10px;color:#8a9bb5;margin-bottom:4px">${label}</div>
+        <div style="font-size:28px;font-weight:500;color:${color};margin-bottom:4px">${value}</div>
+        <div style="font-size:10px;color:#546e7a">${note}</div>
       </div>
     </div>`;
 
   el.innerHTML=`
-  <div style="max-width:900px">
-    <div style="font-size:12px;font-weight:700;letter-spacing:.05em;color:var(--t);margin-bottom:16px">INDIA GAS SUPPLY STACK — $/MMBTU (GCV)</div>
+  <div style="max-width:860px">
+    <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--t);margin-bottom:16px">INDIA GAS SUPPLY STACK — $/MMBTU (GCV) · highest → lowest</div>
 
-    <!-- 3 KPI cards -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
-      <div class="ga-kpi">
-        <div class="ga-kpi-lbl">APM gas (${apmPeriodNote})</div>
-        <div class="ga-kpi-val" style="color:#4fc3f7;font-size:26px">$${apmNow?.toFixed(2)||'—'}</div>
-        <div class="ga-kpi-note">ONGC/OIL nomination fields · GCV basis</div>
-      </div>
-      <div class="ga-kpi">
-        <div class="ga-kpi-lbl">Deepwater ceiling (${dwPeriod})</div>
-        <div class="ga-kpi-val" style="color:#ffb74d;font-size:26px">$${dwNow?.toFixed(2)||'—'}</div>
-        <div class="ga-kpi-note">HPHT/Deepwater/Ultra-deepwater · GCV basis</div>
-      </div>
-      <div class="ga-kpi">
-        <div class="ga-kpi-lbl">JKM DES India (${m1Label})</div>
-        <div class="ga-kpi-val" style="color:#c8d6e5;font-size:26px">${jkmDES!=null?'$'+jkmDES:'— load EOD'}</div>
-        <div class="ga-kpi-note">JKM spot − $0.35/MMBtu shipping diff</div>
-      </div>
-    </div>
+    ${box('#c8d6e5',
+      `JKM DES India · ${m1Label}`,
+      jkmDES!=null?`$${jkmDES}`:'— load EOD',
+      `JKM M+1 rolling − $0.35/MMBtu shipping diff · from EOD files in Financial Trading`
+    )}
+    ${box('#f87171',
+      `LT oil-indexed contracts · current range`,
+      ltFloor&&ltCeil?`$${ltFloor} – $${ltCeil}`:'— load EOD',
+      `11% × Brent (floor) to 14% × Brent (ceiling)${brentLatest?` · Brent $${brentLatest.toFixed(2)}/bbl`:''}`
+    )}
+    ${box('#ffb74d',
+      `Deepwater / HPHT ceiling · ${dwPeriod}`,
+      `$${dwNow?.toFixed(2)||'—'}`,
+      `PPAC notification · GCV basis · biannual revision`
+    )}
+    ${box('#81c784',
+      `CIL coal effective · power sector`,
+      `$${IND_CIL_LOW}–${IND_CIL_HIGH}`,
+      `G10 ₹2,900/t · 4,400 kcal/kg · 35% plant efficiency · update annually from coalindia.in`
+    )}
+    ${box('#4fc3f7',
+      `APM gas · ${curMo}`,
+      `$${apmNow?.toFixed(2)||'—'}`,
+      `ONGC/OIL nomination fields · GCV basis · PPAC notification`
+    )}
 
-    <!-- 5 info rows -->
-    ${row('#4fc3f7','APM gas — step line','','$5.61 → $6.21 → $7.00 (biannual PPAC revisions)')}
-    ${row('#ffb74d','Deepwater / HPHT ceiling — step line','','$9.72 → $10.04 → $8.90 (biannual PPAC revisions)')}
-    ${row('#c8d6e5','JKM DES India','','JKM M+1 rolling − $0.35 · from EOD files'+(jkmDES!=null?` · current: $${jkmDES}`:''))}
-    ${row('#f87171','LT oil-indexed band — red fill','',`11% × Brent (floor) to 14% × Brent (ceiling)${brentM1!=null?' · Brent $'+brentM1.toFixed(2)+' → $'+ltFloor+'–$'+ltCeil:''}`)}
-    ${row('#81c784','CIL coal effective (power sector)','','G10 ₹2,900/t · 4,400 kcal/kg · 35% efficiency → ~$7.5–8.5/MMBtu')}
-
-    <div style="font-size:10px;color:#3d5070;margin-top:14px;line-height:1.6;border-top:0.5px solid rgba(77,158,245,.1);padding-top:10px">
-      APM and deepwater prices sourced from PPAC notifications. CIL coal hardcoded (update annually from coalindia.in). JKM DES India from EOD files · Financial Trading section. LT band from EOD Brent.
+    <div style="font-size:10px;color:#3d5070;line-height:1.6;border-top:0.5px solid rgba(77,158,245,.1);padding-top:10px;margin-top:4px">
+      APM and deepwater: PPAC notifications (hardcoded, updated per notification). JKM DES and Brent: EOD files via Financial Trading section. CIL coal: hardcoded, update annually from coalindia.in.
     </div>
   </div>`;
 }
