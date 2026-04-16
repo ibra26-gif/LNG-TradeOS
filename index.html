@@ -727,54 +727,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
     </div>
 
     <div id="cs-pane-4" class="cs-tab-pane active">
-
-      <!-- Controls -->
-      <div class="cs-ctrl-row" style="flex-wrap:wrap;gap:10px;margin-bottom:14px">
-        <div class="cs-ctrl-grp">
-          <div class="cs-ctrl-lbl">UNITS</div>
-          <div class="cs-rng-btns" id="cs-gb-unit-btns">
-            <button class="cs-rng-btn active" onclick="csGBSetUnit('bcm',this)">BCM</button>
-            <button class="cs-rng-btn" onclick="csGBSetUnit('mmscm',this)">MMSCM</button>
-            <button class="cs-rng-btn" onclick="csGBSetUnit('mtpa',this)">MTPM</button>
-          </div>
-        </div>
-        <div class="cs-ctrl-grp">
-          <div class="cs-ctrl-lbl">VIEW</div>
-          <div class="cs-rng-btns" id="cs-gb-view-btns">
-            <button class="cs-rng-btn active" onclick="csGBSetView('balance',this)">BALANCE</button>
-            <button class="cs-rng-btn" onclick="csGBSetView('seasonal',this)">SEASONAL</button>
-          </div>
-        </div>
-        <div class="cs-ctrl-grp">
-          <div class="cs-ctrl-lbl">PERIOD</div>
-          <div class="cs-rng-btns" id="cs-gb-period-btns">
-            <button class="cs-rng-btn" onclick="csGBSetPeriod('1Y',this)">1Y</button>
-            <button class="cs-rng-btn active" onclick="csGBSetPeriod('2Y',this)">2Y</button>
-            <button class="cs-rng-btn" onclick="csGBSetPeriod('ALL',this)">ALL</button>
-          </div>
-        </div>
-
+      <div id="cs-gb-body">
+        <div style="padding:24px;text-align:center;color:#3d5070;font-size:9px">Loading China gas balance data...</div>
       </div>
-
-
-
-
-      <!-- Balance table -->
-      <div id="cs-gb-table-wrap" style="overflow-x:auto;margin-bottom:20px"></div>
-
-      <!-- Chart -->
-      <div class="cs-divider" id="cs-gb-chart-title">CHINA GAS BALANCE — MONTHLY</div>
-      <div id="cs-gb-sea-ctrl" style="display:none;gap:12px;margin-bottom:10px;flex-wrap:wrap;align-items:center"></div>
-      <div style="height:360px;position:relative"><canvas id="cs-gb-canvas" role="img" aria-label="China gas supply and demand balance monthly chart"></canvas></div>
-
-      <!-- Source -->
-      <div class="cs-src" style="margin-top:10px">
-        Sources: NBS China (production, monthly) · GACC China Customs (LNG + pipeline imports, monthly) · Implied consumption = production + imports · Units convertible: 1 BCM = 1,000 MMSCM = 0.74 MTPA (approx)
-      </div>
-
     </div>
 
-    </div><!-- end lngbal-china -->
     <div id="lngbal-india" style="display:none">
       <div id="ind-container"></div>
     </div>
@@ -2432,16 +2389,263 @@ window.csPricesUpdate=csPricesUpdate;
       }
     }
 
-    function csGBUpdate() {
-      const fullData = GB.data || GB_HISTORICAL;
-      const filtData = gbGetData();
-      if (!filtData.length) return;
-      // Show/hide seasonal controls
-      const ctrl = document.getElementById('cs-gb-sea-ctrl');
-      if (ctrl) ctrl.style.display = 'none';
-      gbRenderTable(fullData, filtData);
-      gbRenderChart(fullData, filtData);
+    function csGBUpdate(){
+      const el=document.getElementById('cs-gb-body'); if(!el)return;
+      const raw=csGBGetData();
+      if(!raw||!raw.length){ el.innerHTML='<div style="padding:24px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">No data. Upload CSV from china_gas_balance_fetch.py or using fallback data.</div>'; csGBRender(el,GB.data||GB_HISTORICAL); return; }
+      csGBRender(el,raw);
     }
+    window.csGBUpdate=csGBUpdate;
+
+    function csGBGetData(){
+      try{
+        const s=localStorage.getItem('lng_china_gb_v2');
+        if(!s) return null;
+        const parsed=JSON.parse(s);
+        return parsed.rows||null;
+      }catch{return null;}
+    }
+
+    // China storage adj (BCM) — seasonal draw/inject pattern
+    const CN_STOR_ADJ={'01':3.5,'02':2.8,'03':1.2,'04':-1.5,'05':-2.8,'06':-3.2,'07':-3.5,'08':-3.0,'09':-1.8,'10':0.5,'11':2.5,'12':4.2};
+
+    function csGBConv(v,unit,mo){
+      if(v==null||isNaN(v))return null;
+      if(unit==='mcmd'){const d=mo?new Date(+mo.slice(0,4),+mo.slice(5,7),0).getDate():30;return+(v/d*1000).toFixed(1);}
+      if(unit==='mtpm')return+(v*0.73).toFixed(2); // BCM → MT/month
+      return+v.toFixed(2); // BCM
+    }
+    function csGBULbl(unit){return unit==='mcmd'?'mcm/d':unit==='mtpm'?'MT/month':'BCM';}
+
+    function csGBRender(el,rows){
+      const unit=window._cgbUnit||'bcm';
+      const rng=window._cgbRange||'1Y';
+      const u=csGBULbl(unit);
+      const now=new Date();
+      const cutoff={'3M':new Date(now.getFullYear(),now.getMonth()-2,1).toISOString().slice(0,7),
+                    '1Y':new Date(now.getFullYear()-1,now.getMonth()+1,1).toISOString().slice(0,7),
+                    '2Y':new Date(now.getFullYear()-2,now.getMonth()+1,1).toISOString().slice(0,7),
+                   }[rng]||'2000-01';
+
+      // Normalise rows — handle both GB_HISTORICAL {m,prod,lng,pipe} and CSV {month,prod_bcm,lng_bcm,pipe_bcm,apparent_bcm}
+      const norm=rows.map(r=>({
+        mo:r.month||r.m,
+        prod:parseFloat(r.prod_bcm||r.prod)||null,
+        lng:parseFloat(r.lng_bcm||r.lng)||null,
+        pipe:parseFloat(r.pipe_bcm||r.pipe)||null,
+        apparent:parseFloat(r.apparent_bcm)||null,
+      })).filter(r=>r.mo);
+      const filt=norm.filter(r=>r.mo>=cutoff);
+      if(!filt.length){el.innerHTML='<div style="padding:20px;text-align:center;color:#3d5070;font-size:9px">No data in selected range.</div>';return;}
+
+      const latR=filt[filt.length-1];
+      const lyMo=`${+latR.mo.slice(0,4)-1}-${latR.mo.slice(5,7)}`;
+      const lyR=norm.find(r=>r.mo===lyMo)||{};
+      const latProd=latR.prod, latLng=latR.lng, latPipe=latR.pipe;
+      const latTotal=latProd!=null&&latLng!=null&&latPipe!=null?+(latProd+latLng+latPipe).toFixed(2):null;
+      // Apparent demand = total + storage adj (BCM)
+      const storAdj=CN_STOR_ADJ[latR.mo.slice(5,7)]||0;
+      const latApparent=latR.apparent||(latTotal!=null?+(latTotal+storAdj).toFixed(2):null);
+      function pctYoY(a,b){if(!a||!b)return'';const d=+(((a-b)/b)*100).toFixed(1);return`<span style="font-size:9px;color:${d>0?'#4ade80':'#f87171'}">${d>0?'+':''}${d}% YoY</span>`;}
+
+      el.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <span style="font-size:9px;color:#546e7a">RANGE</span>
+        ${['3M','1Y','2Y'].map(r=>`<button class="f-btn sm${rng===r?' on':''}" onclick="window._cgbRange='${r}';csGBUpdate();">${r}</button>`).join('')}
+        <span style="font-size:9px;color:#546e7a;margin-left:8px">UNIT</span>
+        ${[['bcm','BCM'],['mcmd','mcm/d'],['mtpm','MT/month']].map(([k,l])=>`<button class="f-btn sm${unit===k?' on':''}" onclick="window._cgbUnit='${k}';csGBUpdate();">${l}</button>`).join('')}
+        <label style="cursor:pointer;padding:5px 12px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(77,158,245,0.4);color:#4d9ef5;background:rgba(77,158,245,0.07);font-family:inherit;margin-left:auto">
+          ↑ UPLOAD CSV<input type="file" accept=".csv" style="display:none" onchange="csGBLoadCsv(this)">
+        </label>
+        <button onclick="csGBClear()" style="padding:5px 10px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(248,113,113,0.4);color:#f87171;background:rgba(248,113,113,0.06);font-family:inherit;cursor:pointer">✕ CLEAR</button>
+        <span style="font-size:9px;color:#3d5070">${filt.length} months · ${norm[0]?.mo||''}→${norm[norm.length-1]?.mo||''}</span>
+      </div>
+
+      <!-- KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+        <div class="ga-kpi"><div class="ga-kpi-lbl">Domestic prod · ${latR.mo}</div>
+          <div class="ga-kpi-val" style="color:#4fc3f7">${latProd!=null?csGBConv(latProd,unit,latR.mo).toLocaleString():'—'}<span class="ga-kpi-unit"> ${u}</span></div>
+          <div class="ga-kpi-note">${pctYoY(latProd,lyR.prod)}</div></div>
+        <div class="ga-kpi"><div class="ga-kpi-lbl">LNG imports · ${latR.mo}</div>
+          <div class="ga-kpi-val" style="color:#1D9E75">${latLng!=null?csGBConv(latLng,unit,latR.mo).toLocaleString():'—'}<span class="ga-kpi-unit"> ${u}</span></div>
+          <div class="ga-kpi-note">${pctYoY(latLng,lyR.lng)}</div></div>
+        <div class="ga-kpi"><div class="ga-kpi-lbl">Pipeline imports · ${latR.mo}</div>
+          <div class="ga-kpi-val" style="color:#7F77DD">${latPipe!=null?csGBConv(latPipe,unit,latR.mo).toLocaleString():'—'}<span class="ga-kpi-unit"> ${u}</span></div>
+          <div class="ga-kpi-note">${pctYoY(latPipe,lyR.pipe)}</div></div>
+        <div class="ga-kpi"><div class="ga-kpi-lbl">Apparent demand · ${latR.mo}</div>
+          <div class="ga-kpi-val" style="color:#ffb74d">${latApparent!=null?csGBConv(latApparent,unit,latR.mo).toLocaleString():'—'}<span class="ga-kpi-unit"> ${u}</span></div>
+          <div class="ga-kpi-note">Supply + storage Δ</div></div>
+      </div>
+
+      <!-- Chart 1: Supply vs Demand + surplus/deficit -->
+      <div class="ga-card" style="margin-bottom:10px">
+        <div class="ga-sec">SUPPLY vs DEMAND <span class="ga-tag">NBS/GACC · ${u}</span></div>
+        <div class="ga-ch-wrap" style="height:200px"><canvas id="cn-gb-main"></canvas></div>
+        <div style="height:1px;background:rgba(77,158,245,.1);margin:6px 0"></div>
+        <div class="ga-sec" style="font-size:8.5px;margin-top:4px">SURPLUS / DEFICIT <span class="ga-tag">${u}</span></div>
+        <div class="ga-ch-wrap" style="height:80px"><canvas id="cn-gb-gap"></canvas></div>
+        <div class="ga-source">Prod (blue) + LNG (teal) + Pipeline (purple) stacked · Apparent demand (dashed) · Gap = supply − demand</div>
+      </div>
+
+      <!-- Charts 2+3 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="ga-card">
+          <div class="ga-sec">IMPORTS BREAKDOWN <span class="ga-tag">${u}</span></div>
+          <div class="ga-ch-wrap" style="height:220px"><canvas id="cn-gb-imports"></canvas></div>
+          <div class="ga-source">LNG (teal) vs Pipeline (purple) · hover for % of total imports</div>
+        </div>
+        <div class="ga-card">
+          <div class="ga-sec">STORAGE ADJUSTMENT <span class="ga-tag">BCM · seasonal est.</span></div>
+          <div class="ga-ch-wrap" style="height:220px"><canvas id="cn-gb-storage"></canvas></div>
+          <div class="ga-source">Positive = storage draw (supply boost) · Negative = injection (demand absorbed)</div>
+        </div>
+      </div>
+
+      <!-- Chart 4: Seasonal -->
+      <div class="ga-card">
+        <div class="ga-sec">SEASONAL COMPARISON <span class="ga-tag">Jan–Dec · independent</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
+          <span style="font-size:9px;color:#546e7a">SERIES</span>
+          ${[['supply','Total supply'],['prod','Domestic'],['lng','LNG imports'],['pipe','Pipeline'],['demand','Demand']].map(([k,l])=>`<button class="f-btn sm${(window._cgbSeries||'supply')===k?' on':''}" onclick="window._cgbSeries='${k}';csGBUpdate();">${l}</button>`).join('')}
+          <span style="font-size:9px;color:#546e7a;margin-left:8px">YEARS</span>
+          ${Array.from({length:4},(_,i)=>new Date().getFullYear()-i).map(yr=>{
+            const yrs=window._cgbSeasYrs;
+            const curY=new Date().getFullYear();
+            const on=(!yrs&&yr>=curY-2)||(yrs&&yrs.includes(yr));
+            return`<button class="f-btn sm${on?' on':''}" onclick="csGBToggleYr(${yr})">${yr}</button>`;
+          }).join('')}
+        </div>
+        <div class="ga-ch-wrap" style="height:220px"><canvas id="cn-gb-seas"></canvas></div>
+        <div class="ga-source">NBS/GACC via CSV · year toggles local to this chart only</div>
+      </div>`;
+
+      setTimeout(()=>{
+        const labels=filt.map(r=>{const[y,mn]=r.mo.split('-');return GA_MO[+mn-1]+(mn==='01'?`'${y.slice(2)}`:'');});
+        const cv=v=>v!=null?csGBConv(v,unit,null):null;
+        const prodV=filt.map(r=>cv(r.prod));
+        const lngV=filt.map(r=>cv(r.lng));
+        const pipeV=filt.map(r=>cv(r.pipe));
+        const totalV=filt.map(r=>r.prod!=null&&r.lng!=null&&r.pipe!=null?cv(r.prod+r.lng+r.pipe):null);
+        const demV=filt.map(r=>{
+          const tot=r.prod!=null&&r.lng!=null&&r.pipe!=null?r.prod+r.lng+r.pipe:null;
+          const adj=CN_STOR_ADJ[r.mo.slice(5,7)]||0;
+          const app=r.apparent||(tot!=null?+(tot+adj).toFixed(2):null);
+          return app!=null?csGBConv(app,unit,r.mo):null;
+        });
+        const gapV=filt.map((r,i)=>totalV[i]!=null&&demV[i]!=null?+(totalV[i]-demV[i]).toFixed(2):null);
+        const scX={...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:16}};
+
+        // Chart 1a: Supply vs Demand
+        gaMakeChart('cn-gb-main','bar',{labels,datasets:[
+          {label:`Domestic (${u})`,data:prodV,backgroundColor:'rgba(79,195,247,0.55)',borderColor:'#4fc3f7',borderWidth:1,stack:'s'},
+          {label:`LNG (${u})`,data:lngV,backgroundColor:'rgba(29,158,117,0.6)',borderColor:'#1D9E75',borderWidth:1,stack:'s'},
+          {label:`Pipeline (${u})`,data:pipeV,backgroundColor:'rgba(127,119,221,0.55)',borderColor:'#7F77DD',borderWidth:1,stack:'s'},
+          {label:`Demand (${u})`,data:demV,type:'line',borderColor:'#ffb74d',borderWidth:2,borderDash:[4,2],pointRadius:0,fill:false,order:-1},
+        ]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},
+           plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}});
+
+        // Chart 1b: Gap
+        gaMakeChart('cn-gb-gap','bar',{labels,datasets:[{
+          label:`Gap`,data:gapV,
+          backgroundColor:gapV.map(v=>v!=null&&v>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)'),
+          borderColor:gapV.map(v=>v!=null&&v>=0?'#4ade80':'#f87171'),borderWidth:1,
+        }]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},plugins:{legend:{display:false}}});
+
+        // Chart 2: Imports breakdown
+        const totImports=filt.map(r=>r.lng!=null&&r.pipe!=null?r.lng+r.pipe:null);
+        gaMakeChart('cn-gb-imports','bar',{labels,datasets:[
+          {label:'LNG',data:lngV,backgroundColor:'rgba(29,158,117,0.6)',borderColor:'#1D9E75',borderWidth:0.5,stack:'i'},
+          {label:'Pipeline',data:pipeV,backgroundColor:'rgba(127,119,221,0.55)',borderColor:'#7F77DD',borderWidth:0.5,stack:'i'},
+        ]},{scales:{x:scX,y:{...GCD.scales.y,stacked:true,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},
+           plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}},
+                    tooltip:{callbacks:{afterBody(items){const mo=filt[items[0].dataIndex].mo;const tot=totImports[items[0].dataIndex];if(!tot)return[];const lng=filt[items[0].dataIndex].lng||0;const pipe=filt[items[0].dataIndex].pipe||0;return[`LNG: ${(lng/tot*100).toFixed(1)}%`,`Pipeline: ${(pipe/tot*100).toFixed(1)}%`];}}}}});
+
+        // Chart 3: Storage adj
+        const storV=filt.map(r=>CN_STOR_ADJ[r.mo.slice(5,7)]||0);
+        gaMakeChart('cn-gb-storage','bar',{labels,datasets:[{
+          label:'Storage Δ (BCM)',data:storV,
+          backgroundColor:storV.map(v=>v>0?'rgba(74,222,128,0.5)':'rgba(248,113,113,0.5)'),
+          borderColor:storV.map(v=>v>0?'#4ade80':'#f87171'),borderWidth:1,
+        }]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:'BCM',color:'#3d5070',font:{size:9}}}},plugins:{legend:{display:false}}});
+
+        // Chart 4: Seasonal
+        const curY=new Date().getFullYear();
+        const seasYrs=window._cgbSeasYrs&&window._cgbSeasYrs.length?[...window._cgbSeasYrs].sort((a,b)=>b-a):[curY,curY-1,curY-2];
+        const series=window._cgbSeries||'supply';
+        function seasVal(yr,m){
+          const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
+          const r=norm.find(d=>d.mo===mo);if(!r)return null;
+          if(series==='supply')return cv(r.prod!=null&&r.lng!=null&&r.pipe!=null?r.prod+r.lng+r.pipe:null);
+          if(series==='prod')return cv(r.prod);
+          if(series==='lng')return cv(r.lng);
+          if(series==='pipe')return cv(r.pipe);
+          if(series==='demand'){const tot=r.prod!=null&&r.lng!=null&&r.pipe!=null?r.prod+r.lng+r.pipe:null;const adj=CN_STOR_ADJ[mo.slice(5,7)]||0;return tot!=null?cv(+(tot+adj).toFixed(2)):null;}
+          return null;
+        }
+        const seasDs=seasYrs.map((yr,i)=>({
+          label:String(yr),data:Array.from({length:12},(_,m)=>seasVal(yr,m)),
+          borderColor:GA_COLS[i],backgroundColor:GA_COLS[i]+(i===0?'22':'00'),
+          borderWidth:i===0?2.5:1.5,borderDash:i>0?[5,3]:undefined,pointRadius:2,tension:.3,spanGaps:false,
+        }));
+        gaMakeChart('cn-gb-seas','line',{labels:GA_MO,datasets:seasDs},{
+          scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},
+          plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}});
+      },80);
+    }
+
+    function csGBLoadCsv(input){
+      const file=input.files[0];if(!file)return;
+      const reader=new FileReader();
+      reader.onload=e=>{
+        try{
+          const lines=e.target.result.trim().split('\n');
+          const hdrs=lines[0].split(',').map(s=>s.trim());
+          const rows=lines.slice(1).map(line=>{
+            const cells=line.split(',').map(s=>s.trim());
+            const obj={};hdrs.forEach((h,i)=>obj[h]=cells[i]||'');
+            // Support both china_gas_balance_fetch.py output and GB_HISTORICAL format
+            return {
+              month:obj.month||obj.m||'',
+              prod_bcm:parseFloat(obj.prod_bcm||obj.prod)||null,
+              lng_bcm:parseFloat(obj.lng_bcm||obj.lng)||null,
+              pipe_bcm:parseFloat(obj.pipe_bcm||obj.pipe)||null,
+              apparent_bcm:parseFloat(obj.apparent_bcm)||null,
+              lng_mt:parseFloat(obj.lng_mt)||null,
+              pipe_mt:parseFloat(obj.pipe_mt)||null,
+              total_bcm:parseFloat(obj.total_bcm)||null,
+            };
+          }).filter(r=>r.month.match(/\d{4}-\d{2}/));
+          if(!rows.length){alert('No valid rows found.');return;}
+          try{
+            Object.keys(localStorage).filter(k=>!['lng_india','cp_','ms_','EEX_','OB_EOD','PORT_DB','lng_ffa','lng_china'].some(p=>k.startsWith(p))).forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+          }catch(e){}
+          localStorage.setItem('lng_china_gb_v2',JSON.stringify({ts:Date.now(),rows}));
+          alert(`Loaded ${rows.length} months (${rows[0].month} → ${rows[rows.length-1].month})`);
+          csGBUpdate();
+        }catch(err){alert('CSV error: '+err.message);}
+      };
+      reader.readAsText(file);
+      input.value='';
+    }
+    window.csGBLoadCsv=csGBLoadCsv;
+
+    function csGBClear(){
+      if(!confirm('Clear China gas balance data?'))return;
+      try{localStorage.removeItem('lng_china_gb_v2');}catch(e){}
+      window._cgbSeasYrs=null;
+      csGBUpdate();
+    }
+    window.csGBClear=csGBClear;
+
+    function csGBToggleYr(yr){
+      const curY=new Date().getFullYear();
+      if(!window._cgbSeasYrs) window._cgbSeasYrs=[curY,curY-1,curY-2];
+      const idx=window._cgbSeasYrs.indexOf(yr);
+      if(idx>=0){if(window._cgbSeasYrs.length>1)window._cgbSeasYrs.splice(idx,1);}
+      else window._cgbSeasYrs.push(yr);
+      csGBUpdate();
+    }
+    window.csGBToggleYr=csGBToggleYr;
 window.csGBUpdate = csGBUpdate;
 
     // ── Init: try cache first, then fetch ─────────────────────
