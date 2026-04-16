@@ -1603,7 +1603,22 @@ function csPricesUpdate(){
   const cnpA=mos.map(mo=>{const d=cnpMo[mo];return d&&d.n?+(d.sum/d.n).toFixed(2):null;});
   const ndrcA=mos.map(()=>+NDRC_IND.toFixed(2));
 
+  // Check SHPGX data status
+  const shpgxLoaded=Object.keys(SHPGX).some(k=>SHPGX[k]?.length>0);
+  const shpgxSeries=Object.keys(SHPGX).filter(k=>SHPGX[k]?.length>0);
+  const shpgxStatus=shpgxLoaded
+    ?`✓ SHPGX loaded: ${shpgxSeries.join(', ')} · ${SHPGX[shpgxSeries[0]]?.[0]?.dateStr||''} → ${SHPGX[shpgxSeries[0]]?.slice(-1)[0]?.dateStr||''}`
+    :'No SHPGX data — upload CSVs from shpgx_fetch.py';
+
   el.innerHTML=`
+  <!-- SHPGX upload bar -->
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding:8px 12px;border:1px solid ${shpgxLoaded?'rgba(29,158,117,0.3)':'rgba(77,158,245,0.2)'};background:${shpgxLoaded?'rgba(29,158,117,0.06)':'rgba(77,158,245,0.04)'};border-radius:6px">
+    <span style="font-size:9px;color:${shpgxLoaded?'#1D9E75':'#4d9ef5'}">${shpgxStatus}</span>
+    <label style="cursor:pointer;padding:4px 10px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(77,158,245,0.4);color:#4d9ef5;background:rgba(77,158,245,0.07);font-family:inherit;margin-left:auto">
+      ↑ UPLOAD SHPGX CSVs<input type="file" accept=".csv" multiple style="display:none" onchange="csLoadShpgxFiles(this.files);setTimeout(csPricesUpdate,500)">
+    </label>
+    ${shpgxLoaded?`<button onclick="csClearShpgx();setTimeout(csPricesUpdate,200)" style="padding:4px 10px;font-size:9px;border:1px solid rgba(248,113,113,0.4);color:#f87171;background:rgba(248,113,113,0.06);font-family:inherit;cursor:pointer">✕ CLEAR</button>`:''}
+  </div>
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
     <span style="font-size:9px;color:#546e7a">RANGE</span>
     ${['3M','6M','1Y','2Y'].map(r=>`<button class="f-btn sm${rng===r?' on':''}" onclick="window._cnPrRange='${r}';csPricesUpdate()">${r}</button>`).join('')}
