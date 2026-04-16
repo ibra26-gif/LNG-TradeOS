@@ -732,6 +732,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
       </div>
     </div>
 
+    </div><!-- end lngbal-china -->
+
     <div id="lngbal-india" style="display:none">
       <div id="ind-container"></div>
     </div>
@@ -1686,7 +1688,7 @@ window.csPricesUpdate=csPricesUpdate;
     // Keyed by series id, holds parsed rows from uploaded CSVs
     const SHPGX = window.SHPGX_DATA = window.SHPGX_DATA || {};
     const SHPGX_CACHE_KEY = 'lng_shpgx_v1';
-    const SHPGX_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours in ms
+    const SHPGX_CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
 
     // ── localStorage cache helpers ──
     function csWriteCache(data) {
