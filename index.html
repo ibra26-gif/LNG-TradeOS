@@ -12293,40 +12293,51 @@ let _indPrRange='1Y';
 function renderIndPrices(el){
   const now=new Date();
   const curMo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const m1Mo=new Date(now.getFullYear(),now.getMonth()+1,1);
-  const m1Label=GA_MO[m1Mo.getMonth()]+'-'+String(m1Mo.getFullYear()).slice(2);
-  // Live prices from gS
-  const jkmM1Raw=gS('JKM','r2');
-  const jkmDES=jkmM1Raw!=null?+(jkmM1Raw-0.35).toFixed(3):null;
-  const brent=gS('Brent','r1');
-  const ltFloor=brent!=null?+(brent*0.11).toFixed(2):null;
-  const ltCeil=brent!=null?+(brent*0.14).toFixed(2):null;
+  // M+1 label
+  const m1Date=new Date(now.getFullYear(),now.getMonth()+1,1);
+  const m1Label=GA_MO[m1Date.getMonth()]+'-'+String(m1Date.getFullYear()).slice(2);
+
+  // Get prices from CP forward curve (same source as Financial Trading dashboard)
+  const cpFP=cpGet('cp_fp',null);
+  const jkmM1=cpFP?.JKM?.[0]??null;   // index 0 = nearest contract = M+1
+  const brentM1=cpFP?.Brent?.[0]??cpFP?.BRENT?.[0]??null;
+  const jkmDES=jkmM1!=null?+(jkmM1-0.35).toFixed(3):null;
+  const ltFloor=brentM1!=null?+(brentM1*0.11).toFixed(2):null;
+  const ltCeil=brentM1!=null?+(brentM1*0.14).toFixed(2):null;
+
   const apmNow=IND_APM[curMo]||Object.values(IND_APM).pop();
   const dwNow=indDWPrice(curMo);
 
-  // Build time series for chart
-  const allMos=Object.keys(IND_APM).sort();
+  // Build date range for chart
+  const allAPMMos=Object.keys(IND_APM).sort();
   const cutoff={'3M':new Date(now.getFullYear(),now.getMonth()-2,1).toISOString().slice(0,7),
                 '6M':new Date(now.getFullYear(),now.getMonth()-5,1).toISOString().slice(0,7),
                 '1Y':new Date(now.getFullYear()-1,now.getMonth()+1,1).toISOString().slice(0,7),
                 '2Y':new Date(now.getFullYear()-2,now.getMonth()+1,1).toISOString().slice(0,7),
-                }[_indPrRange]||'2000-01';
-  const pMos=allMos.filter(m=>m>=cutoff);
-  const moLabels=pMos.map(m=>GA_MO[+m.slice(5,7)-1]+'-'+m.slice(2,4));
+  }[_indPrRange]||'2000-01';
+  const pMos=allAPMMos.filter(m=>m>=cutoff);
+  const moLabels=pMos.map(m=>GA_MO[+m.slice(5,7)-1]+`-${m.slice(2,4)}`);
 
-  // Get JKM history from gS forward curve data
-  function jkmHist(mo){
-    // Use stored curve data if available
-    const d=gD&&gD['JKM']&&gD['JKM'][mo];
-    return d?+(d-0.35).toFixed(2):null;
-  }
-  function brentHist(mo){
-    const d=gD&&gD['Brent']&&gD['Brent'][mo];
-    return d||null;
-  }
+  // JKM historical from gSR (returns [{date,value},...])
+  // gSR('JKM',1) = M+1 row across all loaded EOD dates
+  const jkmHist=(()=>{
+    try{
+      const arr=gSR('JKM',1)||[];
+      const byMo={};
+      arr.forEach(({date,value})=>{if(date&&value!=null)byMo[date.slice(0,7)]=value;});
+      return byMo;
+    }catch{return{};}
+  })();
+  const brentHist=(()=>{
+    try{
+      const arr=gSR('Brent',1)||[];
+      const byMo={};
+      arr.forEach(({date,value})=>{if(date&&value!=null)byMo[date.slice(0,7)]=value;});
+      return byMo;
+    }catch{return{};}
+  })();
 
   el.innerHTML=`
-  <!-- KPIs: 4 boxes -->
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
     <div class="ga-kpi"><div class="ga-kpi-lbl">APM gas · ${curMo}</div>
       <div class="ga-kpi-val" style="color:#4fc3f7">$${apmNow?.toFixed(2)||'—'}</div>
@@ -12335,44 +12346,43 @@ function renderIndPrices(el){
       <div class="ga-kpi-val" style="color:#ffb74d">$${dwNow?.toFixed(2)||'—'}</div>
       <div class="ga-kpi-note">HPHT/Deepwater · GCV · PPAC</div></div>
     <div class="ga-kpi"><div class="ga-kpi-lbl">JKM DES India · ${m1Label}</div>
-      <div class="ga-kpi-val" style="color:#c8d6e5">$${jkmDES?.toFixed(3)||'—'}</div>
-      <div class="ga-kpi-note">JKM M+1 − $0.35 shipping diff</div></div>
+      <div class="ga-kpi-val" style="color:#c8d6e5">${jkmDES!=null?'$'+jkmDES:'— load EOD'}</div>
+      <div class="ga-kpi-note">JKM M+1 − $0.35 · from EOD files</div></div>
     <div class="ga-kpi"><div class="ga-kpi-lbl">CIL coal eff. · power sector</div>
       <div class="ga-kpi-val" style="color:#81c784">$${IND_CIL_LOW}–${IND_CIL_HIGH}</div>
       <div class="ga-kpi-note" style="font-size:8px">${IND_CIL_NOTE}</div></div>
   </div>
-
-  <!-- Range selector -->
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
     <span style="font-size:9px;color:#546e7a">RANGE</span>
     ${['3M','6M','1Y','2Y'].map(r=>`<button class="f-btn sm${_indPrRange===r?' on':''}" onclick="_indPrRange='${r}';renderIndPrices(document.getElementById('ind-tab-body'))">${r}</button>`).join('')}
+    ${brentM1!=null?`<span style="font-size:9px;color:#546e7a;margin-left:8px">Brent M1: $${brentM1.toFixed(2)} → LT band: $${ltFloor}–$${ltCeil}</span>`:'<span style="font-size:9px;color:#f59e0b;margin-left:8px">Load EOD files for live Brent/JKM</span>'}
   </div>
-
-  <!-- Supply stack chart -->
   <div class="ga-card">
     <div class="ga-sec">INDIA GAS SUPPLY STACK <span class="ga-tag">$/MMBTU (GCV)</span></div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px">
       <span style="font-size:9px;color:#4fc3f7">━ APM gas</span>
       <span style="font-size:9px;color:#ffb74d">━ Deepwater ceiling</span>
       <span style="font-size:9px;color:#c8d6e5">━ JKM DES India</span>
-      <span style="font-size:9px;color:#f87171">▓ LT oil band (11–14% Brent)</span>
+      <span style="font-size:9px;color:#f87171">▓ LT oil band</span>
       <span style="font-size:9px;color:#546e7a">╌ CIL coal eff.</span>
     </div>
     <div class="ga-ch-wrap" style="height:280px"><canvas id="ind-price-chart"></canvas></div>
-    <div class="ga-source">APM & deepwater: PPAC notifications (hardcoded) · JKM DES = JKM M+1 − $0.35 · LT band = 11–14% Brent · CIL coal: G10 ~$7.5–8.5/MMBtu (update annually)</div>
+    <div class="ga-source">APM & deepwater: PPAC (hardcoded) · JKM DES = JKM M+1 − $0.35 from EOD files · LT band = 11–14% × Brent · CIL: G10 ~$7.5–8.5/MMBtu</div>
   </div>`;
 
   setTimeout(()=>{
     const apmVals=pMos.map(m=>IND_APM[m]||null);
     const dwVals=pMos.map(m=>indDWPrice(m));
+    // JKM: use hist for past months, current jkmDES for current/future
     const jkmVals=pMos.map(m=>{
-      // Use stored EOD data if available, else current value for latest month
-      if(m===curMo) return jkmDES;
-      const raw2=jkmHist(m);
-      return raw2;
+      const raw=jkmHist[m];
+      if(raw!=null) return+(raw-0.35).toFixed(3);
+      if(m===curMo&&jkmDES!=null) return jkmDES;
+      return null;
     });
-    const ltFloorVals=pMos.map(m=>{const b=brentHist(m)||brent;return b?+(b*0.11).toFixed(2):null;});
-    const ltCeilVals=pMos.map(m=>{const b=brentHist(m)||brent;return b?+(b*0.14).toFixed(2):null;});
+    // Brent band
+    const ltFVals=pMos.map(m=>{const b=brentHist[m]||brentM1;return b?+(b*0.11).toFixed(2):null;});
+    const ltCVals=pMos.map(m=>{const b=brentHist[m]||brentM1;return b?+(b*0.14).toFixed(2):null;});
     const cilLow=pMos.map(()=>IND_CIL_LOW);
     const cilHigh=pMos.map(()=>IND_CIL_HIGH);
 
@@ -12380,17 +12390,12 @@ function renderIndPrices(el){
     const scY={...GCD.scales.y,min:0,title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}}};
 
     gaMakeChart('ind-price-chart','line',{labels:moLabels,datasets:[
-      // LT oil band fill (draw as two lines with fill between)
-      {label:'LT oil floor',data:ltFloorVals,borderColor:'#f87171',backgroundColor:'rgba(226,75,74,0.12)',borderWidth:1,borderDash:[3,2],pointRadius:0,fill:'+1',tension:.3,spanGaps:true},
-      {label:'LT oil ceil',data:ltCeilVals,borderColor:'#f87171',backgroundColor:'transparent',borderWidth:1,borderDash:[3,2],pointRadius:0,fill:false,tension:.3,spanGaps:true},
-      // CIL coal band
+      {label:'LT oil floor',data:ltFVals,borderColor:'#f87171',backgroundColor:'rgba(226,75,74,0.12)',borderWidth:1,borderDash:[3,2],pointRadius:0,fill:'+1',tension:.3,spanGaps:true},
+      {label:'LT oil ceil',data:ltCVals,borderColor:'#f87171',backgroundColor:'transparent',borderWidth:1,borderDash:[3,2],pointRadius:0,fill:false,tension:.3,spanGaps:true},
       {label:'CIL coal low',data:cilLow,borderColor:'#546e7a',backgroundColor:'transparent',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false},
       {label:'CIL coal high',data:cilHigh,borderColor:'#546e7a',backgroundColor:'rgba(84,110,122,0.08)',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:'-1'},
-      // APM step
       {label:'APM gas',data:apmVals,borderColor:'#4fc3f7',backgroundColor:'transparent',borderWidth:2,stepped:'before',pointRadius:0,spanGaps:true},
-      // Deepwater ceiling step
       {label:'Deepwater ceiling',data:dwVals,borderColor:'#ffb74d',backgroundColor:'transparent',borderWidth:2,stepped:'before',pointRadius:0,spanGaps:true},
-      // JKM DES India
       {label:'JKM DES India',data:jkmVals,borderColor:'#c8d6e5',backgroundColor:'transparent',borderWidth:2.5,pointRadius:2,tension:.3,spanGaps:false},
     ]},{
       scales:{x:scX,y:scY},
