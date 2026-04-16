@@ -1630,13 +1630,20 @@ function csPricesUpdate(){
     <!-- LEFT: STACK -->
     <div>
       <div style="font-size:9px;letter-spacing:.1em;color:#546e7a;margin-bottom:8px">SUPPLY STACK · $/MMBTU (GCV) · HIGHEST → LOWEST</div>
-      ${box('#c8d6e5','JKM DES China · M+1',fmtVal(jkmDES),'JKM M+1 − $0.15 basis · from EOD files')}
-      ${box('#f87171','LNG LT oil-indexed',ltFloor&&ltCeil?`$${ltFloor}–$${ltCeil}`:'— load EOD',`11–14% × Brent${brentLatest?` $${brentLatest.toFixed(2)}`:''}  · from EOD Brent`)}
-      ${box('#7F77DD','LNG truck retail (N.China)',fmtVal(truckUSD,'— upload SHPGX'),`Ex-terminal · daily SHPGX`,chgBadge(truckChg))}
-      ${box('#ffb74d','Industrial max bid (NDRC)',`$${NDRC_IND.toFixed(2)}`,'¥3.58/m³ · 36-city industrial avg')}
-      ${box('#1D9E75','Spot pipeline gas (CNP)',fmtVal(cnpUSD,'— upload SHPGX'),'PetroChina open market · SHPGX')}
-      ${box('#4fc3f7','Pipeline imports ★','$'+CAGP_L+'–$'+CAGP_H,'CAGP ~$6–8 · Russia PoS ~$3–5 · indicative')}
-      ${box('#81c784','Domestic prod cost / NDRC gate','$'+PROD_L+'–$'+NDRC_GATE,'Conv. $3–5 · Deep $6–8 · NDRC gate ~$7.50')}
+      ${(()=>{
+        const items=[
+          {sort:jkmDES,html:box('#c8d6e5','JKM DES China · M+1',fmtVal(jkmDES),'JKM M+1 − $0.15 basis · from EOD files')},
+          {sort:ltCeil||(brentLatest?brentLatest*0.125:null),html:box('#f87171','LNG LT oil-indexed',ltFloor&&ltCeil?'$'+ltFloor+'–$'+ltCeil:'— load EOD','11–14% × Brent'+(brentLatest?' $'+brentLatest.toFixed(2):'')+' · from EOD Brent')},
+          {sort:truckUSD,html:box('#7F77DD','LNG truck retail (N.China)',fmtVal(truckUSD,'— upload SHPGX'),'Ex-terminal · daily SHPGX',chgBadge(truckChg))},
+          {sort:NDRC_IND,html:box('#ffb74d','Industrial max bid (NDRC)','$'+NDRC_IND.toFixed(2),'¥3.58/m³ · 36-city industrial avg')},
+          {sort:cnpUSD,html:box('#1D9E75','Spot pipeline gas (CNP)',fmtVal(cnpUSD,'— upload SHPGX'),'PetroChina open market · SHPGX')},
+          {sort:(CAGP_L+CAGP_H)/2,html:box('#4fc3f7','Pipeline imports ★','$'+CAGP_L+'–$'+CAGP_H,'CAGP ~$6–8 · Russia PoS ~$3–5 · indicative')},
+          {sort:(PROD_L+NDRC_GATE)/2,html:box('#81c784','Domestic prod cost / NDRC gate','$'+PROD_L+'–$'+NDRC_GATE,'Conv. $3–5 · Deep $6–8 · NDRC gate ~$7.50')},
+        ];
+        const withVal=items.filter(i=>i.sort!=null).sort((a,b)=>b.sort-a.sort);
+        const noVal=items.filter(i=>i.sort==null);
+        return withVal.concat(noVal).map(i=>i.html).join('');
+      })()}
       <!-- Diesel note -->
       <div style="margin-top:10px;padding:10px 14px;border:1px solid rgba(239,159,39,0.25);border-radius:7px;background:rgba(239,159,39,0.06)">
         <div style="font-size:9px;color:#EF9F27;margin-bottom:3px">DIESEL REFERENCE <span style="font-size:8px;color:#546e7a">· switching signal for trucking · not in gas stack</span></div>
