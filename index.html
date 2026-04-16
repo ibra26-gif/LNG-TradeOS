@@ -12068,27 +12068,40 @@ function indInit(){
 }
 
 function indBuildShell(){
+  const btns=_indTab==='balance'
+    ?`<label style="cursor:pointer;padding:5px 14px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(77,158,245,0.4);color:#4d9ef5;background:rgba(77,158,245,0.07);font-family:inherit">
+        ↑ UPLOAD CSV<input type="file" accept=".csv" style="display:none" onchange="indLoadCsv(this)">
+      </label>
+      <button onclick="indClearBalance()" style="padding:5px 14px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(248,113,113,0.4);color:#f87171;background:rgba(248,113,113,0.07);cursor:pointer;font-family:inherit">✕ CLEAR DATA</button>`
+    :`<button onclick="indRefreshPrices()" style="padding:5px 14px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(77,158,245,0.4);color:#4d9ef5;background:rgba(77,158,245,0.07);cursor:pointer;font-family:inherit">↺ REFRESH PRICES</button>`;
   return`<div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS & LNG ANALYTICS · INDIA SIGNPOSTS</div>
   <div style="display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:0">
     <div class="ind-tab-btn${_indTab==='balance'?' active':''}" onclick="indShowTab('balance',this)" style="padding:9px 16px;font-size:10px;letter-spacing:1px;cursor:pointer;color:${_indTab==='balance'?'var(--b)':'#546e7a'};border-bottom:${_indTab==='balance'?'2px solid var(--b)':'2px solid transparent'}">INDIA GAS BALANCE</div>
     <div class="ind-tab-btn${_indTab==='prices'?' active':''}" onclick="indShowTab('prices',this)" style="padding:9px 16px;font-size:10px;letter-spacing:1px;cursor:pointer;color:${_indTab==='prices'?'var(--b)':'#546e7a'};border-bottom:${_indTab==='prices'?'2px solid var(--b)':'2px solid transparent'}">INDIA GAS PRICES</div>
-    <div style="margin-left:auto;padding:0 12px;display:flex;align-items:center;gap:8px">
-      <label style="cursor:pointer;padding:5px 14px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(77,158,245,0.4);color:#4d9ef5;background:rgba(77,158,245,0.07);font-family:inherit">
-        ↑ UPLOAD CSV<input type="file" accept=".csv" style="display:none" onchange="indLoadCsv(this)">
-      </label>
-    </div>
+    <div style="margin-left:auto;padding:0 12px;display:flex;align-items:center;gap:8px">${btns}</div>
   </div>
   <div id="ind-tab-body" style="margin-top:14px"></div>`;
 }
 
+function indClearBalance(){
+  if(!confirm('Clear all India Gas Balance data from this browser?')) return;
+  try{localStorage.removeItem('lng_india_gb_v1');}catch(e){}
+  const body=document.getElementById('ind-tab-body');
+  if(body) renderIndBalance(body);
+}
+window.indClearBalance=indClearBalance;
+
+function indRefreshPrices(){
+  const body=document.getElementById('ind-tab-body');
+  if(body) renderIndPrices(body);
+}
+window.indRefreshPrices=indRefreshPrices;
+
 function indShowTab(tab, btn){
   _indTab=tab;
-  // Update tab styles
-  document.querySelectorAll('.ind-tab-btn').forEach(b=>{
-    const isThis=b.textContent.trim().toLowerCase().includes(tab==='balance'?'balance':'price');
-    b.style.color=isThis?'var(--b)':'#546e7a';
-    b.style.borderBottom=isThis?'2px solid var(--b)':'2px solid transparent';
-  });
+  // Rebuild shell to update tab styles + action buttons
+  const container=document.getElementById('ind-container');
+  if(container) container.innerHTML=indBuildShell();
   const body=document.getElementById('ind-tab-body');if(!body)return;
   if(tab==='balance') renderIndBalance(body);
   else renderIndPrices(body);
@@ -12103,6 +12116,13 @@ function indToggleSeasYr(yr){
   renderIndBalance(document.getElementById('ind-tab-body'));
 }
 window.indToggleSeasYr=indToggleSeasYr;
+function indClearData(){
+  if(!confirm('Clear all India gas balance data from this browser?')) return;
+  try{localStorage.removeItem('lng_india_gb_v1');}catch(e){}
+  _indSeasYrs=null;
+  indShowTab(_indTab);
+}
+window.indClearData=indClearData;
 
 function indLoadCsv(input){
   const file=input.files[0];if(!file)return;
@@ -12261,7 +12281,7 @@ function renderIndBalance(el){
     <div class="ga-sec">SEASONAL COMPARISON <span class="ga-tag">Jan–Dec · independent range</span></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
       <span style="font-size:9px;color:#546e7a">SERIES</span>
-      ${[['supply','Total supply'],['rlng','RLNG'],['prod','Domestic'],['Power','Power'],['Fertilizer','Fertilizer'],['CGD','CGD']].map(([k,l])=>`<button class="f-btn sm${_indSeries===k?' on':''}" onclick="_indSeries='${k}';renderIndBalance(document.getElementById('ind-tab-body'))">${l}</button>`).join('')}
+      ${[['supply','Total supply'],['rlng','RLNG'],['prod','Domestic'],['Power','Power'],['Fertilizer','Fertilizer'],['CGD','CGD'],['Refinery','Refinery']].map(([k,l])=>`<button class="f-btn sm${_indSeries===k?' on':''}" onclick="_indSeries='${k}';renderIndBalance(document.getElementById('ind-tab-body'))">${l}</button>`).join('')}
       <span style="font-size:9px;color:#546e7a;margin-left:8px">YEARS</span>
       ${Array.from({length:5},(_,i)=>curY-i).map(yr=>{
         const on=(!_indSeasYrs&&yr>=curY-2)||(_indSeasYrs&&_indSeasYrs.includes(yr));
@@ -12316,14 +12336,18 @@ function renderIndBalance(el){
       plugins:{
         legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:8},boxWidth:8,padding:4}},
         tooltip:{callbacks:{
+          label:()=>'',
           afterBody(items){
             const mo=mos[items[0].dataIndex];
             const tot=raw.data[mo]?.total_demand;
             if(!tot) return[];
-            return IND_SECTORS.map((s,i)=>{
+            const lines=IND_SECTORS.map(s=>{
               const v=raw.data[mo]?.[s]||0;
-              return`${IND_SECTOR_LBLS[s]}: ${conv(v,mo)?.toLocaleString()||'—'} ${u} (${(v/tot*100).toFixed(1)}%)`;
+              return`${IND_SECTOR_LBLS[s]}: ${conv(v,mo)?.toLocaleString()||'—'} ${u}  (${(v/tot*100).toFixed(1)}%)`;
             });
+            lines.push('');
+            lines.push(`Total demand: ${conv(tot,mo)?.toLocaleString()} ${u}`);
+            return lines;
           }
         }}
       }
@@ -12375,8 +12399,17 @@ function renderIndPrices(el){
   const cpFP=cpGet('cp_fp',null);
   const jkmM1=cpFP?.JKM?.[0]??null;
   const jkmDES=jkmM1!=null?+(jkmM1-0.35).toFixed(3):null;
-  const brentArr=(()=>{try{return gSR('Brent',1)||[];}catch{return[];}})();
-  const brentLatest=brentArr.length?brentArr[brentArr.length-1].value:null;
+  // Scan all loaded EOD rows for any Brent value (not index-dependent)
+  const brentLatest=(()=>{
+    try{
+      for(const ds of [...sDates].reverse()){
+        const {rows}=aD[ds];
+        const row=rows.find(r=>r.Brent!=null);
+        if(row) return row.Brent;
+      }
+      return null;
+    }catch{return null;}
+  })();
   const ltFloor=brentLatest!=null?+(brentLatest*0.11).toFixed(2):null;
   const ltCeil=brentLatest!=null?+(brentLatest*0.14).toFixed(2):null;
   const apmNow=IND_APM[curMo]||Object.values(IND_APM).pop();
