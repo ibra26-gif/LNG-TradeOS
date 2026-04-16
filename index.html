@@ -12399,13 +12399,17 @@ function renderIndPrices(el){
   const cpFP=cpGet('cp_fp',null);
   const jkmM1=cpFP?.JKM?.[0]??null;
   const jkmDES=jkmM1!=null?+(jkmM1-0.35).toFixed(3):null;
-  // Scan all loaded EOD rows for any Brent value (not index-dependent)
+  // Get latest Brent from EOD — same tenor logic as China signpost
   const brentLatest=(()=>{
     try{
+      if(!sDates||!sDates.length) return null;
       for(const ds of [...sDates].reverse()){
-        const {rows}=aD[ds];
-        const row=rows.find(r=>r.Brent!=null);
-        if(row) return row.Brent;
+        const d=aD[ds]?.date; if(!d) continue;
+        const tenor=d.getDate()>=16?2:1;
+        const pk=rPK(d,tenor);
+        const rows=aD[ds]?.rows||[];
+        const row=rows.find(r=>r.pk===pk&&r.Brent!=null)||(rows.find(r=>r.Brent!=null));
+        if(row?.Brent!=null) return row.Brent;
       }
       return null;
     }catch{return null;}
