@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>LNG TradeOS™ v21</title>
+<title>LNG TradeOS™ v178</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -1530,14 +1530,14 @@ function csPricesUpdate(){
   const truckChg=truckUSD!=null&&prevTruck?+(truckUSD-prevTruck.value*1000/fx/52.5).toFixed(2):null;
 
   // Diesel (CNY/tonne → $/MMBtu): ÷ fx ÷ 43.1
-  const dieselRaw=liveOrSim('diesel',()=>DIESEL_CNY);
+  const dieselRaw=liveOrSim('diesel',()=>typeof DIESEL_CNY_T!=='undefined'?DIESEL_CNY_T:[]);
   const latDiesel=dieselRaw.length?dieselRaw[dieselRaw.length-1]:null;
   const dieselUSD=latDiesel?+(latDiesel.value/fx/43.1).toFixed(2):null;
   const prevDiesel=dieselRaw.length>1?dieselRaw[dieselRaw.length-2]:null;
   const dieselChg=dieselUSD!=null&&prevDiesel?+(dieselUSD-prevDiesel.value/fx/43.1).toFixed(2):null;
 
   // CNP (CNY/m³ → $/MMBtu via pipeToUSD)
-  const cnpRaw=liveOrSim('cnp',()=>CNP_CNY);
+  const cnpRaw=liveOrSim('cnp',()=>[]);
   const latCNP=cnpRaw.length?cnpRaw[cnpRaw.length-1]:null;
   const cnpUSD=latCNP?pipeToUSD(latCNP.value,fx):null;
 
