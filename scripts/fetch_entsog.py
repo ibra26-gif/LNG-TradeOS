@@ -50,7 +50,7 @@ BASE_DELAY = 3  # seconds
 DELAY_BETWEEN_POINTS = 2  # seconds between API calls
 
 # How many years of data to fetch
-YEARS_TO_FETCH = [2024, 2025, 2026]
+YEARS_TO_FETCH = [2025, 2026]
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────────────
