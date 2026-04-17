@@ -1,50 +1,48 @@
-// api/entsoe.js — Vercel serverless proxy for ENTSO-E Transparency Platform
-// Save as: /api/entsoe.js in your Vercel project root
-// Add ENTSOE_API_KEY to Vercel environment variables (Settings → Environment Variables)
-//
-// Usage from browser:
-//   /api/entsoe?documentType=A75&processType=A16&in_Domain=10YFR-RTE------C&psrType=B14&periodStart=202604010000&periodEnd=202604122300
-
+// api/entsog.js — Vercel serverless proxy for ENTSOG Transparency Platform
+// Avoids CORS failures when ENTSOG returns 502/504 without Access-Control headers.
 export default async function handler(req, res) {
-  // CORS headers — allow requests from lngtradeos.com
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Accept, Content-Type');
+  res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  const apiKey = process.env.ENTSOE_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'ENTSOE_API_KEY not configured in Vercel environment variables' });
-  }
-
-  // Forward all query params from the browser request, plus the security token
-  const params = new URLSearchParams(req.query);
-  params.set('securityToken', apiKey);
-
-  const url = `https://web-api.tp.entsoe.eu/api?${params.toString()}`;
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const response = await fetch(url, {
-      headers: { 'Accept': 'application/xml, text/xml, */*' },
-    });
+    // Extract 'endpoint' to build the ENTSOG path, forward everything else as query params
+    const { endpoint, ...params } = req.query;
+    const endpointMap = {
+      operationaldata: 'operationalDatas',
+      connectionpoints: 'connectionPoints',
+      aggregateddata:   'aggregatedData',
+    };
+    const entsogPath = endpointMap[endpoint] || 'operationalDatas';
+    const qs = new URLSearchParams(params).toString();
+    const url = `https://transparency.entsog.eu/api/v1/${entsogPath}?${qs}`;
 
-    if (!response.ok) {
-      const errText = await response.text();
-      return res.status(response.status).send(errText);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const entsogRes = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!entsogRes.ok) {
+      const errText = await entsogRes.text().catch(() => '');
+      return res.status(entsogRes.status).json({
+        error: `ENTSOG ${entsogRes.status}`,
+        detail: errText.slice(0, 200),
+      });
     }
 
-    const xml = await response.text();
-
-    // Return raw XML — the browser-side code parses it with regex
-    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    // Cache: 1 hour (nuclear availability doesn't change by the minute)
-    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
-    return res.status(200).send(xml);
-
-  } catch (err) {
-    return res.status(502).json({ error: 'ENTSO-E upstream error: ' + err.message });
+    const data = await entsogRes.json();
+    return res.status(200).json(data);
+  } catch (e) {
+    const status = e.name === 'AbortError' ? 504 : 502;
+    return res.status(status).json({
+      error: e.name === 'AbortError' ? 'ENTSOG timeout (8s)' : e.message,
+    });
   }
 }
