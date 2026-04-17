@@ -84,8 +84,11 @@ def fetch_entsog(point_label: str, from_date: str, to_date: str) -> list:
                     )
                     return rows
         except (urllib.error.HTTPError, urllib.error.URLError, Exception) as e:
-            delay = BASE_DELAY * (2 ** attempt)
             status = getattr(e, "code", "?")
+            if status == 404:
+                print(f"  No data (404): {point_label} — skipping")
+                return []
+            delay = BASE_DELAY * (2 ** attempt)
             print(f"  Attempt {attempt+1}/{MAX_RETRIES} failed ({status}): {point_label} — retrying in {delay}s")
             if attempt < MAX_RETRIES - 1:
                 time.sleep(delay)
