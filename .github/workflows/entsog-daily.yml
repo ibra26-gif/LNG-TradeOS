@@ -18,7 +18,7 @@ jobs:
           python-version: '3.12'
 
       - name: Fetch ENTSOG data
-        run: python fetch_entsog.py
+        run: python scripts/fetch_entsog.py
         env:
           OUTPUT_DIR: data
 
