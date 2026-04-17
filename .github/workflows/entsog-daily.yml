@@ -2,20 +2,22 @@ name: Fetch ENTSOG Pipeline Data
 
 on:
   schedule:
-    # Daily at 06:00 UTC (after ENTSOG publishes D-1 data ~04:00 UTC)
     - cron: '0 6 * * *'
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch:
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
 
       - name: Fetch ENTSOG data
         run: python scripts/fetch_entsog.py
