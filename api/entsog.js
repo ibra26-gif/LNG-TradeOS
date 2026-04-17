@@ -1,6 +1,11 @@
-// api/entsog.js — Vercel serverless proxy for ENTSOG Transparency Platform
+// Vercel Serverless Function: ENTSOG Transparency Platform Proxy
 // Avoids CORS failures when ENTSOG returns 502/504 without Access-Control headers.
+// Deploy at: api/entsog.js in your Vercel project root.
+//
+// Vercel Hobby plan: 10s max execution. Keep single-attempt, let client retry.
+
 export default async function handler(req, res) {
+  // CORS headers on ALL responses (this is the whole point of the proxy)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Accept, Content-Type');
@@ -9,7 +14,6 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    // Extract 'endpoint' to build the ENTSOG path, forward everything else as query params
     const { endpoint, ...params } = req.query;
     const endpointMap = {
       operationaldata: 'operationalDatas',
@@ -17,11 +21,13 @@ export default async function handler(req, res) {
       aggregateddata:   'aggregatedData',
     };
     const entsogPath = endpointMap[endpoint] || 'operationalDatas';
-    const qs = new URLSearchParams(params).toString();
+    // CRITICAL: ENTSOG requires %20 for spaces, not + (URLSearchParams default).
+    // "indicator=Physical+Flow" returns no results; "indicator=Physical%20Flow" works.
+    const qs = new URLSearchParams(params).toString().replace(/\+/g, '%20');
     const url = `https://transparency.entsog.eu/api/v1/${entsogPath}?${qs}`;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 8000); // 8s hard limit (leaves 2s buffer for Vercel)
 
     const entsogRes = await fetch(url, {
       headers: { Accept: 'application/json' },
