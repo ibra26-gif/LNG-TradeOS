@@ -9830,6 +9830,39 @@ function gieHdr(){ return IS_LOCAL?{'x-key':GIE_KEY}:{}; }
 // ENTSOG proxy — used by both gaFetchENTSOG and gdFetchENTSOG
 function entsogProxyUrl(params){ return `/api/entsog?endpoint=operationaldata&${params}`; }
 
+// Hybrid fetch: proxy first (CORS-safe), direct fallback if proxy times out (504).
+// Vercel Hobby plan has 10s limit; ENTSOG often takes 15-30s under load.
+// Direct fallback uses browser's ~60s timeout — works if ENTSOG returns 200.
+async function entsogHybridFetch(paramStr){
+  const proxyUrl = entsogProxyUrl(paramStr);
+  const directUrl = `${ENTSOG_BASE}/operationalDatas?${paramStr}`;
+  if(IS_LOCAL){
+    const r=await fetch(directUrl,{headers:{Accept:'application/json'}});
+    if(!r.ok) throw new Error(`ENTSOG ${r.status}`);
+    return r.json();
+  }
+  // Try proxy first
+  try{
+    const r=await fetch(proxyUrl,{headers:{Accept:'application/json'}});
+    if(r.ok) return r.json();
+    if(r.status===504){
+      // Proxy timed out — try direct (browser has ~60s timeout)
+      console.log('ENTSOG proxy timeout — trying direct…');
+      const r2=await fetch(directUrl,{headers:{Accept:'application/json'}});
+      if(r2.ok) return r2.json();
+      throw new Error(`ENTSOG direct ${r2.status}`);
+    }
+    throw new Error(`ENTSOG proxy ${r.status}`);
+  }catch(e){
+    // Proxy network error — try direct as last resort
+    try{
+      const r3=await fetch(directUrl,{headers:{Accept:'application/json'}});
+      if(r3.ok) return r3.json();
+    }catch(e2){/* both failed */}
+    throw e;
+  }
+}
+
 const GU = {
   mcm:  {lbl:'MCM/month',  pipe:v=>v,           lng:v=>v/10.55,      stor:v=>v},
   bcm:  {lbl:'BCM/month',  pipe:v=>v/1000,       lng:v=>v/10550,      stor:v=>v/1000},
@@ -9863,10 +9896,7 @@ async function gaFetchAGGI(params={}){
 // ENTSOG docs: transparency.entsog.eu/api/archiveDirectories/8/api-manual/
 async function gaFetchENTSOG(params={}){
   const q=new URLSearchParams({limit:10000,periodType:'day',timezone:'CET',...params}).toString();
-  const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${q}`:entsogProxyUrl(q);
-  const r=await fetch(url,{headers:{Accept:'application/json'}});
-  if(!r.ok) throw new Error(`ENTSOG ${r.status}`);
-  return r.json();
+  return entsogHybridFetch(q);
 }
 
 // ── GIE data parser ───────────────────────────────────────────────
@@ -10099,12 +10129,8 @@ async function gaLoadENTSOGRoute(route,from,to,cacheResult=false){
     let raw = cacheResult ? gaCacheGet(cacheKey) : null;
     if(!raw){
       try{
-        // Route through proxy to avoid CORS failures on 502/504
         const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointLabel=${encodeURIComponent(label)}&from=${from}&to=${to}&periodType=day&timeZone=WET&limit=1000`;
-        const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:entsogProxyUrl(paramStr);
-        const r=await fetch(url,{headers:{Accept:'application/json'}});
-        if(!r.ok){ console.warn(`ENTSOG ${r.status} ${route} ${label}`); continue; }
-        raw=await r.json();
+        raw=await entsogHybridFetch(paramStr);
         if(cacheResult) gaCacheSet(cacheKey,raw,6);
       }catch(e){ console.warn(`ENTSOG ${route} ${label}:`,e.message); continue; }
     }
@@ -10128,11 +10154,8 @@ async function gaLoadENTSOGHistorical(route,minYear){
       const points=ENTSOG_CORRIDOR_POINTS[route];
       const keyStr=[...new Set(points)].join(',');
       const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointKey=${keyStr}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=10000`;
-      const histUrl=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:entsogProxyUrl(paramStr);
-      const r=await fetch(histUrl,{headers:{Accept:'application/json'}});
-      if(!r.ok) continue; // silent fail for historical
-      const raw=await r.json();
-      gaCacheSet(cacheKey,raw,168); // cache 7 days for historical
+      const raw=await entsogHybridFetch(paramStr);
+      gaCacheSet(cacheKey,raw,168);
       gaAggENTSOGToLive(route,raw);
     }catch(e){ console.warn(`ENTSOG hist ${route} ${yr}:`,e.message); }
   }
@@ -10153,12 +10176,8 @@ async function gaLoadENTSOGHistoricalMonthly(route, year){
       if(GA_LIVE.pipeline[route]?.[`${year}-${mm}`]) continue;
       await new Promise(r=>setTimeout(r,500));
       try{
-        // Route through proxy to avoid CORS failures on 502/504 error responses
         const paramStr=`indicator=Physical%20Flow&directionKey=entry&pointLabel=${encodeURIComponent(label)}&from=${from}&to=${to}&periodType=day&timeZone=WET&limit=1000`;
-        const url=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:entsogProxyUrl(paramStr);
-        const r=await fetch(url,{headers:{Accept:'application/json'}});
-        if(!r.ok){ console.warn(`ENTSOG ${r.status} ${route} ${label} ${year}-${mm}`); continue; }
-        const raw=await r.json();
+        const raw=await entsogHybridFetch(paramStr);
         gaCacheSet(cacheKey,raw,168);
         gaAggENTSOGToLive(route,raw);
       }catch(e){ console.warn(`ENTSOG mo ${route} ${label} ${year}-${mm}:`,e.message); }
@@ -10174,13 +10193,10 @@ async function gaLoadENTSOGExits(from,to){
     let raw=gaCacheGet(cacheKey);
     if(!raw){
       const points=[...new Set(ENTSOG_CORRIDOR_POINTS.exits)];
-      if(!points.length) return; // exits not yet configured
+      if(!points.length) return;
       const keyStr=points.join(',');
       const paramStr=`indicator=Physical%20Flow&directionKey=exit&pointKey=${keyStr}&from=${from}&to=${to}&periodType=day&timezone=CET&limit=10000`;
-      const exitsUrl=IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:entsogProxyUrl(paramStr);
-      const r=await fetch(exitsUrl,{headers:{Accept:'application/json'}});
-      if(!r.ok) return;
-      raw=await r.json();
+      raw=await entsogHybridFetch(paramStr);
       gaCacheSet(cacheKey,raw,6);
     }
     const rows=raw?.operationaldatas||raw?.operationalDatas||raw?.operationalData||raw?.data||[];
@@ -10219,11 +10235,7 @@ async function gaLoadDomProductionLive(from, to){
         `from=${from}`, `to=${to}`,
         'periodType=day', 'timezone=CET', 'limit=10000',
       ].join('&');
-      // Route through proxy to avoid CORS on error responses
-      const url = IS_LOCAL?`${ENTSOG_BASE}/operationalDatas?${paramStr}`:entsogProxyUrl(paramStr);
-      const r = await fetch(url, {headers:{Accept:'application/json'}});
-      if(!r.ok) throw new Error(`ENTSOG ${r.status}`);
-      raw = await r.json();
+      raw = await entsogHybridFetch(paramStr);
       gaCacheSet(cacheKey, raw, 24);
     } catch(e){
       console.warn('Dom prod (EU query):', e.message, '— using static fallback');
@@ -10402,10 +10414,7 @@ function gdSpin(containerId){
 // ════════════════════════════════════════════════════════════════════════════
 
 // ── ENTSOG: fetch one point label, one date range ─────────────────────────────
-// Routes through Vercel proxy when deployed to avoid CORS failures on 502/504.
-// ENTSOG returns no CORS headers on error responses, so direct browser calls
-// fail silently when the server is under load or rate-limiting.
-// Includes client-side retry for transient 502/504 from proxy.
+// Uses entsogHybridFetch: proxy first, direct fallback on timeout.
 async function gdFetchENTSOG(label, from, to){
   const cacheKey = `entsog_${btoa(label).slice(0,16)}_${from}_${to.slice(0,7)}`;
   let raw = gdCacheGet(cacheKey);
@@ -10415,27 +10424,9 @@ async function gdFetchENTSOG(label, from, to){
       pointLabel:label, from, to,
       periodType:'day', timeZone:'WET', limit:'5000'
     }).toString();
-    const url = IS_LOCAL
-      ? `${ENTSOG_BASE}/operationalDatas?${params}`
-      : entsogProxyUrl(params);
-    // Retry up to 2 times on 502/504 (ENTSOG rate-limiting / load)
-    let lastErr;
-    for(let attempt=0; attempt<3; attempt++){
-      try{
-        const r = await fetch(url, {headers:{Accept:'application/json'}});
-        if(r.ok){ raw = await r.json(); break; }
-        if([502,504].includes(r.status) && attempt<2){
-          await new Promise(w=>setTimeout(w, 1500*(attempt+1)));
-          continue;
-        }
-        throw new Error(`ENTSOG ${r.status} — ${label}`);
-      }catch(e){
-        lastErr=e;
-        if(attempt<2) await new Promise(w=>setTimeout(w, 1500*(attempt+1)));
-      }
-    }
-    if(!raw) throw lastErr||new Error(`ENTSOG failed — ${label}`);
-    const isHist = to < new Date().toISOString().slice(0,7); gdCacheSet(cacheKey, raw, isHist ? 0 : 6); // 0=permanent for historical
+    raw = await entsogHybridFetch(params);
+    if(!raw) throw new Error(`ENTSOG no data — ${label}`);
+    const isHist = to < new Date().toISOString().slice(0,7); gdCacheSet(cacheKey, raw, isHist ? 0 : 6);
   }
   return raw?.operationaldatas || raw?.operationalDatas || raw?.operationalData || raw?.data || [];
 }
