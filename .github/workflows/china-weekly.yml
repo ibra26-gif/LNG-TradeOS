@@ -84,8 +84,7 @@ jobs:
           print(' '.join(parts))
           ")
 
-          git add data/china_shpgx.json
-          git commit -m "chore: update china/shpgx ${UPDATED}" -m "Series: ${SUMMARY}"
+        git commit -m "chore: update china/shpgx ${UPDATED}" -m "Series: ${SUMMARY}"
           git push
 
       - name: Upload scraper log as artifact (on failure)
