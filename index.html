@@ -11032,9 +11032,16 @@ async function renderGaDashboard(){
       }catch(e){}
     }
 
-    // ── Read JKM M+1 with 16th-roll ──
+// ── Read JKM M+1: cp_fp primary (matches China Gas Prices tab), aD/sDates fallback ──
     let latJKM=null, latDateStr='';
-    if(typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length){
+    try{
+      if(typeof cpGet==='function'){
+        const cpFP=cpGet('cp_fp',null);
+        const jkmM1=cpFP?.JKM?.[0];
+        if(jkmM1!=null) latJKM=+Number(jkmM1).toFixed(3);
+      }
+    }catch(e){}
+    if(latJKM==null&&typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length){
       const latDs=sDates[sDates.length-1];
       const latDate=aD[latDs]?.date;
       if(latDate){
@@ -11043,6 +11050,10 @@ async function renderGaDashboard(){
         latJKM=row?.JKM||null;
         latDateStr=latDs;
       }
+    }
+    // Stamp the JKM tile with the latest EOD date if cp_fp path didn't set one
+    if(latJKM!=null&&!latDateStr&&typeof sDates!=='undefined'&&sDates.length){
+      latDateStr=sDates[sDates.length-1];
     }
 
     const usdcny=parseFloat(document.getElementById('cs-usdcny')?.value)||7.25;
