@@ -298,14 +298,16 @@ def fetch_nominations_from_homepage(session):
         date_m = re.search(r"gasday\s+(\d{4}-\d{2}-\d{2})", html, flags=re.IGNORECASE)
         gasday = date_m.group(1) if date_m else datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-        # Known Gassco terminals (order matters - match longer names first to avoid
-        # "St.Fergus" being partially matched by "St Fergus" and vice versa)
+        # Known Gassco terminals - strings matched EXACTLY to page HTML (2026-04-18 inspection)
+        # Order matters: longer/more-specific names first so they don't get partially matched
+        # by shorter names appearing as substrings.
         known_terminals = [
-            "Field Deliveries into SEGAL",
-            "Aggregated other exit points",
-            "Sum exit nominations NCS",
-            "St.Fergus", "St Fergus",
-            "Dornum", "Emden", "Nybro", "Dunkerque", "Zeebrugge", "Easington",
+            "Sum Exit Nominations NCS",          # Authoritative total - preferred
+            "Fields Delivering into SEGAL",      # Aggregated SEGAL system entry
+            "Other Exit Nominations",            # Other aggregated exit
+            "St.Fergus", "St Fergus",            # UK delivery (two spellings seen)
+            "Dornum", "Emden", "Nybro",
+            "Dunkerque", "Zeebrugge", "Easington",
         ]
 
         by_terminal = {}
@@ -347,10 +349,11 @@ def fetch_nominations_from_homepage(session):
         if len(by_terminal) < 5:
             all_values = re.findall(r'class=["\']value["\']>\s*(-?\d+(?:\.\d+)?)\s*<', block)
             print(f"  Strategy 3 fallback: {len(all_values)} values extracted in order: {all_values[:12]}")
+            # Page order observed 2026-04-18:
             page_order = [
                 "Dornum", "Emden", "Nybro", "Dunkerque", "Zeebrugge", "Easington",
-                "St.Fergus", "Field Deliveries into SEGAL",
-                "Aggregated other exit points", "Sum exit nominations NCS",
+                "St.Fergus", "Fields Delivering into SEGAL",
+                "Other Exit Nominations", "Sum Exit Nominations NCS",
             ]
             if len(all_values) >= 5:
                 by_terminal = {}
@@ -361,17 +364,21 @@ def fetch_nominations_from_homepage(session):
                         except ValueError:
                             pass
 
-        # "Sum exit nominations NCS" is the authoritative total if present
-        # Otherwise sum the entry terminals (exclude aggregates that would double-count)
+        # "Sum Exit Nominations NCS" is the authoritative total published by Gassco.
+        # Prefer it. Otherwise sum the entry terminals (excluding aggregates
+        # that would double-count).
         ENTRY_POINTS = {"Dornum", "Emden", "Nybro", "Dunkerque", "Zeebrugge",
                         "Easington", "St.Fergus", "St Fergus",
-                        "Field Deliveries into SEGAL"}
-        if "Sum exit nominations NCS" in by_terminal:
-            total = by_terminal["Sum exit nominations NCS"]
+                        "Fields Delivering into SEGAL",
+                        "Other Exit Nominations"}
+        if "Sum Exit Nominations NCS" in by_terminal:
+            total = by_terminal["Sum Exit Nominations NCS"]
+            total_src = "Sum Exit Nominations NCS (authoritative)"
         else:
             total = sum(v for k, v in by_terminal.items() if k in ENTRY_POINTS)
+            total_src = f"sum of {len([k for k in by_terminal if k in ENTRY_POINTS])} entry points"
 
-        print(f"  Found {len(by_terminal)} terminals, total {total:.1f} mcm/d")
+        print(f"  Found {len(by_terminal)} terminals, total {total:.1f} mcm/d ({total_src})")
         for k, v in by_terminal.items():
             print(f"    {k:40s} = {v:6.1f}")
 
