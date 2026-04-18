@@ -25,10 +25,10 @@
       "asset": "Troll",
       "impact": "-20.5 mcm/d",
       "from": "2026-04-16",
-      "to": "2026-04-20",
+      "to": "2026-04-22",
       "type": "planned",
-      "published": "2026-04-07T14:26:00",
-      "msg_id": "2026-95___________________003"
+      "published": "2026-04-18T11:55:46.670000",
+      "msg_id": "2026-95___________________004"
     },
     {
       "title": "Other unavailability · Planned",
@@ -52,7 +52,7 @@
     }
   ],
   "_meta": {
-    "updated": "2026-04-18T09:42:14Z",
+    "updated": "2026-04-18T10:33:41Z",
     "source": "gassco xlexport",
     "total_messages": 164,
     "active_count": 6
