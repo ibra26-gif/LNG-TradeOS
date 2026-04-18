@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>LNG TradeOS™ v188</title>
+<title>LNG TradeOS™ v189</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -10753,6 +10753,73 @@ function gaInitAll(){
   gaLoadAll();
 }
 
+// ── Phase 2: ENTSOG Nominations cache (same structure as pipeline_daily.json)
+//    Expected: { route: { "YYYY-MM-DD": mcm }, _meta: {...} }
+async function gdLoadNominationsFromCache(){
+  try{
+    const r = await fetch('/data/nominations_daily.json', {cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const json = await r.json();
+    const routes = Object.keys(json).filter(k=>k!=='_meta');
+    if(!routes.length) throw new Error('Empty noms cache');
+    window.ENTSOG_NOMS = {};
+    routes.forEach(route => { window.ENTSOG_NOMS[route] = json[route] || {}; });
+    console.log(`ENTSOG Nominations loaded: ${routes.length} routes` +
+      (json._meta?.updated ? `, updated ${json._meta.updated}` : ''));
+    return true;
+  }catch(e){
+    console.warn('ENTSOG Nominations cache unavailable:', e.message);
+    return false;
+  }
+}
+
+// ── Phase 2: Gassco nominations (Norway live)
+//    Expected: { today_total_mcm: number, by_terminal: {...}, _meta: {...} }
+async function gdLoadGasscoFromCache(){
+  try{
+    const r = await fetch('/data/gassco_nominations.json', {cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const json = await r.json();
+    if(json.today_total_mcm == null) throw new Error('Invalid Gassco cache');
+    window.GASSCO_NOMS = json;
+    console.log(`Gassco nominations loaded: ${json.today_total_mcm} mcm/d` +
+      (json._meta?.updated ? `, updated ${json._meta.updated}` : ''));
+    return true;
+  }catch(e){
+    console.warn('Gassco cache unavailable:', e.message);
+    return false;
+  }
+}
+
+// ── Phase 2: UMM (Urgent Market Messages) - outage banner
+//    Expected: { active: [{title, impact, from, to, asset, url}], _meta: {...} }
+async function gdLoadUMMFromCache(){
+  try{
+    const r = await fetch('/data/umm_active.json', {cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const json = await r.json();
+    window.UMM_ACTIVE = json.active || [];
+    console.log(`UMM loaded: ${window.UMM_ACTIVE.length} active messages`);
+    // Populate banner if dashboard is currently rendered
+    const banner = document.getElementById('gf-umm-banner');
+    const txt = document.getElementById('gf-umm-txt');
+    if(banner && txt && window.UMM_ACTIVE.length){
+      const items = window.UMM_ACTIVE.slice(0,3).map(m=>{
+        const impact = m.impact ? ` ${m.impact}` : '';
+        const asset = m.asset ? `<b>${m.asset}</b>` : '';
+        const dates = m.from ? ` · ${m.from.slice(5,10)}${m.to?'→'+m.to.slice(5,10):''}` : '';
+        return `${asset} — ${m.title||''}${impact}${dates}`;
+      }).join('<br>');
+      txt.innerHTML = `<b>⚠ UMM</b> · ${items}`;
+      banner.style.display = 'block';
+    }
+    return true;
+  }catch(e){
+    console.warn('UMM cache unavailable:', e.message);
+    return false;
+  }
+}
+
 async function gaLoadAll(){
   gaSetRefreshBtn(true);
   const today = new Date().toISOString().slice(0,10);
@@ -10769,6 +10836,10 @@ async function gaLoadAll(){
     gdLoadStorage(from4y, today),
     gdLoadLNG(from4y, today),
     pipelineJob,
+    // Phase 2 caches (best-effort, non-blocking for core data)
+    gdLoadNominationsFromCache(),
+    gdLoadGasscoFromCache(),
+    gdLoadUMMFromCache(),
     // Country data: only load if not already cached (permanent cache)
     Object.keys(GD.storByCtry).length === 0 ? gdLoadStorageCountries(`${curYear-1}-01-01`, today) : Promise.resolve(),
     Object.keys(GD.lngByCtry).length === 0 ? gdLoadLNGCountries(from4y, today) : Promise.resolve(),
@@ -10883,19 +10954,29 @@ async function renderGaDashboard(){
     }
     return null;
   }
-  // ── Today-nomination placeholder: not yet wired to Gassco/ENTSOG noms ──
-  // Returns the most recent non-zero value as a proxy, tagged as PROV
-  function todayPipeProxy(route){
-    const pd=GD.pipeDaily[route];
-    if(!pd||!Object.keys(pd).length) return null;
-    const dates=Object.keys(pd).sort();
-    // Last 3 days, filter zero values (likely incomplete publication)
-    for(let i=dates.length-1;i>=Math.max(0,dates.length-3);i--){
-      const v=pd[dates[i]];
-      if(v!=null && v>1) return {mcm:v,date:dates[i],provisional:true};
+  // ── Today's nominations: read from /data/nominations_daily.json (ENTSOG noms)
+  //    and /data/gassco_nominations.json (Norway live)
+  //    Populated by GitHub Actions in Phase 2. Falls back to null if caches unavailable.
+  function todayNom(route){
+    // Norway → Gassco preferred (live, updated every 30min)
+    if(route==='norway' && window.GASSCO_NOMS){
+      const v=window.GASSCO_NOMS.today_total_mcm;
+      if(v!=null && v>0) return {mcm:v,source:'Gassco'};
     }
-    // Fall back to D-1 confirmed
-    return confirmedPipe(route);
+    // All routes → ENTSOG Nominations indicator (D-1 evening publication)
+    if(window.ENTSOG_NOMS && window.ENTSOG_NOMS[route]){
+      const dates=Object.keys(window.ENTSOG_NOMS[route]).sort();
+      if(dates.length){
+        const lat=dates[dates.length-1];
+        const today=new Date().toISOString().slice(0,10);
+        // Only accept if dated today or tomorrow (published D-1 for D)
+        if(lat>=today){
+          const v=window.ENTSOG_NOMS[route][lat];
+          if(v!=null && v>=0) return {mcm:v,source:'ENTSOG',date:lat};
+        }
+      }
+    }
+    return null;
   }
   function fmt(v,dp=1){ if(v==null||isNaN(v)) return '—'; return (+v).toFixed(dp); }
 
@@ -10915,9 +10996,10 @@ async function renderGaDashboard(){
     {k:'russia',       lbl:'Russia',          sub:'TurkStream residual'},
     {k:'uk_interconn', lbl:'UK Interconn.',   sub:'BBL + IUK (net)'},
   ];
-  const pipeData=routes.map(r=>({...r,today:todayPipeProxy(r.k),yday:confirmedPipe(r.k)}));
+  const pipeData=routes.map(r=>({...r,today:todayNom(r.k),yday:confirmedPipe(r.k)}));
   const totalToday=pipeData.reduce((s,r)=>s+(r.today?.mcm||0),0);
   const totalYday =pipeData.reduce((s,r)=>s+(r.yday?.mcm ||0),0);
+  const anyTodayData=pipeData.some(r=>r.today!=null);
 
   // ── China JKM M+1 vs Truck-LNG ────────────────────────────────────────────
   let chinaHtml=`<div style="font-size:9px;color:#3d5070;padding:10px;border:1px dashed #1e3a5f;text-align:center">Load EOD data in Financial Trading to enable · reads aD/sDates/TRUCK_CNY</div>`;
@@ -11063,14 +11145,14 @@ async function renderGaDashboard(){
             <tfoot>
               <tr style="border-top:1px solid rgba(52,211,153,0.25);font-weight:600">
                 <td style="padding:7px 8px;font-size:10px;color:#34d399;letter-spacing:1px">TOTAL PIPELINE</td>
-                <td style="padding:7px 8px;text-align:right;font-size:12px;color:#34d399">${fmt(totalToday,1)}</td>
+                <td style="padding:7px 8px;text-align:right;font-size:12px;color:${anyTodayData?'#34d399':'#3d5070'}">${anyTodayData?fmt(totalToday,1):'—'}</td>
                 <td style="padding:7px 8px;text-align:right;font-size:12px;color:#34d399">${fmt(totalYday,1)}</td>
               </tr>
             </tfoot>
           </table>
           <div style="font-size:7px;color:#3d5070;margin-top:6px;letter-spacing:0.5px;text-align:right">
-            <span style="color:#60a5fa">D</span> = today · proxy from recent non-zero ENTSOG ·
-            <span style="color:#f0f4ff">D-1 FINAL</span> = confirmed physical · last 2d skipped as provisional
+            <span style="color:#60a5fa">D</span> = today's nominations · Gassco (Norway) + ENTSOG (others) ·
+            <span style="color:#f0f4ff">D-1 FINAL</span> = confirmed physical · last 2d skipped
           </div>
         </div>
 
