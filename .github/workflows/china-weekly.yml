@@ -1,0 +1,98 @@
+name: China SHPGX weekly scrape
+
+# Runs every Monday at 06:00 UTC (08:00 Paris summer / 07:00 winter)
+# Also supports manual trigger via GitHub Actions UI (workflow_dispatch).
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+# Needed so the workflow can push commits back to main.
+permissions:
+  contents: write
+
+# Only one instance at a time — prevents overlap if a manual run starts while
+# a scheduled run is still in progress.
+concurrency:
+  group: china-weekly
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    # Ensure UTF-8 locale for Chinese regex matching in the diesel fallback.
+    env:
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+      PYTHONIOENCODING: utf-8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright==1.47.0
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-1.47.0-${{ runner.os }}
+
+      - name: Install Chromium (if not cached)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: playwright install chromium --with-deps
+
+      - name: Install Chromium system deps (always — fast if already installed)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: playwright install-deps chromium
+
+      - name: Run SHPGX scraper
+        run: python scripts/fetch_china_shpgx.py
+
+      - name: Commit data if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet data/china_shpgx.json 2>/dev/null; then
+            echo "No changes to data/china_shpgx.json — nothing to commit."
+            exit 0
+          fi
+
+          # Pull a short summary from the JSON for the commit message.
+          UPDATED=$(python -c "import json; d=json.load(open('data/china_shpgx.json')); print(d.get('updated',''))")
+          SUMMARY=$(python -c "
+          import json
+          d=json.load(open('data/china_shpgx.json'))
+          parts=[]
+          for k,v in d.get('data',{}).items():
+              n=len(v.get('rows',[]))
+              parts.append(f'{k}={n}')
+          print(' '.join(parts))
+          ")
+
+          git add data/china_shpgx.json
+          git commit -m "chore: update china/shpgx ${UPDATED}" -m "Series: ${SUMMARY}"
+          git push
+
+      - name: Upload scraper log as artifact (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: china-shpgx-log-${{ github.run_id }}
+          path: |
+            data/china_shpgx.json
+          if-no-files-found: ignore
+          retention-days: 14
