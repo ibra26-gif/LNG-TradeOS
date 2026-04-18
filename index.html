@@ -10848,9 +10848,27 @@ async function renderGaDashboard(){
     return d?{...d,date:dates[dates.length-1]}:null;
   }
   function getLNGAvg7(){
+    // EU+UK only: sum per-country ALSI data, excluding Turkey
+    // Uses GD.lngByCtry (populated by gdLoadLNGCountries) instead of GD.lngDaily (which includes TR)
+    const EU_UK_CODES=['be','fr','de','gr','hr','it','fi','lt','mt','nl','pl','pt','es','gb'];
     const today=new Date();
     const days=Array.from({length:7},(_,i)=>{const d=new Date(today);d.setDate(d.getDate()-i);return d.toISOString().slice(0,10);});
-    const vals=days.map(d=>GD.lngDaily[d]?.sendGWh).filter(v=>v!=null);
+    // Per-country data is stored as monthly aggregates only (GD.lngByCtry[code][YYYY-MM])
+    // For 7d-avg we need daily — fall back to GD.lngDaily but subtract Turkey's daily contribution
+    // Turkey daily isn't separately tracked; use monthly proxy
+    const vals=days.map(d=>{
+      const raw=GD.lngDaily[d]?.sendGWh;
+      if(raw==null) return null;
+      // Approximate Turkey deduction from its share in the current month
+      const mo=d.slice(0,7);
+      const trMo=GD.lngByCtry?.tr?.[mo]?.sendGWh;
+      const totMo=(()=>{let s=0;EU_UK_CODES.concat(['tr']).forEach(c=>{const v=GD.lngByCtry?.[c]?.[mo]?.sendGWh;if(v!=null)s+=v;});return s;})();
+      if(trMo!=null && totMo>0){
+        const trShare=trMo/totMo;
+        return raw*(1-trShare);
+      }
+      return raw;
+    }).filter(v=>v!=null);
     return vals.length?+(vals.reduce((a,c)=>a+c,0)/vals.length/1000).toFixed(2):null;
   }
   // ── Pipeline: drop last 2 days (provisional) and return a "confirmed" D-1 value ──
@@ -11078,12 +11096,11 @@ async function renderGaDashboard(){
               <div style="font-size:9px;color:${stor?.net>0?'#4ade80':'#f87171'};margin-top:2px">${stor?.net>0?'INJECTION':stor?.net<0?'WITHDRAWAL':'—'}</div>
             </div>
           </div>
-          <div class="ga-ch-wrap" style="height:70px;margin-top:8px"><canvas id="db-stor-mini-chart"></canvas></div>
         </div>
 
         <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(77,158,245,0.06)">
-            <div style="color:#f0f4ff;font-size:10px;letter-spacing:1px;font-weight:500">EU LNG SENDOUT · 7d AVG</div>
+            <div style="color:#f0f4ff;font-size:10px;letter-spacing:1px;font-weight:500">EU+UK LNG SENDOUT · 7d AVG</div>
             <div style="font-size:8px;letter-spacing:1px;color:#6b7a99">GIE ALSI</div>
           </div>
           <div style="display:flex;align-items:baseline;gap:4px;padding:3px 0">
@@ -11091,7 +11108,7 @@ async function renderGaDashboard(){
             <span style="font-size:11px;color:#6b7a99">TWh/d</span>
             <span style="font-size:10px;color:#8a9bb5;margin-left:6px">≈ ${lngAvg!=null?Math.round(lngAvg*1000/10.55):'—'} mcm/d</span>
           </div>
-          <div class="ga-ch-wrap" style="height:70px;margin-top:6px"><canvas id="db-lng-mini-chart"></canvas></div>
+          <div style="font-size:8px;color:#3d5070;margin-top:6px;letter-spacing:0.5px">Coverage: BE · FR · DE · GR · HR · IT · FI · LT · MT · NL · PL · PT · ES · UK <span style="color:#546e7a">· TR excluded</span></div>
         </div>
 
         <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
