@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>LNG TradeOS™ v191</title>
+<title>LNG TradeOS™ v190</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -600,13 +600,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
             <option value="spread">SPREAD OPTION (S₁ − S₂)</option>
           </select>
           <div class="csep"></div>
-          <span class="cl">STRATEGY</span>
-          <select id="opt-strategy" onchange="optCalc()">
-            <option value="buy_call">BUY CALL (Long Call)</option>
-            <option value="buy_put">BUY PUT (Long Put)</option>
-            <option value="sell_call">SELL CALL (Short Call)</option>
-            <option value="sell_put">SELL PUT (Short Put)</option>
-          </select>
+          <span class="cl">TYPE</span>
+          <select id="opt-type" onchange="optCalc()"><option value="call">CALL</option><option value="put">PUT</option></select>
           <div class="csep"></div>
           <button class="sbtn" onclick="optCalc()">CALCULATE</button>
           <button class="sbtn" onclick="optSolveIV()">SOLVE IMPLIED VOL</button>
@@ -13229,7 +13224,8 @@ function optRender(){
             <div><label class="cl">Risk-free rate r</label><input type="number" id="opt-r" value="0.01" step="0.001" class="f-inp" style="width:100%"></div>
             <div><label class="cl">As-of Date</label><input type="date" id="opt-asof" value="${today}" class="f-inp" style="width:100%"></div>
             <div><label class="cl">Maturity Date</label><input type="date" id="opt-mat" value="2026-12-31" class="f-inp" style="width:100%"></div>
-            <div style="grid-column:span 2"><label class="cl">Notional (units)</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Notional (units)</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Position</label><select id="opt-pos" class="f-inp" style="width:100%"><option value="buy">BUY (Long)</option><option value="sell">SELL (Short)</option></select></div>
             <div style="grid-column:span 2"><label class="cl">Broker Price (for IV)</label><input type="number" id="opt-broker" value="" step="0.01" class="f-inp" style="width:100%" placeholder="optional"></div>
           </div>
           <div style="margin-top:10px;display:flex;gap:8px">
@@ -13258,7 +13254,8 @@ function optRender(){
             <div><label class="cl">Risk-free rate r</label><input type="number" id="opt-r" value="0" step="0.001" class="f-inp" style="width:100%"></div>
             <div><label class="cl">As-of Date</label><input type="date" id="opt-asof" value="${today}" class="f-inp" style="width:100%"></div>
             <div><label class="cl">Maturity Date</label><input type="date" id="opt-mat" value="2026-12-31" class="f-inp" style="width:100%"></div>
-            <div style="grid-column:span 2"><label class="cl">Notional (units)</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Notional (units)</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Position</label><select id="opt-pos" class="f-inp" style="width:100%"><option value="buy">BUY (Long)</option><option value="sell">SELL (Short)</option></select></div>
             <div style="grid-column:span 2"><label class="cl">Broker Price (for IV)</label><input type="number" id="opt-broker" value="" step="0.01" class="f-inp" style="width:100%" placeholder="optional"></div>
           </div>
           <div style="margin-top:10px;display:flex;gap:8px">
@@ -13288,7 +13285,8 @@ function optRender(){
             <div><label class="cl">Correlation ρ</label><input type="number" id="opt-rho" value="0.6" step="0.01" min="-1" max="1" class="f-inp" style="width:100%"></div>
             <div><label class="cl">Spread Strike K</label><input type="number" id="opt-K" value="0" step="0.01" class="f-inp" style="width:100%"></div>
             <div><label class="cl">Risk-free rate r</label><input type="number" id="opt-r" value="0.015" step="0.001" class="f-inp" style="width:100%"></div>
-            <div style="grid-column:span 2"><label class="cl">Notional (units)</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Notional (units)</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Position</label><select id="opt-pos" class="f-inp" style="width:100%"><option value="buy">BUY (Long)</option><option value="sell">SELL (Short)</option></select></div>
             <div><label class="cl">As-of Date</label><input type="date" id="opt-asof" value="${today}" class="f-inp" style="width:100%"></div>
             <div><label class="cl">Maturity Date</label><input type="date" id="opt-mat" value="2026-08-31" class="f-inp" style="width:100%"></div>
           </div>
@@ -13309,14 +13307,8 @@ function optRender(){
 // ── Calculate ────────────────────────────────────────────────────────────────
 function optCalc(){
   const model=document.getElementById('opt-model')?.value||'bs';
-  // Strategy: buy_call | buy_put | sell_call | sell_put
-  const strategy=document.getElementById('opt-strategy')?.value||'buy_call';
-  const isCall=strategy.endsWith('_call');
-  const isLong=strategy.startsWith('buy');
-  const sign=isLong?1:-1;
-  const strategyLbl={buy_call:'BUY CALL',buy_put:'BUY PUT',sell_call:'SELL CALL',sell_put:'SELL PUT'}[strategy];
-  const sideLbl=isCall?'CALL':'PUT';
-  const dirLbl=isLong?'LONG':'SHORT';
+  const isCall=(document.getElementById('opt-type')?.value||'call')==='call';
+  const typeLbl=isCall?'CALL':'PUT';
   const resEl=document.getElementById('opt-results');
   const intEl=document.getElementById('opt-intermediates');
   if(!resEl)return;
@@ -13326,63 +13318,57 @@ function optCalc(){
   const T=Math.max((mat-asof)/(365.25*86400000),0);
   const N=parseFloat(document.getElementById('opt-N')?.value)||100;
 
-  // Row formatter — single value column, position-colored
-  const posColor=isLong?'#2d7cff':'#f59e0b';
-  function row(lbl,val,note){
+  function row(lbl,call,put,note){
     return`<tr><td style="text-align:left;color:#8a9bb5;padding:5px 10px;border-bottom:1px solid #151e30">${lbl}</td>
-    <td style="text-align:right;color:${posColor};padding:5px 10px;border-bottom:1px solid #151e30;font-weight:600">${val}</td>
+    <td style="text-align:right;color:#2d7cff;padding:5px 10px;border-bottom:1px solid #151e30;font-weight:600">${call}</td>
+    <td style="text-align:right;color:#f59e0b;padding:5px 10px;border-bottom:1px solid #151e30;font-weight:600">${put}</td>
     <td style="text-align:left;color:#3d5070;padding:5px 10px;border-bottom:1px solid #151e30;font-size:9px">${note||''}</td></tr>`;
   }
-  // Signed number formatter (always show + or −)
-  function signed(v,dp){ const s=v>=0?'+':''; return s+v.toFixed(dp); }
 
   if(model==='bs'){
     const F=parseFloat(document.getElementById('opt-F')?.value)||0;
     const K=parseFloat(document.getElementById('opt-K')?.value)||0;
     const sig=parseFloat(document.getElementById('opt-sig')?.value)||0;
     const r=parseFloat(document.getElementById('opt-r')?.value)||0;
+    const pos=document.getElementById('opt-pos')?.value||'buy';
+    const sign=pos==='buy'?1:-1;
+    const posLbl=pos==='buy'?'LONG':'SHORT';
     const c=bsPrice(F,K,sig,T,r,true), p=bsPrice(F,K,sig,T,r,false);
     const sT=sig*Math.sqrt(T);
+    // Intrinsic value (per unit, discounted)
     const df=Math.exp(-r*T);
-    // Chosen leg
-    const leg=isCall?c:p;
-    const premium=leg.price;
-    // Intrinsic (position-independent market fact)
-    const intr=isCall?Math.max(F-K,0)*df:Math.max(K-F,0)*df;
-    const ext=premium-intr;
-    // Moneyness (per chosen side)
-    const mny=isCall?(F>K?'ITM':F<K?'OTM':'ATM'):(F<K?'ITM':F>K?'OTM':'ATM');
-    const mnyCol=(mny==='ITM')?'#4ade80':(mny==='OTM')?'#f87171':'#8a9bb5';
-    // Cash flow (signed by direction)
-    const cashFlow=-sign*premium*N;
+    const intrC=Math.max(F-K,0)*df, intrP=Math.max(K-F,0)*df;
+    // Extrinsic (time value) = Premium − Intrinsic
+    const extC=c.price-intrC, extP=p.price-intrP;
+    // Moneyness per side
+    const mnyC=F>K?'ITM':F<K?'OTM':'ATM', mnyP=F<K?'ITM':F>K?'OTM':'ATM';
+    const mnyColC=F>K?'#4ade80':F<K?'#f87171':'#8a9bb5', mnyColP=F<K?'#4ade80':F>K?'#f87171':'#8a9bb5';
+    // Cash flow: buyer pays, seller receives. Applied per side.
+    const cfC=-sign*c.price*N, cfP=-sign*p.price*N;
     // Greeks with position sign applied
-    const delta=leg.delta*sign, gamma=leg.gamma*sign, vega=leg.vega*sign, theta=leg.theta*sign;
+    const delC=c.delta*sign, delP=p.delta*sign;
+    const gamC=c.gamma*sign, gamP=p.gamma*sign;
+    const vegC=c.vega*sign, vegP=p.vega*sign;
+    const theC=c.theta*sign, theP=p.theta*sign;
 
     resEl.innerHTML=`<div class="acard" style="padding:10px">
-    <div class="ctitle" style="display:flex;justify-content:space-between;align-items:center">
-      <span>${strategyLbl} · BS LOGNORMAL</span>
-      <span style="font-size:9px;color:#3d5070">${dirLbl} ${sideLbl}</span>
-    </div>
-    <div style="padding:8px 10px;background:#0a0f1a;border-bottom:1px solid #151e30;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:10px">
-      <div><span style="color:#3d5070">Call Premium (ref)</span> <span style="color:#2d7cff;float:right;font-weight:600">${c.price.toFixed(4)}</span></div>
-      <div><span style="color:#3d5070">Put Premium (ref)</span> <span style="color:#f59e0b;float:right;font-weight:600">${p.price.toFixed(4)}</span></div>
-    </div>
+    <div class="ctitle">${typeLbl} · BS LOGNORMAL · ${posLbl}</div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
-    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Metric</th><th style="text-align:right;color:${posColor};font-size:9px;font-weight:400">${strategyLbl}</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
-    ${row('Premium',premium.toFixed(4),'Per unit · market quote')}
-    ${row('Intrinsic',intr.toFixed(4),isCall?'max(F−K,0)·e⁻ʳᵀ':'max(K−F,0)·e⁻ʳᵀ')}
-    ${row('Extrinsic (Time)',ext.toFixed(4),'Premium − Intrinsic')}
-    ${row('Moneyness',`<span style="color:${mnyCol}">${mny}</span>`,isCall?'F vs K':'K vs F')}
-    <tr><td colspan="3" style="padding:2px 0"></td></tr>
-    ${row('Price × N',(premium*N).toFixed(2),'Total premium (premium × notional)')}
-    ${row('Cash flow',signed(cashFlow,2),isLong?'BUY: pay (debit)':'SELL: receive (credit)')}
-    <tr><td colspan="3" style="padding:2px 0"></td></tr>
-    ${row('Delta (%)',signed(delta*100,2),'∂Price/∂F · '+dirLbl.toLowerCase()+' sign applied')}
-    ${row('Gamma',signed(gamma,6),'∂²Price/∂F² · '+dirLbl.toLowerCase())}
-    ${row('Vega (+1pp σ)',signed(vega,4),'Per +1pp abs vol · '+dirLbl.toLowerCase())}
-    ${row('Theta (1 day)',signed(theta,4),'Per trading day /252 · '+dirLbl.toLowerCase())}
-    <tr><td colspan="3" style="padding:2px 0"></td></tr>
-    ${row('Straddle cost (ref)',(c.price+p.price).toFixed(4),'Buy Call + Buy Put @ same K (unsigned)')}
+    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Metric</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
+    ${row('Premium',c.price.toFixed(4),p.price.toFixed(4),'Per unit · market quote')}
+    ${row('Intrinsic',intrC.toFixed(4),intrP.toFixed(4),'max(F−K,0)·e⁻ʳᵀ / max(K−F,0)·e⁻ʳᵀ')}
+    ${row('Extrinsic (Time)',extC.toFixed(4),extP.toFixed(4),'Premium − Intrinsic')}
+    ${row('Moneyness',`<span style="color:${mnyColC}">${mnyC}</span>`,`<span style="color:${mnyColP}">${mnyP}</span>`,'Call vs Put per strike')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Price × N',(c.price*N).toFixed(2),(p.price*N).toFixed(2),'Total premium (notional×premium)')}
+    ${row('Cash flow',(cfC>=0?'+':'')+cfC.toFixed(2),(cfP>=0?'+':'')+cfP.toFixed(2),pos==='buy'?'BUY: pay (debit)':'SELL: receive (credit)')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Delta (%)',(delC*100).toFixed(2),(delP*100).toFixed(2),'∂Price/∂F · '+posLbl.toLowerCase())}
+    ${row('Gamma',gamC.toFixed(6),gamP.toFixed(6),'∂²Price/∂F² · '+posLbl.toLowerCase())}
+    ${row('Vega (+1pp σ)',vegC.toFixed(4),vegP.toFixed(4),'Per +1pp abs vol · '+posLbl.toLowerCase())}
+    ${row('Theta (1 day)',theC.toFixed(4),theP.toFixed(4),'Per trading day /252 · '+posLbl.toLowerCase())}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Straddle',(c.price+p.price).toFixed(4),'','Call + Put @ same K')}
     </table></div>`;
 
     intEl.innerHTML=`<div class="acard" style="padding:10px">
@@ -13398,49 +13384,46 @@ function optCalc(){
       <div class="mc"><div class="mc-name">Daily 1σ $-move</div><div class="mc-val" style="font-size:14px">${(F*sig/Math.sqrt(252)).toFixed(3)}</div></div>
     </div></div>`;
 
-    optDrawPayoff('opt-payoff',F,K,premium,isCall,N,'bs',{sign,dirLbl,strategyLbl});
+    optDrawPayoff('opt-payoff',F,K,isCall?c.price:p.price,isCall,N,'bs',{sign,posLbl});
 
   } else if(model==='gauss'){
     const F=parseFloat(document.getElementById('opt-F')?.value)||0;
     const K=parseFloat(document.getElementById('opt-K')?.value)||0;
     const sigD=parseFloat(document.getElementById('opt-sig')?.value)||0;
     const r=parseFloat(document.getElementById('opt-r')?.value)||0;
+    const pos=document.getElementById('opt-pos')?.value||'buy';
+    const sign=pos==='buy'?1:-1;
+    const posLbl=pos==='buy'?'LONG':'SHORT';
     const c=gaussPrice(F,K,sigD,T,r,true), p=gaussPrice(F,K,sigD,T,r,false);
     const df=Math.exp(-r*T);
-    const leg=isCall?c:p;
-    const premium=leg.price;
-    const intr=isCall?Math.max(F-K,0)*df:Math.max(K-F,0)*df;
-    const ext=premium-intr;
-    const mny=isCall?(F>K?'ITM':F<K?'OTM':'ATM'):(F<K?'ITM':F>K?'OTM':'ATM');
-    const mnyCol=(mny==='ITM')?'#4ade80':(mny==='OTM')?'#f87171':'#8a9bb5';
-    const cashFlow=-sign*premium*N;
-    const delta=leg.delta*sign, gamma=leg.gamma*sign, vega=leg.vega*sign, theta=leg.theta*sign;
+    const intrC=Math.max(F-K,0)*df, intrP=Math.max(K-F,0)*df;
+    const extC=c.price-intrC, extP=p.price-intrP;
+    const mnyC=F>K?'ITM':F<K?'OTM':'ATM', mnyP=F<K?'ITM':F>K?'OTM':'ATM';
+    const mnyColC=F>K?'#4ade80':F<K?'#f87171':'#8a9bb5', mnyColP=F<K?'#4ade80':F>K?'#f87171':'#8a9bb5';
+    const cfC=-sign*c.price*N, cfP=-sign*p.price*N;
+    const delC=c.delta*sign, delP=p.delta*sign;
+    const gamC=c.gamma*sign, gamP=p.gamma*sign;
+    const vegC=c.vega*sign, vegP=p.vega*sign;
+    const theC=c.theta*sign, theP=p.theta*sign;
 
     resEl.innerHTML=`<div class="acard" style="padding:10px">
-    <div class="ctitle" style="display:flex;justify-content:space-between;align-items:center">
-      <span>${strategyLbl} · GAUSSIAN / BACHELIER</span>
-      <span style="font-size:9px;color:#3d5070">${dirLbl} ${sideLbl}</span>
-    </div>
-    <div style="padding:8px 10px;background:#0a0f1a;border-bottom:1px solid #151e30;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:10px">
-      <div><span style="color:#3d5070">Call Premium (ref)</span> <span style="color:#2d7cff;float:right;font-weight:600">${c.price.toFixed(4)}</span></div>
-      <div><span style="color:#3d5070">Put Premium (ref)</span> <span style="color:#f59e0b;float:right;font-weight:600">${p.price.toFixed(4)}</span></div>
-    </div>
+    <div class="ctitle">${typeLbl} · GAUSSIAN / BACHELIER · ${posLbl}</div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
-    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Metric</th><th style="text-align:right;color:${posColor};font-size:9px;font-weight:400">${strategyLbl}</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
-    ${row('Premium',premium.toFixed(4),'Bachelier closed-form')}
-    ${row('Intrinsic',intr.toFixed(4),isCall?'max(F−K,0)·e⁻ʳᵀ':'max(K−F,0)·e⁻ʳᵀ')}
-    ${row('Extrinsic (Time)',ext.toFixed(4),'Premium − Intrinsic')}
-    ${row('Moneyness',`<span style="color:${mnyCol}">${mny}</span>`,isCall?'F vs K':'K vs F')}
-    <tr><td colspan="3" style="padding:2px 0"></td></tr>
-    ${row('Price × N',(premium*N).toFixed(2),'Total premium')}
-    ${row('Cash flow',signed(cashFlow,2),isLong?'BUY: pay (debit)':'SELL: receive (credit)')}
-    <tr><td colspan="3" style="padding:2px 0"></td></tr>
-    ${row('Delta (%)',signed(delta*100,2),'∂Price/∂F · '+dirLbl.toLowerCase())}
-    ${row('Gamma',signed(gamma,6),'∂²Price/∂F² · '+dirLbl.toLowerCase())}
-    ${row('Vega (+1pp σ)',signed(vega,4),'Per +1pp ann. vol · '+dirLbl.toLowerCase())}
-    ${row('Theta (1 day)',signed(theta,4),'Per trading day /252 · '+dirLbl.toLowerCase())}
-    <tr><td colspan="3" style="padding:2px 0"></td></tr>
-    ${row('Straddle cost (ref)',(c.price+p.price).toFixed(4),'Buy Call + Buy Put @ same K')}
+    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Metric</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
+    ${row('Premium',c.price.toFixed(4),p.price.toFixed(4),'Bachelier closed-form · per unit')}
+    ${row('Intrinsic',intrC.toFixed(4),intrP.toFixed(4),'max(F−K,0)·e⁻ʳᵀ / max(K−F,0)·e⁻ʳᵀ')}
+    ${row('Extrinsic (Time)',extC.toFixed(4),extP.toFixed(4),'Premium − Intrinsic')}
+    ${row('Moneyness',`<span style="color:${mnyColC}">${mnyC}</span>`,`<span style="color:${mnyColP}">${mnyP}</span>`,'Call vs Put per strike')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Price × N',(c.price*N).toFixed(2),(p.price*N).toFixed(2),'Total premium')}
+    ${row('Cash flow',(cfC>=0?'+':'')+cfC.toFixed(2),(cfP>=0?'+':'')+cfP.toFixed(2),pos==='buy'?'BUY: pay (debit)':'SELL: receive (credit)')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Delta (%)',(delC*100).toFixed(2),(delP*100).toFixed(2),'∂Price/∂F · '+posLbl.toLowerCase())}
+    ${row('Gamma',gamC.toFixed(6),gamP.toFixed(6),'∂²Price/∂F² · '+posLbl.toLowerCase())}
+    ${row('Vega (+1pp σ)',vegC.toFixed(4),vegP.toFixed(4),'Per +1pp ann. vol · '+posLbl.toLowerCase())}
+    ${row('Theta (1 day)',theC.toFixed(4),theP.toFixed(4),'Per trading day /252 · '+posLbl.toLowerCase())}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Straddle',(c.price+p.price).toFixed(4),'','Call + Put @ same K')}
     </table></div>`;
 
     intEl.innerHTML=`<div class="acard" style="padding:10px">
@@ -13453,10 +13436,10 @@ function optCalc(){
       <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${df.toFixed(6)}</div></div>
       <div class="mc"><div class="mc-name">DATM (F−K)</div><div class="mc-val" style="font-size:14px">${(F-K).toFixed(3)}</div></div>
       <div class="mc"><div class="mc-name">Equiv BS Vol</div><div class="mc-val" style="font-size:14px">${F>0?(c.sigmaAnn/F).toFixed(4):'—'}</div></div>
-      <div class="mc"><div class="mc-name">Moneyness</div><div class="mc-val" style="font-size:14px;color:${mnyCol}">${mny}</div></div>
+      <div class="mc"><div class="mc-name">Moneyness (Call)</div><div class="mc-val" style="font-size:14px;color:${mnyColC}">${mnyC}</div></div>
     </div></div>`;
 
-    optDrawPayoff('opt-payoff',F,K,premium,isCall,N,'gauss',{sign,dirLbl,strategyLbl});
+    optDrawPayoff('opt-payoff',F,K,isCall?c.price:p.price,isCall,N,'gauss',{sign,posLbl});
 
   } else { // spread
     const F1=parseFloat(document.getElementById('opt-F1')?.value)||0;
@@ -13466,44 +13449,42 @@ function optCalc(){
     const rho=parseFloat(document.getElementById('opt-rho')?.value)||0;
     const K=parseFloat(document.getElementById('opt-K')?.value)||0;
     const r=parseFloat(document.getElementById('opt-r')?.value)||0;
+    const pos=document.getElementById('opt-pos')?.value||'buy';
+    const sign=pos==='buy'?1:-1;
+    const posLbl=pos==='buy'?'LONG':'SHORT';
     const c=spreadPrice(F1,F2,sig1,sig2,rho,K,T,r,true), p=spreadPrice(F1,F2,sig1,sig2,rho,K,T,r,false);
     const df=Math.exp(-r*T);
     const spread=c.fwdSpread;
-    const leg=isCall?c:p;
-    const premium=leg.price;
-    const intr=isCall?Math.max(spread-K,0)*df:Math.max(K-spread,0)*df;
-    const ext=premium-intr;
-    const mny=isCall?(spread>K?'ITM':spread<K?'OTM':'ATM'):(spread<K?'ITM':spread>K?'OTM':'ATM');
-    const mnyCol=(mny==='ITM')?'#4ade80':(mny==='OTM')?'#f87171':'#8a9bb5';
-    const cashFlow=-sign*premium*N;
-    const dS1=leg.deltaS1*sign, dS2=leg.deltaS2*sign, gamma=leg.gamma*sign, vega=leg.vega*sign, theta=leg.theta*sign;
+    const intrC=Math.max(spread-K,0)*df, intrP=Math.max(K-spread,0)*df;
+    const extC=c.price-intrC, extP=p.price-intrP;
+    const mnyC=spread>K?'ITM':spread<K?'OTM':'ATM', mnyP=spread<K?'ITM':spread>K?'OTM':'ATM';
+    const mnyColC=spread>K?'#4ade80':spread<K?'#f87171':'#8a9bb5', mnyColP=spread<K?'#4ade80':spread>K?'#f87171':'#8a9bb5';
+    const cfC=-sign*c.price*N, cfP=-sign*p.price*N;
+    const d1sC=c.deltaS1*sign, d1sP=p.deltaS1*sign;
+    const d2sC=c.deltaS2*sign, d2sP=p.deltaS2*sign;
+    const gamC=c.gamma*sign, gamP=p.gamma*sign;
+    const vegC=c.vega*sign, vegP=p.vega*sign;
+    const theC=c.theta*sign, theP=p.theta*sign;
 
     resEl.innerHTML=`<div class="acard" style="padding:10px">
-    <div class="ctitle" style="display:flex;justify-content:space-between;align-items:center">
-      <span>${strategyLbl} · SPREAD (S₁ − S₂) GAUSSIAN</span>
-      <span style="font-size:9px;color:#3d5070">${dirLbl} ${sideLbl} on spread</span>
-    </div>
-    <div style="padding:8px 10px;background:#0a0f1a;border-bottom:1px solid #151e30;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:10px">
-      <div><span style="color:#3d5070">Call on spread (ref)</span> <span style="color:#2d7cff;float:right;font-weight:600">${c.price.toFixed(4)}</span></div>
-      <div><span style="color:#3d5070">Put on spread (ref)</span> <span style="color:#f59e0b;float:right;font-weight:600">${p.price.toFixed(4)}</span></div>
-    </div>
+    <div class="ctitle">${typeLbl} · SPREAD (S₁ − S₂) GAUSSIAN · ${posLbl}</div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
-    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Metric</th><th style="text-align:right;color:${posColor};font-size:9px;font-weight:400">${strategyLbl}</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
-    ${row('Premium',premium.toFixed(4),'Spread option premium')}
-    ${row('Intrinsic',intr.toFixed(4),isCall?'max(Spread−K,0)·e⁻ʳᵀ':'max(K−Spread,0)·e⁻ʳᵀ')}
-    ${row('Extrinsic (Time)',ext.toFixed(4),'Premium − Intrinsic')}
-    ${row('Moneyness',`<span style="color:${mnyCol}">${mny}</span>`,'Spread vs K')}
-    <tr><td colspan="3" style="padding:2px 0"></td></tr>
-    ${row('Price × N',(premium*N).toFixed(2),'Total premium')}
-    ${row('Cash flow',signed(cashFlow,2),isLong?'BUY: pay (debit)':'SELL: receive (credit)')}
-    <tr><td colspan="3" style="padding:2px 0"></td></tr>
-    ${row('Delta S₁ (%)',signed(dS1*100,2),'∂Price/∂S₁ · '+dirLbl.toLowerCase())}
-    ${row('Delta S₂ (%)',signed(dS2*100,2),'∂Price/∂S₂ = −Δ S₁ · '+dirLbl.toLowerCase())}
-    ${row('Vega σ-spread (+1pp)',signed(vega,4),'Per +1pp spread vol · '+dirLbl.toLowerCase())}
-    ${row('Gamma',signed(gamma,6),'∂²Price/∂Spread² · '+dirLbl.toLowerCase())}
-    ${row('Theta (1 day)',signed(theta,4),'Per trading day /252 · '+dirLbl.toLowerCase())}
-    <tr><td colspan="3" style="padding:2px 0"></td></tr>
-    ${row('Straddle cost (ref)',(c.price+p.price).toFixed(4),'Buy Call + Buy Put on spread')}
+    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Metric</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL on spread</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT on spread</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
+    ${row('Premium',c.price.toFixed(4),p.price.toFixed(4),'Spread option premium · per unit')}
+    ${row('Intrinsic',intrC.toFixed(4),intrP.toFixed(4),'max(Spread−K,0)·e⁻ʳᵀ / max(K−Spread,0)·e⁻ʳᵀ')}
+    ${row('Extrinsic (Time)',extC.toFixed(4),extP.toFixed(4),'Premium − Intrinsic')}
+    ${row('Moneyness',`<span style="color:${mnyColC}">${mnyC}</span>`,`<span style="color:${mnyColP}">${mnyP}</span>`,'Spread vs K')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Price × N',(c.price*N).toFixed(2),(p.price*N).toFixed(2),'Total premium')}
+    ${row('Cash flow',(cfC>=0?'+':'')+cfC.toFixed(2),(cfP>=0?'+':'')+cfP.toFixed(2),pos==='buy'?'BUY: pay (debit)':'SELL: receive (credit)')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Delta S₁ (%)',(d1sC*100).toFixed(2),(d1sP*100).toFixed(2),'∂Price/∂S₁ · '+posLbl.toLowerCase())}
+    ${row('Delta S₂ (%)',(d2sC*100).toFixed(2),(d2sP*100).toFixed(2),'∂Price/∂S₂ = −Δ S₁ · '+posLbl.toLowerCase())}
+    ${row('Vega σ-spread (+1pp)',vegC.toFixed(4),vegP.toFixed(4),'Per +1pp spread vol · '+posLbl.toLowerCase())}
+    ${row('Gamma',gamC.toFixed(6),gamP.toFixed(6),'∂²Price/∂Spread² · '+posLbl.toLowerCase())}
+    ${row('Theta (1 day)',theC.toFixed(4),theP.toFixed(4),'Per trading day /252 · '+posLbl.toLowerCase())}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Straddle on spread',(c.price+p.price).toFixed(4),'','Call + Put @ same K on S₁−S₂')}
     </table></div>`;
 
     intEl.innerHTML=`<div class="acard" style="padding:10px">
@@ -13519,16 +13500,14 @@ function optCalc(){
       <div class="mc"><div class="mc-name">ρ</div><div class="mc-val" style="font-size:14px">${rho.toFixed(2)}</div></div>
     </div></div>`;
 
-    optDrawPayoff('opt-payoff',F1,K,premium,isCall,N,'spread',{fwdSpread:c.fwdSpread,sign,dirLbl,strategyLbl});
+    optDrawPayoff('opt-payoff',F1,K,isCall?c.price:p.price,isCall,N,'spread',{fwdSpread:c.fwdSpread,sign,posLbl});
   }
 }
-
 
 // ── Implied Vol Solver UI ────────────────────────────────────────────────────
 function optSolveIV(){
   const model=document.getElementById('opt-model')?.value||'bs';
-  const strategy=document.getElementById('opt-strategy')?.value||'buy_call';
-  const isCall=strategy.endsWith('_call');
+  const isCall=(document.getElementById('opt-type')?.value||'call')==='call';
   const brokerEl=document.getElementById('opt-broker');
   const target=parseFloat(brokerEl?.value);
   if(!target||isNaN(target)){alert('Enter a Broker Price to solve for implied vol.');return;}
