@@ -36,7 +36,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+          cache: 'pip'
 
       - name: Install Python deps
         run: |
@@ -84,7 +84,7 @@ jobs:
           print(' '.join(parts))
           ")
 
-        git commit -m "chore: update china/shpgx ${UPDATED}" -m "Series: ${SUMMARY}"
+          git commit -m "chore: update china/shpgx ${UPDATED}" -m "Series: ${SUMMARY}"
           git push
 
       - name: Upload scraper log as artifact (on failure)
