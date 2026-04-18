@@ -11032,26 +11032,31 @@ async function renderGaDashboard(){
       }catch(e){}
     }
 
-// ── Read JKM M+1: cp_fp primary (matches China Gas Prices tab), aD/sDates fallback ──
+// ── Read JKM M+1 with 16th-roll: aD/sDates primary, cp_fp fallback ──
+    // Past 15th, contract M+1 has settled (blank in new OB curves) → read M+2 from pk lookup
+    // cpFP.JKM[0] freezes stale after roll, so cpFP fallback must also use [1] past 15th
     let latJKM=null, latDateStr='';
-    try{
-      if(typeof cpGet==='function'){
-        const cpFP=cpGet('cp_fp',null);
-        const jkmM1=cpFP?.JKM?.[0];
-        if(jkmM1!=null) latJKM=+Number(jkmM1).toFixed(3);
-      }
-    }catch(e){}
-    if(latJKM==null&&typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length){
+    const todayRoll=new Date().getDate()>=16;
+    if(typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length&&typeof rPK==='function'){
       const latDs=sDates[sDates.length-1];
       const latDate=aD[latDs]?.date;
       if(latDate){
-        const pk=rPK(latDate,latDate.getDate()>=16?2:1);
+        const pk=rPK(latDate,todayRoll?2:1);
         const row=(aD[latDs].rows||[]).find(r=>r.pk===pk);
-        latJKM=row?.JKM||null;
+        if(row?.JKM!=null) latJKM=+Number(row.JKM).toFixed(3);
         latDateStr=latDs;
       }
     }
-    // Stamp the JKM tile with the latest EOD date if cp_fp path didn't set one
+    if(latJKM==null){
+      try{
+        if(typeof cpGet==='function'){
+          const cpFP=cpGet('cp_fp',null);
+          const idx=todayRoll?1:0;
+          const jkm=cpFP?.JKM?.[idx];
+          if(jkm!=null) latJKM=+Number(jkm).toFixed(3);
+        }
+      }catch(e){}
+    }
     if(latJKM!=null&&!latDateStr&&typeof sDates!=='undefined'&&sDates.length){
       latDateStr=sDates[sDates.length-1];
     }
