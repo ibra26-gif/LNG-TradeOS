@@ -54,20 +54,53 @@ HOMEPAGE_URL = "https://umm.gassco.no/"
 # =============================================================================
 
 def accept_disclaimer(session):
-    """Gassco serves a disclaimer wall on first visit. Accept it programmatically
-    to unlock the real site content. The form action is GET /disclaimer/acceptDisclaimer."""
+    """Gassco serves a disclaimer wall. Need to:
+      1. Visit homepage first (server sets session cookie, returns disclaimer form)
+      2. Submit the accept form with Referer header pointing back to homepage
+      3. Server should then set a 'disclaimer accepted' cookie and redirect
+    """
     try:
-        print("Accepting Gassco disclaimer...")
-        r = session.get(
+        # Step 1: Visit homepage to establish session
+        print("Step 1: Visit homepage to establish session...")
+        r0 = session.get(HOMEPAGE_URL, timeout=TIMEOUT, allow_redirects=True)
+        print(f"  Homepage: {r0.status_code}, final URL: {r0.url}, cookies: {dict(session.cookies)}")
+
+        # Step 2: Accept the disclaimer, with Referer set to homepage
+        print("Step 2: Submit disclaimer accept...")
+        r1 = session.get(
             "https://umm.gassco.no/disclaimer/acceptDisclaimer",
             timeout=TIMEOUT,
-            allow_redirects=True,
-            headers={"Referer": HOMEPAGE_URL},
+            allow_redirects=False,  # Don't follow - we want to see the redirect
+            headers={
+                "Referer": HOMEPAGE_URL,
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+            },
         )
-        print(f"  Disclaimer response: {r.status_code}, cookies now: {len(session.cookies)}")
-        return r.status_code == 200
+        print(f"  Accept: {r1.status_code}, Location: {r1.headers.get('Location', 'none')}, cookies: {dict(session.cookies)}")
+
+        # Step 3: Follow redirect manually if 3xx
+        if 300 <= r1.status_code < 400:
+            loc = r1.headers.get("Location", "/")
+            if loc.startswith("/"):
+                loc = "https://umm.gassco.no" + loc
+            print(f"Step 3: Follow redirect to {loc}...")
+            r2 = session.get(loc, timeout=TIMEOUT, headers={"Referer": HOMEPAGE_URL})
+            print(f"  Follow: {r2.status_code}, cookies: {dict(session.cookies)}, body starts with: {r2.text[:200]!r}")
+
+        # Step 4: Verify by fetching homepage again - should now show real content
+        print("Step 4: Verify by re-fetching homepage...")
+        r3 = session.get(HOMEPAGE_URL, timeout=TIMEOUT)
+        has_dornum = "Dornum" in r3.text
+        has_real_time = "REAL TIME" in r3.text
+        print(f"  Verify: {r3.status_code}, size={len(r3.text)}, Dornum={has_dornum}, REAL TIME={has_real_time}")
+        return has_dornum and has_real_time
     except Exception as e:
-        print(f"  Disclaimer accept failed: {e}")
+        print(f"  Disclaimer accept failed: {type(e).__name__}: {e}")
+        import traceback; traceback.print_exc()
         return False
 
 
