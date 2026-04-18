@@ -11004,46 +11004,94 @@ async function renderGaDashboard(){
   const anyTodayData=pipeData.some(r=>r.today!=null);
 
   // ── China JKM M+1 vs Truck-LNG ────────────────────────────────────────────
-  let chinaHtml=`<div style="font-size:9px;color:#3d5070;padding:10px;border:1px dashed #1e3a5f;text-align:center">Load EOD data in Financial Trading to enable · reads aD/sDates/TRUCK_CNY</div>`;
+  // Truck: SHPGX daily via /data/china_shpgx.json · JKM: EOD (Financial Trading)
+  let chinaHtml=`<div style="font-size:9px;color:#3d5070;padding:10px;border:1px dashed #1e3a5f;text-align:center">Awaiting data · EOD (Financial Trading) + SHPGX (auto-fetch)</div>`;
   try{
-    if(typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length&&typeof TRUCK_CNY!=='undefined'&&TRUCK_CNY.length){
-      const usdcny=7.25;
+    // ── Read truck: prefer in-memory store, fall back to localStorage cache ──
+    let truckCny=null, truckDate='';
+    const truckStore=(window.SHPGX_DATA&&window.SHPGX_DATA.truck)||[];
+    if(truckStore.length){
+      const sorted=[...truckStore].sort((a,b)=>new Date(a.date||0)-new Date(b.date||0));
+      const latest=sorted[sorted.length-1];
+      truckCny=parseFloat(latest.price_cny_kg);
+      truckDate=latest.date?String(latest.date).slice(0,10):'';
+    } else {
+      // Race fallback: auto-fetch in flight — read raw JSON cache directly
+      try{
+        const raw=localStorage.getItem('lng_shpgx_v1');
+        if(raw){
+          const {data}=JSON.parse(raw);
+          const t=data?.truck;
+          if(t?.rows?.length&&t.unit==='cny_kg'){
+            const sorted=[...t.rows].sort((a,b)=>new Date(a.date||0)-new Date(b.date||0));
+            const latest=sorted[sorted.length-1];
+            truckCny=parseFloat(latest.value);
+            truckDate=latest.date||'';
+          }
+        }
+      }catch(e){}
+    }
+
+    // ── Read JKM M+1 with 16th-roll ──
+    let latJKM=null, latDateStr='';
+    if(typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length){
       const latDs=sDates[sDates.length-1];
       const latDate=aD[latDs]?.date;
       if(latDate){
         const pk=rPK(latDate,latDate.getDate()>=16?2:1);
         const row=(aD[latDs].rows||[]).find(r=>r.pk===pk);
-        const latJKM=row?.JKM;
-        const latTruck=+(TRUCK_CNY[TRUCK_CNY.length-1].value/usdcny/1000/1.09*3.41214).toFixed(2);
-        if(latJKM){
-          const diff=+(latTruck-latJKM).toFixed(2);
-          const truckBelow=diff<0;
-          const diffCol=truckBelow?'#f87171':'#4ade80';
-          const signalTxt=truckBelow
-            ? 'Truck below JKM · domestic CNG cheaper · China not bidding for spot LNG'
-            : 'Truck above JKM · imports competitive · China bid open for spot LNG';
-          chinaHtml=`
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
-            <div style="background:#050c14;padding:8px;border:1px solid #1e3a5f">
-              <div style="font-size:7px;color:#546e7a;letter-spacing:1px">JKM M+1</div>
-              <div style="font-size:18px;font-weight:700;color:#f0f4ff">$${latJKM.toFixed(2)}</div>
-              <div style="font-size:7px;color:#3d5070">/MMBtu</div>
-            </div>
-            <div style="background:#050c14;padding:8px;border:1px solid #1e3a5f">
-              <div style="font-size:7px;color:#546e7a;letter-spacing:1px">TRUCK-LNG</div>
-              <div style="font-size:18px;font-weight:700;color:#f0f4ff">$${latTruck.toFixed(2)}</div>
-              <div style="font-size:7px;color:#3d5070">CNY→$/MMBtu</div>
-            </div>
-          </div>
-          <div style="padding:6px 8px;background:rgba(77,158,245,.05);border-left:2px solid ${diffCol}">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
-              <span style="font-size:9px;color:#dde4f0;letter-spacing:1px">TRUCK − JKM</span>
-              <span style="font-size:13px;font-weight:700;color:${diffCol}">${diff>=0?'+':''}$${diff.toFixed(2)}</span>
-            </div>
-            <div style="font-size:8px;color:#8a9bb5;line-height:1.4">${signalTxt}</div>
-          </div>`;
-        }
+        latJKM=row?.JKM||null;
+        latDateStr=latDs;
       }
+    }
+
+    const usdcny=parseFloat(document.getElementById('cs-usdcny')?.value)||7.25;
+
+    if(truckCny!=null&&latJKM!=null){
+      const latTruck=+(truckCny*1000/usdcny/52.5).toFixed(2);
+      const diff=+(latTruck-latJKM).toFixed(2);
+      const truckBelow=diff<0;
+      const diffCol=truckBelow?'#f87171':'#4ade80';
+      const signalTxt=truckBelow
+        ? 'Truck below JKM · domestic cheaper · China not bidding for spot LNG'
+        : 'Truck above JKM · imports competitive · China bid open for spot LNG';
+      chinaHtml=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+        <div style="background:#050c14;padding:8px;border:1px solid #1e3a5f">
+          <div style="font-size:7px;color:#546e7a;letter-spacing:1px">JKM M+1</div>
+          <div style="font-size:18px;font-weight:700;color:#f0f4ff">$${latJKM.toFixed(2)}</div>
+          <div style="font-size:7px;color:#3d5070">$/MMBtu · ${latDateStr||''}</div>
+        </div>
+        <div style="background:#050c14;padding:8px;border:1px solid #1e3a5f">
+          <div style="font-size:7px;color:#546e7a;letter-spacing:1px">TRUCK-LNG N.CHINA</div>
+          <div style="font-size:18px;font-weight:700;color:#f0f4ff">$${latTruck.toFixed(2)}</div>
+          <div style="font-size:7px;color:#3d5070">¥${truckCny.toFixed(2)}/kg · ${truckDate}</div>
+        </div>
+      </div>
+      <div style="padding:6px 8px;background:rgba(77,158,245,.05);border-left:2px solid ${diffCol}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+          <span style="font-size:9px;color:#dde4f0;letter-spacing:1px">TRUCK − JKM</span>
+          <span style="font-size:13px;font-weight:700;color:${diffCol}">${diff>=0?'+':''}$${diff.toFixed(2)}</span>
+        </div>
+        <div style="font-size:8px;color:#8a9bb5;line-height:1.4">${signalTxt}</div>
+      </div>`;
+    } else if(truckCny!=null){
+      const latTruck=+(truckCny*1000/usdcny/52.5).toFixed(2);
+      chinaHtml=`
+      <div style="background:#050c14;padding:8px;border:1px solid #1e3a5f;margin-bottom:6px">
+        <div style="font-size:7px;color:#546e7a;letter-spacing:1px">TRUCK-LNG N.CHINA</div>
+        <div style="font-size:18px;font-weight:700;color:#f0f4ff">$${latTruck.toFixed(2)}/MMBtu</div>
+        <div style="font-size:7px;color:#3d5070">¥${truckCny.toFixed(2)}/kg · ${truckDate} · SHPGX</div>
+      </div>
+      <div style="font-size:8px;color:#6b7a99;padding:6px 8px;border-left:2px solid #fbbf24;background:rgba(251,191,36,0.05)">Load EOD in Financial Trading for JKM M+1 comparison</div>`;
+    } else if(latJKM!=null){
+      chinaHtml=`
+      <div style="background:#050c14;padding:8px;border:1px solid #1e3a5f;margin-bottom:6px">
+        <div style="font-size:7px;color:#546e7a;letter-spacing:1px">JKM M+1</div>
+        <div style="font-size:18px;font-weight:700;color:#f0f4ff">$${latJKM.toFixed(2)}/MMBtu</div>
+        <div style="font-size:7px;color:#3d5070">$/MMBtu · ${latDateStr||''}</div>
+      </div>
+      <div style="font-size:8px;color:#6b7a99;padding:6px 8px;border-left:2px solid #fbbf24;background:rgba(251,191,36,0.05)">SHPGX truck data loading — hit ↺ REFRESH ALL if this persists</div>`;
     }
   }catch(e){ console.warn('China signal:',e.message); }
 
