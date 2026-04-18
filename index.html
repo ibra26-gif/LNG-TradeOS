@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>LNG TradeOS™ v189</title>
+<title>LNG TradeOS™ v190</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -10592,7 +10592,9 @@ async function gdLoadStorage(from, to){
       const twh=parseFloat(d.gasInStorage)||0;
       const inj=parseFloat(d.injection)||0;   // GWh/d injection
       const wdr=parseFloat(d.withdrawal)||0;   // GWh/d withdrawal
-      const net=parseFloat(d.netWithdrawal)||0;
+      // Net injection: +ve = net filling storage, -ve = net drawing from storage
+      // AGSI's d.netWithdrawal is signed opposite to this convention, so compute directly.
+      const net=inj-wdr;  // GWh/d signed (positive = injection, negative = withdrawal)
       if(!GD.storage[mo] || date > (GD.storage[mo].date||''))
         GD.storage[mo]={pct,twh,date};
       // Daily data keyed by YYYY-MM-DD
@@ -11174,7 +11176,7 @@ async function renderGaDashboard(){
             </div>
             <div>
               <div style="font-size:8px;color:#546e7a;letter-spacing:1px">NET FLOW</div>
-              <div style="font-size:15px;font-weight:600;color:${stor?.net>0?'#4ade80':stor?.net<0?'#f87171':'#8a9bb5'};line-height:1.2">${stor?.net!=null?(stor.net>0?'+':'')+stor.net.toFixed(0)+' mcm/d':'—'}</div>
+              <div style="font-size:15px;font-weight:600;color:${stor?.net>0?'#4ade80':stor?.net<0?'#f87171':'#8a9bb5'};line-height:1.2">${stor?.net!=null?(stor.net>0?'+':'')+(stor.net/10.55).toFixed(0)+' mcm/d':'—'}</div>
               <div style="font-size:9px;color:${stor?.net>0?'#4ade80':'#f87171'};margin-top:2px">${stor?.net>0?'INJECTION':stor?.net<0?'WITHDRAWAL':'—'}</div>
             </div>
           </div>
