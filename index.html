@@ -11060,12 +11060,8 @@ async function renderGaDashboard(){
 
     if(truckCny!=null&&latJKM!=null){
       const latTruck=+(truckCny*1000/usdcny/52.5).toFixed(2);
-      const diff=+(latTruck-latJKM).toFixed(2);
-      const truckBelow=diff<0;
-      const diffCol=truckBelow?'#f87171':'#4ade80';
-      const signalTxt=truckBelow
-        ? 'Truck below JKM · domestic cheaper · China not bidding for spot LNG'
-        : 'Truck above JKM · imports competitive · China bid open for spot LNG';
+const diff=+(latTruck-latJKM).toFixed(2);
+      const diffCol=diff<0?'#f87171':'#4ade80';
       chinaHtml=`
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
         <div style="background:#050c14;padding:8px;border:1px solid #1e3a5f">
@@ -11080,12 +11076,12 @@ async function renderGaDashboard(){
         </div>
       </div>
       <div style="padding:6px 8px;background:rgba(77,158,245,.05);border-left:2px solid ${diffCol}">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
           <span style="font-size:9px;color:#dde4f0;letter-spacing:1px">TRUCK − JKM</span>
           <span style="font-size:13px;font-weight:700;color:${diffCol}">${diff>=0?'+':''}$${diff.toFixed(2)}</span>
         </div>
-        <div style="font-size:8px;color:#8a9bb5;line-height:1.4">${signalTxt}</div>
       </div>`;
+      
     } else if(truckCny!=null){
       const latTruck=+(truckCny*1000/usdcny/52.5).toFixed(2);
       chinaHtml=`
