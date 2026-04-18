@@ -143,14 +143,40 @@ def scrape_indicator(session, indicator, year, months, out_name):
             for mo in months:
                 rows = fetch_point_month(session, label, indicator, year, mo)
                 if rows:
+                    # Filter rows:
+                    #   1. Match the requested indicator exactly. ENTSOG API sometimes
+                    #      returns mixed indicator rows when `pointLabel` has multiple
+                    #      indicator types (e.g. both Physical Flow and Nomination data).
+                    #   2. Reject future dates for Physical Flow (only nominations can
+                    #      be published forward). Allow D+1 for Nomination indicator.
+                    today = datetime.now(timezone.utc).date()
+                    if indicator == "Nomination":
+                        max_date = (today + timedelta(days=2)).isoformat()
+                    else:  # Physical Flow
+                        max_date = today.isoformat()
+                    rejected_indicator = 0
+                    rejected_future = 0
                     for row in rows:
+                        # Filter 1: indicator match (case-insensitive, flexible)
+                        row_ind = (row.get("indicator") or "").strip()
+                        if row_ind and row_ind.lower() != indicator.lower():
+                            rejected_indicator += 1
+                            continue
+                        # Filter 2: date within expected bounds
+                        date = (row.get("periodFrom") or row.get("from") or "")[:10]
+                        if len(date) < 10:
+                            continue
+                        if date > max_date:
+                            rejected_future += 1
+                            continue
                         val_kwh = float(row.get("value", 0) or 0)
                         mcm = val_kwh * KWH_TO_MCM
-                        date = (row.get("periodFrom") or row.get("from") or "")[:10]
-                        if len(date) < 10: continue
                         route_daily[date] = route_daily.get(date, 0) + mcm
                         label_days += 1
-                    print(f"M{mo}OK", end=" ", flush=True)
+                    if rejected_indicator or rejected_future:
+                        print(f"M{mo}OK(rej:i={rejected_indicator},f={rejected_future})", end=" ", flush=True)
+                    else:
+                        print(f"M{mo}OK", end=" ", flush=True)
                 else:
                     print(f"M{mo}-", end=" ", flush=True)
                 time.sleep(DELAY_S)
