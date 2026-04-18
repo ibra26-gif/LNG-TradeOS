@@ -88,9 +88,17 @@ def fetch_umms_from_xlsx(session):
 
         # XLSX files start with PK (zip magic)
         if not content[:2] == b"PK":
-            # Server returned HTML error page instead of XLSX - log first bytes for debugging
-            preview = content[:200].decode("utf-8", errors="replace")
-            print(f"  Not a valid XLSX. Preview: {preview!r}")
+            # Server returned HTML error page instead of XLSX - log detailed info for debugging
+            preview = content[:500].decode("utf-8", errors="replace")
+            print(f"  Not a valid XLSX. First 500 chars:")
+            print(f"  {preview!r}")
+            # Also log tail for stack-trace-style errors
+            if len(content) > 1000:
+                tail = content[-500:].decode("utf-8", errors="replace")
+                print(f"  Last 500 chars:")
+                print(f"  {tail!r}")
+            # And log request headers sent
+            print(f"  Request was sent with headers: {dict(session.headers)}")
             return None
 
         wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
@@ -218,6 +226,27 @@ def fetch_nominations_from_homepage(session):
             print(f"  Homepage status {r.status_code}")
             return None
         html = r.text
+        print(f"  Got {len(html)} chars of HTML")
+
+        # Diagnostic: does the HTML contain expected markers?
+        markers = {
+            'REAL TIME': 'REAL TIME' in html,
+            'Dornum': 'Dornum' in html,
+            'class="value"': 'class="value"' in html,
+            "class='value'": "class='value'" in html,
+            'MSm': 'MSm' in html,
+            '67.5': '67.5' in html,  # today's Dornum value - won't match tomorrow
+        }
+        print(f"  HTML markers present: {markers}")
+
+        # If key markers are missing, dump a sample so we can see what came back
+        if not markers['Dornum'] or not markers['REAL TIME']:
+            print(f"  UNEXPECTED HTML STRUCTURE. First 800 chars:")
+            print(f"  {html[:800]!r}")
+            if len(html) > 2000:
+                mid = len(html) // 2
+                print(f"  Middle 800 chars (from pos {mid}):")
+                print(f"  {html[mid:mid+800]!r}")
 
         # Extract gasday date
         date_m = re.search(r"gasday\s+(\d{4}-\d{2}-\d{2})", html, flags=re.IGNORECASE)
@@ -243,6 +272,11 @@ def fetch_nominations_from_homepage(session):
         if rt_end < 0:
             rt_end = min(rt_start + 10000, len(html)) if rt_start > 0 else len(html)
         block = html[rt_start:rt_end] if rt_start > 0 else html
+        print(f"  REAL TIME block: {len(block)} chars (from pos {rt_start} to {rt_end})")
+
+        # Count value divs in the block to verify structure
+        value_count = len(re.findall(r'class=["\']value["\']', block))
+        print(f"  Found {value_count} class='value' divs in block")
 
         # Strategy 2: For each known terminal, search forward for the next
         # <div class="value">NUMBER</div> within a reasonable window
@@ -266,6 +300,7 @@ def fetch_nominations_from_homepage(session):
         # in order and map to known terminal sequence on the page
         if len(by_terminal) < 5:
             all_values = re.findall(r'class=["\']value["\']>\s*(-?\d+(?:\.\d+)?)\s*<', block)
+            print(f"  Strategy 3 fallback: {len(all_values)} values extracted in order: {all_values[:12]}")
             page_order = [
                 "Dornum", "Emden", "Nybro", "Dunkerque", "Zeebrugge", "Easington",
                 "St.Fergus", "Field Deliveries into SEGAL",
