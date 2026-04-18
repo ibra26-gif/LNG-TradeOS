@@ -1897,31 +1897,26 @@ window.csPricesUpdate=csPricesUpdate;
       const h = Math.floor(m / 60), rm = m % 60;
       return `${h}h ${rm}m ago`;
     }
-
-    // Main API fetch function
+// Main fetch function — reads static JSON published weekly by GitHub Actions
     window.csFetchLive = async function(force) {
       csSetBtn('cs-fetch-btn', '⟳ FETCHING...', true);
-      csSetStatus('Connecting to SHPGX via server proxy...', '#f59e0b');
 
       try {
-        // 1. Try API fetch
-        const url = `/api/shpgx?series=${CS_API_SERIES.join(',')}&pages=3`;
-        const resp = await fetch(url, { signal: AbortSignal.timeout(30000) });
-        if (!resp.ok) throw new Error(`API returned ${resp.status}`);
+        // Fetch static JSON at /data/china_shpgx.json (no API, no CORS)
+        const url = `/data/china_shpgx.json?v=${Date.now()}`;
+        const resp = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(30000) });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const payload = await resp.json();
-
-        if (payload.errors && Object.keys(payload.errors).length) {
-          const errList = Object.entries(payload.errors).map(([k,v]) => `${k}: ${v}`).join('; ');
-          console.warn('[SHPGX] Partial errors:', errList);
-        }
 
         csIngestPayload(payload);
         csWriteCache(payload);
 
         const loaded = Object.keys(SHPGX).filter(k => SHPGX[k]?.length);
         const total  = loaded.reduce((s,k) => s + (SHPGX[k]?.length||0), 0);
+        const stamp  = payload.updated || payload.fetched_at;
+        const when   = stamp ? new Date(stamp).toLocaleDateString('en-GB') : '—';
         csSetStatus(
-          `✓ LIVE — ${loaded.length} series · ${total} rows · fetched ${new Date(payload.fetched_at).toLocaleTimeString()}`,
+          `✓ ${loaded.length} series · ${total} rows · updated ${when}`,
           '#34d399'
         );
         csSetBtn('cs-fetch-btn', '⟳ REFRESH', false);
@@ -1929,22 +1924,23 @@ window.csPricesUpdate=csPricesUpdate;
         csRefreshActiveTab();
 
       } catch(apiErr) {
-        // 2. API failed — try localStorage cache (even if stale)
+        // Fetch failed — fall back to localStorage cache
         let cached = null;
         try { cached = JSON.parse(localStorage.getItem(SHPGX_CACHE_KEY)); } catch(e) {}
         if (cached?.data) {
           csIngestPayload(cached.data);
           const age = cached.ts ? fmtAge(Date.now() - cached.ts) : '?';
-          csSetStatus(`⚠ API error — using cached data (${age})`, '#f59e0b');
+          csSetStatus(`⚠ using cached data (${age})`, '#f59e0b');
           csSetBtn('cs-fetch-btn', '⟳ RETRY', false);
           csUpdateShpgxBadges('CACHED');
           csRefreshActiveTab();
         } else {
-          csSetStatus(`✗ API unavailable — using estimates (${apiErr.message.slice(0,60)})`, '#ef4444');
+          csSetStatus(`✗ data unavailable — using estimates`, '#ef4444');
           csSetBtn('cs-fetch-btn', '⟳ RETRY', false);
         }
       }
     };
+    
 
     function csRefreshActiveTab() {
       const activePane = document.querySelector('.cs-tab-pane.active');
@@ -2721,14 +2717,18 @@ window.csGBUpdate = csGBUpdate;
       if(_origGaMainTab) _origGaMainTab(id, btn);
       if(id==='lngbal') { setTimeout(csInit, 100); }
     };
-
-    // Also init if already active on page load
+    
+// Also init if already active on page load
     if(document.getElementById('ga-tab-lngbal')?.classList.contains('active')) {
       setTimeout(csInit, 500);
       setTimeout(csGBInit, 600);
     }
 
+    // Auto-fire on page load — warm SHPGX cache from /data/china_shpgx.json (quiet, no UI)
+    setTimeout(() => { if (typeof csFetchLive === 'function') csFetchLive().catch(()=>{}); }, 50);
+
   })();
+
   </script>
 
   <!-- TAB 2: EUROPEAN GAS BALANCE -->
