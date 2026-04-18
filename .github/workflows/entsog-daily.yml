@@ -2,7 +2,8 @@ name: Fetch ENTSOG Pipeline Data
 
 on:
   schedule:
-    - cron: '0 6 * * *'
+    # Three times daily UTC: 06:00 (morning), 12:00 (midday), 18:00 (D-1 finalised)
+    - cron: '0 6,12,18 * * *'
   workflow_dispatch:
 
 jobs:
@@ -19,17 +20,23 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests openpyxl
 
-      - name: Fetch ENTSOG data
+      - name: Fetch ENTSOG data (physical flow + nominations)
         run: python scripts/fetch_entsog.py
         env:
           OUTPUT_DIR: data
+
+      - name: Fetch Gassco UMM (non-blocking - best effort)
+        run: python scripts/fetch_gassco_umm.py || echo "UMM scrape failed, continuing"
+        env:
+          OUTPUT_DIR: data
+        continue-on-error: true
 
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/pipeline_daily.json
-          git diff --cached --quiet || git commit -m "chore: update pipeline_daily.json [$(date -u +%Y-%m-%d)]"
+          git add data/pipeline_daily.json data/nominations_daily.json data/umm_active.json data/gassco_nominations.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "chore: update pipeline/nominations/umm data [$(date -u +%Y-%m-%d_%H:%M)]"
           git push
