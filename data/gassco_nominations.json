@@ -1,9 +1,17 @@
 {
-  "gasday": "",
-  "by_terminal": {},
-  "today_total_mcm": null,
+  "gasday": "2026-04-18",
+  "by_terminal": {
+    "St.Fergus": 0.0,
+    "Dornum": 67.5,
+    "Emden": 72.6,
+    "Nybro": 17.1,
+    "Dunkerque": 48.4,
+    "Zeebrugge": 44.0,
+    "Easington": 32.1
+  },
+  "today_total_mcm": 281.7,
   "_meta": {
-    "updated": "2026-04-18T09:21:48Z",
+    "updated": "2026-04-18T09:42:15Z",
     "source": "gassco homepage scrape"
   }
 }

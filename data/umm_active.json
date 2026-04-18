@@ -1,9 +1,60 @@
 {
-  "active": [],
+  "active": [
+    {
+      "title": "Other unavailability · Planned",
+      "asset": "Kollsnes",
+      "impact": "-40.0 mcm/d",
+      "from": "2026-04-16",
+      "to": "2026-05-07",
+      "type": "planned",
+      "published": "2026-04-17T10:08:00",
+      "msg_id": "2026-98___________________004"
+    },
+    {
+      "title": "Other unavailability · Planned",
+      "asset": "St.Fergus",
+      "impact": "-20.7 mcm/d",
+      "from": "2026-04-17",
+      "to": "2026-04-24",
+      "type": "planned",
+      "published": "2026-04-07T14:26:00",
+      "msg_id": "2026-53___________________004"
+    },
+    {
+      "title": "Other unavailability · Planned",
+      "asset": "Troll",
+      "impact": "-20.5 mcm/d",
+      "from": "2026-04-16",
+      "to": "2026-04-20",
+      "type": "planned",
+      "published": "2026-04-07T14:26:00",
+      "msg_id": "2026-95___________________003"
+    },
+    {
+      "title": "Other unavailability · Planned",
+      "asset": "Kårstø",
+      "impact": "-12.6 mcm/d",
+      "from": "2026-04-11",
+      "to": "2026-04-29",
+      "type": "planned",
+      "published": "2025-03-04T10:43:00",
+      "msg_id": "2026-28___________________002"
+    },
+    {
+      "title": "Gas production field unavailability · Planned",
+      "asset": "Gullfaks",
+      "impact": "-9.1 mcm/d",
+      "from": "2026-04-18",
+      "to": "2026-04-19",
+      "type": "planned",
+      "published": "2026-04-18T06:00:00",
+      "msg_id": "2026-186__________________001"
+    }
+  ],
   "_meta": {
-    "updated": "2026-04-18T09:21:48Z",
+    "updated": "2026-04-18T09:42:14Z",
     "source": "gassco xlexport",
-    "total_messages": 0,
-    "active_count": 0
+    "total_messages": 164,
+    "active_count": 6
   }
 }
