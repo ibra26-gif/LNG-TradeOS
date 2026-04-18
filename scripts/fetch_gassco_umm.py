@@ -54,16 +54,46 @@ HOMEPAGE_URL = "https://umm.gassco.no/"
 # =============================================================================
 
 def fetch_umms_from_xlsx(session):
-    """Download xlexport, parse active events. Returns list of UMM dicts."""
+    """Download xlexport, parse active events. Returns list of UMM dicts.
+
+    Note: xlexport endpoint may require session cookies from homepage visit first.
+    We prime the session by fetching the homepage, then request XLSX.
+    """
     if not HAVE_XLSX:
         return None
     try:
+        # Prime session: fetch homepage first to establish cookies
+        print(f"Priming session with {HOMEPAGE_URL}...")
+        prime = session.get(HOMEPAGE_URL, timeout=TIMEOUT)
+        print(f"  Homepage: {prime.status_code}, cookies now: {len(session.cookies)}")
+
+        # Now fetch XLSX with browser-like headers + referer
         print(f"Downloading {XLSX_URL}...")
-        r = session.get(XLSX_URL, timeout=TIMEOUT)
+        xlsx_headers = {
+            "Accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,*/*",
+            "Referer": HOMEPAGE_URL,
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+        }
+        r = session.get(XLSX_URL, timeout=TIMEOUT, headers=xlsx_headers)
         if r.status_code != 200:
             print(f"  XLSX status {r.status_code}")
             return None
-        wb = openpyxl.load_workbook(BytesIO(r.content), data_only=True)
+
+        # Sanity-check content before trying to parse
+        content = r.content
+        ct = (r.headers.get("Content-Type") or "").lower()
+        print(f"  Got {len(content)} bytes, content-type: {ct}")
+
+        # XLSX files start with PK (zip magic)
+        if not content[:2] == b"PK":
+            # Server returned HTML error page instead of XLSX - log first bytes for debugging
+            preview = content[:200].decode("utf-8", errors="replace")
+            print(f"  Not a valid XLSX. Preview: {preview!r}")
+            return None
+
+        wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
         ws = wb.active  # "Past Events" sheet
         print(f"  Loaded {ws.max_row} rows from sheet '{ws.title}'")
 
@@ -175,7 +205,12 @@ def format_for_dashboard(active_umms, limit=5):
 
 def fetch_nominations_from_homepage(session):
     """Scrape the 'REAL TIME INFORMATION' block from umm.gassco.no homepage.
-    Returns dict with per-terminal values and total."""
+    Returns dict with per-terminal values and total.
+
+    HTML structure confirmed from live inspection (2026-04-18):
+      Each terminal is rendered as a block containing the terminal name
+      followed by <div class="value">NUMBER</div> with MSm3 unit nearby.
+    """
     try:
         print(f"Fetching {HOMEPAGE_URL} for nominations...")
         r = session.get(HOMEPAGE_URL, timeout=TIMEOUT)
@@ -188,69 +223,86 @@ def fetch_nominations_from_homepage(session):
         date_m = re.search(r"gasday\s+(\d{4}-\d{2}-\d{2})", html, flags=re.IGNORECASE)
         gasday = date_m.group(1) if date_m else datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-        # Extract terminal name / value pairs
-        # Page structure observed: terminal name in <h/div>, value in big font with "MSm3" unit
-        # Known terminals from the page screenshot + Gassco docs:
+        # Known Gassco terminals (order matters - match longer names first to avoid
+        # "St.Fergus" being partially matched by "St Fergus" and vice versa)
         known_terminals = [
-            "Dornum", "Emden", "Nybro", "Dunkerque", "Zeebrugge",
-            "Easington", "St.Fergus", "St Fergus", "Field Deliveries into SEGAL",
-            "Aggregated other exit points", "Sum exit nominations NCS",
+            "Field Deliveries into SEGAL",
+            "Aggregated other exit points",
+            "Sum exit nominations NCS",
+            "St.Fergus", "St Fergus",
+            "Dornum", "Emden", "Nybro", "Dunkerque", "Zeebrugge", "Easington",
         ]
 
-        # Regex: find terminal name followed nearby by a number + MSm3
-        # Try several patterns since the page may have various markup
         by_terminal = {}
 
-        # Pattern 1: JSON-embedded (Angular/React typical)
-        # Look for {"name":"Dornum","value":67.5} or similar
-        json_pattern = re.findall(
-            r'["\'](?:name|terminal|label)["\']\s*:\s*["\']([^"\']+)["\'][^}]{0,200}?["\']value["\']\s*:\s*([\d.]+)',
-            html
-        )
-        for name, val in json_pattern:
-            for t in known_terminals:
-                if t.lower().replace(" ", "").replace(".", "") in name.lower().replace(" ", "").replace(".", ""):
-                    by_terminal[t] = float(val)
-                    break
+        # Strategy 1: Find the REAL TIME INFORMATION section boundary
+        rt_start = html.find("REAL TIME")
+        rt_end = html.find("FILTERS", rt_start) if rt_start > 0 else -1
+        if rt_end < 0:
+            rt_end = html.find("EVENTS", rt_start) if rt_start > 0 else -1
+        if rt_end < 0:
+            rt_end = min(rt_start + 10000, len(html)) if rt_start > 0 else len(html)
+        block = html[rt_start:rt_end] if rt_start > 0 else html
 
-        # Pattern 2: HTML block with terminal name + value
-        # "<h3>Dornum</h3> ... <span>67.5</span> ... MSm" or similar proximity
+        # Strategy 2: For each known terminal, search forward for the next
+        # <div class="value">NUMBER</div> within a reasonable window
         for t in known_terminals:
-            if t in by_terminal:
-                continue
-            # Search for terminal name, then within next 300 chars, find a number with MSm3 context
-            idx = html.find(t)
+            idx = block.find(t)
             if idx == -1:
                 continue
-            window = html[idx:idx+800]
-            val_m = re.search(r"(\d+(?:\.\d+)?)\s*(?:<[^>]*>\s*)*(?:MSm|mcm|m\s*³|m\s*3)", window, flags=re.IGNORECASE)
+            # Look ahead up to 500 chars for the value div
+            window = block[idx:idx+500]
+            # Primary pattern: <div class="value">NUMBER</div>
+            val_m = re.search(r'class=["\']value["\']>\s*(-?\d+(?:\.\d+)?)\s*<', window)
+            if val_m:
+                by_terminal[t] = float(val_m.group(1))
+                continue
+            # Fallback pattern: any number followed by MSm/mcm context
+            val_m = re.search(r'(-?\d+(?:\.\d+)?)\s*(?:<[^>]*>\s*)*(?:MSm|mcm|m\s*³|m\s*3)', window, flags=re.IGNORECASE)
             if val_m:
                 by_terminal[t] = float(val_m.group(1))
 
-        # Pattern 3: fallback — extract all numbers-with-MSm in order, zip with known terminals in page order
-        if len(by_terminal) < 3:
-            # Search the REAL TIME block specifically
-            rt_start = html.find("REAL TIME")
-            rt_end = html.find("FILTERS", rt_start) if rt_start > 0 else len(html)
-            if rt_start > 0:
-                rt_block = html[rt_start:rt_end]
-                # Collect all (name, value) in order
-                name_m = re.findall(r"(?:<[^>]+>|^|\n)\s*([A-Z][a-zA-Z\. ]{2,30?})\s*(?:<[^>]+>\s*)+?(\d+\.\d+)\s*(?:<[^>]+>\s*)*?MSm", rt_block)
-                for name, val in name_m:
-                    clean = name.strip()
-                    if any(t.lower() in clean.lower() for t in known_terminals):
-                        by_terminal[clean] = float(val)
+        # Strategy 3: If very few terminals matched, extract all div.value numbers
+        # in order and map to known terminal sequence on the page
+        if len(by_terminal) < 5:
+            all_values = re.findall(r'class=["\']value["\']>\s*(-?\d+(?:\.\d+)?)\s*<', block)
+            page_order = [
+                "Dornum", "Emden", "Nybro", "Dunkerque", "Zeebrugge", "Easington",
+                "St.Fergus", "Field Deliveries into SEGAL",
+                "Aggregated other exit points", "Sum exit nominations NCS",
+            ]
+            if len(all_values) >= 5:
+                by_terminal = {}
+                for i, name in enumerate(page_order):
+                    if i < len(all_values):
+                        try:
+                            by_terminal[name] = float(all_values[i])
+                        except ValueError:
+                            pass
 
-        total = sum(by_terminal.values()) if by_terminal else None
-        print(f"  Found {len(by_terminal)} terminals: {by_terminal}")
+        # "Sum exit nominations NCS" is the authoritative total if present
+        # Otherwise sum the entry terminals (exclude aggregates that would double-count)
+        ENTRY_POINTS = {"Dornum", "Emden", "Nybro", "Dunkerque", "Zeebrugge",
+                        "Easington", "St.Fergus", "St Fergus",
+                        "Field Deliveries into SEGAL"}
+        if "Sum exit nominations NCS" in by_terminal:
+            total = by_terminal["Sum exit nominations NCS"]
+        else:
+            total = sum(v for k, v in by_terminal.items() if k in ENTRY_POINTS)
+
+        print(f"  Found {len(by_terminal)} terminals, total {total:.1f} mcm/d")
+        for k, v in by_terminal.items():
+            print(f"    {k:40s} = {v:6.1f}")
+
         return {
             "gasday": gasday,
             "by_terminal": by_terminal,
-            "today_total_mcm": total,
+            "today_total_mcm": total if total > 0 else None,
         } if by_terminal else None
 
     except Exception as e:
         print(f"  Homepage nomination scrape failed: {type(e).__name__}: {e}")
+        import traceback; traceback.print_exc()
         return None
 
 
