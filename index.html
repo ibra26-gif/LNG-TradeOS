@@ -13107,14 +13107,14 @@ function bsPrice(F,K,sigma,T,r,isCall){
   else{price=df*(K*(1-Nd2)-F*(1-Nd1));delta=-df*(1-Nd1);}
   const gamma=df*nd1/(F*sT);
   const vega=df*F*nd1*Math.sqrt(T)/100; // per 1% vol
-  const theta=-(df*F*nd1*sigma/(2*Math.sqrt(T)))/250; // per trading day
+  const theta=-(df*F*nd1*sigma/(2*Math.sqrt(T)))/252; // per trading day (Lautard convention 252)
   return{price,delta,gamma,vega,theta,d1,d2,sT};
 }
 
 // ── Gaussian / Bachelier (Normal) ────────────────────────────────────────────
 function gaussPrice(F,K,sigmaDaily,T,r,isCall){
   const df=Math.exp(-r*T);
-  const sigmaAnn=sigmaDaily*Math.sqrt(250);
+  const sigmaAnn=sigmaDaily*Math.sqrt(252);
   if(T<=0){const intr=isCall?Math.max(F-K,0):Math.max(K-F,0);return{price:df*intr,delta:isCall?(F>K?1:0):(F<K?-1:0),gamma:0,vega:0,theta:0,sigmaAnn};}
   const sT=sigmaAnn*Math.sqrt(T);
   if(sT<1e-12){const intr=isCall?Math.max(F-K,0):Math.max(K-F,0);return{price:df*intr,delta:isCall?(F>K?1:0):(F<K?-1:0),gamma:0,vega:0,theta:0,sigmaAnn};}
@@ -13125,16 +13125,16 @@ function gaussPrice(F,K,sigmaDaily,T,r,isCall){
   else{price=df*((K-F)*(1-Nd)+sT*nd);delta=-df*(1-Nd);}
   const gamma=df*nd/sT;
   const vega=df*nd*Math.sqrt(T)/100;
-  const theta=-(df*sigmaAnn*nd/(2*Math.sqrt(T)))/250;
+  const theta=-(df*sigmaAnn*nd/(2*Math.sqrt(T)))/252;
   return{price,delta,gamma,vega,theta,d,sT,sigmaAnn};
 }
 
 // ── Spread Option (S1−S2, Gaussian on spread) ────────────────────────────────
 function spreadPrice(F1,F2,sig1,sig2,rho,K,T,r,isCall){
   const df=Math.exp(-r*T);
-  const sg1d=F1*sig1/Math.sqrt(250), sg2d=F2*sig2/Math.sqrt(250); // daily $ vol
+  const sg1d=F1*sig1/Math.sqrt(252), sg2d=F2*sig2/Math.sqrt(252); // daily $ vol
   const spreadVol=Math.sqrt(sg1d*sg1d+sg2d*sg2d-2*rho*sg1d*sg2d); // daily spread vol
-  const sigSpAnn=spreadVol*Math.sqrt(250);
+  const sigSpAnn=spreadVol*Math.sqrt(252);
   const fwdSpread=F1-F2;
   if(T<=0){const intr=isCall?Math.max(fwdSpread-K,0):Math.max(K-fwdSpread,0);return{price:df*intr,deltaS1:0,deltaS2:0,gamma:0,vega:0,theta:0,spreadVol,sigSpAnn,fwdSpread};}
   const sT=sigSpAnn*Math.sqrt(T);
@@ -13146,7 +13146,7 @@ function spreadPrice(F1,F2,sig1,sig2,rho,K,T,r,isCall){
   else{price=df*((K-fwdSpread)*(1-Nd)+sT*nd);deltaSpread=-df*(1-Nd);}
   const gamma=df*nd/sT;
   const vega=df*nd*Math.sqrt(T)/100;
-  const theta=-(df*sigSpAnn*nd/(2*Math.sqrt(T)))/250;
+  const theta=-(df*sigSpAnn*nd/(2*Math.sqrt(T)))/252;
   return{price,deltaS1:deltaSpread,deltaS2:-deltaSpread,gamma,vega,theta,spreadVol,sigSpAnn,fwdSpread,d,sT};
 }
 
@@ -13177,6 +13177,8 @@ let _optPayoffChart=null;
 function optDrawPayoff(canvasId,F,K,premium,isCall,notional,model,extra){
   if(_optPayoffChart){_optPayoffChart.destroy();_optPayoffChart=null;}
   const c=document.getElementById(canvasId);if(!c)return;
+  const sign=extra?.sign ?? 1;
+  const posLbl=extra?.posLbl || 'LONG';
   const range=model==='spread'?Math.abs(extra?.fwdSpread||F)*0.5:F*0.5;
   const center=model==='spread'?(extra?.fwdSpread||0):F;
   const lo=center-range,hi=center+range;
@@ -13184,18 +13186,22 @@ function optDrawPayoff(canvasId,F,K,premium,isCall,notional,model,extra){
   const labels=[],payoffData=[],intrinsicData=[];
   for(let s=lo;s<=hi+0.01;s+=step){
     labels.push(s.toFixed(1));
+    // Intrinsic payoff at expiry (unsigned, in premium-per-unit space)
     const intr=isCall?Math.max(s-K,0):Math.max(K-s,0);
-    intrinsicData.push(+(intr*notional/100).toFixed(2));
-    payoffData.push(+((intr-premium)*notional/100).toFixed(2));
+    // P&L = (payoff − premium) × N × sign
+    // Buy: long intrinsic, paid premium → positive at high F for call
+    // Sell: short intrinsic, received premium → positive at low F for call (capped at +premium)
+    intrinsicData.push(+(intr*notional*sign).toFixed(2));
+    payoffData.push(+((intr-premium)*notional*sign).toFixed(2));
   }
   _optPayoffChart=new Chart(c,{type:'line',data:{labels,datasets:[
-    {label:'P&L',data:payoffData,borderColor:'#2d7cff',backgroundColor:'rgba(45,124,255,0.08)',borderWidth:2,pointRadius:0,fill:true,tension:0},
+    {label:`P&L (${posLbl})`,data:payoffData,borderColor:sign>0?'#2d7cff':'#f59e0b',backgroundColor:sign>0?'rgba(45,124,255,0.08)':'rgba(245,158,11,0.08)',borderWidth:2,pointRadius:0,fill:true,tension:0},
     {label:'Intrinsic',data:intrinsicData,borderColor:'#3d5070',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false,tension:0},
   ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
     plugins:{legend:{display:true,position:'top',labels:{color:'#5a6882',font:{size:9,family:'IBM Plex Mono'},boxWidth:10}},
       tooltip:{backgroundColor:'#0c1120',borderColor:'#1e2d45',borderWidth:1,titleColor:'#c8cfe0',bodyColor:'#8a9bb5',padding:8,titleFont:{family:'IBM Plex Mono',size:10},bodyFont:{family:'IBM Plex Mono',size:9}}},
     scales:{x:{title:{display:true,text:model==='spread'?'Spread at expiry':'Underlying at expiry',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:12},grid:{color:'#0f1824'}},
-      y:{title:{display:true,text:'P&L',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:8}},grid:{color:'#0f1824'}}}
+      y:{title:{display:true,text:`P&L (${posLbl})`,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:8}},grid:{color:'#0f1824'}}}
   }});
 }
 
@@ -13218,8 +13224,9 @@ function optRender(){
             <div><label class="cl">Risk-free rate r</label><input type="number" id="opt-r" value="0.01" step="0.001" class="f-inp" style="width:100%"></div>
             <div><label class="cl">As-of Date</label><input type="date" id="opt-asof" value="${today}" class="f-inp" style="width:100%"></div>
             <div><label class="cl">Maturity Date</label><input type="date" id="opt-mat" value="2026-12-31" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">Notional</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">Broker Price (for IV)</label><input type="number" id="opt-broker" value="" step="0.01" class="f-inp" style="width:100%" placeholder="optional"></div>
+            <div><label class="cl">Notional (units)</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Position</label><select id="opt-pos" class="f-inp" style="width:100%"><option value="buy">BUY (Long)</option><option value="sell">SELL (Short)</option></select></div>
+            <div style="grid-column:span 2"><label class="cl">Broker Price (for IV)</label><input type="number" id="opt-broker" value="" step="0.01" class="f-inp" style="width:100%" placeholder="optional"></div>
           </div>
           <div style="margin-top:10px;display:flex;gap:8px">
             <button class="f-btn" onclick="optCalc()" style="flex:1">CALCULATE</button>
@@ -13247,8 +13254,9 @@ function optRender(){
             <div><label class="cl">Risk-free rate r</label><input type="number" id="opt-r" value="0" step="0.001" class="f-inp" style="width:100%"></div>
             <div><label class="cl">As-of Date</label><input type="date" id="opt-asof" value="${today}" class="f-inp" style="width:100%"></div>
             <div><label class="cl">Maturity Date</label><input type="date" id="opt-mat" value="2026-12-31" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">Notional</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">Broker Price (for IV)</label><input type="number" id="opt-broker" value="" step="0.01" class="f-inp" style="width:100%" placeholder="optional"></div>
+            <div><label class="cl">Notional (units)</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Position</label><select id="opt-pos" class="f-inp" style="width:100%"><option value="buy">BUY (Long)</option><option value="sell">SELL (Short)</option></select></div>
+            <div style="grid-column:span 2"><label class="cl">Broker Price (for IV)</label><input type="number" id="opt-broker" value="" step="0.01" class="f-inp" style="width:100%" placeholder="optional"></div>
           </div>
           <div style="margin-top:10px;display:flex;gap:8px">
             <button class="f-btn" onclick="optCalc()" style="flex:1">CALCULATE</button>
@@ -13277,7 +13285,8 @@ function optRender(){
             <div><label class="cl">Correlation ρ</label><input type="number" id="opt-rho" value="0.6" step="0.01" min="-1" max="1" class="f-inp" style="width:100%"></div>
             <div><label class="cl">Spread Strike K</label><input type="number" id="opt-K" value="0" step="0.01" class="f-inp" style="width:100%"></div>
             <div><label class="cl">Risk-free rate r</label><input type="number" id="opt-r" value="0.015" step="0.001" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">Notional</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Notional (units)</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
+            <div><label class="cl">Position</label><select id="opt-pos" class="f-inp" style="width:100%"><option value="buy">BUY (Long)</option><option value="sell">SELL (Short)</option></select></div>
             <div><label class="cl">As-of Date</label><input type="date" id="opt-asof" value="${today}" class="f-inp" style="width:100%"></div>
             <div><label class="cl">Maturity Date</label><input type="date" id="opt-mat" value="2026-08-31" class="f-inp" style="width:100%"></div>
           </div>
@@ -13321,20 +13330,45 @@ function optCalc(){
     const K=parseFloat(document.getElementById('opt-K')?.value)||0;
     const sig=parseFloat(document.getElementById('opt-sig')?.value)||0;
     const r=parseFloat(document.getElementById('opt-r')?.value)||0;
+    const pos=document.getElementById('opt-pos')?.value||'buy';
+    const sign=pos==='buy'?1:-1;
+    const posLbl=pos==='buy'?'LONG':'SHORT';
     const c=bsPrice(F,K,sig,T,r,true), p=bsPrice(F,K,sig,T,r,false);
     const sT=sig*Math.sqrt(T);
+    // Intrinsic value (per unit, discounted)
+    const df=Math.exp(-r*T);
+    const intrC=Math.max(F-K,0)*df, intrP=Math.max(K-F,0)*df;
+    // Extrinsic (time value) = Premium − Intrinsic
+    const extC=c.price-intrC, extP=p.price-intrP;
+    // Moneyness per side
+    const mnyC=F>K?'ITM':F<K?'OTM':'ATM', mnyP=F<K?'ITM':F>K?'OTM':'ATM';
+    const mnyColC=F>K?'#4ade80':F<K?'#f87171':'#8a9bb5', mnyColP=F<K?'#4ade80':F>K?'#f87171':'#8a9bb5';
+    // Cash flow: buyer pays, seller receives. Applied per side.
+    const cfC=-sign*c.price*N, cfP=-sign*p.price*N;
+    // Greeks with position sign applied
+    const delC=c.delta*sign, delP=p.delta*sign;
+    const gamC=c.gamma*sign, gamP=p.gamma*sign;
+    const vegC=c.vega*sign, vegP=p.vega*sign;
+    const theC=c.theta*sign, theP=p.theta*sign;
 
     resEl.innerHTML=`<div class="acard" style="padding:10px">
-    <div class="ctitle">${typeLbl} · BS LOGNORMAL</div>
+    <div class="ctitle">${typeLbl} · BS LOGNORMAL · ${posLbl}</div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
-    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Greek</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
-    ${row('Price',c.price.toFixed(4),p.price.toFixed(4),'Premium per unit')}
-    ${row('Price × N',(c.price*N/100).toFixed(2),(p.price*N/100).toFixed(2),'Notional-adjusted')}
-    ${row('Delta (%)',(c.delta*100).toFixed(2),(p.delta*100).toFixed(2),'∂Price/∂F')}
-    ${row('Vega (+1% σ)',c.vega.toFixed(4),p.vega.toFixed(4),'Sensitivity to +1% abs vol')}
-    ${row('Gamma',c.gamma.toFixed(6),p.gamma.toFixed(6),'∂²Price/∂F²')}
-    ${row('Theta (1 day)',c.theta.toFixed(4),p.theta.toFixed(4),'Daily time decay (/250)')}
-    ${row('Strangle',(c.price+p.price).toFixed(4),'',(isCall?'Call':'Put')+' + other leg')}
+    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Metric</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
+    ${row('Premium',c.price.toFixed(4),p.price.toFixed(4),'Per unit · market quote')}
+    ${row('Intrinsic',intrC.toFixed(4),intrP.toFixed(4),'max(F−K,0)·e⁻ʳᵀ / max(K−F,0)·e⁻ʳᵀ')}
+    ${row('Extrinsic (Time)',extC.toFixed(4),extP.toFixed(4),'Premium − Intrinsic')}
+    ${row('Moneyness',`<span style="color:${mnyColC}">${mnyC}</span>`,`<span style="color:${mnyColP}">${mnyP}</span>`,'Call vs Put per strike')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Price × N',(c.price*N).toFixed(2),(p.price*N).toFixed(2),'Total premium (notional×premium)')}
+    ${row('Cash flow',(cfC>=0?'+':'')+cfC.toFixed(2),(cfP>=0?'+':'')+cfP.toFixed(2),pos==='buy'?'BUY: pay (debit)':'SELL: receive (credit)')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Delta (%)',(delC*100).toFixed(2),(delP*100).toFixed(2),'∂Price/∂F · '+posLbl.toLowerCase())}
+    ${row('Gamma',gamC.toFixed(6),gamP.toFixed(6),'∂²Price/∂F² · '+posLbl.toLowerCase())}
+    ${row('Vega (+1pp σ)',vegC.toFixed(4),vegP.toFixed(4),'Per +1pp abs vol · '+posLbl.toLowerCase())}
+    ${row('Theta (1 day)',theC.toFixed(4),theP.toFixed(4),'Per trading day /252 · '+posLbl.toLowerCase())}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Straddle',(c.price+p.price).toFixed(4),'','Call + Put @ same K')}
     </table></div>`;
 
     intEl.innerHTML=`<div class="acard" style="padding:10px">
@@ -13344,31 +13378,52 @@ function optCalc(){
       <div class="mc"><div class="mc-name">σ√T (sdev)</div><div class="mc-val" style="font-size:14px">${sT.toFixed(4)}</div></div>
       <div class="mc"><div class="mc-name">d₁</div><div class="mc-val" style="font-size:14px">${(c.d1||0).toFixed(4)}</div></div>
       <div class="mc"><div class="mc-name">d₂</div><div class="mc-val" style="font-size:14px">${(c.d2||0).toFixed(4)}</div></div>
-      <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${Math.exp(-r*T).toFixed(6)}</div></div>
+      <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${df.toFixed(6)}</div></div>
       <div class="mc"><div class="mc-name">F/K</div><div class="mc-val" style="font-size:14px">${(F/K).toFixed(4)}</div></div>
-      <div class="mc"><div class="mc-name">Moneyness</div><div class="mc-val" style="font-size:14px;color:${F>K?'#4ade80':F<K?'#f87171':'#5a6882'}">${F>K?'ITM':F<K?'OTM':'ATM'}</div></div>
-      <div class="mc"><div class="mc-name">Equiv daily σ</div><div class="mc-val" style="font-size:14px">${(sig/Math.sqrt(250)*F).toFixed(3)}</div></div>
+      <div class="mc"><div class="mc-name">Daily σ (%)</div><div class="mc-val" style="font-size:14px">${(sig/Math.sqrt(252)*100).toFixed(3)}</div></div>
+      <div class="mc"><div class="mc-name">Daily 1σ $-move</div><div class="mc-val" style="font-size:14px">${(F*sig/Math.sqrt(252)).toFixed(3)}</div></div>
     </div></div>`;
 
-    optDrawPayoff('opt-payoff',F,K,isCall?c.price:p.price,isCall,N,'bs');
+    optDrawPayoff('opt-payoff',F,K,isCall?c.price:p.price,isCall,N,'bs',{sign,posLbl});
 
   } else if(model==='gauss'){
     const F=parseFloat(document.getElementById('opt-F')?.value)||0;
     const K=parseFloat(document.getElementById('opt-K')?.value)||0;
     const sigD=parseFloat(document.getElementById('opt-sig')?.value)||0;
     const r=parseFloat(document.getElementById('opt-r')?.value)||0;
+    const pos=document.getElementById('opt-pos')?.value||'buy';
+    const sign=pos==='buy'?1:-1;
+    const posLbl=pos==='buy'?'LONG':'SHORT';
     const c=gaussPrice(F,K,sigD,T,r,true), p=gaussPrice(F,K,sigD,T,r,false);
+    const df=Math.exp(-r*T);
+    const intrC=Math.max(F-K,0)*df, intrP=Math.max(K-F,0)*df;
+    const extC=c.price-intrC, extP=p.price-intrP;
+    const mnyC=F>K?'ITM':F<K?'OTM':'ATM', mnyP=F<K?'ITM':F>K?'OTM':'ATM';
+    const mnyColC=F>K?'#4ade80':F<K?'#f87171':'#8a9bb5', mnyColP=F<K?'#4ade80':F>K?'#f87171':'#8a9bb5';
+    const cfC=-sign*c.price*N, cfP=-sign*p.price*N;
+    const delC=c.delta*sign, delP=p.delta*sign;
+    const gamC=c.gamma*sign, gamP=p.gamma*sign;
+    const vegC=c.vega*sign, vegP=p.vega*sign;
+    const theC=c.theta*sign, theP=p.theta*sign;
 
     resEl.innerHTML=`<div class="acard" style="padding:10px">
-    <div class="ctitle">${typeLbl} · GAUSSIAN / BACHELIER</div>
+    <div class="ctitle">${typeLbl} · GAUSSIAN / BACHELIER · ${posLbl}</div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
-    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Greek</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
-    ${row('Price',c.price.toFixed(4),p.price.toFixed(4),'Bachelier closed-form')}
-    ${row('Price × N',(c.price*N/100).toFixed(2),(p.price*N/100).toFixed(2),'Notional-adjusted')}
-    ${row('Delta (%)',(c.delta*100).toFixed(2),(p.delta*100).toFixed(2),'∂Price/∂F')}
-    ${row('Vega (+1 ann.vol)',c.vega.toFixed(4),p.vega.toFixed(4),'Sensitivity to +1% annual vol')}
-    ${row('Gamma',c.gamma.toFixed(6),p.gamma.toFixed(6),'∂²Price/∂F²')}
-    ${row('Theta (1 day)',c.theta.toFixed(4),p.theta.toFixed(4),'Daily time decay')}
+    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Metric</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
+    ${row('Premium',c.price.toFixed(4),p.price.toFixed(4),'Bachelier closed-form · per unit')}
+    ${row('Intrinsic',intrC.toFixed(4),intrP.toFixed(4),'max(F−K,0)·e⁻ʳᵀ / max(K−F,0)·e⁻ʳᵀ')}
+    ${row('Extrinsic (Time)',extC.toFixed(4),extP.toFixed(4),'Premium − Intrinsic')}
+    ${row('Moneyness',`<span style="color:${mnyColC}">${mnyC}</span>`,`<span style="color:${mnyColP}">${mnyP}</span>`,'Call vs Put per strike')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Price × N',(c.price*N).toFixed(2),(p.price*N).toFixed(2),'Total premium')}
+    ${row('Cash flow',(cfC>=0?'+':'')+cfC.toFixed(2),(cfP>=0?'+':'')+cfP.toFixed(2),pos==='buy'?'BUY: pay (debit)':'SELL: receive (credit)')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Delta (%)',(delC*100).toFixed(2),(delP*100).toFixed(2),'∂Price/∂F · '+posLbl.toLowerCase())}
+    ${row('Gamma',gamC.toFixed(6),gamP.toFixed(6),'∂²Price/∂F² · '+posLbl.toLowerCase())}
+    ${row('Vega (+1pp σ)',vegC.toFixed(4),vegP.toFixed(4),'Per +1pp ann. vol · '+posLbl.toLowerCase())}
+    ${row('Theta (1 day)',theC.toFixed(4),theP.toFixed(4),'Per trading day /252 · '+posLbl.toLowerCase())}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Straddle',(c.price+p.price).toFixed(4),'','Call + Put @ same K')}
     </table></div>`;
 
     intEl.innerHTML=`<div class="acard" style="padding:10px">
@@ -13376,15 +13431,15 @@ function optCalc(){
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:10px">
       <div class="mc"><div class="mc-name">T (years)</div><div class="mc-val" style="font-size:14px">${T.toFixed(4)}</div></div>
       <div class="mc"><div class="mc-name">Annual Gauss Vol</div><div class="mc-val" style="font-size:14px">${c.sigmaAnn.toFixed(3)}</div></div>
-      <div class="mc"><div class="mc-name">σ_g × √(T×250)</div><div class="mc-val" style="font-size:14px">${c.sT.toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">σ_g × √(T×252)</div><div class="mc-val" style="font-size:14px">${c.sT.toFixed(4)}</div></div>
       <div class="mc"><div class="mc-name">d = (F−K)/σ√T</div><div class="mc-val" style="font-size:14px">${(c.d||0).toFixed(4)}</div></div>
-      <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${Math.exp(-r*T).toFixed(6)}</div></div>
+      <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${df.toFixed(6)}</div></div>
       <div class="mc"><div class="mc-name">DATM (F−K)</div><div class="mc-val" style="font-size:14px">${(F-K).toFixed(3)}</div></div>
       <div class="mc"><div class="mc-name">Equiv BS Vol</div><div class="mc-val" style="font-size:14px">${F>0?(c.sigmaAnn/F).toFixed(4):'—'}</div></div>
-      <div class="mc"><div class="mc-name">Moneyness</div><div class="mc-val" style="font-size:14px;color:${F>K?'#4ade80':F<K?'#f87171':'#5a6882'}">${F>K?'ITM':F<K?'OTM':'ATM'}</div></div>
+      <div class="mc"><div class="mc-name">Moneyness (Call)</div><div class="mc-val" style="font-size:14px;color:${mnyColC}">${mnyC}</div></div>
     </div></div>`;
 
-    optDrawPayoff('opt-payoff',F,K,isCall?c.price:p.price,isCall,N,'gauss');
+    optDrawPayoff('opt-payoff',F,K,isCall?c.price:p.price,isCall,N,'gauss',{sign,posLbl});
 
   } else { // spread
     const F1=parseFloat(document.getElementById('opt-F1')?.value)||0;
@@ -13394,19 +13449,42 @@ function optCalc(){
     const rho=parseFloat(document.getElementById('opt-rho')?.value)||0;
     const K=parseFloat(document.getElementById('opt-K')?.value)||0;
     const r=parseFloat(document.getElementById('opt-r')?.value)||0;
+    const pos=document.getElementById('opt-pos')?.value||'buy';
+    const sign=pos==='buy'?1:-1;
+    const posLbl=pos==='buy'?'LONG':'SHORT';
     const c=spreadPrice(F1,F2,sig1,sig2,rho,K,T,r,true), p=spreadPrice(F1,F2,sig1,sig2,rho,K,T,r,false);
+    const df=Math.exp(-r*T);
+    const spread=c.fwdSpread;
+    const intrC=Math.max(spread-K,0)*df, intrP=Math.max(K-spread,0)*df;
+    const extC=c.price-intrC, extP=p.price-intrP;
+    const mnyC=spread>K?'ITM':spread<K?'OTM':'ATM', mnyP=spread<K?'ITM':spread>K?'OTM':'ATM';
+    const mnyColC=spread>K?'#4ade80':spread<K?'#f87171':'#8a9bb5', mnyColP=spread<K?'#4ade80':spread>K?'#f87171':'#8a9bb5';
+    const cfC=-sign*c.price*N, cfP=-sign*p.price*N;
+    const d1sC=c.deltaS1*sign, d1sP=p.deltaS1*sign;
+    const d2sC=c.deltaS2*sign, d2sP=p.deltaS2*sign;
+    const gamC=c.gamma*sign, gamP=p.gamma*sign;
+    const vegC=c.vega*sign, vegP=p.vega*sign;
+    const theC=c.theta*sign, theP=p.theta*sign;
 
     resEl.innerHTML=`<div class="acard" style="padding:10px">
-    <div class="ctitle">${typeLbl} · SPREAD (S₁ − S₂) GAUSSIAN</div>
+    <div class="ctitle">${typeLbl} · SPREAD (S₁ − S₂) GAUSSIAN · ${posLbl}</div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
-    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Greek</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL (Long)</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT (Short)</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
-    ${row('Price',c.price.toFixed(4),p.price.toFixed(4),'Bachelier spread option')}
-    ${row('Price × N',(c.price*N/100).toFixed(2),(p.price*N/100).toFixed(2),'Notional-adjusted')}
-    ${row('Delta S₁ (%)',(c.deltaS1*100).toFixed(2),(p.deltaS1*100).toFixed(2),'∂Price/∂S₁')}
-    ${row('Delta S₂ (%)',(c.deltaS2*100).toFixed(2),(p.deltaS2*100).toFixed(2),'∂Price/∂S₂ = −Δ S₁')}
-    ${row('Vega σ-spread (+1%)',c.vega.toFixed(4),p.vega.toFixed(4),'Sensitivity to +1% spread vol')}
-    ${row('Gamma',c.gamma.toFixed(6),p.gamma.toFixed(6),'∂²Price/∂Spread²')}
-    ${row('Theta (1 day)',c.theta.toFixed(4),p.theta.toFixed(4),'Daily time decay')}
+    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Metric</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL on spread</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT on spread</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
+    ${row('Premium',c.price.toFixed(4),p.price.toFixed(4),'Spread option premium · per unit')}
+    ${row('Intrinsic',intrC.toFixed(4),intrP.toFixed(4),'max(Spread−K,0)·e⁻ʳᵀ / max(K−Spread,0)·e⁻ʳᵀ')}
+    ${row('Extrinsic (Time)',extC.toFixed(4),extP.toFixed(4),'Premium − Intrinsic')}
+    ${row('Moneyness',`<span style="color:${mnyColC}">${mnyC}</span>`,`<span style="color:${mnyColP}">${mnyP}</span>`,'Spread vs K')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Price × N',(c.price*N).toFixed(2),(p.price*N).toFixed(2),'Total premium')}
+    ${row('Cash flow',(cfC>=0?'+':'')+cfC.toFixed(2),(cfP>=0?'+':'')+cfP.toFixed(2),pos==='buy'?'BUY: pay (debit)':'SELL: receive (credit)')}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Delta S₁ (%)',(d1sC*100).toFixed(2),(d1sP*100).toFixed(2),'∂Price/∂S₁ · '+posLbl.toLowerCase())}
+    ${row('Delta S₂ (%)',(d2sC*100).toFixed(2),(d2sP*100).toFixed(2),'∂Price/∂S₂ = −Δ S₁ · '+posLbl.toLowerCase())}
+    ${row('Vega σ-spread (+1pp)',vegC.toFixed(4),vegP.toFixed(4),'Per +1pp spread vol · '+posLbl.toLowerCase())}
+    ${row('Gamma',gamC.toFixed(6),gamP.toFixed(6),'∂²Price/∂Spread² · '+posLbl.toLowerCase())}
+    ${row('Theta (1 day)',theC.toFixed(4),theP.toFixed(4),'Per trading day /252 · '+posLbl.toLowerCase())}
+    <tr><td colspan="4" style="padding:2px 0"></td></tr>
+    ${row('Straddle on spread',(c.price+p.price).toFixed(4),'','Call + Put @ same K on S₁−S₂')}
     </table></div>`;
 
     intEl.innerHTML=`<div class="acard" style="padding:10px">
@@ -13416,13 +13494,13 @@ function optCalc(){
       <div class="mc"><div class="mc-name">Fwd Spread S₁−S₂</div><div class="mc-val" style="font-size:14px">${c.fwdSpread.toFixed(3)}</div></div>
       <div class="mc"><div class="mc-name">σ_spread (daily)</div><div class="mc-val" style="font-size:14px">${c.spreadVol.toFixed(4)}</div></div>
       <div class="mc"><div class="mc-name">σ_spread (annual)</div><div class="mc-val" style="font-size:14px">${c.sigSpAnn.toFixed(3)}</div></div>
-      <div class="mc"><div class="mc-name">σ_sp × √(T×250)</div><div class="mc-val" style="font-size:14px">${c.sT.toFixed(4)}</div></div>
+      <div class="mc"><div class="mc-name">σ_sp × √(T×252)</div><div class="mc-val" style="font-size:14px">${c.sT.toFixed(4)}</div></div>
       <div class="mc"><div class="mc-name">DATM</div><div class="mc-val" style="font-size:14px">${(c.fwdSpread-K).toFixed(3)}</div></div>
-      <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${Math.exp(-r*T).toFixed(6)}</div></div>
+      <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${df.toFixed(6)}</div></div>
       <div class="mc"><div class="mc-name">ρ</div><div class="mc-val" style="font-size:14px">${rho.toFixed(2)}</div></div>
     </div></div>`;
 
-    optDrawPayoff('opt-payoff',F1,K,isCall?c.price:p.price,isCall,N,'spread',{fwdSpread:c.fwdSpread});
+    optDrawPayoff('opt-payoff',F1,K,isCall?c.price:p.price,isCall,N,'spread',{fwdSpread:c.fwdSpread,sign,posLbl});
   }
 }
 
