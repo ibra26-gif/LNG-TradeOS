@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>LNG TradeOS™ v186</title>
+<title>LNG TradeOS™ v188</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -10840,7 +10840,7 @@ async function renderGaDashboard(){
   const b=document.getElementById('ga-dashboard-body');if(!b)return;
   if(!window.gaInitDone) gaInitAll();
 
-  // ── Data helpers ────────────────────────────────────────────────────────
+  // ─── Data helpers ─────────────────────────────────────────────────────────
   function latestStorDaily(){
     if(!GD.storDaily||!Object.keys(GD.storDaily).length)return null;
     const dates=Object.keys(GD.storDaily).sort();
@@ -10853,46 +10853,56 @@ async function renderGaDashboard(){
     const vals=days.map(d=>GD.lngDaily[d]?.sendGWh).filter(v=>v!=null);
     return vals.length?+(vals.reduce((a,c)=>a+c,0)/vals.length/1000).toFixed(2):null;
   }
-  function latestPipe(route){
+  // ── Pipeline: drop last 2 days (provisional) and return a "confirmed" D-1 value ──
+  function confirmedPipe(route){
     const pd=GD.pipeDaily[route];
-    if(pd&&Object.keys(pd).length){const dates=Object.keys(pd).sort();const lat=dates[dates.length-1];return{mcm:pd[lat],date:lat,isDaily:true};}
-    const pm=GD.pipeline[route];
-    if(pm&&Object.keys(pm).length){const months=Object.keys(pm).sort();const lat=months[months.length-1];const{mcm,days}=pm[lat];return{mcm:days>0?mcm/days:0,date:lat,isDaily:false};}
+    if(!pd||!Object.keys(pd).length) return null;
+    const dates=Object.keys(pd).sort();
+    // Walk backwards from latest, skip last 2 days (D and D-1 provisional)
+    for(let i=dates.length-3;i>=0;i--){
+      const v=pd[dates[i]];
+      if(v!=null && v>=0) return {mcm:v,date:dates[i]};
+    }
     return null;
   }
-  function signCol(v){return v==null?'#546e7a':v>0?'#4ade80':v<0?'#f87171':'#c8d6e5';}
+  // ── Today-nomination placeholder: not yet wired to Gassco/ENTSOG noms ──
+  // Returns the most recent non-zero value as a proxy, tagged as PROV
+  function todayPipeProxy(route){
+    const pd=GD.pipeDaily[route];
+    if(!pd||!Object.keys(pd).length) return null;
+    const dates=Object.keys(pd).sort();
+    // Last 3 days, filter zero values (likely incomplete publication)
+    for(let i=dates.length-1;i>=Math.max(0,dates.length-3);i--){
+      const v=pd[dates[i]];
+      if(v!=null && v>1) return {mcm:v,date:dates[i],provisional:true};
+    }
+    // Fall back to D-1 confirmed
+    return confirmedPipe(route);
+  }
+  function fmt(v,dp=1){ if(v==null||isNaN(v)) return '—'; return (+v).toFixed(dp); }
 
   const stor=latestStorDaily();
   const storPct=stor?+stor.pct.toFixed(1):null;
   const barPct=storPct!=null?Math.min(storPct,100):0;
   const barCol=barPct>70?'#4ade80':barPct>40?'#facc15':'#f87171';
   const lngAvg=getLNGAvg7();
-  const pipNor=latestPipe('norway');
-  const pipTap=latestPipe('tap');
-  const pipNAfrica=(()=>{
-    const r=['algeria_italy','libya','algeria_spain'];
-    const dailies=r.map(x=>GD.pipeDaily[x]);
-    if(dailies.some(d=>d&&Object.keys(d).length)){
-      const withData=dailies.filter(d=>d&&Object.keys(d).length);
-      const lats=withData.map(d=>Object.keys(d).sort().pop());
-      const lat=lats.sort()[0];
-      let sum=0;
-      dailies.forEach(d=>{ if(d&&d[lat]!=null) sum+=d[lat]; });
-      return{mcm:sum,date:lat,isDaily:true};
-    }
-    return latestPipe('algeria_italy');
-  })();
-  const pipUKIC=latestPipe('uk_interconn');
 
-  const fp=cpGet('cp_fp',null)||CP_SEED_PRICES;
-  const jkmM1=fp.JKM[0],ttfM1=fp.TTF[0],hhM1=fp.HH?fp.HH[0]:null;
-  const jkmM2=fp.JKM[1],ttfM2=fp.TTF[1];
-  const jkmTtf=jkmM1!=null&&ttfM1!=null?+(jkmM1-ttfM1).toFixed(3):null;
-  const jkmStr=jkmM1!=null&&jkmM2!=null?+(jkmM1-jkmM2).toFixed(3):null;
-  const ttfStr=ttfM1!=null&&ttfM2!=null?+(ttfM1-ttfM2).toFixed(3):null;
+  // ── Pipeline routes (Ibra's specified order) ──────────────────────────────
+  const routes=[
+    {k:'norway',       lbl:'Norway',          sub:'UK/GER/FR/BEL/DK · Langeled/Norpipe'},
+    {k:'algeria_spain',lbl:'Algeria → ES',    sub:'Medgaz · Tarifa'},
+    {k:'algeria_italy',lbl:'Algeria → IT',    sub:'TransMed · Mazara'},
+    {k:'libya',        lbl:'Libya → IT',      sub:'Greenstream · Gela'},
+    {k:'tap',          lbl:'TAP (Caspian)',   sub:'Melendugno'},
+    {k:'russia',       lbl:'Russia',          sub:'TurkStream residual'},
+    {k:'uk_interconn', lbl:'UK Interconn.',   sub:'BBL + IUK (net)'},
+  ];
+  const pipeData=routes.map(r=>({...r,today:todayPipeProxy(r.k),yday:confirmedPipe(r.k)}));
+  const totalToday=pipeData.reduce((s,r)=>s+(r.today?.mcm||0),0);
+  const totalYday =pipeData.reduce((s,r)=>s+(r.yday?.mcm ||0),0);
 
-  // ── China LNG truck signal ──────────────────────────────────────────────
-  let truckHtml=`<div style="font-size:9px;color:#3d5070;padding:10px;border:1px dashed #1e3a5f">Load EOD data in Financial Trading to enable · reads aD/sDates/TRUCK_CNY</div>`;
+  // ── China JKM M+1 vs Truck-LNG ────────────────────────────────────────────
+  let chinaHtml=`<div style="font-size:9px;color:#3d5070;padding:10px;border:1px dashed #1e3a5f;text-align:center">Load EOD data in Financial Trading to enable · reads aD/sDates/TRUCK_CNY</div>`;
   try{
     if(typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length&&typeof TRUCK_CNY!=='undefined'&&TRUCK_CNY.length){
       const usdcny=7.25;
@@ -10904,133 +10914,204 @@ async function renderGaDashboard(){
         const latJKM=row?.JKM;
         const latTruck=+(TRUCK_CNY[TRUCK_CNY.length-1].value/usdcny/1000/1.09*3.41214).toFixed(2);
         if(latJKM){
-          const open=latTruck>latJKM;
-          const rc=open?'#4ade80':'#f87171';
-          truckHtml=`
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+          const diff=+(latTruck-latJKM).toFixed(2);
+          const truckBelow=diff<0;
+          const diffCol=truckBelow?'#f87171':'#4ade80';
+          const signalTxt=truckBelow
+            ? 'Truck below JKM · domestic CNG cheaper · China not bidding for spot LNG'
+            : 'Truck above JKM · imports competitive · China bid open for spot LNG';
+          chinaHtml=`
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
             <div style="background:#050c14;padding:8px;border:1px solid #1e3a5f">
-              <div style="font-size:8px;color:#546e7a">JKM M+1</div>
-              <div style="font-size:15px;font-weight:700;color:#4fc3f7">$${latJKM.toFixed(2)}</div>
+              <div style="font-size:7px;color:#546e7a;letter-spacing:1px">JKM M+1</div>
+              <div style="font-size:18px;font-weight:700;color:#f0f4ff">$${latJKM.toFixed(2)}</div>
+              <div style="font-size:7px;color:#3d5070">/MMBtu</div>
             </div>
             <div style="background:#050c14;padding:8px;border:1px solid #1e3a5f">
-              <div style="font-size:8px;color:#546e7a">Truck (N.China)</div>
-              <div style="font-size:15px;font-weight:700;color:#34d399">$${latTruck}</div>
+              <div style="font-size:7px;color:#546e7a;letter-spacing:1px">TRUCK-LNG</div>
+              <div style="font-size:18px;font-weight:700;color:#f0f4ff">$${latTruck.toFixed(2)}</div>
+              <div style="font-size:7px;color:#3d5070">CNY→$/MMBtu</div>
             </div>
           </div>
-          <div style="padding:5px 8px;background:${open?'rgba(74,222,128,0.08)':'rgba(248,113,113,0.08)'};border:1px solid ${rc};font-size:9px;font-weight:700;color:${rc}">${open?'SPOT MARKET OPEN':'SPOT UNECONOMIC'} · Δ ${(latTruck-latJKM).toFixed(2)} $/MMBtu</div>
-          <div style="font-size:8px;color:#3d5070;margin-top:3px"><a href="#" onclick="shellNav('gasanalytics','lngbal');return false" style="color:#4fc3f7">→ Full China analysis</a></div>`;
+          <div style="padding:6px 8px;background:rgba(77,158,245,.05);border-left:2px solid ${diffCol}">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+              <span style="font-size:9px;color:#dde4f0;letter-spacing:1px">TRUCK − JKM</span>
+              <span style="font-size:13px;font-weight:700;color:${diffCol}">${diff>=0?'+':''}$${diff.toFixed(2)}</span>
+            </div>
+            <div style="font-size:8px;color:#8a9bb5;line-height:1.4">${signalTxt}</div>
+          </div>`;
         }
       }
     }
-  }catch(e){}
+  }catch(e){ console.warn('China signal:',e.message); }
+
+  // ── Build pipeline table ──────────────────────────────────────────────────
+  const pipeRows=pipeData.map(r=>{
+    const tVal=r.today?.mcm; const yVal=r.yday?.mcm;
+    const tStr=tVal==null?'<span style="color:#3d5070">—</span>':(tVal<1?`<span style="color:#3d5070">${fmt(tVal,1)}</span>`:fmt(tVal,1));
+    const yStr=yVal==null?'<span style="color:#3d5070">—</span>':(yVal<1?`<span style="color:#3d5070">${fmt(yVal,1)}</span>`:fmt(yVal,1));
+    return `<tr>
+      <td style="padding:5px 8px;font-size:10px;color:#dde4f0">${r.lbl}<div style="font-size:8px;color:#3d5070;margin-top:1px">${r.sub}</div></td>
+      <td style="padding:5px 8px;text-align:right;font-size:11px;color:#60a5fa;font-weight:500">${tStr}</td>
+      <td style="padding:5px 8px;text-align:right;font-size:11px;color:#f0f4ff">${yStr}</td>
+    </tr>`;
+  }).join('');
 
   b.innerHTML=`
-  <div style="display:grid;grid-template-columns:2fr 3fr;min-height:calc(100vh - 148px)">
+  <div style="padding:18px 20px;max-width:1700px;margin:0 auto">
 
-  <!-- ══ LEFT 40%: GLOBAL SIGNALS ══ -->
-  <div style="padding:16px 18px;border-right:1px solid rgba(77,158,245,.1);overflow-y:auto">
-    <div style="font-size:9px;letter-spacing:2px;color:#546e7a;margin-bottom:12px">GLOBAL SIGNALS</div>
-
-    <!-- Curve snapshot -->
-    <div style="margin-bottom:14px">
-      <div style="font-size:8px;letter-spacing:1.5px;color:#4fc3f7;margin-bottom:6px">FORWARD CURVE · ${ML[0]}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-        ${[
-          {l:'JKM M1',v:jkmM1,c:'#4fc3f7',sign:false},
-          {l:'TTF M1',v:ttfM1,c:'#81c784',sign:false},
-          {l:'JKM−TTF',v:jkmTtf,c:signCol(jkmTtf),sign:true},
-          {l:'JKM M1−M2',v:jkmStr,c:signCol(jkmStr),sign:true,sub:jkmStr!=null?(jkmStr>0?'Backwardation':'Contango'):''},
-        ].map(({l,v,c,sign,sub})=>`
-        <div style="background:#070f1e;border:1px solid #1a2d4a;padding:7px 9px">
-          <div style="font-size:8px;color:#546e7a;margin-bottom:1px">${l}</div>
-          <div style="font-size:13px;font-weight:700;color:${c}">${v!=null?(sign&&v>0?'+':'')+v.toFixed(3):'—'}</div>
-          ${sub?`<div style="font-size:7px;color:${c};margin-top:1px">${sub}</div>`:''}
-        </div>`).join('')}
-      </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:1px solid rgba(77,158,245,.13);margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="color:#4d9ef5;font-size:11px;letter-spacing:1.5px;font-weight:500">GLOBAL LNG FUNDAMENTALS</div>
+      <div id="gf-ts" style="color:#6b7a99;font-size:9px">ENTSOG ${new Date().toLocaleDateString('en-GB')} · Gassco/UMM soon</div>
     </div>
 
-    <!-- China truck vs JKM -->
-    <div style="margin-bottom:14px">
-      <div style="font-size:8px;letter-spacing:1.5px;color:#34d399;margin-bottom:6px">CHINA · LNG TRUCK vs JKM</div>
-      ${truckHtml}
+    <div id="gf-umm-banner" style="display:none;background:rgba(248,113,113,0.08);border-left:2px solid #f87171;padding:7px 12px;margin-bottom:12px">
+      <div style="color:#f87171;font-size:10px" id="gf-umm-txt"></div>
     </div>
 
-    <!-- French Nuclear -->
-    <div style="margin-bottom:14px">
-      <div style="font-size:8px;letter-spacing:1.5px;color:#a78bfa;margin-bottom:6px">FRENCH NUCLEAR AVAILABILITY <span style="font-size:7px;background:rgba(167,139,250,0.1);color:#a78bfa;padding:1px 5px;border:1px solid rgba(167,139,250,0.2)">ENTSO-E</span></div>
-      <div id="db-fr-nuclear"><div style="font-size:9px;color:#3d5070;padding:8px;border:1px dashed #1e3a5f;text-align:center">Loading ENTSO-E…</div></div>
-    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
 
-    <!-- Asia placeholders -->
-    <div>
-      <div style="font-size:8px;letter-spacing:1.5px;color:#546e7a;margin-bottom:6px">ASIA DEMAND SIGNALS</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-        ${[['Japan','METI · monthly'],['Korea','KOGAS · monthly'],['Brazil','ANP · weekly']].map(([c,src])=>`
-        <div style="background:#050c14;border:1px dashed #1a2a42;padding:7px;text-align:center">
-          <div style="font-size:8px;color:#546e7a;margin-bottom:3px">${c}</div>
-          <div style="font-size:9px;color:#2d3d55">PENDING</div>
-          <div style="font-size:7px;color:#1e2d40;margin-top:3px">${src}</div>
-        </div>`).join('')}
-      </div>
-    </div>
-  </div>
+      <!-- ══════════════ LEFT : GLOBAL SIGNALS ══════════════ -->
+      <div>
+        <div style="font-size:9px;letter-spacing:2px;font-weight:600;padding:6px 10px;margin-bottom:10px;border-radius:2px;text-align:center;background:rgba(96,165,250,0.08);color:#60a5fa;border:1px solid rgba(96,165,250,0.2)">GLOBAL SIGNALS — LNG DEMAND PULL</div>
 
-  <!-- ══ RIGHT 60%: EU FUNDAMENTALS ══ -->
-  <div style="padding:16px 18px;overflow-y:auto">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-      <div style="font-size:9px;letter-spacing:2px;color:#546e7a">EU FUNDAMENTALS</div>
-      <div id="ga-bal-sources" style="display:flex;gap:8px;margin-left:auto"></div>
-    </div>
-
-    <!-- Storage card -->
-    <div style="background:#070f1e;border:1px solid #1e3a5f;border-radius:3px;padding:14px;margin-bottom:10px">
-      <div style="font-size:8px;letter-spacing:1.5px;color:#4fc3f7;margin-bottom:10px">EU UNDERGROUND STORAGE <span style="font-size:7px;color:#3d5070;font-weight:400">GIE AGSI+</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
-        <div>
-          <div style="font-size:8px;color:#546e7a;margin-bottom:2px">FILL LEVEL</div>
-          <div style="font-size:26px;font-weight:700;color:${barCol};line-height:1">${storPct!=null?storPct+'%':'—'}</div>
-          <div style="font-size:8px;color:#3d5070;margin-top:2px">${stor?.twh!=null?(stor.twh/1000).toFixed(0)+' TWh':''}</div>
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid rgba(77,158,245,0.06)">
+            <div style="color:#f0f4ff;font-size:10px;letter-spacing:1px;font-weight:500">CHINA · JKM M+1 vs TRUCK-LNG</div>
+            <div style="font-size:8px;letter-spacing:1px;color:#6b7a99">EOD · SHPGX</div>
+          </div>
+          ${chinaHtml}
         </div>
-        <div>
-          <div style="font-size:8px;color:#546e7a;margin-bottom:2px">vs LAST YEAR</div>
-          ${(()=>{const td=new Date();const lyMo=`${td.getFullYear()-1}-${String(td.getMonth()+1).padStart(2,'0')}`;const lyS=GD.storage[lyMo];const d=storPct!=null&&lyS?+(storPct-lyS.pct).toFixed(1):null;const dc=d==null?'#546e7a':d>0?'#4ade80':'#f87171';return`<div style="font-size:22px;font-weight:700;color:${dc};line-height:1">${d!=null?(d>0?'+':'')+d+'pp':'—'}</div><div style="font-size:8px;color:#3d5070;margin-top:2px">YoY pp</div>`;})()}
-        </div>
-        <div>
-          <div style="font-size:8px;color:#546e7a;margin-bottom:2px">NET FLOW</div>
-          ${(()=>{const net=stor?.net;const netMcm=net!=null?+(net/10.55).toFixed(1):null;const isW=netMcm!=null&&netMcm>0.5;const isI=netMcm!=null&&netMcm<-0.5;const nc=isW?'#f87171':isI?'#4ade80':'#facc15';return`<div style="font-size:13px;font-weight:700;color:${nc};line-height:1">${netMcm!=null?Math.abs(netMcm).toFixed(1)+' mcm/d':'—'}</div><div style="font-size:8px;font-weight:700;color:${nc};margin-top:2px">${isW?'WITHDRAWAL':isI?'INJECTION':'BALANCED'}</div>`;})()}
-        </div>
-      </div>
-      <div style="height:8px;background:#0d1a2e;border-radius:2px;overflow:hidden;margin-bottom:2px">
-        <div style="width:${barPct}%;height:100%;background:${barCol};transition:width .5s"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:7px;color:#2d3d55;margin-bottom:8px"><span>0%</span><span>50%</span><span>100%</span></div>
-      <div class="ga-ch-wrap" style="height:130px"><canvas id="db-stor-mini-chart"></canvas></div>
-    </div>
 
-    <!-- LNG + Pipeline row -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <div style="background:#070f1e;border:1px solid #1e3a5f;border-radius:3px;padding:14px">
-        <div style="font-size:8px;letter-spacing:1.5px;color:#ffb74d;margin-bottom:8px">EU LNG SENDOUT <span style="font-size:7px;color:#3d5070">GIE ALSI · 7d avg</span></div>
-        <div style="font-size:24px;font-weight:700;color:#ffb74d;line-height:1">${lngAvg!=null?lngAvg:' —'}<span style="font-size:11px;font-weight:400;color:#546e7a"> TWh/d</span></div>
-        <div class="ga-ch-wrap" style="height:100px;margin-top:8px"><canvas id="db-lng-mini-chart"></canvas></div>
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid rgba(77,158,245,0.06)">
+            <div style="color:#f0f4ff;font-size:10px;letter-spacing:1px;font-weight:500">JAPAN · NUCLEAR AVAILABILITY</div>
+            <div style="font-size:8px;letter-spacing:1px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:1px 5px;border-radius:2px">PLACEHOLDER</div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:4px;padding:3px 0">
+            <span style="font-size:22px;font-weight:600;color:#8a9bb5;line-height:1">—</span>
+            <span style="font-size:10px;color:#6b7a99;margin-left:4px">GW</span>
+          </div>
+          <div style="font-size:9px;color:#3d5070;margin-top:4px">JAIF daily publication · scraper pending</div>
+          <div style="font-size:9px;color:#8a9bb5;margin-top:6px;line-height:1.4">Higher nuclear availability → lower LNG power burn call</div>
+        </div>
+
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid rgba(77,158,245,0.06)">
+            <div style="color:#f0f4ff;font-size:10px;letter-spacing:1px;font-weight:500">KOREA · NUCLEAR AVAILABILITY</div>
+            <div style="font-size:8px;letter-spacing:1px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:1px 5px;border-radius:2px">PLACEHOLDER</div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:4px;padding:3px 0">
+            <span style="font-size:22px;font-weight:600;color:#8a9bb5;line-height:1">—</span>
+            <span style="font-size:10px;color:#6b7a99;margin-left:4px">GW</span>
+          </div>
+          <div style="font-size:9px;color:#3d5070;margin-top:4px">KHNP daily publication · scraper pending</div>
+          <div style="font-size:9px;color:#8a9bb5;margin-top:6px;line-height:1.4">KOGAS incremental LNG call sensitive to fleet availability</div>
+        </div>
+
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid rgba(77,158,245,0.06)">
+            <div style="color:#f0f4ff;font-size:10px;letter-spacing:1px;font-weight:500">BRAZIL · HYDRO RESERVOIRS</div>
+            <div style="font-size:8px;letter-spacing:1px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:1px 5px;border-radius:2px">PLACEHOLDER</div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:4px;padding:3px 0">
+            <span style="font-size:22px;font-weight:600;color:#8a9bb5;line-height:1">—</span>
+            <span style="font-size:10px;color:#6b7a99;margin-left:4px">%</span>
+          </div>
+          <div style="font-size:9px;color:#3d5070;margin-top:4px">ONS D-1 publication · scraper pending · SE/CO + NE + S + N subsystems</div>
+          <div style="font-size:9px;color:#8a9bb5;margin-top:6px;line-height:1.4">High hydro → Petrobras keeps spot LNG demand low</div>
+        </div>
+
       </div>
-      <div style="background:#070f1e;border:1px solid #1e3a5f;border-radius:3px;padding:14px">
-        <div style="font-size:8px;letter-spacing:1.5px;color:#81c784;margin-bottom:8px">PIPELINE IMPORTS <span style="font-size:7px;color:#3d5070">ENTSOG</span></div>
-        ${[['NORWAY',pipNor,'#4fc3f7'],['N.AFRICA',pipNAfrica,'#81c784'],['TAP (Caspian)',pipTap,'#ffb74d'],['Russia/Ukraine',latestPipe('russia'),'#f48fb1'],['UK ICs (IUK/BBL)',pipUKIC,'#b0bec5']].map(([l,d,c])=>`
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:0.5px solid #0d1a2e">
-          <span style="font-size:8px;color:#8a9bb5">${l}</span>
-          <span style="font-size:10px;color:${d&&d.mcm>0?c:'#3d5070'};font-weight:600">${d&&d.mcm!=null?+d.mcm.toFixed(1)+' mcm/d':'—'}</span>
-        </div>`).join('')}
+
+      <!-- ══════════════ RIGHT : EU FUNDAMENTALS ══════════════ -->
+      <div>
+        <div style="font-size:9px;letter-spacing:2px;font-weight:600;padding:6px 10px;margin-bottom:10px;border-radius:2px;text-align:center;background:rgba(52,211,153,0.08);color:#34d399;border:1px solid rgba(52,211,153,0.2)">EU FUNDAMENTALS — WHAT'S ARRIVING</div>
+
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(77,158,245,0.06)">
+            <div style="color:#f0f4ff;font-size:10px;letter-spacing:1px;font-weight:500">PIPELINE IMPORTS · TODAY vs YESTERDAY</div>
+            <div style="font-size:8px;letter-spacing:1px;color:#6b7a99">ENTSOG · mcm/d</div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace">
+            <thead>
+              <tr style="font-size:8px;color:#3d5070;letter-spacing:1.2px;border-bottom:1px solid rgba(77,158,245,0.08)">
+                <th style="text-align:left;padding:4px 8px;font-weight:500">ROUTE</th>
+                <th style="text-align:right;padding:4px 8px;font-weight:500">D</th>
+                <th style="text-align:right;padding:4px 8px;font-weight:500">D-1 FINAL</th>
+              </tr>
+            </thead>
+            <tbody>${pipeRows}</tbody>
+            <tfoot>
+              <tr style="border-top:1px solid rgba(52,211,153,0.25);font-weight:600">
+                <td style="padding:7px 8px;font-size:10px;color:#34d399;letter-spacing:1px">TOTAL PIPELINE</td>
+                <td style="padding:7px 8px;text-align:right;font-size:12px;color:#34d399">${fmt(totalToday,1)}</td>
+                <td style="padding:7px 8px;text-align:right;font-size:12px;color:#34d399">${fmt(totalYday,1)}</td>
+              </tr>
+            </tfoot>
+          </table>
+          <div style="font-size:7px;color:#3d5070;margin-top:6px;letter-spacing:0.5px;text-align:right">
+            <span style="color:#60a5fa">D</span> = today · proxy from recent non-zero ENTSOG ·
+            <span style="color:#f0f4ff">D-1 FINAL</span> = confirmed physical · last 2d skipped as provisional
+          </div>
+        </div>
+
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(77,158,245,0.06)">
+            <div style="color:#f0f4ff;font-size:10px;letter-spacing:1px;font-weight:500">EU UNDERGROUND STORAGE</div>
+            <div style="font-size:8px;letter-spacing:1px;color:#6b7a99">GIE AGSI+ D-1</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center">
+            <div>
+              <div style="display:flex;align-items:baseline;gap:4px">
+                <span style="font-size:26px;font-weight:700;color:${barCol};line-height:1">${storPct!=null?storPct.toFixed(1):'—'}</span>
+                <span style="font-size:11px;color:#6b7a99">%</span>
+              </div>
+              <div style="font-size:9px;color:#3d5070;margin-top:2px">${stor?.twh!=null?stor.twh.toFixed(0)+' TWh':''}</div>
+              <div style="height:6px;background:#050c14;border:1px solid #1e3a5f;margin-top:6px;position:relative">
+                <div style="position:absolute;left:0;top:0;bottom:0;width:${barPct}%;background:${barCol}"></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:8px;color:#546e7a;letter-spacing:1px">NET FLOW</div>
+              <div style="font-size:15px;font-weight:600;color:${stor?.net>0?'#4ade80':stor?.net<0?'#f87171':'#8a9bb5'};line-height:1.2">${stor?.net!=null?(stor.net>0?'+':'')+stor.net.toFixed(0)+' mcm/d':'—'}</div>
+              <div style="font-size:9px;color:${stor?.net>0?'#4ade80':'#f87171'};margin-top:2px">${stor?.net>0?'INJECTION':stor?.net<0?'WITHDRAWAL':'—'}</div>
+            </div>
+          </div>
+          <div class="ga-ch-wrap" style="height:70px;margin-top:8px"><canvas id="db-stor-mini-chart"></canvas></div>
+        </div>
+
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(77,158,245,0.06)">
+            <div style="color:#f0f4ff;font-size:10px;letter-spacing:1px;font-weight:500">EU LNG SENDOUT · 7d AVG</div>
+            <div style="font-size:8px;letter-spacing:1px;color:#6b7a99">GIE ALSI</div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:4px;padding:3px 0">
+            <span style="font-size:24px;font-weight:700;color:#ffb74d;line-height:1">${lngAvg!=null?lngAvg:'—'}</span>
+            <span style="font-size:11px;color:#6b7a99">TWh/d</span>
+            <span style="font-size:10px;color:#8a9bb5;margin-left:6px">≈ ${lngAvg!=null?Math.round(lngAvg*1000/10.55):'—'} mcm/d</span>
+          </div>
+          <div class="ga-ch-wrap" style="height:70px;margin-top:6px"><canvas id="db-lng-mini-chart"></canvas></div>
+        </div>
+
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(77,158,245,0.06)">
+            <div style="color:#f0f4ff;font-size:10px;letter-spacing:1px;font-weight:500">FRENCH NUCLEAR AVAILABILITY</div>
+            <div style="font-size:8px;letter-spacing:1px;color:#6b7a99">ENTSO-E · RTE</div>
+          </div>
+          <div id="db-fr-nuclear"><div style="font-size:9px;color:#3d5070;padding:8px;border:1px dashed #1e3a5f;text-align:center">Loading ENTSO-E…</div></div>
+        </div>
+
       </div>
+
     </div>
 
     <!-- Quick nav -->
-    <div style="display:flex;gap:5px;flex-wrap:wrap">
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:12px">
       ${[['LNG BALANCE','lngbal'],['EU GAS','eugas'],['STORAGE','storage'],['LNG REGAS','regas'],['LNG VALUE CHAIN','lngvc']].map(([l,id])=>
         `<button class="gbtn sm" onclick="gaMainTab('${id}',document.getElementById('gmtab-${id}'))">${l} →</button>`
       ).join('')}
     </div>
-  </div>
   </div>`;
 
   setTimeout(()=>{
