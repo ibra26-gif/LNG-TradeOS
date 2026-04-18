@@ -53,6 +53,24 @@ HOMEPAGE_URL = "https://umm.gassco.no/"
 # UMM — from XLSX (primary)
 # =============================================================================
 
+def accept_disclaimer(session):
+    """Gassco serves a disclaimer wall on first visit. Accept it programmatically
+    to unlock the real site content. The form action is GET /disclaimer/acceptDisclaimer."""
+    try:
+        print("Accepting Gassco disclaimer...")
+        r = session.get(
+            "https://umm.gassco.no/disclaimer/acceptDisclaimer",
+            timeout=TIMEOUT,
+            allow_redirects=True,
+            headers={"Referer": HOMEPAGE_URL},
+        )
+        print(f"  Disclaimer response: {r.status_code}, cookies now: {len(session.cookies)}")
+        return r.status_code == 200
+    except Exception as e:
+        print(f"  Disclaimer accept failed: {e}")
+        return False
+
+
 def fetch_umms_from_xlsx(session):
     """Download xlexport, parse active events. Returns list of UMM dicts.
 
@@ -62,12 +80,7 @@ def fetch_umms_from_xlsx(session):
     if not HAVE_XLSX:
         return None
     try:
-        # Prime session: fetch homepage first to establish cookies
-        print(f"Priming session with {HOMEPAGE_URL}...")
-        prime = session.get(HOMEPAGE_URL, timeout=TIMEOUT)
-        print(f"  Homepage: {prime.status_code}, cookies now: {len(session.cookies)}")
-
-        # Now fetch XLSX with browser-like headers + referer
+        # Fetch XLSX directly - session is already primed with disclaimer cookie
         print(f"Downloading {XLSX_URL}...")
         xlsx_headers = {
             "Accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,*/*",
@@ -348,6 +361,10 @@ def fetch_nominations_from_homepage(session):
 def main():
     session = requests.Session()
     session.headers.update(HEADERS)
+
+    # CRITICAL: Gassco serves a disclaimer wall to new sessions.
+    # Must accept it before any other endpoint returns real content.
+    accept_disclaimer(session)
 
     # ---- UMMs from XLSX ----
     umms = fetch_umms_from_xlsx(session)
