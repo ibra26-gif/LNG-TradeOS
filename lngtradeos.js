@@ -4370,181 +4370,74 @@ function renderFoundationPortCost(c){
 // ══════════════════════════════════════════════════════════════════════════
 // FOUNDATION · A.3 — FREIGHT CURVES + SHIP PARAMETERS
 //
-// Two panels:
-//   1. Ship Parameters — read-only summary of the effective defaults (DEF_P +
-//      any user overrides from Physical Trading → Freight Calculator)
-//   2. Freight Curves — origin × destination matrix in $/MMBtu, computed via
-//      calcF() using NM (A.2) + Port Cost (A.1) + Ship Params. Month selector.
+// Two sub-tabs inside the Foundation Freight section:
+//   1. FREIGHT CURVES     — full editor (BLNG1/2/3 × 24 months + pos/repo).
+//                           Loads from localStorage, saves via fSaveBlng()/fSavePR().
+//                           History loader for snapshot curves.
+//   2. SHIP PARAMETERS    — editable inputs for ship/fuel/EUA/voyage defaults.
+//                           Saves via fSaveParams() / fSaveMatParams().
+//
+// Both are the same editors Physical Trading → Freight Calculator uses.
+// Mirroring them here so Foundation is the single place to configure the
+// platform's cornerstone inputs.
 // ══════════════════════════════════════════════════════════════════════════
-const FD_FR_STATE = { month: 0, origin: 'all' };
+const FD_FR_STATE = { subTab: 0 };  // 0 = Freight Curves, 1 = Ship Parameters
 
-window.fdFrSetMonth  = function(v){ FD_FR_STATE.month = +v; _rerenderFdFreight(); };
-window.fdFrSetOrigin = function(v){ FD_FR_STATE.origin = v; _rerenderFdFreight(); };
-function _rerenderFdFreight(){
-  setTimeout(() => {
-    const el = document.getElementById('fd-content');
-    if(el) try { renderFoundationFreight(el); } catch(e){ console.error('Freight render failed', e); }
-  }, 0);
+window.fdFrSubTab = function(i){
+  FD_FR_STATE.subTab = +i;
+  const host = document.getElementById('fd-fr-body');
+  if(host) _fdFrRenderBody(host);
+  // update tab button active states
+  document.querySelectorAll('[data-fd-fr-tab]').forEach(b => {
+    b.classList.toggle('active', +b.dataset.fdFrTab === FD_FR_STATE.subTab);
+  });
+};
+
+function _fdFrRenderBody(host){
+  if(FD_FR_STATE.subTab === 0)      host.innerHTML = renderMatCurves();
+  else if(FD_FR_STATE.subTab === 1) host.innerHTML = renderMatParams();
 }
 
 function renderFoundationFreight(c){
-  // Ensure freight state is populated — if user hasn't visited Physical → Freight,
-  // F.blng/F.params are null. Fire initFreight() to load from localStorage or seed.
+  // Ensure freight state is populated — if Physical → Freight hasn't been visited,
+  // F.blng/F.params/F.posArr/F.repoArr are null and editors would throw.
   if(!F.blng || !F.params){
     try { initFreight(); } catch(e){ console.warn('initFreight failed', e); }
   }
-  const p = F.params || DEF_P;
-  const blngReady = !!(F.blng && F.blng.BLNG1 && F.blng.BLNG2);
-  const origins = SUPPLY;
-  const dests = BASE_D;
-  const mi = Math.max(0, Math.min(ML.length-1, FD_FR_STATE.month));
-  const monthLbl = ML[mi];
-  const origFilter = FD_FR_STATE.origin;
-  const origList = origFilter === 'all' ? origins : origins.filter(o => o.id === origFilter);
-
-  // Compute freight cells
-  const rows = origList.map(sp => {
-    return {
-      sp,
-      cells: dests.map(dp => {
-        if(!blngReady) return null;
-        try {
-          const r = calcF(sp.id, dp.id, mi);
-          return r ? r.freight : null;
-        } catch { return null; }
-      })
-    };
-  });
-
-  // Color scale (green low / red high)
-  const allVals = rows.flatMap(r => r.cells.filter(v => v != null));
-  const mnF = allVals.length ? Math.min(...allVals) : 0;
-  const mxF = allVals.length ? Math.max(...allVals) : 1;
-  const frCol = v => {
-    if(v == null) return 'var(--td)';
-    if(mxF === mnF) return 'var(--tx)';
-    const t = (v - mnF) / (mxF - mnF);
-    if(t < 0.25) return 'var(--gr)';
-    if(t < 0.55) return '#9cc86e';
-    if(t < 0.80) return '#fbbf24';
-    return 'var(--rd)';
-  };
-  const fmtF = v => v == null ? '—' : '$' + v.toFixed(3);
-
-  // Ship Parameters — key fields to summarize
-  const spFields = [
-    ['Ship size',         p.shipSize.toLocaleString() + ' m³'],
-    ['Energy factor',     p.energyFactor + ' MMBtu/m³'],
-    ['Loading factor',    p.loadFactor + ' %'],
-    ['BOG rate',          p.bogRate + ' %/day'],
-    ['Laden speed',       p.speedLaden + ' kn'],
-    ['Ballast speed',     p.speedBallast + ' kn'],
-    ['HFO laden',         p.hfoLaden + ' t/day'],
-    ['HFO ballast',       p.hfoBallast + ' t/day'],
-    ['HFO price',         '$' + p.hfoPrice + ' / t'],
-    ['LSMGO discharge',   p.lsmgoDischarge + ' t/day'],
-    ['LSMGO price',       '$' + p.lsmgoPrice + ' / t'],
-    ['Daily hire',        '(from BLNG curve per origin)'],
-    ['Cooldown days',     p.cooldownDays + ' d'],
-    ['Load / Disch days', p.loadTimeDays + ' / ' + p.dischargeDays],
-    ['Buffer days',       p.bufferDays + ' d'],
-    ['Heel volume',       p.heelVolume.toLocaleString() + ' MMBtu'],
-    ['EUA price',         '€' + p.euaPrice],
-    ['EUR/USD',           p.eurUsd],
-    ['ETS coverage',      Math.round(p.etsCoverage*100) + ' %'],
-  ];
-
+  const stale = F.matrixTs && F.blngTs && F.blngTs > F.matrixTs;
   c.innerHTML = `
     <style>
-      .fr-wrap{padding:18px 22px 40px;color:var(--tx);font-family:inherit}
-      .fr-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;border-bottom:1px solid var(--bl);padding-bottom:14px;margin-bottom:14px;flex-wrap:wrap}
-      .fr-hdr-ttl{font-size:16px;color:var(--th);letter-spacing:.03em}
-      .fr-hdr-sub{font-size:10px;color:var(--td);letter-spacing:.05em;line-height:1.6;max-width:820px;margin-top:4px}
-      .fr-warn{padding:10px 14px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:#fbbf24;font-size:11px;margin-bottom:14px}
-      .fr-grid{display:grid;grid-template-columns:360px 1fr;gap:14px}
-      @media(max-width:1100px){.fr-grid{grid-template-columns:1fr}}
-      .fr-card{background:var(--bg2);border:1px solid var(--bl)}
-      .fr-card-hdr{padding:11px 14px;border-bottom:1px solid var(--bl);display:flex;justify-content:space-between;align-items:center}
-      .fr-card-ttl{font-size:10px;color:var(--b);letter-spacing:.12em}
-      .fr-card-sub{font-size:9px;color:var(--td);letter-spacing:.05em}
-      .fr-params{padding:10px 14px;font-size:11px}
-      .fr-params .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(77,158,245,.05)}
-      .fr-params .row:last-child{border:none}
-      .fr-params .l{color:var(--td);letter-spacing:.04em}
-      .fr-params .v{color:var(--th);font-variant-numeric:tabular-nums;font-weight:500}
-      .fr-link{display:inline-block;margin-top:10px;color:var(--b);font-size:10px;letter-spacing:.1em;text-decoration:none;cursor:pointer}
-      .fr-link:hover{color:var(--th)}
-      .fr-ctrl{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:10px;color:var(--td)}
-      .fr-ctrl label{display:flex;gap:6px;align-items:center}
-      .fr-ctrl select{background:var(--bg3);color:var(--tx);border:1px solid var(--bl);font-family:inherit;font-size:10px;padding:5px 8px}
-      .fr-scroll{overflow:auto;max-height:calc(100vh - 400px)}
-      .fr-tbl{width:100%;border-collapse:collapse;font-size:10.5px;font-variant-numeric:tabular-nums}
-      .fr-tbl th{font-size:9px;font-weight:500;color:var(--td);letter-spacing:.05em;padding:7px 8px;border-bottom:1px solid var(--bl);background:var(--bg3);position:sticky;top:0;z-index:2;white-space:nowrap;text-align:right}
-      .fr-tbl th.l{text-align:left;position:sticky;left:0;z-index:3;background:var(--bg3);min-width:170px}
-      .fr-tbl td{padding:5px 8px;border-bottom:1px solid rgba(77,158,245,.04);text-align:right;white-space:nowrap}
-      .fr-tbl td.l{text-align:left;color:var(--th);background:var(--bg2);position:sticky;left:0;z-index:1}
+      .fdfr-wrap{padding:18px 22px 40px;color:var(--tx);font-family:inherit}
+      .fdfr-hdr{border-bottom:1px solid var(--bl);padding-bottom:12px;margin-bottom:10px}
+      .fdfr-hdr-ttl{font-size:16px;color:var(--th);letter-spacing:.03em}
+      .fdfr-hdr-sub{font-size:10px;color:var(--td);letter-spacing:.05em;line-height:1.6;max-width:840px;margin-top:4px}
+      .fdfr-banner{background:#071a2b;border:1px solid #1e3a5f;padding:7px 14px;display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:9px;letter-spacing:.1em}
+      .fdfr-banner .ok{color:#81c784;font-weight:700}
+      .fdfr-banner .warn{color:#ff9800;font-weight:700}
+      .fdfr-tabs{display:flex;gap:0;border-bottom:2px solid var(--bl);margin-bottom:12px}
+      .fdfr-tab{padding:11px 22px;background:none;border:none;color:var(--td);font-family:inherit;font-size:10px;letter-spacing:.12em;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500}
+      .fdfr-tab:hover{color:var(--tx)}
+      .fdfr-tab.active{color:var(--th);border-bottom-color:var(--b)}
     </style>
-    <div class="fr-wrap">
-      <div class="fr-hdr">
-        <div>
-          <div class="fr-hdr-ttl">FREIGHT CURVES + SHIP PARAMETERS</div>
-          <div class="fr-hdr-sub">Freight rates in $/MMBtu, derived from NM (A.2) × ship params × BLNG hire curves + port costs + bunker + EUA.
-          Uses the <b>${blngReady ? 'stored BLNG curves' : 'seed BLNG curves'}</b> from Physical Trading → Freight Calculator. To edit ship parameters or BLNG curves, visit <span class="fr-link" onclick="shellNav('physical','freight')">Physical Trading → Freight Calculator →</span>.</div>
-        </div>
+    <div class="fdfr-wrap">
+      <div class="fdfr-hdr">
+        <div class="fdfr-hdr-ttl">FREIGHT CURVES + SHIP PARAMETERS</div>
+        <div class="fdfr-hdr-sub">Cornerstone inputs for the freight engine. Changes here persist to your browser and flow into NM-based $/MMBtu calculations everywhere in the platform (Global LNG Netback, Cargo Book MTM, Morning Book, Exposure).</div>
       </div>
-      ${blngReady ? '' : `<div class="fr-warn">⚠ BLNG curves not loaded in browser — showing seed values. Open Physical Trading → Freight Calculator once to persist your curves.</div>`}
-      <div class="fr-grid">
-        <div class="fr-card">
-          <div class="fr-card-hdr">
-            <div class="fr-card-ttl">SHIP PARAMETERS</div>
-            <div class="fr-card-sub">read-only</div>
-          </div>
-          <div class="fr-params">
-            ${spFields.map(([l,v]) => `<div class="row"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('')}
-            <div class="fr-link" onclick="shellNav('physical','freight')">EDIT IN FREIGHT CALCULATOR →</div>
-          </div>
-        </div>
-        <div class="fr-card">
-          <div class="fr-card-hdr">
-            <div class="fr-card-ttl">FREIGHT MATRIX · ${monthLbl}</div>
-            <div class="fr-card-sub">$/MMBtu</div>
-          </div>
-          <div style="padding:11px 14px 0">
-            <div class="fr-ctrl">
-              <label>MONTH
-                <select onchange="fdFrSetMonth(this.value)">
-                  ${ML.map((m,i) => `<option value="${i}" ${i===mi?'selected':''}>${m}</option>`).join('')}
-                </select>
-              </label>
-              <label>ORIGIN
-                <select onchange="fdFrSetOrigin(this.value)">
-                  <option value="all" ${origFilter==='all'?'selected':''}>All</option>
-                  ${origins.map(o => `<option value="${o.id}" ${origFilter===o.id?'selected':''}>${o.name}</option>`).join('')}
-                </select>
-              </label>
-              <span style="color:var(--td);margin-left:auto">${allVals.length} of ${origList.length*dests.length} cells calculated</span>
-            </div>
-          </div>
-          <div class="fr-scroll">
-            <table class="fr-tbl">
-              <thead>
-                <tr>
-                  <th class="l">ORIGIN \\ DEST</th>
-                  ${dests.map(d => `<th>${d.name.length > 12 ? d.name.slice(0,12) : d.name}</th>`).join('')}
-                </tr>
-              </thead>
-              <tbody>
-                ${rows.map(r => `<tr>
-                  <td class="l">${r.sp.name}</td>
-                  ${r.cells.map(v => `<td style="color:${frCol(v)}">${fmtF(v)}</td>`).join('')}
-                </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      <div class="fdfr-banner">
+        <span class="ok">PERSISTENT — FEEDS LNG GLOBAL NETBACK</span>
+        <span style="flex:1"></span>
+        ${stale ? '<span class="warn">⚠ MATRIX STALE — update curves then return to Physical Trading → Freight Calculator to rebuild the matrix</span>' : '<span style="color:#4caf50">MATRIX CURRENT</span>'}
       </div>
+      <div class="fdfr-tabs">
+        <button class="fdfr-tab ${FD_FR_STATE.subTab===0?'active':''}" data-fd-fr-tab="0" onclick="fdFrSubTab(0)">① FREIGHT CURVES</button>
+        <button class="fdfr-tab ${FD_FR_STATE.subTab===1?'active':''}" data-fd-fr-tab="1" onclick="fdFrSubTab(1)">② SHIP PARAMETERS</button>
+      </div>
+      <div id="fd-fr-body"></div>
     </div>
   `;
+  const host = document.getElementById('fd-fr-body');
+  if(host) _fdFrRenderBody(host);
 }
 
 function tbTab(tab){
