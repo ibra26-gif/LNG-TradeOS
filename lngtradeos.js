@@ -1,4 +1,4 @@
-/* ─── Block 1: China Signposts module (was inline at original line 971) ─── */
+/* ─── Block 1: China Signposts module (was inline at v194 line 763) ─── */
   (function(){
     /* ═══════════════════════════════════════════════
        CHINA SIGNPOSTS MODULE — LNG TradeOS™ v54
@@ -1968,7 +1968,7 @@ window.csGBUpdate = csGBUpdate;
   })();
 
 
-/* ─── Block 2: main application script (was inline at original line 3031) ─── */
+/* ─── Block 2: main application script (was inline at v194 line 2829) ─── */
 // ══ MONTH LABELS ══
 const ML=(function(){
   const now=new Date(),MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -2014,7 +2014,7 @@ function shellNav(sec,sub){
     if(!finLoaded) _pendingFinSub=sub||null;
   }
   if(sec==='gasanalytics') gaTab(sub||'lngbal');
-  if(sec==='portfolio') pvTab(sub||'single');
+  if(sec==='portfolio') pvTab(sub||'morning');
   if(sec==='toolbox') tbTab(sub||'converter');
   window.scrollTo(0,0);
 }
@@ -2035,12 +2035,9 @@ function gaMainTab(id,btn){
   const sec=document.getElementById('ga-tab-'+id);if(sec)sec.classList.add('active');
   if(btn)btn.classList.add('active');
   if(id==='dashboard'){renderGaDashboard();return;}
-  if(!window.gaInitDone) gaInitAll();
   if(id==='lngbal' && typeof csInit==='function') setTimeout(csInit,120);
-  else if(id==='eugas') eugasTab('pipeline');
-  else if(id==='storage') storTab('eu');
-  else if(id==='regas') regasTab('heatmap');
-  else if(id==='lngvc') setTimeout(renderLngVC,80);
+  if(id==='lngvc'){if(!window.gaInitDone)gaInitAll();setTimeout(renderLngVC,80);return;}
+  if(!window.gaInitDone) gaInitAll();
   setTimeout(()=>Object.values(GA_CHARTS).forEach(c=>c&&c.resize()),80);
 }
 
@@ -2212,11 +2209,1814 @@ function pvChol(rHT,rHJ,rTJ){
 function pvTab(tab){
   document.querySelectorAll('[id^="pvtab-"]').forEach(t=>t.classList.remove('active'));
   const el=document.getElementById('pvtab-'+tab);if(el)el.classList.add('active');
-  const labels={single:'SINGLE DEAL VALUATION',strips:'STRIPS VALUATION',portfolio:'PORTFOLIO VALUATION'};
-  const descs={single:'Full extrinsic and optionality valuation for individual LNG cargo contracts.',strips:'Multi-cargo strip decomposition with per-cargo intrinsic/extrinsic breakdown.',portfolio:'Aggregated P&L, exposure summary and blended optionality across all positions.'};
   const c=document.getElementById('pv-content');if(!c)return;
-  c.innerHTML=`<div class="ph-page"><div class="ph-lbl">PORTFOLIO VALUATION</div><div class="ph-ttl">${labels[tab]||tab}</div><div class="ph-sub">${descs[tab]||''}</div><div class="ph-box">MODULE IN DEVELOPMENT</div></div>`;
+  pvBook.init();
+  if(tab==='morning')       pvBook.renderMorning(c);
+  else if(tab==='cargo')    pvBook.renderCargo(c);
+  else if(tab==='paper')    pvBook.renderStub(c,'PAPER BOOK','Hedge and spec trade capture — links hedges to cargoes, tracks spec positions with targets/stops.','Phase 4');
+  else if(tab==='optim')    pvBook.renderStub(c,'OPTIMIZATION','Per-cargo scenario comparator: evaluate up to 4 destinations side-by-side with intrinsic + extrinsic valuation (Kirk spread option).','Phase 2');
+  else if(tab==='exposure') pvBook.renderExposure(c);
+  else if(tab==='spec')     pvBook.renderStub(c,'SPEC BOOK','Speculative paper positions with entry/target/stop tracking, parametric VaR, and risk limits dashboard.','Phase 6');
+  else if(tab==='scenarios')pvBook.renderStub(c,'SCENARIOS — STRESS TESTS','Portfolio-wide shocks: JKM ±$3, TTF ±€5, freight +20%, correlation → 0/1. MTM impact per cargo and aggregate.','Phase 5');
+  else if(tab==='daily')    pvBook.renderStub(c,'DAILY P&L','Day-over-day P&L running log with decomposition: curve move, new trades, fixings, theta. Foundation for explain-P&L.','Phase 2');
+  else if(tab==='eom')      pvBook.renderStub(c,'END OF MONTH REPORT','Month-end close: realised vs marked P&L, Uncertain→Certain transitions, cargoes delivered, realised vs marked variance.','Phase 6');
+  window.scrollTo(0,0);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PORTFOLIO VALUATION · PHASE 1 · CARGO BOOK + MORNING BOOK
+// ═══════════════════════════════════════════════════════════════════════════
+const pvBook = (function(){
+  const LS_CARGOES='pv_cargoes_v1', LS_STRIPS='pv_strips_v1', LS_SNAP_DAILY='pv_snap_daily_v1', LS_SNAP_WEEK='pv_snap_week_v1';
+
+  // Canonical reference data
+  const INDICES=['JKM','TTF','HH','NBP','Brent','PSV','THE','PEG','PVB','ZTP','WIM','JKM Balmo','TTF DA','NBP DA'];
+  const CARGO_TYPES=['Equity','Quad 4','Bridge','LT Contract','Spot'];
+  const DEAL_CLASSES=['Single','Strip','LT'];
+  const INCO=['FOB','DES'];
+  const STATUSES=[
+    {v:'Tentative',lbl:'Tentative',col:'#d4a843',bg:'rgba(212,168,67,.12)'},
+    {v:'Bid',      lbl:'Bid',      col:'#4fc3f7',bg:'rgba(79,195,247,.12)'},
+    {v:'Matched',  lbl:'Matched',  col:'#34d399',bg:'rgba(52,211,153,.12)'},
+    {v:'Unsold',   lbl:'Unsold',   col:'#fbbf24',bg:'rgba(251,191,36,.12)'},
+    {v:'Unsourced',lbl:'Unsourced',col:'#fbbf24',bg:'rgba(251,191,36,.12)'},
+    {v:'Delivered',lbl:'Delivered',col:'#94a3b8',bg:'rgba(148,163,184,.12)'},
+    {v:'Passed',   lbl:'Passed',   col:'#6b7a99',bg:'rgba(107,122,153,.08)'},
+  ];
+  const FORMULAS=['% × Index + Spread','Index + Spread','Fixed'];
+  const LOAD_PORTS=['Sabine Pass','Calcasieu Pass','Corpus Christi','Cameron','Freeport','Cove Point','Elba Island','Bonny LNG','Bioko','Bethioua','Skikda','Damietta','Idku','Das Island','Qalhat','Ras Laffan','Gorgon','Wheatstone','NWS','Prelude','Ichthys','Gladstone','APLNG','Tangguh','Bontang','Donggi-Senoro','MLNG','PFLNG Satu','Atlantic LNG','Peru LNG','Snohvit','Sakhalin','Yamal','Arctic LNG-2','Plaquemines'];
+  const DISCH_PORTS=['Rotterdam','Gate','Zeebrugge','Dunkirk','Montoir','Fos Cavaou','Bilbao','Sagunto','Mugardos','Huelva','Barcelona','OLT Toscana','Panigaglia','Adriatic','Revithoussa','Swinoujscie','Klaipeda','Inkoo','South Hook','Isle of Grain','Dragon','Milford Haven','Kochi','Dahej','Hazira','Mundra','Ennore','Tokyo Bay','Sodegaura','Negishi','Futtsu','Yokkaichi','Higashi-Ohgishima','Chita','Senboku','Himeji','Boryeong','Incheon','Tongyeong','Pyeongtaek','Samcheok','Yung An','Taichung','Tianjin','Ningbo','Qingdao','Shanghai','Shenzhen','Zhoushan','Map Ta Phut','Nong Fab','Singapore','Arun','Lampung','Bahrain','Jebel Ali','Hadera','Aqaba','Ain Sokhna','Marmara Ereglisi','Aliaga','Dorgate'];
+
+  const DEFAULT_BOG=0.0015, DEFAULT_EF=22.88, DEFAULT_SHIP_SIZE=174000, DEFAULT_SPEED=19.5;
+
+  // ── Flex / market reference data (Platts-aligned) ────────────────────────
+  // Premium markets: single-port destinations that command a premium vs nearest standard benchmark.
+  // Premium is calculated per route (origin × destination), not as a static market property.
+  const PREMIUM_MARKETS = [
+    {key:'turkey',     lbl:'Turkey (EMM)',          benchmark:'JKM', ports:['Aliaga','Marmara Ereglisi','Dortyol','Etki','Saros']},
+    {key:'thailand',   lbl:'Thailand (SEAM)',       benchmark:'JKM', ports:['Map Ta Phut','Nong Fab']},
+    {key:'brazil',     lbl:'Brazil',                benchmark:'JKM', ports:['Salvador Bahia','Pecem','Rio de Janeiro']},
+    {key:'argentina',  lbl:'Argentina',             benchmark:'JKM', ports:['Bahia Blanca','Escobar']},
+    {key:'mei',        lbl:'Kuwait/UAE (MEM)',      benchmark:'JKM', ports:['Mina Al Ahmadi','Jebel Ali','Ruwais']},
+    {key:'egypt',      lbl:'Egypt (Ain Sukhna)',    benchmark:'JKM', ports:['Ain Sokhna']},
+    {key:'pakistan',   lbl:'Pakistan',              benchmark:'JKM', ports:['Port Qasim']},
+    {key:'bangladesh', lbl:'Bangladesh',            benchmark:'JKM', ports:['Moheshkhali FSRU','Summit FSRU']},
+    {key:'croatia',    lbl:'Croatia (Krk)',         benchmark:'TTF', ports:['Krk FSRU']},
+    {key:'lithuania',  lbl:'Lithuania',             benchmark:'TTF', ports:['Klaipeda']},
+    {key:'finland',    lbl:'Finland',               benchmark:'TTF', ports:['Inkoo','Hamina']},
+  ];
+  // Intra-region hub maps. Hub list is editable per termsheet (especially in NWE).
+  // PSV is MED (not NWE). PVB is Iberian (toggleable in NWE for some termsheets).
+  const REGION_HUBS = {
+    'NWE':       {default:['TTF','PEG','NBP','ZTP','THE'], optional:['PVB']},
+    'MED':       {default:['PSV','PVB','PEG'],             optional:[]},
+    'WIM':       {default:['WIM'],                          optional:[]},  // West India: Dahej std + W-coast subs
+    'JKTC':      {default:['JKM'],                          optional:[]},  // Far East: per JKM std
+  };
+  // German terminals in THE — Mukran is operational (DET FSRUs Rügen) but lower-traffic
+  const NWE_TERMINALS_DEFAULT = [
+    'Gate','Rotterdam','Zeebrugge','Dunkirk','Montoir','Bilbao','Mugardos',
+    'South Hook','Isle of Grain','Dragon','Milford Haven',
+    'Eemshaven','Brunsbuttel','Wilhelmshaven 1','Wilhelmshaven 2','Stade','Mukran'
+  ];
+  // Market standards (Platts spec) — pre-fill base qty, optol, DW, narrowing, nomination deadlines
+  // qty in TBtu, optol in %, dw_days = initial DW, narrow_d = days prior to narrow to 1-day,
+  // nom_port_d = days prior for base port nom, sub_port_d = days prior for port substitution
+  const MARKET_STANDARDS = {
+    'NWE':       {qty:3.5, optol:5, dw_days:3, narrow_d:20, nom_port_d:30, sub_port_d:15},
+    'MED':       {qty:3.3, optol:5, dw_days:3, narrow_d:20, nom_port_d:30, sub_port_d:15},
+    'EMM':       {qty:3.3, optol:5, dw_days:3, narrow_d:20, nom_port_d:30, sub_port_d:15},
+    'WIM':       {qty:3.3, optol:5, dw_days:3, narrow_d:30, nom_port_d:30, sub_port_d:15},
+    'JKM':       {qty:3.4, optol:5, dw_days:3, narrow_d:30, nom_port_d:30, sub_port_d:15},
+    'SEAM':      {qty:3.4, optol:5, dw_days:3, narrow_d:30, nom_port_d:30, sub_port_d:15},
+    'MEM':       {qty:3.4, optol:5, dw_days:3, narrow_d:30, nom_port_d:30, sub_port_d:15},
+    'GCM':       {qty:3.7, optol:2, dw_days:5, narrow_d:30, nom_port_d:30, sub_port_d:15},
+    'BRAZIL':    {qty:3.5, optol:5, dw_days:3, narrow_d:20, nom_port_d:30, sub_port_d:15},
+  };
+  // Flex modes — used by the destination flex section
+  const FLEX_MODES = ['none','premium','intra_region'];  // inter_basin is implicit when buy/sell FOB
+  // Strip leg modes — strips are one-sided (buy-only offtake or sell-only LT sale)
+  const STRIP_LEG_MODES = [
+    {v:'buy_only',  lbl:'Buy only (offtake)',  child_status:'Unsold'},
+    {v:'sell_only', lbl:'Sell only (LT sale)', child_status:'Unsourced'},
+  ];
+
+  // ── State ────────────────────────────────────────────────────────────────
+  const state={cargoes:[],strips:[],editingId:null,ready:false};
+
+  function ls_get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
+  function ls_set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn('pv ls_set',e);}}
+
+  function init(){
+    if(state.ready) return;
+    state.cargoes = ls_get(LS_CARGOES,[]);
+    state.strips  = ls_get(LS_STRIPS,[]);
+    state.ready=true;
+    maybeSnapshotDaily();
+    maybeSnapshotWeekly();
+  }
+  function persist(){ ls_set(LS_CARGOES,state.cargoes); ls_set(LS_STRIPS,state.strips); }
+
+  // ── Daily/weekly snapshots for T-1 P&L waterfall + audit ─────────────────
+  function isoDay(d){ return (d||new Date()).toISOString().slice(0,10); }
+  function isoWeek(d){
+    const dt=new Date(d||new Date()); dt.setUTCHours(0,0,0,0);
+    dt.setUTCDate(dt.getUTCDate()+4-(dt.getUTCDay()||7));
+    const ys=new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+    return dt.getUTCFullYear()+'-W'+String(Math.ceil(((dt-ys)/86400000+1)/7)).padStart(2,'0');
+  }
+  function maybeSnapshotDaily(){
+    const snaps=ls_get(LS_SNAP_DAILY,[]);
+    const today=isoDay();
+    if(snaps.some(s=>s.day===today)) return;
+    snaps.push({day:today, totalMtm:computePortfolioMtm(), cargoCount:state.cargoes.length, at:new Date().toISOString()});
+    while(snaps.length>60) snaps.shift();
+    ls_set(LS_SNAP_DAILY,snaps);
+  }
+  function maybeSnapshotWeekly(){
+    const snaps=ls_get(LS_SNAP_WEEK,[]);
+    const wk=isoWeek();
+    if(snaps.some(s=>s.week===wk)) return;
+    snaps.push({week:wk, at:new Date().toISOString(), cargoes:JSON.parse(JSON.stringify(state.cargoes)), strips:JSON.parse(JSON.stringify(state.strips))});
+    while(snaps.length>52) snaps.shift();
+    ls_set(LS_SNAP_WEEK,snaps);
+  }
+  function previousDaySnapshot(){
+    const snaps=ls_get(LS_SNAP_DAILY,[]);
+    if(snaps.length<2) return null;
+    return snaps[snaps.length-2];
+  }
+
+  // ── cpFP curve access ────────────────────────────────────────────────────
+  function curvesReady(){
+    if(typeof cpGet!=='function') return false;
+    const fp=cpGet('cp_fp',null);
+    return !!(fp && fp.JKM && fp.JKM.length);
+  }
+  function getCurveDate(){
+    if(typeof sDates!=='undefined' && sDates && sDates.length) return sDates[sDates.length-1];
+    const fp=cpGet && cpGet('cp_fp',null);
+    return fp?._asOf || '—';
+  }
+  // Convert "Jul-26" or "2026-07" or Date → 0-based index into cpFP arrays
+  // cpFP is indexed 0..23 where 0 = front month of cp_fp reference
+  function monthToIdx(m){
+    if(!m) return -1;
+    const fp=cpGet && cpGet('cp_fp',null);
+    if(!fp || !fp._months) return -1;
+    // fp._months is an array of month labels in the form "YYYY-MM" typically
+    const tgt = normMonth(m);
+    return fp._months.findIndex(x=>normMonth(x)===tgt);
+  }
+  function normMonth(m){
+    if(!m) return '';
+    if(m instanceof Date) return m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0');
+    const s=String(m).trim();
+    // "YYYY-MM"
+    if(/^\d{4}-\d{2}/.test(s)) return s.slice(0,7);
+    // "Jul-26", "Jul 26", "July 26", "July-26"
+    const mon={jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+    const mm=s.match(/^([A-Za-z]{3,9})[- ]?(\d{2,4})$/);
+    if(mm){
+      const k=mm[1].toLowerCase().slice(0,3);
+      const yr=mm[2].length===2?('20'+mm[2]):mm[2];
+      if(mon[k]) return yr+'-'+mon[k];
+    }
+    return s;
+  }
+  function monthLabel(m){
+    const s=normMonth(m);
+    const mm={'01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun','07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec'};
+    const p=s.match(/^(\d{4})-(\d{2})$/);
+    if(p) return mm[p[2]]+'-'+p[1].slice(2);
+    return s;
+  }
+  function monthOptions(){
+    const fp=cpGet && cpGet('cp_fp',null);
+    if(fp && fp._months && fp._months.length) return fp._months.map(m=>({v:normMonth(m),lbl:monthLabel(m)}));
+    // Fallback: synthesize from aD latest date
+    const d=getCurveDate();
+    const now=/^\d{4}-\d{2}/.test(d)?new Date(d):new Date();
+    const out=[];
+    for(let i=0;i<24;i++){
+      const dt=new Date(now.getFullYear(),now.getMonth()+i,1);
+      const s=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+      out.push({v:s,lbl:monthLabel(s)});
+    }
+    return out;
+  }
+  // Fetch flat price for an index at a given month — from cpFP primary, aD fallback
+  function getFlat(index,month){
+    if(!index||!month) return null;
+    const fp=cpGet && cpGet('cp_fp',null);
+    const idx=monthToIdx(month);
+    if(fp && fp[index] && idx>=0 && fp[index][idx]!=null) return +fp[index][idx];
+    // Fallback: aD
+    if(typeof aD!=='undefined' && typeof sDates!=='undefined' && sDates.length){
+      const latDs=sDates[sDates.length-1];
+      const row=(aD[latDs]?.rows||[]).find(r=>normMonth(r.pk)===normMonth(month));
+      if(row){
+        const keyMap={JKM:'JKM',TTF:'ttf_usd',HH:'hh',NBP:'nbp_usd',Brent:'Brent','JKM Balmo':'JKMBalmo','TTF DA':'ttfDa','NBP DA':'nbpDa',PSV:'psv',THE:'the',PEG:'peg',PVB:'pvb',ZTP:'ztp',WIM:'wim'};
+            const k=keyMap[index]; if(k && row[k]!=null) return +row[k];
+        if(row[index]!=null) return +row[index];
+      }
+    }
+    return null;
+  }
+
+  // ── Cargo schema + P&L math ──────────────────────────────────────────────
+  function blankCargo(){
+    return {
+      id: nextCargoId(),
+      st_number:'', status:'Tentative', cargo_type:'Spot', deal_class:'Single', counterparty:'',
+      // Buy leg
+      buy_incoterm:'FOB', load_port:'Sabine Pass', load_month:'', buy_counterparty:'',
+      buy_month:'', buy_index:'HH', buy_formula:'% × Index + Spread', buy_mult:1.15, buy_spread:1.90, buy_fixed:null,
+      // Sell leg
+      sell_incoterm:'DES', delivery_location:'', discharge_port:'', discharge_month:'', sell_counterparty:'',
+      sell_month:'', sell_index:'TTF', sell_formula:'Index + Spread', sell_mult:1.0, sell_spread:-0.20, sell_fixed:null,
+      // Volume & ship
+      energy_factor:DEFAULT_EF, loaded_cbm:157750, ship_size:DEFAULT_SHIP_SIZE, bog_rate:DEFAULT_BOG,
+      speed_knots:DEFAULT_SPEED, ballast_type:'Bunkers', hfo_tpd:90, lsmgo_tpd:8,
+      // Freight
+      laden_nm:0, cooldown_d:1, loadport_d:1.5, dischport_d:1.5,
+      daily_hire:93000, hfo_price:550, lsmgo_price:750, eua_price:80.206, eur_usd:1.09,
+      ets_coverage:0, load_port_cost:30000, disch_port_cost:130000, war_risk:0, canal_cost:0,
+      freight_override:null, ship_fixed:false,
+      // Flex — structured per Phase 1 (extends old flex_destination boolean)
+      // Destination flex
+      flex_dest_mode:'none',                  // 'none' | 'premium' | 'intra_region' (inter_basin implicit when FOB)
+      flex_dest_region:'',                    // 'NWE' | 'MED' | 'WIM' | 'JKTC' (intra_region only)
+      flex_dest_hubs:[],                      // array of hub strings, editable per termsheet
+      flex_dest_premium_market:'',            // PREMIUM_MARKETS.key (premium mode only)
+      flex_dest_premium_usd:0,                // $/MMBtu premium vs benchmark (premium mode only)
+      flex_dest_holder:'counterparty',        // 'us' | 'counterparty'
+      flex_dest_nom_d:30,                     // days prior to DW for base port nomination
+      flex_dest_sub_d:15,                     // days prior to DW for port substitution
+      // Volume flex
+      flex_vol_min:null,                      // TBtu min of qty range
+      flex_vol_max:null,                      // TBtu max of qty range
+      flex_vol_optol:5,                       // ±% operational tolerance
+      flex_vol_holder:'us',                   // 'us' | 'counterparty'
+      // Timing flex
+      flex_time_dw_d:3,                       // initial DW length in days
+      flex_time_narrow_d:20,                  // days prior to DW to narrow to 1-day
+      flex_time_holder:'counterparty',
+      // Special / ad-hoc termsheet notes
+      flex_special_terms:'',
+      // Portfolio match (manually editable in Phase 1; auto-engine in Phase 2)
+      matched_to:'',
+      // Legacy fields kept for back-compat (silently mirrored)
+      flex_destination:false, flex_destinations:[], flex_volume_pct:0,
+      // Strip/LT metadata
+      strip_id:null, strip_index:null,
+      notes:'',
+      _created: new Date().toISOString(),
+    };
+  }
+  function nextCargoId(){
+    const max = state.cargoes.reduce((m,c)=>{
+      const n=parseInt(c.id,10); return isNaN(n)?m:Math.max(m,n);
+    },245); // start at 246 per user's morning book
+    return String(max+1);
+  }
+
+  // Compute FOB/DES prices from formula + curve
+  function computeLegPrice(formula, index, month, mult, spread, fixed){
+    if(formula==='Fixed') return fixed!=null?+fixed:null;
+    const flat=getFlat(index,month);
+    if(flat==null) return null;
+    if(formula==='% × Index + Spread') return +mult*flat + +spread;
+    if(formula==='Index + Spread')     return flat + +spread;
+    return null;
+  }
+
+  // Voyage calc — simplified from Deal_Economics sheet
+  function computeFreight(c){
+    if(c.freight_override!=null && c.freight_override!=='') return {total:+c.freight_override, unit:+c.freight_override, breakdown:{override:+c.freight_override}, days:null};
+    const nominated = c.loaded_cbm * c.energy_factor; // MMBtu
+    const nm = +c.laden_nm||0;
+    if(nm===0 && c.buy_incoterm==='FOB' && c.sell_incoterm==='DES'){
+      return {total:0,unit:0,breakdown:{},days:null, missing:true};
+    }
+    const ladenDays = nm>0 ? (nm / (c.speed_knots*24)) * 1.05 : 0;  // 5% sea margin
+    const ballastDays = ladenDays; // approximation
+    const voyageDays = ladenDays + ballastDays + c.cooldown_d + c.loadport_d + c.dischport_d;
+    // Hire: charter × (laden + ballast + port stays + cooldown)
+    const hire = c.daily_hire * voyageDays;
+    // Bunker — simplified: HFO at sea only
+    const hfoTons = c.hfo_tpd * (ladenDays + ballastDays);
+    const lsmgoTons = c.lsmgo_tpd * (c.loadport_d + c.dischport_d);
+    const bunker = hfoTons*c.hfo_price + lsmgoTons*c.lsmgo_price;
+    // ETS — CO2 tonnes × EUA × FX × coverage × year rampup
+    const year = extractYear(c.discharge_month) || extractYear(c.load_month) || 2026;
+    const rampup = year>=2026?1.0 : year===2025?0.7 : year===2024?0.4 : 1.0;
+    const co2Tons = hfoTons*3.1144 + lsmgoTons*3.206;
+    const ets = co2Tons * (c.eua_price||0) * (c.eur_usd||1) * (c.ets_coverage||0) * rampup;
+    const port = (+c.load_port_cost||0) + (+c.disch_port_cost||0);
+    const extra = (+c.war_risk||0) + (+c.canal_cost||0);
+    const etsSafe = isFinite(ets) ? ets : 0;
+    const total = hire + bunker + etsSafe + port + extra;
+    // BOG loss at DES: separate economic cost, not freight line — handled in P&L
+    const edq = nominated * (1 - c.bog_rate * voyageDays);
+    const unit = edq>0 ? total/edq : 0;
+    return {total, unit, edq, nominated, voyageDays, ladenDays,
+      breakdown:{hire, bunker, port, ets, extra}, days:voyageDays};
+  }
+  function extractYear(m){
+    const s=normMonth(m); const p=s.match(/^(\d{4})/);
+    return p?+p[1]:null;
+  }
+  // Recompute helper: re-evaluates using current cpFP
+  function recompute(c){
+    const fob = c.buy_incoterm==='FOB' ? computeLegPrice(c.buy_formula,c.buy_index,c.buy_month||c.load_month,c.buy_mult,c.buy_spread,c.buy_fixed) : null;
+    const buyDes = c.buy_incoterm==='DES' ? computeLegPrice(c.buy_formula,c.buy_index,c.buy_month||c.load_month,c.buy_mult,c.buy_spread,c.buy_fixed) : null;
+    const sellDes = c.sell_incoterm==='DES' ? computeLegPrice(c.sell_formula,c.sell_index,c.sell_month||c.discharge_month||c.load_month,c.sell_mult,c.sell_spread,c.sell_fixed) : null;
+    const sellFob = c.sell_incoterm==='FOB' ? computeLegPrice(c.sell_formula,c.sell_index,c.sell_month||c.load_month,c.sell_mult,c.sell_spread,c.sell_fixed) : null;
+    const buyPrice = fob ?? buyDes;
+    const sellPrice = sellDes ?? sellFob;
+    const freight = computeFreight(c);
+    const nominated = c.loaded_cbm * c.energy_factor;
+    const edq = freight.edq || nominated;
+
+    // P&L by incoterm branch — three valid combinations only
+    let pnlUsd=null, pnlUnit=null, branch='';
+    const hasBuy = buyPrice!=null;
+    const hasSell = sellPrice!=null;
+    if(hasBuy && hasSell){
+      if(c.buy_incoterm==='FOB' && c.sell_incoterm==='DES'){
+        pnlUsd = (sellPrice - freight.unit) * edq - buyPrice * nominated;
+        branch='FOB→DES';
+      } else if(c.buy_incoterm==='FOB' && c.sell_incoterm==='FOB'){
+        pnlUsd = (sellPrice - buyPrice) * nominated;
+        branch='FOB→FOB';
+      } else if(c.buy_incoterm==='DES' && c.sell_incoterm==='DES'){
+        pnlUsd = (sellPrice - buyPrice) * edq;
+        branch='DES→DES';
+      }
+      // DES→FOB is not a valid physical cargo structure — blocked by validation
+      if(branch) pnlUnit = pnlUsd / (edq||nominated);
+    }
+
+    // Exposure classification
+    const exposure = classifyExposure(c);
+    // Freight exposure: FOB→DES with ship not fixed is the only exposed case
+    const freightExposure = freightExposureFlag(c);
+
+    // Unsold/Unsourced theoretical mark
+    let markInfo=null;
+    if(c.status==='Unsold' && hasBuy && !hasSell){
+      markInfo = markAgainstBestNetback(c, buyPrice, freight, nominated, edq);
+    } else if(c.status==='Unsourced' && hasSell && !hasBuy){
+      markInfo = markAgainstShortLeg(c, sellPrice, freight, nominated, edq);
+    }
+
+    // Certain/Uncertain/Treasury classification
+    const cut = classifyCUT(c);
+
+    // Flex / extrinsic (Margrabe approx if multiple destinations or FOB vs DES optionality)
+    const flex = computeFlexExtrinsic(c, sellPrice, freight, edq);
+
+    return {
+      buyPrice, sellPrice, fob, buyDes, sellDes, sellFob,
+      freight, nominated, edq, pnlUsd, pnlUnit, branch,
+      exposure, freightExposure, markInfo, cut, flex
+    };
+  }
+  function classifyExposure(c){
+    const buyIdx=c.buy_index, sellIdx=c.sell_index;
+    const buyMo=normMonth(c.buy_month||c.load_month);
+    const sellMo=normMonth(c.sell_month||c.discharge_month||c.load_month);
+    if(!buyIdx||!sellIdx) return {type:'—',detail:''};
+    if(buyIdx===sellIdx && buyMo===sellMo) return {type:'Fully priced',detail:'Same index, same month — margin locked'};
+    if(buyIdx===sellIdx && buyMo!==sellMo) return {type:'Time',detail:`${buyIdx} calendar spread: ${monthLabel(buyMo)} vs ${monthLabel(sellMo)}`};
+    return {type:'Basis',detail:`Long ${sellIdx}${sellMo?' '+monthLabel(sellMo):''} / Short ${buyIdx}${buyMo?' '+monthLabel(buyMo):''}`};
+  }
+  function freightExposureFlag(c){
+    const dealType = c.buy_incoterm + '→' + c.sell_incoterm;
+    if(dealType==='DES→DES') return {flag:false, reason:'DES/DES — counterparty ships'};
+    if(dealType==='FOB→FOB') return {flag:false, reason:'FOB/FOB — no shipping leg'};
+    if(dealType==='FOB→DES' && c.ship_fixed) return {flag:false, reason:'Ship fixed — freight locked'};
+    if(dealType==='FOB→DES') return {flag:true, reason:'FOB/DES with ship not fixed — BLNG exposure'};
+    if(dealType==='DES→FOB') return {flag:false, reason:'Invalid combination — not a standard LNG cargo turn'};
+    return {flag:false, reason:''};
+  }
+  function markAgainstBestNetback(c, buyPrice, freight, nominated, edq){
+    // For unsold: project best netback across a handful of destinations
+    const candidates=['TTF','JKM','NBP'];
+    const mo = normMonth(c.discharge_month||c.load_month);
+    let best=null;
+    candidates.forEach(idx=>{
+      const flat=getFlat(idx,mo);
+      if(flat==null) return;
+      const netback = flat + (idx==='JKM'?-0.30:-0.20) - freight.unit; // rough discount to curve
+      if(!best || netback>best.netback) best={index:idx, flat, netback};
+    });
+    if(!best) return null;
+    const pnlUsd = (best.netback) * edq - buyPrice*nominated;
+    return {type:'theoretical_mark_best_netback', bestIndex:best.index, bestNetback:best.netback, pnlUsd, pnlUnit:pnlUsd/edq, note:'Marked against best-netback forward curve. Full index exposure until sold.'};
+  }
+  function markAgainstShortLeg(c, sellPrice, freight, nominated, edq){
+    // For unsourced: you're short the sell leg → mark against sourcing cost at current FOB curves
+    const mo=normMonth(c.buy_month||c.load_month);
+    const hhFlat=getFlat('HH',mo);
+    if(hhFlat==null) return null;
+    const impliedFobUsd = 1.15*hhFlat + 2.00; // rough sourcing cost
+    const pnlUsd = (sellPrice - freight.unit)*edq - impliedFobUsd*nominated;
+    return {type:'theoretical_mark_short_leg', impliedFob:impliedFobUsd, pnlUsd, pnlUnit:pnlUsd/edq, note:'Marked against sourcing cost at HH+risk premium. Full basis exposure until sourced.'};
+  }
+  function classifyCUT(c){
+    // Certain: priced & between pricing end and settlement → MtM locked, awaiting cash
+    // Uncertain: pricing month not over yet → live index exposure
+    // Treasury: settled (discharge delivered & priced)
+    const now = new Date();
+    const dischMo = normMonth(c.discharge_month||c.load_month);
+    const buyMo = normMonth(c.buy_month||c.load_month);
+    const sellMo = normMonth(c.sell_month||c.discharge_month||c.load_month);
+    function monthEnd(s){
+      const m=s.match(/^(\d{4})-(\d{2})$/);
+      if(!m) return null;
+      return new Date(+m[1], +m[2], 0, 23, 59, 59);
+    }
+    const pmEnd = Math.max(
+      (monthEnd(buyMo)||new Date(0)).getTime(),
+      (monthEnd(sellMo)||new Date(0)).getTime()
+    );
+    const dischEnd = monthEnd(dischMo);
+    if(c.status==='Delivered') return 'Treasury';
+    if(c.status==='Passed') return '—';
+    if(pmEnd===0) return 'Uncertain';
+    if(now.getTime() < pmEnd) return 'Uncertain';
+    if(dischEnd && now.getTime() < dischEnd.getTime()) return 'Certain';
+    return 'Treasury';
+  }
+  function computeFlexExtrinsic(c, sellPrice, freight, edq){
+    // Returns: {sources:[{src,tier,unit,usd,holder}], retained, givenUp, unit (sum), note}
+    // All math is Phase 1 approximation. Phase 2 = real Kirk/Margrabe/basket via Optimization tab.
+    const out = {sources:[], retained:0, givenUp:0, unit:0, note:''};
+    const mo = normMonth(c.discharge_month||c.load_month);
+    const T = monthsBetweenNow(mo)/12;
+    if(T<=0) return out;
+    const sigmaSpread = 0.55; // proxy for inter-hub / inter-basin spread vol
+    const refPrice = (sellPrice||15) + (getFlat('HH',mo)||3);
+    // ── Source 1: Destination flex ──────────────────────────────────────────
+    let destUnit=0, destLabel='', destHolder='';
+    const buyInco = c.buy_incoterm, sellInco = c.sell_incoterm;
+    const isFOB = (sellInco==='FOB' || buyInco==='FOB');
+    if(isFOB){
+      // Inter-basin: implicit. If we sell FOB, counterparty captures it. If we buy FOB, we capture it.
+      // Approximation: 0.4 × σ × √T × refPrice × (factor scaling with basin spread)
+      destUnit = 0.4 * sigmaSpread * Math.sqrt(T) * refPrice * 1.0; // full inter-basin
+      destLabel = 'Inter-basin (implicit)';
+      destHolder = (sellInco==='FOB' && buyInco!=='FOB') ? 'counterparty' :  // sell FOB → cpty
+                   (buyInco==='FOB' && sellInco!=='FOB') ? 'us' :              // buy FOB → us
+                   'counterparty';                                              // FOB→FOB: paper, no flex really
+      if(sellInco==='FOB' && buyInco==='FOB') { destUnit=0; destLabel='FOB→FOB (paper, no flex)'; }
+    } else if(c.flex_dest_mode==='premium'){
+      // Premium market: small extrinsic (single port; "premium" is the spread vs benchmark, not optionality)
+      // The premium $ is intrinsic, not extrinsic. Extrinsic ≈ 0.
+      destUnit = 0;
+      destLabel = 'Premium single market (no flex)';
+      destHolder = c.flex_dest_holder || 'counterparty';
+    } else if(c.flex_dest_mode==='intra_region'){
+      // Intra-region: extrinsic scales with hub count. More hubs = more optionality.
+      let hubs = [];
+      try { hubs = Array.isArray(c.flex_dest_hubs) ? c.flex_dest_hubs : JSON.parse(c.flex_dest_hubs||'[]'); } catch(e){ hubs=[]; }
+      const hubCount = Math.max(1, hubs.length);
+      // Hub-spread vol is much lower than inter-basin (gas hubs are highly correlated)
+      const hubSpreadVol = 0.20;
+      // Extrinsic scales with √(N-1) crudely (basket-of-spreads heuristic)
+      destUnit = 0.4 * hubSpreadVol * Math.sqrt(T) * refPrice * Math.sqrt(Math.max(0, hubCount-1)) * 0.5;
+      destLabel = `Intra-region (${c.flex_dest_region||'—'}, ${hubCount} hubs)`;
+      destHolder = c.flex_dest_holder || 'counterparty';
+    } else {
+      // mode === 'none'
+      destUnit = 0;
+      destLabel = 'No destination flex';
+      destHolder = '—';
+    }
+    if(destUnit>0){
+      const usd = destUnit * (edq||0);
+      out.sources.push({src:'Destination', tier:destLabel, unit:destUnit, usd, holder:destHolder});
+      if(destHolder==='us') out.retained += usd; else if(destHolder==='counterparty') out.givenUp += usd;
+    } else if(destLabel){
+      out.sources.push({src:'Destination', tier:destLabel, unit:0, usd:0, holder:destHolder});
+    }
+    // ── Source 2: Volume flex ───────────────────────────────────────────────
+    const volMin = +c.flex_vol_min||0, volMax = +c.flex_vol_max||0, optol = +c.flex_vol_optol||0;
+    if(volMin>0 && volMax>volMin){
+      // Range nomination: holder picks within range. Extrinsic ≈ swap option value
+      const rangeFrac = (volMax-volMin)/((volMax+volMin)/2);
+      const volUnit = 0.4 * sigmaSpread * Math.sqrt(T) * refPrice * rangeFrac;
+      const usd = volUnit * (edq||0);
+      const holder = c.flex_vol_holder || 'us';
+      out.sources.push({src:'Volume', tier:`Range ${volMin}-${volMax} TBtu`, unit:volUnit, usd, holder});
+      if(holder==='us') out.retained += usd; else out.givenUp += usd;
+    } else if(optol>0){
+      // Operational tolerance: small swap option
+      const volUnit = 0.1 * sigmaSpread * Math.sqrt(T) * refPrice * (optol/100);
+      const usd = volUnit * (edq||0);
+      const holder = c.flex_vol_holder || 'us';
+      out.sources.push({src:'Volume', tier:`±${optol}% optol`, unit:volUnit, usd, holder});
+      if(holder==='us') out.retained += usd; else out.givenUp += usd;
+    }
+    // ── Source 3: Timing flex ───────────────────────────────────────────────
+    const dwLen = +c.flex_time_dw_d||0, narrowD = +c.flex_time_narrow_d||0;
+    if(dwLen>1){
+      // Multi-day DW = small calendar-spread option value
+      const timeUnit = 0.05 * sigmaSpread * Math.sqrt(T) * refPrice * Math.log(dwLen);
+      const usd = timeUnit * (edq||0);
+      const holder = c.flex_time_holder || 'counterparty';
+      out.sources.push({src:'Timing', tier:`${dwLen}d DW, narrow ${narrowD}d prior`, unit:timeUnit, usd, holder});
+      if(holder==='us') out.retained += usd; else out.givenUp += usd;
+    }
+    out.unit = (out.retained + out.givenUp) / Math.max(edq||1, 1);
+    out.note = '(Phase 2: Kirk/Margrabe basket)';
+    return out;
+  }
+  function monthsBetweenNow(m){
+    const s=normMonth(m); const p=s.match(/^(\d{4})-(\d{2})$/);
+    if(!p) return 0;
+    const target=new Date(+p[1], +p[2]-1, 15).getTime();
+    return Math.max(0, (target - Date.now())/(1000*86400*30.44));
+  }
+
+  // ── Portfolio-level aggregations ─────────────────────────────────────────
+  function computePortfolioMtm(){
+    init();
+    let tot=0;
+    state.cargoes.forEach(c=>{
+      if(c.status==='Passed') return;
+      const r=recompute(c);
+      if(r.pnlUsd!=null) tot += r.pnlUsd;
+      else if(r.markInfo?.pnlUsd!=null) tot += r.markInfo.pnlUsd;
+    });
+    return tot;
+  }
+  function aggByStatus(){
+    const out={};
+    state.cargoes.forEach(c=>{
+      const r=recompute(c);
+      const pnl = r.pnlUsd ?? r.markInfo?.pnlUsd ?? 0;
+      out[c.status] = (out[c.status]||{count:0,pnl:0});
+      out[c.status].count++;
+      out[c.status].pnl += pnl;
+    });
+    return out;
+  }
+  function aggByCUT(){
+    const out={Certain:0, Uncertain:0, Treasury:0};
+    state.cargoes.forEach(c=>{
+      if(c.status==='Passed') return;
+      const r=recompute(c);
+      const pnl = r.pnlUsd ?? r.markInfo?.pnlUsd ?? 0;
+      const cut = r.cut || 'Uncertain';
+      if(out[cut]!=null) out[cut] += pnl;
+    });
+    return out;
+  }
+  function aggExposure(){
+    const exp={};
+    state.cargoes.forEach(c=>{
+      if(c.status==='Passed' || c.status==='Delivered') return;
+      const nominated = (c.loaded_cbm||0) * (c.energy_factor||0);
+      // Buy leg — short the index
+      if(c.buy_index && (c.buy_month||c.load_month)){
+        const key = c.buy_index + ' ' + monthLabel(c.buy_month||c.load_month);
+        exp[key] = (exp[key]||0) - (c.buy_mult||1)*nominated/1e6; // TBtu net
+      }
+      // Sell leg — long the index
+      if(c.sell_index && (c.sell_month||c.discharge_month||c.load_month)){
+        const key = c.sell_index + ' ' + monthLabel(c.sell_month||c.discharge_month||c.load_month);
+        exp[key] = (exp[key]||0) + (c.sell_mult||1)*nominated/1e6;
+      }
+    });
+    return exp;
+  }
+  function aggFlex(){
+    let retained=0, givenUp=0;
+    state.cargoes.forEach(c=>{
+      if(c.status==='Passed') return;
+      const r=recompute(c);
+      retained += r.flex?.retained||0;
+      givenUp += r.flex?.givenUp||0;
+    });
+    return {retained, givenUp};
+  }
+  function topBottomCargoes(n=5){
+    const rows = state.cargoes.filter(c=>c.status!=='Passed').map(c=>{
+      const r=recompute(c);
+      const pnl = r.pnlUsd ?? r.markInfo?.pnlUsd ?? 0;
+      return {c, pnl, r};
+    }).sort((a,b)=>b.pnl-a.pnl);
+    return {top:rows.slice(0,n), bottom:rows.slice(-3).reverse()};
+  }
+
+  // ═══════════════ RENDERERS ═══════════════════════════════════════════════
+
+  function renderStub(c, title, desc, phase){
+    c.innerHTML = `
+      <div class="ph-page">
+        <div class="ph-lbl">PORTFOLIO VALUATION</div>
+        <div class="ph-ttl">${title}</div>
+        <div class="ph-sub">${desc}</div>
+        <div class="ph-box">Coming in ${phase}</div>
+      </div>`;
+  }
+
+  // ── Morning Book ─────────────────────────────────────────────────────────
+  function renderMorning(c){
+    const ready = curvesReady();
+    const cdate = getCurveDate();
+    const today = isoDay();
+    const stale = ready && cdate && cdate < today;
+    const mtm = ready ? computePortfolioMtm() : 0;
+    const byStatus = ready ? aggByStatus() : {};
+    const cut = ready ? aggByCUT() : {Certain:0,Uncertain:0,Treasury:0};
+    const cutTotal = (cut.Certain||0) + (cut.Uncertain||0) + (cut.Treasury||0);
+    const flex = ready ? aggFlex() : {retained:0,givenUp:0};
+    const {top,bottom} = ready ? topBottomCargoes(5) : {top:[],bottom:[]};
+    const exp = ready ? aggExposure() : {};
+    const prevSnap = previousDaySnapshot();
+    const raf = cutTotal!==0 ? (cut.Uncertain/cutTotal) : 0;
+
+    c.innerHTML = `
+      <style>
+        .mb-wrap{padding:18px 22px 40px;color:var(--tx);font-family:inherit}
+        .mb-hdr{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px solid var(--bl);padding-bottom:14px;margin-bottom:16px;flex-wrap:wrap}
+        .mb-hdr-ttl{font-size:16px;color:var(--th);letter-spacing:.03em}
+        .mb-hdr-sub{font-size:10px;color:var(--td);letter-spacing:.08em}
+        .mb-chips{display:flex;gap:8px;flex-wrap:wrap}
+        .mb-chip{font-size:9px;color:var(--td);border:1px solid var(--bl);padding:4px 10px;letter-spacing:.08em;background:var(--bg2)}
+        .mb-chip.amber{color:#fbbf24;border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08)}
+        .mb-metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+        .mb-m{background:var(--bg2);border:1px solid var(--bl);padding:11px 13px}
+        .mb-m-lbl{font-size:9px;color:var(--td);letter-spacing:.1em;margin-bottom:5px}
+        .mb-m-val{font-size:19px;font-weight:600;color:var(--th);font-variant-numeric:tabular-nums}
+        .mb-m-val.pos{color:var(--gr)}.mb-m-val.neg{color:var(--rd)}
+        .mb-m-sub{font-size:9px;color:var(--td);margin-top:3px}
+        .mb-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+        .mb-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+        .mb-card{background:var(--bg2);border:1px solid var(--bl);padding:13px 15px}
+        .mb-card-ttl{font-size:10px;color:var(--b);letter-spacing:.12em;margin-bottom:11px;padding-bottom:7px;border-bottom:1px solid var(--bl)}
+        .mb-tbl{width:100%;border-collapse:collapse;font-size:11px}
+        .mb-tbl th{text-align:left;font-size:9px;font-weight:500;color:var(--td);letter-spacing:.05em;padding:5px 6px;border-bottom:1px solid var(--bl)}
+        .mb-tbl td{padding:5px 6px;border-bottom:1px solid rgba(77,158,245,.05);font-variant-numeric:tabular-nums}
+        .mb-tbl td.r,.mb-tbl th.r{text-align:right}
+        .mb-pill{display:inline-block;font-size:9px;padding:2px 7px;letter-spacing:.04em}
+        .mb-empty{padding:18px 0;color:var(--td);font-size:10px;text-align:center;letter-spacing:.05em}
+        .mb-bar{height:6px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:4px}
+        .mb-bar-fill{height:100%}
+        .mb-wf-row{display:flex;align-items:center;gap:9px;font-size:11px;padding:4px 0}
+        .mb-wf-lbl{flex:1;color:var(--tx)}
+        .mb-wf-bar{width:80px;height:12px;background:var(--bg3);border-radius:2px;position:relative}
+        .mb-wf-seg{position:absolute;top:0;bottom:0;border-radius:2px}
+        .mb-wf-val{width:72px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+        .mb-load{padding:40px 28px;text-align:center;color:var(--td);font-size:11px;border:1px dashed var(--bl);background:var(--bg2)}
+        .mb-load a{color:var(--b);cursor:pointer;text-decoration:underline}
+        .mb-kpi-lg{font-size:17px;font-weight:600;color:var(--th);font-variant-numeric:tabular-nums}
+      </style>
+      <div class="mb-wrap">
+        <div class="mb-hdr">
+          <div>
+            <div class="mb-hdr-ttl">LNG TradeOS — Morning Book</div>
+            <div class="mb-hdr-sub">Ibrahim Mar · Personal capacity</div>
+          </div>
+          <div class="mb-chips">
+            <span class="mb-chip">Assessment: ${cdate||'—'}</span>
+            <span class="mb-chip">Today: ${today}</span>
+            ${stale ? `<span class="mb-chip amber">⚠ Curves stale</span>` : ''}
+            ${!ready ? `<span class="mb-chip amber">⚠ Curves not loaded</span>` : ''}
+            <button class="mb-chip" style="cursor:pointer" onclick="pvTab('morning')">↻ Refresh</button>
+          </div>
+        </div>
+        ${!ready ? `
+          <div class="mb-load">
+            <div style="font-size:12px;color:var(--th);margin-bottom:10px">Curves not loaded in this browser session</div>
+            <div>Open <a onclick="shellNav('financial')">FINANCIAL TRADING</a> first to hydrate EOD curves into memory,<br>then return here to see live Morning Book.</div>
+          </div>` : ''}
+        <div class="mb-metrics">
+          <div class="mb-m">
+            <div class="mb-m-lbl">PHYSICAL MTM</div>
+            <div class="mb-m-val ${mtm>=0?'pos':'neg'}">${fmtM(mtm)}</div>
+            <div class="mb-m-sub">${state.cargoes.filter(c=>c.status!=='Passed').length} cargoes</div>
+          </div>
+          <div class="mb-m">
+            <div class="mb-m-lbl">HEDGE P&L</div>
+            <div class="mb-m-val">—</div>
+            <div class="mb-m-sub">Phase 4</div>
+          </div>
+          <div class="mb-m">
+            <div class="mb-m-lbl">SPEC MTM</div>
+            <div class="mb-m-val">—</div>
+            <div class="mb-m-sub">Phase 6</div>
+          </div>
+          <div class="mb-m">
+            <div class="mb-m-lbl">COMBINED BOOK</div>
+            <div class="mb-m-val ${mtm>=0?'pos':'neg'}">${fmtM(mtm)}</div>
+            <div class="mb-m-sub">physical only in Phase 1</div>
+          </div>
+          <div class="mb-m">
+            <div class="mb-m-lbl">RAF %</div>
+            <div class="mb-m-val">${(raf*100).toFixed(0)}%</div>
+            <div class="mb-m-sub">uncertain exposure</div>
+          </div>
+        </div>
+
+        <div class="mb-grid">
+          <div class="mb-card">
+            <div class="mb-card-ttl">CARGO BOOK — LIVE POSITIONS</div>
+            ${state.cargoes.length===0 ? `<div class="mb-empty">No cargoes yet — <a style="color:var(--b);cursor:pointer" onclick="pvTab('cargo')">add one in Cargo Book →</a></div>` :
+              `<table class="mb-tbl">
+                <thead><tr><th>#</th><th>Origin</th><th>Del.</th><th>Index</th><th>Status</th><th class="r">MTM</th></tr></thead>
+                <tbody>${state.cargoes.filter(c=>c.status!=='Passed').slice(0,10).map(c=>{
+                  const r=ready?recompute(c):{};
+                  const pnl = r.pnlUsd ?? r.markInfo?.pnlUsd ?? null;
+                  const st = STATUSES.find(s=>s.v===c.status)||STATUSES[0];
+                  return `<tr>
+                    <td>${c.id}</td>
+                    <td>${(c.load_port||'—').slice(0,12)}</td>
+                    <td>${monthLabel(c.discharge_month||c.load_month)||'—'}</td>
+                    <td>${(c.buy_index||'—')}→${(c.sell_index||'—')}</td>
+                    <td><span class="mb-pill" style="background:${st.bg};color:${st.col}">${st.lbl}</span></td>
+                    <td class="r" style="color:${pnl>=0?'var(--gr)':'var(--rd)'}">${pnl!=null?fmtM(pnl):'—'}</td>
+                  </tr>`;
+                }).join('')}</tbody>
+              </table>`}
+          </div>
+
+          <div class="mb-card">
+            <div class="mb-card-ttl">P&L WATERFALL — TODAY VS T−1</div>
+            ${prevSnap ? renderWaterfall(prevSnap.totalMtm, mtm) :
+              `<div class="mb-empty">T−1 snapshot will appear from day 2<br>(first snapshot captured today: ${fmtM(mtm)})</div>`}
+          </div>
+        </div>
+
+        <div class="mb-grid3">
+          <div class="mb-card">
+            <div class="mb-card-ttl">HEDGE BOOK</div>
+            <div class="mb-empty">Awaiting Paper Book capture<br><span style="color:var(--b);cursor:pointer" onclick="pvTab('paper')">→ Phase 4</span></div>
+          </div>
+
+          <div class="mb-card">
+            <div class="mb-card-ttl">CERTAIN / UNCERTAIN / TREASURY</div>
+            ${renderCUT(cut, cutTotal)}
+          </div>
+
+          <div class="mb-card">
+            <div class="mb-card-ttl">SPEC BOOK — LIVE POSITIONS</div>
+            <div class="mb-empty">Awaiting Spec capture<br><span style="color:var(--b);cursor:pointer" onclick="pvTab('spec')">→ Phase 6</span></div>
+          </div>
+        </div>
+
+        <div class="mb-grid" style="grid-template-columns:1fr 1fr;margin-top:12px">
+          <div class="mb-card">
+            <div class="mb-card-ttl">TOP / BOTTOM CARGOES BY MTM</div>
+            ${top.length===0 ? `<div class="mb-empty">No cargoes yet</div>` : `
+              <table class="mb-tbl">
+                <thead><tr><th colspan="3" style="color:var(--gr);font-size:9px">TOP 5</th></tr></thead>
+                <tbody>${top.map(t=>`<tr><td>#${t.c.id}</td><td>${(t.c.load_port||'—').slice(0,20)} → ${(t.c.discharge_port||'FOB').slice(0,14)}</td><td class="r" style="color:var(--gr)">${fmtM(t.pnl)}</td></tr>`).join('')}</tbody>
+                <thead><tr><th colspan="3" style="color:var(--rd);font-size:9px;padding-top:10px">BOTTOM 3</th></tr></thead>
+                <tbody>${bottom.map(t=>`<tr><td>#${t.c.id}</td><td>${(t.c.load_port||'—').slice(0,20)} → ${(t.c.discharge_port||'FOB').slice(0,14)}</td><td class="r" style="color:${t.pnl<0?'var(--rd)':'var(--td)'}">${fmtM(t.pnl)}</td></tr>`).join('')}</tbody>
+              </table>`}
+          </div>
+
+          <div class="mb-card">
+            <div class="mb-card-ttl">EXPOSURE HEATMAP (cargoes only · TBtu)</div>
+            ${Object.keys(exp).length===0 ? `<div class="mb-empty">No exposure yet</div>` : `
+              <table class="mb-tbl">
+                <thead><tr><th>Index / Month</th><th class="r">Net TBtu</th></tr></thead>
+                <tbody>${Object.entries(exp).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,12).map(([k,v])=>`<tr><td>${k}</td><td class="r" style="color:${v>=0?'var(--gr)':'var(--rd)'}">${(v>=0?'+':'')+v.toFixed(2)}</td></tr>`).join('')}</tbody>
+              </table>
+              <div style="font-size:9px;color:var(--td);margin-top:8px">Hedge netting coming in Phase 4. Flex value retained: ${fmtM(flex.retained)} · given up: ${fmtM(flex.givenUp)}</div>`}
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <div class="mb-card">
+            <div class="mb-card-ttl">STATUS COUNTS</div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px">
+              ${STATUSES.map(s=>{
+                const rec=byStatus[s.v]||{count:0,pnl:0};
+                return `<div style="padding:5px 10px;background:${s.bg};color:${s.col};letter-spacing:.05em"><strong>${rec.count}</strong> ${s.lbl} <span style="opacity:.75">${fmtM(rec.pnl)}</span></div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  function renderWaterfall(prev, now){
+    const delta = now - prev;
+    return `
+      <div class="mb-wf-row"><div class="mb-wf-lbl">Opening MTM (T−1)</div><div class="mb-wf-val">${fmtM(prev)}</div></div>
+      <div class="mb-wf-row"><div class="mb-wf-lbl" style="padding-left:12px">Net change today</div><div class="mb-wf-val" style="color:${delta>=0?'var(--gr)':'var(--rd)'}">${(delta>=0?'+':'')+fmtM(delta)}</div></div>
+      <div class="mb-wf-row" style="border-top:1px solid var(--bl);padding-top:8px;font-weight:600"><div class="mb-wf-lbl">Closing MTM (today)</div><div class="mb-wf-val">${fmtM(now)}</div></div>
+      <div style="font-size:9px;color:var(--td);margin-top:10px">Decomposition (curve / new trades / fixings / theta) requires per-component attribution — Phase 5.</div>
+    `;
+  }
+  function renderCUT(cut, total){
+    if(!total || total===0) return `<div class="mb-empty">No positions classified yet</div>`;
+    const pct = x => total!==0 ? (x/total*100) : 0;
+    return `
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:11px"><span>Certain</span><span class="mb-kpi-lg">${fmtM(cut.Certain)}</span></div>
+        <div class="mb-bar"><div class="mb-bar-fill" style="width:${Math.abs(pct(cut.Certain))}%;background:var(--gr)"></div></div>
+        <div style="font-size:9px;color:var(--td);margin-top:2px">${pct(cut.Certain).toFixed(0)}% of total · priced, awaiting cash</div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:11px"><span>Uncertain</span><span class="mb-kpi-lg">${fmtM(cut.Uncertain)}</span></div>
+        <div class="mb-bar"><div class="mb-bar-fill" style="width:${Math.abs(pct(cut.Uncertain))}%;background:#fbbf24"></div></div>
+        <div style="font-size:9px;color:var(--td);margin-top:2px">${pct(cut.Uncertain).toFixed(0)}% of total · live MTM risk</div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:11px"><span>Treasury</span><span class="mb-kpi-lg">${fmtM(cut.Treasury)}</span></div>
+        <div class="mb-bar"><div class="mb-bar-fill" style="width:${Math.abs(pct(cut.Treasury))}%;background:var(--b)"></div></div>
+        <div style="font-size:9px;color:var(--td);margin-top:2px">${pct(cut.Treasury).toFixed(0)}% of total · settled</div>
+      </div>
+      <div style="padding-top:10px;border-top:1px solid var(--bl);display:flex;justify-content:space-between;font-size:11px;font-weight:600"><span>Total MTM</span><span>${fmtM(total)}</span></div>
+    `;
+  }
+
+  // ── Cargo Book: list + form ──────────────────────────────────────────────
+  function renderCargo(c){
+    const editingId = state.editingId;
+    const ready = curvesReady();
+    c.innerHTML = `
+      <style>
+        .cb-wrap{padding:18px 22px 40px;color:var(--tx)}
+        .cb-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+        .cb-ttl{font-size:15px;color:var(--th);letter-spacing:.05em}
+        .cb-sub{font-size:10px;color:var(--td);letter-spacing:.08em}
+        .cb-btn{background:var(--bg2);border:1px solid var(--bl);color:var(--tx);padding:7px 14px;font-size:10px;letter-spacing:.1em;cursor:pointer;font-family:inherit}
+        .cb-btn:hover{background:var(--bd);color:var(--b);border-color:var(--b)}
+        .cb-btn.primary{background:var(--b);color:#0b0d16;border-color:var(--b)}
+        .cb-btn.primary:hover{background:#6cb3ff}
+        .cb-btn.primary:disabled{opacity:.4;cursor:not-allowed}
+        .cb-btn.danger:hover{background:rgba(248,113,113,.15);color:var(--rd);border-color:var(--rd)}
+        .cb-form{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+        .cb-col{background:var(--bg2);border:1px solid var(--bl);padding:14px}
+        .cb-col-ttl{font-size:10px;color:var(--b);letter-spacing:.12em;margin-bottom:11px;padding-bottom:7px;border-bottom:1px solid var(--bl)}
+        .cb-row{display:flex;flex-direction:column;margin-bottom:9px}
+        .cb-row-h{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .cb-row-h2{display:grid;grid-template-columns:1.2fr 1fr;gap:8px}
+        .cb-lbl{font-size:9px;color:var(--td);margin-bottom:3px;letter-spacing:.05em}
+        .cb-inp,.cb-sel{background:var(--bg3);border:1px solid var(--bl);color:var(--tx);padding:5px 7px;font-size:11px;font-family:inherit;border-radius:0}
+        .cb-inp:focus,.cb-sel:focus{outline:none;border-color:var(--b)}
+        .cb-inp:disabled,.cb-sel:disabled{opacity:.5;cursor:not-allowed}
+        .cb-chk{margin-right:6px}
+        .cb-preview{background:var(--bg2);border:1px solid var(--bl);padding:14px;margin-bottom:16px}
+        .cb-preview h4{font-size:10px;color:var(--b);letter-spacing:.12em;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--bl);margin-top:0}
+        .cb-prev-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+        .cb-prev-block{background:var(--bg3);padding:10px 12px}
+        .cb-prev-ttl{font-size:9px;color:var(--td);letter-spacing:.08em;margin-bottom:7px}
+        .cb-prev-line{display:flex;justify-content:space-between;font-size:10px;padding:2px 0;font-variant-numeric:tabular-nums}
+        .cb-prev-line strong{color:var(--th)}
+        .cb-prev-final{display:flex;justify-content:space-between;font-size:13px;padding:8px 0 4px;border-top:1px solid var(--bl);margin-top:6px;font-weight:600}
+        .cb-prev-final.pos{color:var(--gr)}.cb-prev-final.neg{color:var(--rd)}
+        .cb-valid{margin-top:10px;padding-top:10px;border-top:1px solid var(--bl)}
+        .cb-valid-row{display:flex;gap:7px;font-size:10px;padding:2px 0;align-items:center}
+        .cb-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+        .cb-dot.ok{background:var(--gr)}.cb-dot.warn{background:#fbbf24}.cb-dot.err{background:var(--rd)}
+        .cb-list{margin-top:18px}
+        .cb-list-ttl{font-size:10px;color:var(--b);letter-spacing:.12em;margin-bottom:10px}
+        .cb-filters{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+        .cb-tbl{width:100%;border-collapse:collapse;font-size:11px;background:var(--bg2)}
+        .cb-tbl th{text-align:left;font-size:9px;font-weight:500;color:var(--td);letter-spacing:.05em;padding:8px 7px;border-bottom:1px solid var(--bl);background:var(--bg3)}
+        .cb-tbl td{padding:7px;border-bottom:1px solid rgba(77,158,245,.05);font-variant-numeric:tabular-nums;cursor:pointer}
+        .cb-tbl tr:hover td{background:rgba(77,158,245,.05)}
+        .cb-tbl td.r,.cb-tbl th.r{text-align:right}
+        .cb-mini{font-size:9px;color:var(--td);margin-top:4px}
+        .cb-strip-block{grid-column:1/-1;background:rgba(206,147,216,.05);border:1px solid rgba(206,147,216,.25);padding:12px;margin-bottom:0}
+        .cb-strip-block .cb-col-ttl{color:#ce93d8}
+        .cb-empty{padding:22px;color:var(--td);font-size:11px;text-align:center;background:var(--bg2);border:1px dashed var(--bl)}
+        .cb-adv-toggle{font-size:9px;color:var(--b);cursor:pointer;letter-spacing:.06em;margin-top:4px;padding:3px 0}
+        .cb-flex-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+        .cb-flex-chip{font-size:9px;padding:2px 7px;background:var(--bg3);border:1px solid var(--bl);cursor:pointer}
+        .cb-flex-chip.on{background:rgba(206,147,216,.15);border-color:#ce93d8;color:#ce93d8}
+      </style>
+      <div class="cb-wrap">
+        <div class="cb-toolbar">
+          <div>
+            <div class="cb-ttl">${editingId?'EDIT CARGO #'+editingId:'ADD PHYSICAL CARGO'}</div>
+            <div class="cb-sub">Capture first · optimise in Optimization tab · enforce validation on Matched status</div>
+          </div>
+          <div style="display:flex;gap:7px">
+            <button class="cb-btn" onclick="pvBook.cloneLast()">⊕ CLONE LAST</button>
+            <button class="cb-btn" onclick="pvBook.clearForm()">✕ CLEAR</button>
+          </div>
+        </div>
+        ${!ready?`<div style="padding:10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:#fbbf24;font-size:10px;margin-bottom:14px">⚠ EOD curves not loaded in this session. Live P&L preview will show placeholder values. Open <span style="color:var(--b);cursor:pointer;text-decoration:underline" onclick="shellNav('financial')">FINANCIAL TRADING</span> first to hydrate.</div>`:''}
+        <form id="cb-form" onsubmit="return false" oninput="pvBook.onFormChange(event)">
+          <div id="cb-strip-container"></div>
+          <div class="cb-form">
+            <div class="cb-col">
+              <div class="cb-col-ttl">IDENTITY</div>
+              ${fld('Cargo ID','id','text',null,{readonly:!editingId})}
+              ${fld('ST #','st_number','text')}
+              ${fld('Status','status','select',STATUSES.map(s=>s.v))}
+              ${fld('Cargo Type','cargo_type','select',CARGO_TYPES)}
+              ${fld('Deal Class','deal_class','select',DEAL_CLASSES)}
+              ${fld('Counterparty','counterparty','text')}
+              ${fld('Notes','notes','text')}
+            </div>
+            <div class="cb-col">
+              <div class="cb-col-ttl">BUY LEG · VOLUME · SHIP</div>
+              <div class="cb-row-h">
+                ${fld('Incoterm','buy_incoterm','select',INCO)}
+                ${fld('Load port','load_port','select',LOAD_PORTS)}
+              </div>
+              <div class="cb-row-h">
+                ${fld('Load month','load_month','month')}
+                ${fld('Pricing month','buy_month','month')}
+              </div>
+              ${fld('Buy counterparty','buy_counterparty','text')}
+              <div class="cb-row-h">
+                ${fld('Index','buy_index','select',INDICES)}
+                ${fld('Formula','buy_formula','select',FORMULAS)}
+              </div>
+              <div class="cb-row-h">
+                ${fld('Mult','buy_mult','number',null,{step:'0.01'})}
+                ${fld('Spread','buy_spread','number',null,{step:'0.01'})}
+              </div>
+              ${fld('Fixed price (if Fixed)','buy_fixed','number',null,{step:'0.01',optional:true})}
+              <div class="cb-col-ttl" style="margin-top:14px">VOLUME & SHIP</div>
+              <div class="cb-row-h">
+                ${fld('Energy factor','energy_factor','number',null,{step:'0.01'})}
+                ${fld('Loaded cbm','loaded_cbm','number',null,{step:'100'})}
+              </div>
+              <div class="cb-row-h">
+                ${fld('Ship size','ship_size','number',null,{step:'1000'})}
+                ${fld('BOG rate','bog_rate','number',null,{step:'0.0001'})}
+              </div>
+              <div class="cb-row-h">
+                ${fld('Speed knots','speed_knots','number',null,{step:'0.1'})}
+                ${fld('Ship fixed','ship_fixed','check')}
+              </div>
+            </div>
+            <div class="cb-col">
+              <div class="cb-col-ttl">SELL LEG · FREIGHT · FLEX</div>
+              <div class="cb-row-h">
+                ${fld('Incoterm','sell_incoterm','select',INCO)}
+                ${fld('Discharge port','discharge_port','select',['',...DISCH_PORTS])}
+              </div>
+              <div class="cb-row-h">
+                ${fld('Delivery loc.','delivery_location','text')}
+                ${fld('Discharge mo.','discharge_month','month')}
+              </div>
+              <div class="cb-row-h">
+                ${fld('Sell cpty','sell_counterparty','text')}
+                ${fld('Sell month','sell_month','month')}
+              </div>
+              <div class="cb-row-h">
+                ${fld('Sell index','sell_index','select',INDICES)}
+                ${fld('Formula','sell_formula','select',FORMULAS)}
+              </div>
+              <div class="cb-row-h">
+                ${fld('Mult','sell_mult','number',null,{step:'0.01'})}
+                ${fld('Spread','sell_spread','number',null,{step:'0.01'})}
+              </div>
+              ${fld('Fixed price (if Fixed)','sell_fixed','number',null,{step:'0.01',optional:true})}
+              <div class="cb-col-ttl" style="margin-top:14px">FREIGHT</div>
+              <div class="cb-row-h">
+                ${fld('Laden NM','laden_nm','number',null,{step:'10'})}
+                ${fld('Daily hire','daily_hire','number',null,{step:'500'})}
+              </div>
+              <div class="cb-row-h">
+                ${fld('HFO $/tn','hfo_price','number',null,{step:'10'})}
+                ${fld('LSMGO $/tn','lsmgo_price','number',null,{step:'10'})}
+              </div>
+              <div class="cb-row-h">
+                ${fld('EUA €/tn','eua_price','number',null,{step:'0.1'})}
+                ${fld('EUR/USD','eur_usd','number',null,{step:'0.001'})}
+              </div>
+              <div class="cb-row-h">
+                ${fld('ETS cov.','ets_coverage','number',null,{step:'0.05'})}
+                ${fld('Port (L+D) $','load_port_cost','number',null,{step:'1000'})}
+              </div>
+              ${fld('Freight override $/MMBtu','freight_override','number',null,{step:'0.01',optional:true})}
+
+              <div class="cb-col-ttl" style="margin-top:14px">DESTINATION FLEX</div>
+              <div id="cb-flex-dest-container"></div>
+
+              <div class="cb-col-ttl" style="margin-top:14px">VOLUME FLEX</div>
+              <div class="cb-row-h">
+                ${fld('Qty min TBtu','flex_vol_min','number',null,{step:'0.05',optional:true})}
+                ${fld('Qty max TBtu','flex_vol_max','number',null,{step:'0.05',optional:true})}
+              </div>
+              <div class="cb-row-h">
+                ${fld('Optol ±%','flex_vol_optol','number',null,{step:'1'})}
+                <div class="cb-row"><span class="cb-lbl">Vol holder</span><select class="cb-sel" name="flex_vol_holder"><option value="us">Us</option><option value="counterparty">Counterparty</option></select></div>
+              </div>
+
+              <div class="cb-col-ttl" style="margin-top:14px">TIMING FLEX</div>
+              <div class="cb-row-h">
+                ${fld('DW length d','flex_time_dw_d','number',null,{step:'1'})}
+                ${fld('Narrow d prior','flex_time_narrow_d','number',null,{step:'1'})}
+              </div>
+              <div class="cb-row"><span class="cb-lbl">Timing holder</span><select class="cb-sel" name="flex_time_holder"><option value="counterparty">Counterparty</option><option value="us">Us</option></select></div>
+
+              <div class="cb-col-ttl" style="margin-top:14px">PORTFOLIO MATCH</div>
+              <div id="cb-match-container"></div>
+
+              <div class="cb-col-ttl" style="margin-top:14px">SPECIAL TERMS (ad-hoc)</div>
+              <div class="cb-row"><textarea class="cb-inp" name="flex_special_terms" rows="2" style="width:100%;resize:vertical;font-family:inherit;font-size:11px" placeholder="Custom termsheet clauses, ad-hoc port restrictions, etc."></textarea></div>
+            </div>
+          </div>
+        </form>
+        <div class="cb-preview" id="cb-preview"></div>
+        <div style="display:flex;gap:9px;margin-bottom:22px">
+          <button class="cb-btn primary" id="cb-save-btn" onclick="pvBook.saveForm()">${editingId?'UPDATE CARGO':'ADD TO BOOK'}</button>
+          ${editingId?`<button class="cb-btn danger" onclick="pvBook.deleteCargo('${editingId}')">DELETE</button>`:''}
+          ${editingId?`<button class="cb-btn" onclick="pvBook.cancelEdit()">CANCEL</button>`:''}
+        </div>
+
+        <div class="cb-list">
+          <div class="cb-list-ttl">CARGO BOOK — ${state.cargoes.length} POSITIONS</div>
+          <div class="cb-filters">
+            ${filterBtn('status','all','All')}
+            ${STATUSES.slice(0,6).map(s=>filterBtn('status',s.v,s.lbl)).join('')}
+          </div>
+          <div id="cb-list-body">${renderCargoList()}</div>
+        </div>
+      </div>
+    `;
+    // Hydrate form from current editing cargo or a blank
+    const cur = editingId ? state.cargoes.find(c=>c.id===editingId) : blankCargo();
+    if(cur) hydrateForm(cur);
+    renderStripBlock();
+    renderDestFlexBlock();
+    renderMatchBlock();
+    renderPreview();
+  }
+  function fld(label, name, type, options, opts={}){
+    const attrs = Object.entries(opts).filter(([k])=>k!=='optional').map(([k,v])=>`${k}="${v}"`).join(' ');
+    if(type==='select'){
+      const opts_arr = options||[];
+      return `<div class="cb-row"><span class="cb-lbl">${label}</span><select class="cb-sel" name="${name}" ${attrs}>${opts_arr.map(o=>`<option value="${o}">${o}</option>`).join('')}</select></div>`;
+    }
+    if(type==='month'){
+      return `<div class="cb-row"><span class="cb-lbl">${label}</span><select class="cb-sel" name="${name}" ${attrs}><option value="">—</option>${monthOptions().map(o=>`<option value="${o.v}">${o.lbl}</option>`).join('')}</select></div>`;
+    }
+    if(type==='check'){
+      return `<div class="cb-row"><label class="cb-lbl" style="display:flex;align-items:center;gap:5px;margin-top:18px"><input type="checkbox" class="cb-chk" name="${name}">${label}</label></div>`;
+    }
+    return `<div class="cb-row"><span class="cb-lbl">${label}</span><input class="cb-inp" type="${type}" name="${name}" ${attrs}></div>`;
+  }
+  function filterBtn(key,val,lbl){
+    const on=(state._filter||{})[key]===val || (val==='all' && !(state._filter||{})[key]);
+    return `<button class="cb-btn" style="${on?'background:var(--bd);color:var(--b);border-color:var(--b)':''}" onclick="pvBook.filter('${key}','${val}')">${lbl}</button>`;
+  }
+
+  function hydrateForm(c){
+    const form=document.getElementById('cb-form');
+    if(!form) return;
+    Object.entries(c).forEach(([k,v])=>{
+      const inp = form.elements[k];
+      if(!inp) return;
+      if(inp.type==='checkbox') inp.checked=!!v;
+      else if(Array.isArray(v)) inp.value = JSON.stringify(v);
+      else inp.value = v==null?'':v;
+    });
+  }
+  function readForm(){
+    const form=document.getElementById('cb-form');
+    if(!form) return null;
+    const out={};
+    Array.from(form.elements).forEach(inp=>{
+      if(!inp.name) return;
+      if(inp.type==='checkbox') out[inp.name]=inp.checked;
+      else if(inp.type==='number'){
+        if(inp.value==='') out[inp.name]=null; else out[inp.name]=+inp.value;
+      }
+      else out[inp.name]=inp.value;
+    });
+    // Parse JSON-array-as-string fields
+    if(typeof out.flex_dest_hubs==='string' && out.flex_dest_hubs.startsWith('[')){
+      try { out.flex_dest_hubs = JSON.parse(out.flex_dest_hubs); } catch(e){ out.flex_dest_hubs=[]; }
+    }
+    return out;
+  }
+  function renderStripBlock(){
+    const form=document.getElementById('cb-form');
+    if(!form) return;
+    const cls = form.elements.deal_class?.value || 'Single';
+    const box = document.getElementById('cb-strip-container');
+    if(!box) return;
+    if(cls==='Single'){ box.innerHTML=''; return; }
+    box.innerHTML = `
+      <div class="cb-strip-block">
+        <div class="cb-col-ttl">${cls==='LT'?'LONG-TERM CONTRACT':'STRIP'} — PERIOD DEFINITION</div>
+        <div style="display:flex;gap:18px;align-items:center;margin-bottom:10px;padding:8px 10px;background:rgba(206,147,216,.06);border-left:2px solid #ce93d8">
+          <span style="font-size:9px;color:#ce93d8;letter-spacing:.1em">LEG MODE</span>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer">
+            <input type="radio" name="_strip_leg" value="buy_only" checked> Buy only (offtake)
+            <span style="color:var(--td);font-size:10px">→ children = Unsold</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer">
+            <input type="radio" name="_strip_leg" value="sell_only"> Sell only (LT sale)
+            <span style="color:var(--td);font-size:10px">→ children = Unsourced</span>
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+          <div class="cb-row"><span class="cb-lbl">Period start</span><select class="cb-sel" name="_strip_start"><option value="">—</option>${monthOptions().map(o=>`<option value="${o.v}">${o.lbl}</option>`).join('')}</select></div>
+          <div class="cb-row"><span class="cb-lbl">Period end</span><select class="cb-sel" name="_strip_end"><option value="">—</option>${monthOptions().map(o=>`<option value="${o.v}">${o.lbl}</option>`).join('')}</select></div>
+          <div class="cb-row"><span class="cb-lbl">Frequency</span><select class="cb-sel" name="_strip_freq"><option value="Monthly">Monthly</option><option value="Bi-monthly">Bi-monthly</option><option value="Quarterly">Quarterly</option></select></div>
+          <div class="cb-row"><span class="cb-lbl">Cargoes/period</span><input class="cb-inp" type="number" name="_strip_cpp" value="1" step="1"></div>
+        </div>
+        <div style="font-size:9px;color:#ce93d8;margin-top:8px" id="cb-strip-count">—</div>
+      </div>`;
+    updateStripCount();
+  }
+  function updateStripCount(){
+    const form=document.getElementById('cb-form');
+    if(!form) return;
+    const start=form.elements._strip_start?.value;
+    const end=form.elements._strip_end?.value;
+    const freq=form.elements._strip_freq?.value||'Monthly';
+    const cpp=+(form.elements._strip_cpp?.value||1);
+    const el=document.getElementById('cb-strip-count');
+    if(!el) return;
+    if(!start||!end){ el.textContent='Select start and end months'; return; }
+    const count = stripCargoCount(start,end,freq,cpp);
+    el.textContent=`→ ${count} child cargoes will be generated`;
+  }
+  function stripCargoCount(start,end,freq,cpp){
+    const s=start.match(/^(\d{4})-(\d{2})$/); const e=end.match(/^(\d{4})-(\d{2})$/);
+    if(!s||!e) return 0;
+    const months = (+e[1]-+s[1])*12 + (+e[2]-+s[2]) + 1;
+    if(months<1) return 0;
+    const step = freq==='Quarterly'?3 : freq==='Bi-monthly'?2 : 1;
+    return Math.floor(months/step) * cpp;
+  }
+  function stripMonths(start,end,freq){
+    const s=start.match(/^(\d{4})-(\d{2})$/); const e=end.match(/^(\d{4})-(\d{2})$/);
+    if(!s||!e) return [];
+    const out=[];
+    const step = freq==='Quarterly'?3 : freq==='Bi-monthly'?2 : 1;
+    let y=+s[1], m=+s[2];
+    const endT=+e[1]*12+(+e[2]);
+    while(y*12+m<=endT){
+      out.push(y+'-'+String(m).padStart(2,'0'));
+      m+=step; while(m>12){m-=12;y++;}
+    }
+    return out;
+  }
+
+  function onFormChange(e){
+    const name = e?.target?.name;
+    if(name==='deal_class') renderStripBlock();
+    if(['_strip_start','_strip_end','_strip_freq','_strip_cpp'].includes(name)) updateStripCount();
+    // Destination flex section reacts to incoterm changes and mode switch
+    if(['buy_incoterm','sell_incoterm','flex_dest_mode','flex_dest_region','flex_dest_premium_market','status'].includes(name)){
+      renderDestFlexBlock();
+      renderMatchBlock();
+      // Auto-fill market standards on region/market change
+      if(name==='flex_dest_region' || name==='flex_dest_premium_market') applyMarketStandards();
+    }
+    renderPreview();
+  }
+
+  // Render destination flex block — mode-aware (none / premium / intra_region; inter_basin implicit when FOB)
+  function renderDestFlexBlock(){
+    const form=document.getElementById('cb-form');
+    if(!form) return;
+    const box=document.getElementById('cb-flex-dest-container');
+    if(!box) return;
+    const buyInco = form.elements.buy_incoterm?.value || 'FOB';
+    const sellInco = form.elements.sell_incoterm?.value || 'DES';
+    // Determine which leg owns the destination decision
+    // Sell DES → buyer (counterparty) holds the discharge nomination; we may have defined the eligible set
+    // Buy DES → we are the buyer, we hold the discharge nomination
+    // FOB on either side → inter-basin, implicit, no destination scope to define here
+    const hasDESLeg = (sellInco==='DES') || (buyInco==='DES');
+    if(!hasDESLeg){
+      box.innerHTML = `<div style="padding:8px 10px;background:rgba(79,195,247,.06);border-left:2px solid #4fc3f7;font-size:10px;line-height:1.5">
+        <strong style="color:#4fc3f7">Inter-basin flex (implicit)</strong><br>
+        ${sellInco==='FOB' && buyInco==='FOB' ? 'FOB→FOB: pure paper flip, no destination decision' :
+          sellInco==='FOB' ? 'Sell FOB → buyer holds inter-basin discharge optionality. Best-netback engine (Phase 2) values from their perspective.' :
+          'Buy FOB → we hold inter-basin discharge optionality. Best-netback engine (Phase 2) selects optimal basin × hub.'}
+      </div>`;
+      return;
+    }
+    const mode = form.elements.flex_dest_mode?.value || 'none';
+    const region = form.elements.flex_dest_region?.value || 'NWE';
+    const premMarketKey = form.elements.flex_dest_premium_market?.value || 'turkey';
+    const premMarket = PREMIUM_MARKETS.find(m=>m.key===premMarketKey) || PREMIUM_MARKETS[0];
+    // Mode selector
+    const modeSel = `<div style="display:flex;gap:18px;margin-bottom:10px;font-size:11px">
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="flex_dest_mode" value="none" ${mode==='none'?'checked':''}> None (single port)</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="flex_dest_mode" value="premium" ${mode==='premium'?'checked':''}> Premium market</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="flex_dest_mode" value="intra_region" ${mode==='intra_region'?'checked':''}> Intra-region (negotiable)</label>
+    </div>`;
+    let bodyHTML = '';
+    if(mode==='none'){
+      bodyHTML = `<div style="padding:8px 10px;background:rgba(148,163,184,.06);font-size:10px;color:var(--td)">
+        Single discharge port, no destination flex. The base port set in the sell leg is the only delivery point.
+      </div>`;
+    } else if(mode==='premium'){
+      const opts = PREMIUM_MARKETS.map(m=>`<option value="${m.key}" ${m.key===premMarketKey?'selected':''}>${m.lbl}</option>`).join('');
+      bodyHTML = `
+        <div class="cb-row-h">
+          <div class="cb-row"><span class="cb-lbl">Market</span><select class="cb-sel" name="flex_dest_premium_market">${opts}</select></div>
+          <div class="cb-row"><span class="cb-lbl">Benchmark</span><input class="cb-inp" type="text" value="${premMarket.benchmark}" disabled style="background:rgba(148,163,184,.05);color:var(--td)"></div>
+        </div>
+        <div class="cb-row-h">
+          <div class="cb-row"><span class="cb-lbl">Premium $/MMBtu</span><input class="cb-inp" type="number" name="flex_dest_premium_usd" step="0.05"></div>
+          <div class="cb-row"><span class="cb-lbl">Holder</span><select class="cb-sel" name="flex_dest_holder"><option value="counterparty">Counterparty</option><option value="us">Us</option></select></div>
+        </div>
+        <div style="font-size:9px;color:var(--td);margin-top:6px;line-height:1.5">
+          ⓘ Single port (${premMarket.ports[0]}). Premium reflects the spread vs ${premMarket.benchmark} netback.<br>
+          ⓘ Premium economics depend on origin → destination route. Australian load to ${premMarket.lbl} may be sub-optimal vs nearer source.
+        </div>`;
+    } else if(mode==='intra_region'){
+      const regOpts = ['NWE','MED','WIM','JKTC'].map(r=>`<option value="${r}" ${r===region?'selected':''}>${r}</option>`).join('');
+      const hubInfo = REGION_HUBS[region] || {default:[],optional:[]};
+      const allHubs = [...hubInfo.default, ...hubInfo.optional];
+      const checkedHubs = (() => {
+        try {
+          const raw = form.elements.flex_dest_hubs?.value;
+          if(raw && raw.startsWith('[')) return JSON.parse(raw);
+        } catch(e){}
+        return hubInfo.default;
+      })();
+      const hubChecks = allHubs.map(h=>`<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin-right:12px;cursor:pointer">
+        <input type="checkbox" class="cb-flex-hub" data-hub="${h}" ${checkedHubs.includes(h)?'checked':''}> ${h}${hubInfo.optional.includes(h)?' (opt)':''}
+      </label>`).join('');
+      bodyHTML = `
+        <div class="cb-row-h">
+          <div class="cb-row"><span class="cb-lbl">Region</span><select class="cb-sel" name="flex_dest_region">${regOpts}</select></div>
+          <div class="cb-row"><span class="cb-lbl">Holder</span><select class="cb-sel" name="flex_dest_holder"><option value="counterparty">Counterparty (buyer)</option><option value="us">Us</option></select></div>
+        </div>
+        <div style="margin-top:8px">
+          <div style="font-size:9px;color:var(--td);letter-spacing:.1em;margin-bottom:5px">ALLOWED HUBS (editable per termsheet)</div>
+          <div id="cb-flex-hubs-row">${hubChecks}</div>
+          <input type="hidden" name="flex_dest_hubs" value='${JSON.stringify(checkedHubs)}'>
+        </div>
+        <div class="cb-row-h" style="margin-top:8px">
+          <div class="cb-row"><span class="cb-lbl">Base port nom (d prior)</span><input class="cb-inp" type="number" name="flex_dest_nom_d" step="1"></div>
+          <div class="cb-row"><span class="cb-lbl">Port sub (d prior)</span><input class="cb-inp" type="number" name="flex_dest_sub_d" step="1"></div>
+        </div>
+        <div style="font-size:9px;color:var(--td);margin-top:6px">
+          ⓘ Pre-filled from Platts ${region} standard. Overridable per termsheet (NWE termsheets vary widely; some restrict to Spain+S France only).
+        </div>`;
+    }
+    box.innerHTML = modeSel + bodyHTML;
+    // Wire hub checkboxes to update hidden JSON field
+    box.querySelectorAll('.cb-flex-hub').forEach(cb=>{
+      cb.addEventListener('change', ()=>{
+        const checked = Array.from(box.querySelectorAll('.cb-flex-hub:checked')).map(x=>x.dataset.hub);
+        const hidden = box.querySelector('input[name="flex_dest_hubs"]');
+        if(hidden) hidden.value = JSON.stringify(checked);
+        renderPreview();
+      });
+    });
+    // Re-hydrate values that exist in form state (radios are tricky after innerHTML rewrite)
+    rehydrateDestFlex();
+  }
+
+  // Re-apply form values to the dest-flex inputs after re-render
+  function rehydrateDestFlex(){
+    const form=document.getElementById('cb-form');
+    if(!form) return;
+    // The radios are already rendered with the right `checked` state above
+    // Other fields: holder, nom_d, sub_d, premium_usd should pull from current cargo if editing
+    if(state.editingId){
+      const c = state.cargoes.find(x=>x.id===state.editingId);
+      if(!c) return;
+      ['flex_dest_holder','flex_dest_nom_d','flex_dest_sub_d','flex_dest_premium_usd'].forEach(k=>{
+        const inp = form.elements[k];
+        if(inp && c[k]!=null && c[k]!=='') inp.value = c[k];
+      });
+    }
+  }
+
+  // Apply Platts market standards (qty, optol, DW, narrow, nom deadlines) when region/market changes
+  function applyMarketStandards(){
+    const form=document.getElementById('cb-form');
+    if(!form) return;
+    const mode = form.elements.flex_dest_mode?.value;
+    let stdKey = null;
+    if(mode==='intra_region'){
+      const region = form.elements.flex_dest_region?.value;
+      stdKey = region; // 'NWE'/'MED'/'WIM'/'JKTC' → MARKET_STANDARDS uses NWE/MED/WIM/JKM
+      if(region==='JKTC') stdKey='JKM';
+    } else if(mode==='premium'){
+      const mkt = form.elements.flex_dest_premium_market?.value;
+      // Map premium key → standards bucket
+      const mapPremium = {turkey:'EMM', thailand:'SEAM', mei:'MEM', brazil:'BRAZIL'};
+      stdKey = mapPremium[mkt] || 'NWE';
+    }
+    if(!stdKey || !MARKET_STANDARDS[stdKey]) return;
+    const std = MARKET_STANDARDS[stdKey];
+    // Pre-fill if user hasn't customized (only fill if blank/default)
+    const setIfEmpty = (n,v)=>{ const el=form.elements[n]; if(el && (el.value===''||el.value==null||+el.value===0)) el.value=v; };
+    setIfEmpty('flex_dest_nom_d', std.nom_port_d);
+    setIfEmpty('flex_dest_sub_d', std.sub_port_d);
+    setIfEmpty('flex_time_dw_d', std.dw_days);
+    setIfEmpty('flex_time_narrow_d', std.narrow_d);
+    setIfEmpty('flex_vol_optol', std.optol);
+  }
+
+  // Portfolio match dropdown — shows opposite-side open cargoes with feasibility markers
+  function renderMatchBlock(){
+    const form=document.getElementById('cb-form');
+    if(!form) return;
+    const box=document.getElementById('cb-match-container');
+    if(!box) return;
+    const status = form.elements.status?.value;
+    // Only show match dropdown if current cargo is Unsold or Unsourced
+    if(status!=='Unsold' && status!=='Unsourced'){
+      box.innerHTML = `<div style="padding:6px 10px;font-size:10px;color:var(--td)">
+        Portfolio match available only for Unsold/Unsourced cargoes. Match links a long position to a short position internally.
+      </div>`;
+      return;
+    }
+    const oppositeStatus = status==='Unsold' ? 'Unsourced' : 'Unsold';
+    const candidates = state.cargoes.filter(c=> c.status===oppositeStatus && c.id!==state.editingId && !c.matched_to);
+    const currentCargo = state.editingId ? state.cargoes.find(c=>c.id===state.editingId) : Object.assign(blankCargo(), readForm()||{});
+    const matchedTo = form.elements.matched_to?.value || '';
+    let opts = `<option value="">— none —</option>`;
+    candidates.forEach(cand=>{
+      const feas = matchFeasibility(currentCargo, cand);
+      const mark = feas.ok ? '✓' : '✗';
+      const flag = feas.ok ? 'color:var(--gr)' : 'color:var(--rd)';
+      opts += `<option value="${cand.id}" ${matchedTo===cand.id?'selected':''} style="${flag}">${mark} #${cand.id} · ${cand.counterparty||'?'} · ${monthLabel(cand.discharge_month||cand.load_month)} · ${(cand.loaded_cbm*cand.energy_factor/1e6).toFixed(2)}TBtu</option>`;
+    });
+    if(candidates.length===0) opts += `<option value="" disabled>No open ${oppositeStatus} cargoes available</option>`;
+    box.innerHTML = `
+      <div class="cb-row"><span class="cb-lbl">Matched to</span><select class="cb-sel" name="matched_to" onchange="pvBook.onFormChange(event)">${opts}</select></div>
+      <div style="font-size:9px;color:var(--td);margin-top:4px">
+        ✓ = DW + qty + flex overlap feasible · ✗ = mismatch (still selectable, will warn)
+      </div>`;
+  }
+
+  // Match feasibility check: DW overlap, qty overlap, flex overlap
+  function matchFeasibility(longC, shortC){
+    if(!longC || !shortC) return {ok:false, reasons:['missing data']};
+    const reasons=[];
+    // DW overlap: discharge months should overlap (or load if no discharge)
+    const lMo = normMonth(longC.discharge_month||longC.load_month);
+    const sMo = normMonth(shortC.discharge_month||shortC.load_month);
+    if(lMo && sMo && lMo!==sMo) reasons.push('DW month mismatch');
+    // Qty overlap: ranges should intersect (use base loaded vol if no range)
+    const lQ = (longC.loaded_cbm||0)*(longC.energy_factor||0)/1e6;
+    const sQ = (shortC.loaded_cbm||0)*(shortC.energy_factor||0)/1e6;
+    if(Math.abs(lQ-sQ)/Math.max(lQ,sQ,0.01) > 0.15) reasons.push('Qty diff >15%');
+    return {ok: reasons.length===0, reasons};
+  }
+
+  function renderPreview(){
+    const c = readForm();
+    const box = document.getElementById('cb-preview');
+    if(!c || !box) return;
+    // Fill missing fields from blank cargo so recompute works
+    const full = Object.assign(blankCargo(), c);
+    const r = recompute(full);
+    const issues = validate(full);
+    const canSave = !issues.some(i=>i.level==='err');
+    const st = STATUSES.find(s=>s.v===full.status);
+
+    const pnlColor = (r.pnlUsd||r.markInfo?.pnlUsd||0) >=0 ? 'pos':'neg';
+    const effectivePnl = r.pnlUsd ?? r.markInfo?.pnlUsd ?? null;
+    // ── Structured flex breakdown table ────────────────────────────────────
+    const flexRows = (r.flex.sources||[]).map(s=>{
+      const arrow = s.holder==='us' ? '↑' : s.holder==='counterparty' ? '↓' : '·';
+      const arrowCol = s.holder==='us' ? 'var(--gr)' : s.holder==='counterparty' ? '#fbbf24' : 'var(--td)';
+      const holderLbl = s.holder==='us' ? 'Us' : s.holder==='counterparty' ? 'Cpty' : '—';
+      return `<tr>
+        <td style="font-size:10px;padding:3px 6px">${s.src}</td>
+        <td style="font-size:10px;padding:3px 6px;color:var(--td)">${s.tier}</td>
+        <td style="font-size:10px;padding:3px 6px;text-align:right">$${s.unit.toFixed(3)}</td>
+        <td style="font-size:10px;padding:3px 6px;text-align:right">${fmtM(s.usd)}</td>
+        <td style="font-size:10px;padding:3px 6px;text-align:center;color:${arrowCol}">${arrow} ${holderLbl}</td>
+      </tr>`;
+    }).join('');
+    const flexBlock = (r.flex.sources?.length>0) ? `
+      <div style="margin-top:10px;padding:10px;background:rgba(206,147,216,.06);border-left:2px solid #ce93d8">
+        <div style="font-size:9px;color:#ce93d8;letter-spacing:.1em;margin-bottom:6px">FLEX VALUATION ${r.flex.note||''}</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="border-bottom:1px solid rgba(206,147,216,.2);color:var(--td);font-size:9px;text-transform:uppercase">
+            <th style="text-align:left;padding:3px 6px">Source</th>
+            <th style="text-align:left;padding:3px 6px">Tier</th>
+            <th style="text-align:right;padding:3px 6px">$/MMBtu</th>
+            <th style="text-align:right;padding:3px 6px">$M</th>
+            <th style="text-align:center;padding:3px 6px">Holder</th>
+          </tr></thead>
+          <tbody>${flexRows}</tbody>
+        </table>
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(206,147,216,.2)">
+          <span>↑ Retained by us: <strong style="color:var(--gr)">${fmtM(r.flex.retained||0)}</strong></span>
+          <span>↓ Given up: <strong style="color:#fbbf24">${fmtM(r.flex.givenUp||0)}</strong></span>
+          <span>Net: <strong>${fmtM((r.flex.retained||0)-(r.flex.givenUp||0))}</strong></span>
+        </div>
+      </div>` : '';
+    const fobPremiumBlock = (full.sell_incoterm==='FOB' && r.flex.givenUp>0) ?
+      `<div style="margin-top:8px;padding:8px 10px;background:rgba(206,147,216,.08);border-left:2px solid #ce93d8">
+         <div style="font-size:9px;color:#ce93d8;letter-spacing:.1em;margin-bottom:4px">FOB PREMIUM CHECK</div>
+         <div style="font-size:10px;line-height:1.5">
+           Selling FOB gives buyer ${fmtM(r.flex.givenUp)} of inter-basin optionality.
+           Fair FOB ≥ DES netback − freight + retained extrinsic.
+         </div>
+       </div>`:'';
+    const markBlock = r.markInfo ?
+      `<div style="margin-top:8px;padding:8px 10px;background:rgba(251,191,36,.08);border-left:2px solid #fbbf24">
+         <div style="font-size:9px;color:#fbbf24;letter-spacing:.1em;margin-bottom:4px">⚠ THEORETICAL MARK — ${full.status.toUpperCase()}</div>
+         <div style="font-size:11px;line-height:1.6">${r.markInfo.note}${r.markInfo.bestIndex?' · Best netback: '+r.markInfo.bestIndex:''}</div>
+       </div>`:'';
+
+    box.innerHTML = `
+      <h4>LIVE P&L PREVIEW</h4>
+      <div class="cb-prev-grid">
+        <div class="cb-prev-block">
+          <div class="cb-prev-ttl">PRICING</div>
+          <div class="cb-prev-line"><span>Buy price</span><strong>${r.buyPrice!=null?'$'+r.buyPrice.toFixed(2):'—'}</strong></div>
+          <div class="cb-prev-line"><span>Sell price</span><strong>${r.sellPrice!=null?'$'+r.sellPrice.toFixed(2):'—'}</strong></div>
+          <div class="cb-prev-line"><span>Gross spread</span><strong>${(r.buyPrice!=null&&r.sellPrice!=null)?'$'+(r.sellPrice-r.buyPrice).toFixed(2):'—'}</strong></div>
+          <div class="cb-prev-line" style="border-top:1px solid var(--bl);padding-top:5px;margin-top:5px"><span>Branch</span><strong>${r.branch||'—'}</strong></div>
+        </div>
+        <div class="cb-prev-block">
+          <div class="cb-prev-ttl">FREIGHT</div>
+          <div class="cb-prev-line"><span>Unit freight</span><strong>$${(r.freight.unit||0).toFixed(2)}</strong></div>
+          <div class="cb-prev-line"><span>Hire</span><span>${fmtM(r.freight.breakdown?.hire||0)}</span></div>
+          <div class="cb-prev-line"><span>Bunker</span><span>${fmtM(r.freight.breakdown?.bunker||0)}</span></div>
+          <div class="cb-prev-line"><span>Port L+D</span><span>${fmtM(r.freight.breakdown?.port||0)}</span></div>
+          <div class="cb-prev-line"><span>ETS</span><span>${fmtM(r.freight.breakdown?.ets||0)}</span></div>
+          <div class="cb-prev-line"><span>Voyage days</span><span>${r.freight.days?r.freight.days.toFixed(1):'—'}</span></div>
+        </div>
+        <div class="cb-prev-block">
+          <div class="cb-prev-ttl">VOLUME</div>
+          <div class="cb-prev-line"><span>Nominated</span><strong>${(r.nominated/1e6).toFixed(3)} TBtu</strong></div>
+          <div class="cb-prev-line"><span>EDQ</span><strong>${(r.edq/1e6).toFixed(3)} TBtu</strong></div>
+          <div class="cb-prev-line"><span>BOG loss</span><span>${((r.nominated-r.edq)/1e6).toFixed(3)} TBtu</span></div>
+          <div class="cb-prev-line" style="border-top:1px solid var(--bl);padding-top:5px;margin-top:5px"><span>Exposure</span><strong style="color:${r.exposure.type==='Basis'?'#fbbf24':r.exposure.type==='Time'?'#ce93d8':r.exposure.type==='Fully priced'?'var(--gr)':'var(--td)'}">${r.exposure.type}</strong></div>
+          <div style="font-size:9px;color:var(--td);margin-top:3px">${r.exposure.detail||''}</div>
+          <div class="cb-prev-line" style="margin-top:5px"><span>Freight exp.</span><strong style="color:${r.freightExposure.flag?'#fbbf24':'var(--gr)'}">${r.freightExposure.flag?'YES':'NO'}</strong></div>
+          <div style="font-size:9px;color:var(--td)">${r.freightExposure.reason}</div>
+        </div>
+      </div>
+      <div class="cb-prev-final ${pnlColor}">
+        <span>Physical P&L</span>
+        <span>${effectivePnl!=null?(fmtM(effectivePnl)+' · $'+(r.pnlUnit||r.markInfo?.pnlUnit||0).toFixed(2)+'/MMBtu'):'—'}</span>
+      </div>
+      ${flexBlock}${fobPremiumBlock}${markBlock}
+      <div class="cb-valid">
+        ${issues.map(i=>`<div class="cb-valid-row"><span class="cb-dot ${i.level}"></span><span style="color:${i.level==='err'?'var(--rd)':i.level==='warn'?'#fbbf24':'var(--gr)'}">${i.msg}</span></div>`).join('')}
+        ${issues.length===0?`<div class="cb-valid-row"><span class="cb-dot ok"></span><span style="color:var(--gr)">All checks pass</span></div>`:''}
+      </div>
+    `;
+    const saveBtn=document.getElementById('cb-save-btn');
+    if(saveBtn) saveBtn.disabled = !canSave;
+  }
+
+  function validate(c){
+    const issues=[];
+    const st=c.status;
+    // Invalid incoterm combination — DES→FOB is not a physical LNG cargo turn
+    if(c.buy_incoterm==='DES' && c.sell_incoterm==='FOB'){
+      issues.push({level:'err',msg:'DES→FOB is not a valid cargo structure (no shipping leg to reverse)'});
+    }
+    // Status-dependent required fields
+    const needFullBoth = ['Matched','Delivered'].includes(st);
+    const needBuyOnly  = ['Unsold'].includes(st);
+    const needSellOnly = ['Unsourced'].includes(st);
+    const flexible     = ['Tentative','Bid','Passed'].includes(st);
+
+    const buyComplete = c.load_port && c.load_month && c.buy_index && c.buy_formula && (c.buy_formula==='Fixed'?c.buy_fixed!=null:true);
+    const sellComplete = c.sell_index && c.sell_formula && (c.discharge_month||c.sell_month) && (c.sell_formula==='Fixed'?c.sell_fixed!=null:true);
+
+    if(needFullBoth){
+      if(!buyComplete) issues.push({level:'err',msg:'Matched/Delivered requires full buy leg'});
+      if(!sellComplete) issues.push({level:'err',msg:'Matched/Delivered requires full sell leg'});
+    }
+    if(needBuyOnly && !buyComplete) issues.push({level:'err',msg:'Unsold requires a complete buy leg'});
+    if(needSellOnly && !sellComplete) issues.push({level:'err',msg:'Unsourced requires a complete sell leg'});
+    if(!c.counterparty && st!=='Tentative' && st!=='Passed') issues.push({level:'warn',msg:'Counterparty not set'});
+    // Month sanity
+    const lm=normMonth(c.load_month), dm=normMonth(c.discharge_month);
+    if(lm && dm && dm<lm) issues.push({level:'err',msg:'Discharge month before load month'});
+    // Volume sanity
+    if(c.loaded_cbm<=0 || c.loaded_cbm>210000) issues.push({level:'warn',msg:'Loaded cbm outside typical range (50k-210k)'});
+    if(c.energy_factor<20 || c.energy_factor>25) issues.push({level:'warn',msg:'Energy factor outside 20-25 MMBtu/cbm'});
+    return issues;
+  }
+
+  function renderCargoList(){
+    const filt = state._filter || {};
+    const rows = state.cargoes.filter(c=>{
+      if(filt.status && filt.status!=='all' && c.status!==filt.status) return false;
+      return true;
+    });
+    if(rows.length===0) return `<div class="cb-empty">No cargoes captured yet. Fill the form above and click ADD TO BOOK.</div>`;
+    const header = `<table class="cb-tbl">
+      <thead><tr>
+        <th>#</th><th>Status</th><th>Type</th><th>Origin</th><th>Load</th><th>→</th><th>Dest.</th><th>Buy</th><th>Sell</th><th class="r">TBtu</th><th class="r">MTM</th><th>Exposure</th><th>Flex</th><th>Cpty</th>
+      </tr></thead><tbody>`;
+    const body = rows.map(c=>{
+      const st=STATUSES.find(s=>s.v===c.status)||STATUSES[0];
+      const r=curvesReady()?recompute(c):null;
+      const pnl = r ? (r.pnlUsd ?? r.markInfo?.pnlUsd ?? null) : null;
+      const tbtu = (c.loaded_cbm*c.energy_factor/1e6).toFixed(2);
+      const buyL = c.buy_incoterm+' '+(c.buy_index||'—');
+      const sellL = c.sell_incoterm+' '+(c.sell_index||'—');
+      // Flex column: ↑$X retained / ↓$X given up / ·
+      let flexCell = '<span style="color:var(--td)">·</span>';
+      if(r?.flex){
+        const ret = r.flex.retained||0, giv = r.flex.givenUp||0;
+        if(ret > giv && ret>0) flexCell = `<span style="color:var(--gr)">↑${fmtM(ret)}</span>`;
+        else if(giv>0) flexCell = `<span style="color:#fbbf24">↓${fmtM(giv)}</span>`;
+      }
+      return `<tr onclick="pvBook.editCargo('${c.id}')">
+        <td>${c.id}</td>
+        <td><span style="background:${st.bg};color:${st.col};padding:2px 6px;font-size:9px">${st.lbl}</span></td>
+        <td style="font-size:10px">${c.cargo_type}</td>
+        <td style="font-size:10px">${(c.load_port||'—').slice(0,14)}</td>
+        <td style="font-size:10px">${monthLabel(c.load_month)||'—'}</td>
+        <td style="color:var(--td)">→</td>
+        <td style="font-size:10px">${(c.discharge_port||'FOB').slice(0,14)}</td>
+        <td style="font-size:10px">${buyL}</td>
+        <td style="font-size:10px">${sellL}</td>
+        <td class="r">${tbtu}</td>
+        <td class="r" style="color:${pnl==null?'var(--td)':pnl>=0?'var(--gr)':'var(--rd)'}">${pnl!=null?fmtM(pnl):'—'}</td>
+        <td style="font-size:10px;color:${r?.exposure?.type==='Basis'?'#fbbf24':r?.exposure?.type==='Time'?'#ce93d8':r?.exposure?.type==='Fully priced'?'var(--gr)':'var(--td)'}">${r?.exposure?.type||'—'}</td>
+        <td style="font-size:10px">${flexCell}</td>
+        <td style="font-size:10px">${(c.counterparty||'—').slice(0,12)}</td>
+      </tr>`;
+    }).join('');
+    return header + body + '</tbody></table>';
+  }
+
+  // ── Public actions ───────────────────────────────────────────────────────
+  function saveForm(){
+    const c=readForm();
+    if(!c) return;
+    const issues=validate(Object.assign(blankCargo(),c));
+    if(issues.some(i=>i.level==='err')){
+      alert('Cannot save — fix red validation errors first:\n\n'+issues.filter(i=>i.level==='err').map(i=>'• '+i.msg).join('\n'));
+      return;
+    }
+    // Strip/LT generator
+    if(c.deal_class==='Strip' || c.deal_class==='LT'){
+      const form=document.getElementById('cb-form');
+      const start=form.elements._strip_start?.value;
+      const end=form.elements._strip_end?.value;
+      const freq=form.elements._strip_freq?.value||'Monthly';
+      const cpp=+(form.elements._strip_cpp?.value||1);
+      const legMode = form.elements._strip_leg?.value || 'buy_only';
+      const legSpec = STRIP_LEG_MODES.find(m=>m.v===legMode) || STRIP_LEG_MODES[0];
+      if(!start||!end){ alert('Strip/LT requires Period start + end'); return; }
+      const months=stripMonths(start,end,freq);
+      if(months.length===0){ alert('No valid months in period'); return; }
+      const stripId = 'S'+(state.strips.length+1).toString().padStart(2,'0');
+      const strip = {id:stripId, type:c.deal_class, leg_mode:legMode, template:JSON.parse(JSON.stringify(c)), childIds:[], createdAt:new Date().toISOString(), start, end, freq, cpp};
+      months.forEach((m,i)=>{
+        for(let k=0;k<cpp;k++){
+          const child = Object.assign(blankCargo(), c);
+          child.id = stripId+'-'+String(i*cpp+k+1).padStart(2,'0');
+          child.load_month = m;
+          child.buy_month = c.buy_month || m;
+          const dm = new Date(+m.slice(0,4), +m.slice(5,7)-1, 15);
+          dm.setMonth(dm.getMonth()+1);
+          child.discharge_month = c.discharge_month || (dm.getFullYear()+'-'+String(dm.getMonth()+1).padStart(2,'0'));
+          child.sell_month = c.sell_month || child.discharge_month;
+          child.strip_id = stripId;
+          child.strip_index = i*cpp+k;
+          // Apply leg mode: blank the opposite leg + set status
+          child.status = legSpec.child_status;
+          if(legMode==='buy_only'){
+            // Sell-side fields blanked
+            child.sell_index=''; child.sell_formula=''; child.sell_mult=null; child.sell_spread=null;
+            child.sell_fixed=null; child.sell_counterparty=''; child.delivery_location=''; child.discharge_port='';
+          } else if(legMode==='sell_only'){
+            // Buy-side fields blanked
+            child.buy_index=''; child.buy_formula=''; child.buy_mult=null; child.buy_spread=null;
+            child.buy_fixed=null; child.counterparty=''; child.load_port='';
+          }
+          state.cargoes.push(child);
+          strip.childIds.push(child.id);
+        }
+      });
+      state.strips.push(strip);
+      persist();
+      alert(`Created ${c.deal_class} ${stripId} (${legSpec.lbl})\n${strip.childIds.length} child cargoes generated as ${legSpec.child_status}.`);
+    } else {
+      // Single cargo
+      const existing = state.editingId ? state.cargoes.findIndex(x=>x.id===state.editingId) : -1;
+      if(existing>=0){
+        state.cargoes[existing] = Object.assign(state.cargoes[existing], c);
+      } else {
+        state.cargoes.push(Object.assign(blankCargo(), c));
+      }
+      persist();
+    }
+    state.editingId=null;
+    const c_el=document.getElementById('pv-content'); renderCargo(c_el);
+  }
+  function editCargo(id){ state.editingId=id; const c_el=document.getElementById('pv-content'); renderCargo(c_el); window.scrollTo(0,0); }
+  function cancelEdit(){ state.editingId=null; const c_el=document.getElementById('pv-content'); renderCargo(c_el); }
+  function deleteCargo(id){
+    if(!confirm('Delete cargo #'+id+'?')) return;
+    state.cargoes = state.cargoes.filter(c=>c.id!==id);
+    // Also drop from strip childIds
+    state.strips.forEach(s=>s.childIds = s.childIds.filter(x=>x!==id));
+    persist();
+    state.editingId=null;
+    const c_el=document.getElementById('pv-content'); renderCargo(c_el);
+  }
+  function clearForm(){
+    state.editingId=null;
+    const c_el=document.getElementById('pv-content'); renderCargo(c_el);
+  }
+  function cloneLast(){
+    if(state.cargoes.length===0){ alert('No cargo to clone — add one first.'); return; }
+    const last = state.cargoes[state.cargoes.length-1];
+    const copy = Object.assign({}, last);
+    copy.id = nextCargoId();
+    copy.status='Tentative';
+    copy.strip_id=null; copy.strip_index=null;
+    copy._created = new Date().toISOString();
+    hydrateForm(copy);
+    renderPreview();
+  }
+  function filter(key,val){
+    state._filter = state._filter || {};
+    if(val==='all') delete state._filter[key];
+    else state._filter[key]=val;
+    const body=document.getElementById('cb-list-body');
+    if(body) body.innerHTML = renderCargoList();
+    // Re-render filter buttons
+    const filters=document.querySelector('.cb-filters');
+    if(filters){
+      filters.innerHTML=`${filterBtn('status','all','All')}${STATUSES.slice(0,6).map(s=>filterBtn('status',s.v,s.lbl)).join('')}`;
+    }
+  }
+
+  function fmtM(v){
+    if(v==null||isNaN(v)) return '—';
+    const a=Math.abs(v);
+    if(a<1e4) return (v<0?'-':'')+'$'+a.toFixed(0);
+    if(a<1e6) return (v<0?'-':'')+'$'+(a/1e3).toFixed(0)+'k';
+    return (v<0?'-':'')+'$'+(a/1e6).toFixed(2)+'M';
+  }
+
+  // ── Exposure Book ────────────────────────────────────────────────────────
+  // Convention: sell leg = long the index (+); buy leg = short the index (−).
+  // Volume = loaded_cbm × energy_factor, in MMBtu; matrix values in TBtu.
+  // Strips show as their child cargoes (already in state.cargoes).
+  // Phase 3 scope: cargo legs only. Paper hedges fold in at Phase 4.
+  function buildExposureMatrix(){
+    const cargoes = state.cargoes.filter(x => x.status!=='Passed' && x.status!=='Delivered');
+    const matrix = {};
+    const monthsSet = new Set();
+    const indicesSet = new Set();
+    cargoes.forEach(c => {
+      const nominated = (c.loaded_cbm||0) * (c.energy_factor||0) / 1e6; // TBtu
+      if (c.buy_index && (c.buy_month||c.load_month) && c.buy_formula !== 'Fixed') {
+        const m = normMonth(c.buy_month||c.load_month);
+        matrix[c.buy_index] = matrix[c.buy_index] || {};
+        matrix[c.buy_index][m] = (matrix[c.buy_index][m]||0) - (c.buy_mult||1) * nominated;
+        monthsSet.add(m); indicesSet.add(c.buy_index);
+      }
+      if (c.sell_index && (c.sell_month||c.discharge_month||c.load_month) && c.sell_formula !== 'Fixed') {
+        const m = normMonth(c.sell_month||c.discharge_month||c.load_month);
+        matrix[c.sell_index] = matrix[c.sell_index] || {};
+        matrix[c.sell_index][m] = (matrix[c.sell_index][m]||0) + (c.sell_mult||1) * nominated;
+        monthsSet.add(m); indicesSet.add(c.sell_index);
+      }
+    });
+    const months = [...monthsSet].sort();
+    const indexOrder = ['JKM','TTF','HH','NBP','PSV','THE','PEG','PVB','ZTP','WIM','Brent'];
+    const indices = [...indicesSet].sort((a,b) => {
+      const ia = indexOrder.indexOf(a), ib = indexOrder.indexOf(b);
+      if (ia>=0 && ib>=0) return ia - ib;
+      if (ia>=0) return -1;
+      if (ib>=0) return 1;
+      return a.localeCompare(b);
+    });
+    const colTotal = months.map(m => indices.reduce((s,i) => s + (matrix[i]?.[m]||0), 0));
+    const rowTotal = indices.map(i => months.reduce((s,m) => s + (matrix[i]?.[m]||0), 0));
+    const grandTotal = colTotal.reduce((a,b) => a+b, 0);
+    const totalLong  = indices.reduce((sum,i) => sum + months.reduce((s,m) => s + Math.max(0, matrix[i]?.[m]||0), 0), 0);
+    const totalShort = indices.reduce((sum,i) => sum + months.reduce((s,m) => s + Math.min(0, matrix[i]?.[m]||0), 0), 0);
+    return {cargoes, matrix, months, indices, colTotal, rowTotal, grandTotal, totalLong, totalShort};
+  }
+
+  function renderExposure(c){
+    const {cargoes, matrix, months, indices, colTotal, rowTotal, grandTotal, totalLong, totalShort} = buildExposureMatrix();
+    const ready = curvesReady();
+    const empty = cargoes.length === 0;
+    const fmt = v => {
+      if (v == null || isNaN(v)) return '—';
+      if (Math.abs(v) < 0.005) return '—';
+      return (v>0?'+':'') + v.toFixed(2);
+    };
+    const cls = v => (v > 0.005 ? 'pos' : v < -0.005 ? 'neg' : 'z');
+    c.innerHTML = `
+      <style>
+        .ex-wrap{padding:18px 22px 40px;color:var(--tx);font-family:inherit}
+        .ex-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;border-bottom:1px solid var(--bl);padding-bottom:14px;margin-bottom:16px;flex-wrap:wrap}
+        .ex-hdr-ttl{font-size:16px;color:var(--th);letter-spacing:.03em}
+        .ex-hdr-sub{font-size:10px;color:var(--td);letter-spacing:.06em;margin-top:4px;max-width:680px;line-height:1.55}
+        .ex-hdr-sub .warn{color:#fbbf24}
+        .ex-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+        .ex-m{background:var(--bg2);border:1px solid var(--bl);padding:11px 13px}
+        .ex-m-lbl{font-size:9px;color:var(--td);letter-spacing:.1em;margin-bottom:5px}
+        .ex-m-val{font-size:19px;font-weight:600;color:var(--th);font-variant-numeric:tabular-nums}
+        .ex-m-val.pos{color:var(--gr)}.ex-m-val.neg{color:var(--rd)}
+        .ex-card{background:var(--bg2);border:1px solid var(--bl)}
+        .ex-card-hdr{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--bl)}
+        .ex-card-ttl{font-size:10px;color:var(--b);letter-spacing:.12em}
+        .ex-card-sub{font-size:9px;color:var(--td);letter-spacing:.05em}
+        .ex-btn{background:var(--bg3);color:var(--tx);border:1px solid var(--bl);font-family:inherit;font-size:9px;padding:6px 11px;letter-spacing:.08em;cursor:pointer}
+        .ex-btn:hover{border-color:var(--blh);color:var(--th)}
+        .ex-scroll{overflow:auto;max-height:calc(100vh - 320px)}
+        .ex-tbl{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+        .ex-tbl th{text-align:right;font-size:9px;font-weight:500;color:var(--td);letter-spacing:.05em;padding:8px 10px;border-bottom:1px solid var(--bl);background:var(--bg3);position:sticky;top:0;white-space:nowrap}
+        .ex-tbl th.idx{text-align:left;min-width:80px;position:sticky;left:0;z-index:3;background:var(--bg3)}
+        .ex-tbl td{padding:6px 10px;border-bottom:1px solid rgba(77,158,245,.05);text-align:right;white-space:nowrap}
+        .ex-tbl td.idx{text-align:left;font-weight:500;color:var(--th);background:var(--bg2);position:sticky;left:0;z-index:1}
+        .ex-tbl tr.total td{border-top:1px solid var(--bl);font-weight:600;background:var(--bg3)}
+        .ex-tbl tr.total td.idx{background:var(--bg3)}
+        .ex-tbl td.pos{color:var(--gr)}
+        .ex-tbl td.neg{color:var(--rd)}
+        .ex-tbl td.z{color:var(--td)}
+        .ex-empty{padding:52px 0;color:var(--td);font-size:11px;text-align:center;letter-spacing:.05em}
+      </style>
+      <div class="ex-wrap">
+        <div class="ex-hdr">
+          <div>
+            <div class="ex-hdr-ttl">EXPOSURE — Net Index × Month</div>
+            <div class="ex-hdr-sub">
+              Sell leg = long (+), buy leg = short (−). Fixed-price legs excluded. Passed/Delivered cargoes excluded. Values in TBtu.
+              ${ready ? '' : '<br><span class="warn">Curves not ready — volumes shown, pricing-dependent columns will fill when curves load.</span>'}
+            </div>
+          </div>
+          <button class="ex-btn" onclick="pvBook.exportExposureCsv()">EXPORT CSV</button>
+        </div>
+        <div class="ex-metrics">
+          <div class="ex-m"><div class="ex-m-lbl">CARGOES</div><div class="ex-m-val">${cargoes.length}</div></div>
+          <div class="ex-m"><div class="ex-m-lbl">TOTAL LONG</div><div class="ex-m-val pos">+${totalLong.toFixed(2)}</div></div>
+          <div class="ex-m"><div class="ex-m-lbl">TOTAL SHORT</div><div class="ex-m-val neg">${totalShort.toFixed(2)}</div></div>
+          <div class="ex-m"><div class="ex-m-lbl">NET</div><div class="ex-m-val ${cls(grandTotal)}">${fmt(grandTotal)}</div></div>
+        </div>
+        ${empty ? '<div class="ex-empty">No active cargoes. Add one in the CARGO BOOK to see exposure.</div>' : `
+        <div class="ex-card">
+          <div class="ex-card-hdr">
+            <div class="ex-card-ttl">MATRIX · TBtu NET</div>
+            <div class="ex-card-sub">${indices.length} ${indices.length===1?'index':'indices'} × ${months.length} ${months.length===1?'month':'months'}</div>
+          </div>
+          <div class="ex-scroll">
+            <table class="ex-tbl">
+              <thead>
+                <tr>
+                  <th class="idx">INDEX</th>
+                  ${months.map(m => `<th>${monthLabel(m)}</th>`).join('')}
+                  <th>TOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${indices.map((i,ri) => `<tr>
+                  <td class="idx">${i}</td>
+                  ${months.map(m => { const v = matrix[i]?.[m]||0; return `<td class="${cls(v)}">${fmt(v)}</td>`; }).join('')}
+                  <td class="${cls(rowTotal[ri])}">${fmt(rowTotal[ri])}</td>
+                </tr>`).join('')}
+                <tr class="total">
+                  <td class="idx">TOTAL</td>
+                  ${colTotal.map(v => `<td class="${cls(v)}">${fmt(v)}</td>`).join('')}
+                  <td class="${cls(grandTotal)}">${fmt(grandTotal)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>`}
+      </div>
+    `;
+  }
+
+  function exportExposureCsv(){
+    const {matrix, months, indices, rowTotal, colTotal, grandTotal} = buildExposureMatrix();
+    const esc = s => /[",\n]/.test(s) ? '"'+String(s).replace(/"/g,'""')+'"' : String(s);
+    const rows = [['Index', ...months.map(monthLabel), 'Total'].map(esc).join(',')];
+    indices.forEach((i,ri) => {
+      const r = [i, ...months.map(m => (matrix[i]?.[m]||0).toFixed(3)), rowTotal[ri].toFixed(3)];
+      rows.push(r.map(esc).join(','));
+    });
+    rows.push(['Total', ...colTotal.map(v => v.toFixed(3)), grandTotal.toFixed(3)].map(esc).join(','));
+    const csv = rows.join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'exposure_'+isoDay()+'.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  return {
+    init, renderMorning, renderCargo, renderStub, renderExposure, exportExposureCsv,
+    saveForm, editCargo, cancelEdit, deleteCargo, clearForm, cloneLast, filter, onFormChange,
+    _state: state
+  };
+})();
 
 function tbTab(tab){
   document.querySelectorAll('[id^="tbtab-"]').forEach(t=>t.classList.remove('active'));
@@ -10183,31 +11983,26 @@ async function renderGaDashboard(){
       }catch(e){}
     }
 
-// ── Read JKM M+1 with 16th-roll: aD/sDates primary, cp_fp fallback ──
-    // Past 15th, contract M+1 has settled (blank in new OB curves) → read M+2 from pk lookup
-    // cpFP.JKM[0] freezes stale after roll, so cpFP fallback must also use [1] past 15th
+// ── Read JKM M+1: cp_fp primary (matches China Gas Prices tab), aD/sDates fallback ──
     let latJKM=null, latDateStr='';
-    const todayRoll=new Date().getDate()>=16;
-    if(typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length&&typeof rPK==='function'){
+    try{
+      if(typeof cpGet==='function'){
+        const cpFP=cpGet('cp_fp',null);
+        const jkmM1=cpFP?.JKM?.[0];
+        if(jkmM1!=null) latJKM=+Number(jkmM1).toFixed(3);
+      }
+    }catch(e){}
+    if(latJKM==null&&typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length){
       const latDs=sDates[sDates.length-1];
       const latDate=aD[latDs]?.date;
       if(latDate){
-        const pk=rPK(latDate,todayRoll?2:1);
+        const pk=rPK(latDate,latDate.getDate()>=16?2:1);
         const row=(aD[latDs].rows||[]).find(r=>r.pk===pk);
-        if(row?.JKM!=null) latJKM=+Number(row.JKM).toFixed(3);
+        latJKM=row?.JKM||null;
         latDateStr=latDs;
       }
     }
-    if(latJKM==null){
-      try{
-        if(typeof cpGet==='function'){
-          const cpFP=cpGet('cp_fp',null);
-          const idx=todayRoll?1:0;
-          const jkm=cpFP?.JKM?.[idx];
-          if(jkm!=null) latJKM=+Number(jkm).toFixed(3);
-        }
-      }catch(e){}
-    }
+    // Stamp the JKM tile with the latest EOD date if cp_fp path didn't set one
     if(latJKM!=null&&!latDateStr&&typeof sDates!=='undefined'&&sDates.length){
       latDateStr=sDates[sDates.length-1];
     }
@@ -12759,7 +14554,7 @@ window.optSolveIV=optSolveIV;
 
 
 
-/* ─── Block 3: trailing script (was inline at original line 13873) ─── */
+/* ─── Block 3: trailing script (was inline at v194 line 15314) ─── */
 
 const ACER_MTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const ACER_GC='rgba(255,255,255,0.05)';
@@ -13543,15 +15338,5 @@ function renderRegasLngStorage(pane){
     });
   },80);
 }
-
-function setTheme(theme){
-  document.documentElement.dataset.theme=theme;
-  try{localStorage.setItem('lng_theme',theme);}catch(e){}
-}
-function toggleTheme(){
-  const cur=document.documentElement.dataset.theme||'dark';
-  setTheme(cur==='dark'?'light':'dark');
-}
-try{setTheme(localStorage.getItem('lng_theme')||'dark');}catch(e){setTheme('dark');}
 
 // Also update the old regasTab first-load to use heatmap

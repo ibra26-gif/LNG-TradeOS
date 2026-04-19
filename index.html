@@ -2,1139 +2,585 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LNG TradeOS — Ibrahim Mar</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>
-:root{
-  --bg:#09090b;--bg2:#111113;--bg3:#18181b;--bg4:#1c1c20;
-  --border:#27272a;--border2:#3f3f46;
-  --text:#fafafa;--text2:#a1a1aa;--text3:#52525b;
-  --c:#3b82f6;--u:#f59e0b;--t:#22c55e;--r:#ef4444;
-  --c-a:rgba(59,130,246,.12);--u-a:rgba(245,158,11,.12);--t-a:rgba(34,197,94,.12);--r-a:rgba(239,68,68,.1);
-  --mono:'IBM Plex Mono',monospace;
-  --sans:'IBM Plex Sans',sans-serif;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;height:100%;overflow:hidden}
-
-/* ── App shell ── */
-.app{display:grid;grid-template-rows:48px 1fr;height:100vh}
-.topnav{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);background:var(--bg2);padding:0 16px;z-index:10}
-.logo{font-size:13px;font-weight:600;font-family:var(--mono);color:var(--text);letter-spacing:-.02em;margin-right:24px;flex-shrink:0}
-.logo span{color:var(--c)}
-.nav-tabs{display:flex;height:100%;gap:2px}
-.nav-tab{display:flex;align-items:center;gap:6px;padding:0 14px;font-size:12px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .12s;white-space:nowrap}
-.nav-tab:hover{color:var(--text2)}
-.nav-tab.active{color:var(--text);border-bottom-color:var(--c)}
-.nav-tab svg{flex-shrink:0}
-.topnav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
-.chip{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border2);color:var(--text3);background:var(--bg3)}
-.chip-warn{border-color:rgba(245,158,11,.4);color:#f59e0b;background:rgba(245,158,11,.08)}
-
-/* ── Content area ── */
-.content{overflow-y:auto;padding:20px 24px}
-.page{display:none}.page.active{display:block}
-
-/* ── Cards & grid ── */
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px}
-.card-sm{padding:10px 12px}
-.ch{font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.ch::after{content:'';flex:1;height:1px;background:var(--border)}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
-.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
-.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
-.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px}
-
-/* ── Metrics ── */
-.met{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 13px}
-.ml{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
-.mv{font-size:17px;font-weight:600;letter-spacing:-.02em;line-height:1;font-family:var(--mono)}
-.ms{font-size:10px;color:var(--text3);margin-top:3px}
-.pos{color:#4ade80}.neg{color:#f87171}.warn{color:#fbbf24}.info{color:#60a5fa}
-
-/* ── Tables ── */
-.tw{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:11.5px}
-th{font-family:var(--mono);font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:5px 8px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
-td{padding:5px 8px;border-bottom:1px solid var(--border);white-space:nowrap;vertical-align:middle}
-tr:last-child td{border-bottom:none}
-tr:hover td{background:var(--bg3)}
-.tr-tot td{background:var(--bg3);font-weight:600;border-top:1px solid var(--border2);font-family:var(--mono)}
-.tr-hdr td{background:var(--bg3);font-family:var(--mono);font-size:10px;color:var(--text3);font-weight:500}
-
-/* ── Pills ── */
-.pill{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px;white-space:nowrap}
-.p-c{background:var(--c-a);color:#60a5fa;border:1px solid rgba(59,130,246,.2)}
-.p-u{background:var(--u-a);color:#fcd34d;border:1px solid rgba(245,158,11,.2)}
-.p-t{background:var(--t-a);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
-.p-r{background:var(--r-a);color:#f87171;border:1px solid rgba(239,68,68,.2)}
-.p-fix{background:rgba(34,197,94,.08);color:#86efac;border:1px solid rgba(34,197,94,.15)}
-.p-ten{background:rgba(245,158,11,.08);color:#fde68a;border:1px solid rgba(245,158,11,.15)}
-.p-bid{background:rgba(59,130,246,.08);color:#93c5fd;border:1px solid rgba(59,130,246,.15)}
-.dot{width:6px;height:6px;border-radius:50%;display:inline-block}
-.dc{background:var(--c)}.du{background:var(--u)}.dt{background:var(--t)}.dr{background:var(--r)}
-
-/* ── Waterfall ── */
-.wf{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)}
-.wf:last-child{border-bottom:none}
-.wfl{width:180px;font-size:11px;color:var(--text2);flex-shrink:0}
-.wft{flex:1;height:10px;background:var(--bg3);border-radius:2px;position:relative;overflow:hidden}
-.wfb{height:100%;position:absolute;left:0;border-radius:2px;transition:width .5s}
-.wfv{width:76px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:500}
-
-/* ── Timeline ── */
-.tl{height:5px;background:var(--bg3);border-radius:3px;position:relative;overflow:hidden;margin:6px 0}
-.tl-c{height:100%;position:absolute;left:0;background:var(--c);border-radius:3px 0 0 3px}
-.tl-u{height:100%;position:absolute;background:var(--u)}
-.tl-now{position:absolute;top:-3px;width:2px;height:11px;background:var(--text);border-radius:1px;z-index:2}
-.tl-lab{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--text3)}
-
-/* ── Curve chart ── */
-.curve-grid{display:grid;grid-template-columns:55px 1fr;gap:0;height:160px;align-items:stretch}
-.curve-yaxis{display:flex;flex-direction:column;justify-content:space-between;padding:4px 8px 4px 0;font-family:var(--mono);font-size:9px;color:var(--text3);text-align:right}
-.curve-area{position:relative;border-left:1px solid var(--border3, #2d2d30)}
-.curve-svg{width:100%;height:100%;overflow:visible}
-
-/* ── RAF bar ── */
-.raf-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
-.raf-row:last-child{border-bottom:none}
-.raf-lbl{width:140px;font-size:11px;color:var(--text2);flex-shrink:0}
-.raf-track{flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden}
-.raf-fill{height:100%;border-radius:4px;transition:width .4s}
-.raf-pct{width:40px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:500}
-
-/* ── Composition ── */
-.cmp-bar{margin-bottom:12px}
-.cmp-lbl{display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px}
-.cmp-track{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
-.cmp-fill{height:100%;border-radius:3px;transition:width .4s}
-
-/* ── Inputs ── */
-.row-i{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end}
-.ig{display:flex;flex-direction:column;gap:3px}
-.ig label{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
-input,select{background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text);padding:5px 8px;font-size:12px;font-family:var(--sans);outline:none;transition:border-color .12s}
-input:focus,select:focus{border-color:var(--c)}
-input[type=number]{text-align:right;font-family:var(--mono)}
-select{cursor:pointer}
-button{background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text);padding:5px 12px;font-size:12px;font-family:var(--sans);cursor:pointer;transition:all .12s}
-button:hover{background:var(--bg4);border-color:var(--c)}
-.btn-p{background:var(--c);border-color:var(--c);color:#fff}
-.btn-p:hover{opacity:.85}
-
-/* ── Explain P&L ── */
-.explain-row{display:flex;align-items:center;gap:0;padding:7px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
-.explain-row:hover{background:var(--bg3)}
-.explain-row:last-child{border-bottom:none}
-.ex-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-right:10px}
-.ex-lbl{flex:1;font-size:12px;color:var(--text2)}
-.ex-sub{font-size:10px;color:var(--text3);margin-top:1px}
-.ex-bar-wrap{width:140px;height:8px;background:var(--bg3);border-radius:2px;overflow:hidden;margin:0 12px;flex-shrink:0}
-.ex-bar{height:100%;border-radius:2px;transition:width .5s}
-.ex-val{width:72px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:500;flex-shrink:0}
-.ex-connector{width:1px;background:var(--border);align-self:stretch;margin:0 14px;flex-shrink:0}
-
-/* ── Snap log ── */
-.snap{display:flex;gap:10px;align-items:center;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;margin-bottom:5px}
-.snap-date{font-family:var(--mono);font-size:10px;color:var(--text3);width:80px;flex-shrink:0}
-.snap-val{font-family:var(--mono);font-size:12px;font-weight:600;width:80px}
-.snap-dod{font-family:var(--mono);font-size:11px;width:68px}
-.snap-bar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.snap-fill{height:100%;border-radius:2px}
-
-/* ── Spec status dots ── */
-.sl-hit::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--r);margin-right:5px}
-.tgt-hit::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--t);margin-right:5px}
-.open::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--c);margin-right:5px}
-
-/* ── Section labels ── */
-.slbl{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
-.divider{height:1px;background:var(--border);margin:12px 0}
-.spacer{height:8px}
-
-/* ── Curve selector ── */
-.cv-sel{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-.cv-btn{font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:4px;border:1px solid var(--border2);cursor:pointer;color:var(--text3);background:var(--bg3);transition:all .12s}
-.cv-btn.active{background:var(--c-a);border-color:rgba(59,130,246,.4);color:#60a5fa}
-
-/* Scrollbar */
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-</style>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LNG TradeOS™ v197</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="lngtradeos.css">
+<script src="lngtradeos.js" defer></script>
 </head>
 <body>
-<div class="app">
-
-<!-- ── Top nav ── -->
 <nav class="topnav">
-  <div class="logo">LNG<span>Trade</span>OS</div>
+  <div class="logo" onclick="shellNav('home')">
+    <div class="logo-tri"></div>
+    <div class="logo-text">LNG <span class="ac">TradeOS<span class="tm">™</span></span></div>
+  </div>
   <div class="nav-tabs">
-    <div class="nav-tab active" onclick="page('morning')" id="t-morning">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      Morning book
-    </div>
-    <div class="nav-tab" onclick="page('curves')" id="t-curves">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 12l3-4 3 2 4-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Curves
-    </div>
-    <div class="nav-tab" onclick="page('cargo')" id="t-cargo">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M2 6h12" stroke="currentColor" stroke-width="1.5"/></svg>
-      Cargo book
-    </div>
-    <div class="nav-tab" onclick="page('cut')" id="t-cut">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M7.5 8h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      C / U / T
-    </div>
-    <div class="nav-tab" onclick="page('explain')" id="t-explain">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 8h2l2-5 3 10 2-5 1 0h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Explain P&L
-    </div>
-    <div class="nav-tab" onclick="page('spec')" id="t-spec">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 13l3-3M10 6l3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="5" y="5" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
-      Spec book
-    </div>
-    <div class="nav-tab" onclick="page('pnl')" id="t-pnl">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 8h6M5 5h3M5 11h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      P&L log
-    </div>
+    <div class="nav-tab active" id="tab-home"         onclick="shellNav('home')">HOME</div>
+    <div class="nav-tab"        id="tab-physical"     onclick="shellNav('physical')">PHYSICAL TRADING</div>
+    <div class="nav-tab"        id="tab-financial"    onclick="shellNav('financial')">FINANCIAL TRADING</div>
+    <div class="nav-tab"        id="tab-gasanalytics" onclick="shellNav('gasanalytics')">GAS &amp; LNG ANALYTICS</div>
+    <div class="nav-tab"        id="tab-portfolio"    onclick="shellNav('portfolio')">PORTFOLIO VALUATION</div>
+    <div class="nav-tab"        id="tab-toolbox"      onclick="shellNav('toolbox')">LNG TOOLBOX</div>
+    <div class="nav-tab"        id="tab-disclaimer"   onclick="shellNav('disclaimer')">DISCLAIMER</div>
   </div>
-  <div class="topnav-right">
-    <span class="chip">Assessment: 17 Mar 26</span>
-    <span class="chip chip-warn">⚠ curves stale</span>
-    <span class="chip" id="today-chip"></span>
-  </div>
+  
 </nav>
 
-<div class="content" id="content">
+<!-- HOME -->
+<section class="s-sec active" id="section-home">
+  <div class="hero">
+    <div class="hero-title">LNG <span class="ac">TradeOS<span class="tm">™</span></span></div>
+    <div class="hero-sub">Integrated LNG Trading &amp; Analytics Platform</div>
+    <span class="badge">v1.3</span>
+  </div>
+  <div class="mod-group">
+    <div class="group-hdr"><div class="group-icon">▣</div><div><div class="group-ttl">PHYSICAL TRADING</div><div class="group-sub">Voyage economics, cargo pricing and European regasification</div></div></div>
+    <div class="cards-grid">
+      <div class="mod-card" onclick="shellNav('physical','freight')"><span class="card-num">01</span><div class="card-ttl">Freight Rate Calculator</div><div class="card-desc">Voyage cost estimation across global LNG shipping routes with BLNG curves and per-month positioning</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','cargo')"><span class="card-num">02</span><div class="card-ttl">LNG Global Netback</div><div class="card-desc">USGC/WAF/Oman arb, DES pricing, FOB netback matrix and global cargo economics</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','mktstr')"><span class="card-num">03</span><div class="card-ttl">Market Structure Pricing</div><div class="card-desc">Near/far curve structure, per-day roll and pricing formula generation for JKM and TTF deals</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','regas')"><span class="card-num">04</span><div class="card-ttl">EU Regas Model</div><div class="card-desc">European regasification terminal pricing, cost graphs, netback analysis and slot valuation</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','acer')"><span class="card-num">05</span><div class="card-ttl">Historical ACER Price</div><div class="card-desc">ACER daily DES physical NWE · SE · EU — seasonal scatter vs history 2023–2026</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+    </div>
+  </div>
+  <div class="mod-group">
+    <div class="group-hdr"><div class="group-icon">◆</div><div><div class="group-ttl">FINANCIAL TRADING</div><div class="group-sub">Pricing dashboard, forward curves, historical analysis, spreads, correlations and seasonality</div></div></div>
+    <div class="cards-grid">
+      <div class="mod-card" onclick="shellNav('financial','dashboard')"><span class="card-num">01</span><div class="card-ttl">Dashboard</div><div class="card-desc">Global Gas Snapshot, live index prices, correlation matrix and day-on-day changes</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','historical')"><span class="card-num">02</span><div class="card-ttl">Historical Prices</div><div class="card-desc">Historical time-series with dual-axis charting and statistics across all indices</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','correlation')"><span class="card-num">03</span><div class="card-ttl">Correlation</div><div class="card-desc">Rolling Pearson r — 10D, 20D, 30D windows and full matrix</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','spread')"><span class="card-num">04</span><div class="card-ttl">Spread Analysis</div><div class="card-desc">Inter-index spread analytics with individual leg charts and tenor selection</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','forward')"><span class="card-num">05</span><div class="card-ttl">Forward Curve</div><div class="card-desc">Full forward curve with two-date comparison and curve shape analytics</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','seasonal')"><span class="card-num">06</span><div class="card-ttl">Seasonal Analysis</div><div class="card-desc">Year-over-year seasonal profiles and monthly spread table</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+      <div class="mod-card" onclick="shellNav('financial','options')"><span class="card-num">07</span><div class="card-ttl">Option Pricing</div><div class="card-desc">BS, Gaussian &amp; Spread option pricers — verify broker quotes, Greeks, implied vol solver</div><span class="s-tag tag-fin">FINANCIAL</span></div>
+    </div>
+  </div>
+  <div class="mod-group">
+    <div class="group-hdr"><div class="group-icon">⬡</div><div><div class="group-ttl">GAS &amp; LNG ANALYTICS</div><div class="group-sub">EU gas balance, storage, regas utilisation, pipeline flows and market signposts</div></div></div>
+    <div class="cards-grid">
+      <div class="mod-card" onclick="shellNav('gasanalytics','lngbal')"><span class="card-num">01</span><div class="card-ttl">Global LNG Balances &amp; Signposts</div><div class="card-desc">Key LNG country balances and pricing signals</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
+      <div class="mod-card" onclick="shellNav('gasanalytics','eugas')"><span class="card-num">02</span><div class="card-ttl">EU Gas Balance</div><div class="card-desc">Pipeline imports, domestic production, LNG imports and demand — seasonal and monthly views</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
+      <div class="mod-card" onclick="shellNav('gasanalytics','storage')"><span class="card-num">03</span><div class="card-ttl">EU Storage</div><div class="card-desc">EU &amp; country storage levels, seasonal comparison, injection/withdrawal flows — GIE AGSI+</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
+      <div class="mod-card" onclick="shellNav('gasanalytics','regas')"><span class="card-num">04</span><div class="card-ttl">LNG Regas Terminals</div><div class="card-desc">Utilisation heatmap, tank stocks, sendout seasonal and country aggregate — GIE AGGI+</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
+      <div class="mod-card" onclick="shellNav('gasanalytics','lngvc')"><span class="card-num">05</span><div class="card-ttl">LNG Value Chain</div><div class="card-desc">EU LNG imports, regasification utilisation, sendout and tank inventory — GIE ALSI</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
+    </div>
+  </div>
+  <div class="mod-group">
+    <div class="group-hdr"><div class="group-icon">◈</div><div><div class="group-ttl">LNG PORTFOLIO VALUATION</div><div class="group-sub">Extrinsic &amp; optionality valuation across single deals, strips and portfolios</div></div></div>
+    <div class="cards-grid">
+      <div class="mod-card" onclick="shellNav('portfolio','single')"><span class="card-num">01</span><div class="card-ttl">Single Deal Valuation</div><div class="card-desc">Full extrinsic and optionality valuation for individual LNG cargo contracts</div><span class="s-tag tag-pv">VALUATION</span></div>
+      <div class="mod-card" onclick="shellNav('portfolio','strips')"><span class="card-num">02</span><div class="card-ttl">Strip Valuation</div><div class="card-desc">Multi-cargo strip optionality decomposition with intrinsic and time value analysis</div><span class="s-tag tag-pv">VALUATION</span></div>
+      <div class="mod-card" onclick="shellNav('portfolio','portfolio')"><span class="card-num">03</span><div class="card-ttl">Portfolio Valuation</div><div class="card-desc">Aggregated P&amp;L, exposure summary and blended optionality across all positions</div><span class="s-tag tag-pv">VALUATION</span></div>
+    </div>
+  </div>
+  <div class="mod-group">
+    <div class="group-hdr"><div class="group-icon">⚙</div><div><div class="group-ttl">LNG TOOLBOX</div><div class="group-sub">Reference tools, converters and market databases</div></div></div>
+    <div class="cards-grid">
+      <div class="mod-card" onclick="shellNav('toolbox','converter')"><span class="card-num">01</span><div class="card-ttl">Natural Gas Converter</div><div class="card-desc">Unit conversion across mmBtu, MWh, MCM, Bcm, MT LNG and all standard gas units</div><span class="s-tag tag-tb">TOOLBOX</span></div>
+      <div class="mod-card" onclick="shellNav('toolbox','gasspec')"><span class="card-num">02</span><div class="card-ttl">Gas Specifications</div><div class="card-desc">GHV, NHV, Wobbe Index converter · ISO 13443:1996 · BTU/scf · Reference conditions</div><span class="s-tag tag-tb">TOOLBOX</span></div>
+      <div class="mod-card" onclick="shellNav('toolbox','portcosts')"><span class="card-num">03</span><div class="card-ttl">Port Cost Database</div><div class="card-desc">130+ terminals — loading and discharge port costs for global LNG terminals</div><span class="s-tag tag-tb">TOOLBOX</span></div>
+    </div>
+  </div>
+  <div class="sh-footer">
+    <div class="ft"><span class="dot"></span>LNG TRADEOS™ v1.3 — PERSONAL TRADING ANALYTICS</div>
+    <div class="ft">© 2026 IBRAHIM MAR — LNG TRADEOS™ — ALL RIGHTS RESERVED</div>
+  </div>
+</section>
 
-<!-- ═══════ MORNING BOOK ═══════ -->
-<div class="page active" id="page-morning">
-  <div class="g5" id="m-metrics"></div>
-  <div class="g2">
-    <div>
-      <div class="card">
-        <div class="ch">Physical cargo book</div>
-        <div class="tw"><table id="m-cargo-tbl"></table></div>
-      </div>
-      <div class="card">
-        <div class="ch">Hedge book</div>
-        <div class="tw"><table id="m-hedge-tbl"></table></div>
-      </div>
-    </div>
-    <div>
-      <div class="card">
-        <div class="ch">Day P&L attribution — vs T-1</div>
-        <div id="m-wfall"></div>
-      </div>
-      <div class="card">
-        <div class="ch">C / U / T split</div>
-        <div id="m-cut"></div>
-      </div>
-      <div class="card card-sm">
-        <div class="ch">Spec book — net MtM</div>
-        <div class="tw"><table id="m-spec-tbl"></table></div>
-      </div>
-    </div>
+<!-- PHYSICAL -->
+<section class="s-sec" id="section-physical">
+  <div class="sh-subnav">
+    <button class="sh-stab active" id="ptab-overview" onclick="phTab('overview')">OVERVIEW</button>
+    <button class="sh-stab" id="ptab-freight" onclick="phTab('freight')">FREIGHT CALCULATOR</button>
+    <button class="sh-stab" id="ptab-cargo" onclick="phTab('cargo')">LNG GLOBAL NETBACK</button>
+    <button class="sh-stab" id="ptab-mktstr" onclick="phTab('mktstr')">MARKET STRUCTURE</button>
+    <button class="sh-stab" id="ptab-regas" onclick="phTab('regas')">EU REGAS MODEL</button>
+    <button class="sh-stab" id="ptab-acer" onclick="phTab('acer')">HISTORICAL ACER</button>
   </div>
-</div>
+  <div id="ph-content"></div>
+</section>
 
-<!-- ═══════ CURVES ═══════ -->
-<div class="page" id="page-curves">
-  <div class="cv-sel" id="cv-sel"></div>
-  <div class="card" style="margin-bottom:12px">
-    <div class="ch">Forward curve — <span id="cv-title">JKM ($/MMBtu)</span></div>
-    <div id="cv-chart"></div>
-  </div>
-  <div class="g2">
-    <div class="card">
-      <div class="ch">Full curve data — all months</div>
-      <div class="tw" style="max-height:340px;overflow-y:auto"><table id="cv-tbl"></table></div>
+<!-- FINANCIAL -->
+<section class="s-sec" id="section-financial">
+  <div id="fin-dropzone">
+    <div id="dz-auto" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:0">
+      <div class="prog-wrap" style="width:480px;max-width:80vw"><div class="prog-bar"><div class="prog-fill" id="progfill"></div></div><div class="prog-txt" id="progtxt" style="text-align:center;margin-top:8px"></div></div>
+      <button class="dz-btn" id="fallback-btn" style="display:none;margin-top:24px" onclick="showManualDrop()">LOAD FILES MANUALLY</button>
     </div>
-    <div class="card">
-      <div class="ch">Curve structure — spreads</div>
-      <div class="tw"><table id="cv-spreads"></table></div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════ CARGO BOOK ═══════ -->
-<div class="page" id="page-cargo">
-  <div class="g4" id="cargo-metrics"></div>
-  <div class="card">
-    <div class="ch">Cargo book — full P&L with correct incoterms formulas</div>
-    <div class="tw"><table id="cargo-tbl"></table></div>
-  </div>
-  <div class="g3">
-    <div class="card">
-      <div class="ch">By origin</div>
-      <table id="origin-tbl"></table>
-    </div>
-    <div class="card">
-      <div class="ch">By cargo type</div>
-      <table id="type-tbl"></table>
-    </div>
-    <div class="card">
-      <div class="ch">By delivery month</div>
-      <table id="month-tbl"></table>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════ C / U / T ═══════ -->
-<div class="page" id="page-cut">
-  <div class="g4" id="cut-metrics"></div>
-  <div class="g2">
-    <div class="card">
-      <div class="ch">Deal-by-deal classification</div>
-      <div class="tw"><table id="cut-tbl"></table></div>
-      <div class="divider"></div>
-      <div id="cut-comp"></div>
-    </div>
-    <div>
-      <div class="card">
-        <div class="ch">RAF decay — next 45 days</div>
-        <div id="cut-decay"></div>
+    <div id="dz-manual" style="display:none;flex-direction:column;align-items:center;gap:16px">
+      <div class="dz" id="dz">
+        <div class="dz-icon">⬇</div>
+        <div class="dz-title">DROP YOUR EOD CURVE FILES HERE</div>
+        <div class="dz-sub">Drag your LNG Curves folder or click to select.<br>Cached locally after first load.</div>
+        <button class="dz-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">SELECT FILES</button>
+        <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
       </div>
-      <div class="card">
-        <div class="ch">Pricing period progress</div>
-        <div id="cut-timelines"></div>
-      </div>
+      <div class="prog-wrap" id="progwrap" style="display:none"><div class="prog-bar"><div class="prog-fill" id="progfill2"></div></div><div class="prog-txt" id="progtxt2"></div></div>
     </div>
   </div>
-</div>
-
-<!-- ═══════ EXPLAIN P&L ═══════ -->
-<div class="page" id="page-explain">
-  <div class="card" style="margin-bottom:12px">
-    <div class="ch">T-1 vs today — set yesterday's reference curves</div>
-    <div class="row-i" id="explain-inputs"></div>
-    <div style="font-size:11px;color:var(--text3);margin-top:4px">Enter yesterday's EOD curve marks to compute the P&L attribution. Today's curves are from the LNG Curves tab (17 Mar 26).</div>
-  </div>
-  <div class="g4" id="explain-metrics"></div>
-  <div class="g2">
-    <div class="card">
-      <div class="ch">Gross P&L decomposition — waterfall</div>
-      <div id="explain-wfall"></div>
+  <div id="fin-analytics" style="display:none">
+    <div class="anav">
+      <button class="anl active" onclick="showSec('dashboard',this)">DASHBOARD</button>
+      <button class="anl" onclick="showSec('historical',this)">HISTORICAL</button>
+      <button class="anl" onclick="showSec('correlation',this)">CORRELATION</button>
+      <button class="anl" onclick="showSec('spread',this)">SPREAD</button>
+      <button class="anl" onclick="showSec('forward',this)">FORWARD CURVE</button>
+      <button class="anl" onclick="showSec('seasonal',this)">SEASONAL</button>
+      <button class="anl" onclick="showSec('options',this)">OPTIONS PRICER</button>
     </div>
-    <div class="card">
-      <div class="ch">Per-cargo attribution</div>
-      <div class="tw"><table id="explain-tbl"></table></div>
+    <div class="sbar" id="sbar">
+      <span class="sdot"></span><span id="stext"></span>
+      <button class="sbtn" onclick="document.getElementById('fileInput2').click()" style="margin-left:auto">+ ADD FILES</button>
+      <button class="sbtn" style="color:#4fc3f7" onclick="MCP_AVAILABLE?fAuthGate(()=>loadPricesFromGmail(true)):alert('Gmail scrape requires Claude.ai — use + ADD FILES instead.')">📧 + GMAIL</button>
+      <button class="sbtn" onclick="exportToExcel()" style="color:#22c55e">↓ EXPORT XLSX</button>
+      <button class="sbtn" onclick="syncNewFiles(false)" style="color:#4fc3f7">↺ SYNC</button>
+      <button class="sbtn red" id="clearCacheBtn">↺ CLEAR CACHE</button>
+      <input type="file" id="fileInput2" multiple accept=".xlsx,.xls" style="display:none">
     </div>
-  </div>
-  <div class="card">
-    <div class="ch">How explain P&L works</div>
-    <div style="font-size:12px;color:var(--text2);line-height:1.8">
-      <strong style="color:var(--text)">GrossP&L Δ = Σ components:</strong><br>
-      <span style="color:var(--c)">● Curve move</span> — change in forward price for each index × cargo quantity × (1 − fix_ratio). Only Uncertain exposure contributes.<br>
-      <span style="color:var(--u)">● Theta / time decay</span> — one day closer to delivery. BOG and discount factors shift slightly. Typically small for LNG.<br>
-      <span style="color:var(--t)">● Fixing impact</span> — yesterday's index settlement locked in. Uncertain MtM for that day moved to Certain. Delta = (settlement − forward_T1) × qty_fixed_that_day.<br>
-      <span style="color:#a78bfa">● New trades</span> — MTM of any cargo booked today that wasn't in T-1.<br>
-      <span style="color:var(--text3)">● Residual</span> — rounding, freight re-mark, methodology differences.
-    </div>
-  </div>
-</div>
-
-<!-- ═══════ SPEC BOOK ═══════ -->
-<div class="page" id="page-spec">
-  <div class="g5" id="spec-metrics"></div>
-  <div class="card">
-    <div class="ch">Active speculative positions</div>
-    <div class="tw"><table id="spec-tbl"></table></div>
-  </div>
-  <div class="g2">
-    <div class="card">
-      <div class="ch">Book limits — utilisation</div>
-      <table id="spec-limits"></table>
-    </div>
-    <div class="card">
-      <div class="ch">Closed trades — realised P&L</div>
-      <div id="closed-trades">
-        <div style="color:var(--text3);font-size:11px;padding:6px 0">No closed trades recorded yet. When a position hits target or stop, log it here to track realised P&L.</div>
-        <div class="divider"></div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">Realised P&L: <span style="color:var(--text2)">$0.00M</span></div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:4px">Win rate: <span style="color:var(--text2)">—</span></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════ P&L LOG ═══════ -->
-<div class="page" id="page-pnl">
-  <div class="g4" id="pnl-metrics"></div>
-  <div class="g2">
-    <div>
-      <div class="card">
-        <div class="ch">EOD snapshot log — running daily P&L</div>
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <button class="btn-p" onclick="addSnap()">+ Capture today's EOD</button>
-          <span style="font-size:11px;color:var(--text3);align-self:center">Saves current combined MtM to history</span>
+    <div class="amin">
+      <div id="sec-dashboard" class="asec active">
+        <div id="dash-metrics"></div>
+        <!-- Two charts side by side: Global Snapshot LEFT, EU Hub RIGHT -->
+        <div class="two-col" style="margin-bottom:12px">
+          <div class="acard"><div class="ctitle">GLOBAL GAS SNAPSHOT — M+1 · $/MMBTU · FROM JAN 2026</div><div class="cw" style="height:280px"><canvas id="gas-snapshot-chart"></canvas></div></div>
+          <div class="acard">
+            <div class="ctitle" style="display:flex;align-items:center;gap:8px">
+              <span>EUROPEAN GAS HUB — M+1 · $/MMBTU · FROM JAN 2026</span>
+              <span id="eex-status" style="margin-left:auto;color:#3d5070;font-size:8px"></span>
+            </div>
+            <div class="cw" style="height:280px"><canvas id="eu-hub-chart"></canvas></div>
+            <div style="font-size:8px;color:#3d5070;margin-top:4px">EEX Market Data Hub · EUR/MWh × 0.293071 × EUR/USD (from LNG EOD)</div>
+          </div>
         </div>
-        <div id="snap-log"></div>
+        <!-- Correlation + DoD below -->
+        <div class="two-col">
+          <div class="acard"><div class="ctitle">CORRELATION MATRIX — M+1 · LOG RETURNS</div><div class="cnote">Pearson r on daily log returns. Blue = positive, red = negative.</div><div id="dash-corr" style="overflow-x:auto"></div></div>
+          <div class="acard"><div class="ctitle">DAY-ON-DAY CHANGES — ALL INSTRUMENTS</div><div id="dash-dod" style="overflow-x:auto"></div></div>
+        </div>
       </div>
-    </div>
-    <div>
-      <div class="card">
-        <div class="ch">Cumulative book P&L ($M)</div>
-        <div id="pnl-chart-area"></div>
+      <div id="sec-historical" class="asec">
+        <div class="ctrl"><span class="cl">SERIES 1</span><select id="h-i1" onchange="updHist()"></select><select id="h-t1" onchange="updHist()"></select><span class="d1"></span><div class="csep"></div><span class="cl">SERIES 2</span><select id="h-i2" onchange="updHist()"></select><select id="h-t2" onchange="updHist()"></select><span class="d2"></span><div class="csep"></div><span class="cl">RANGE</span><div id="h-range-btns" style="display:flex;gap:3px">
+          <button class="cr-pill" id="h-rng-1m" onclick="setHistRange('1m',this)">1M</button>
+          <button class="cr-pill" id="h-rng-3m" onclick="setHistRange('3m',this)">3M</button>
+          <button class="cr-pill" id="h-rng-6m" onclick="setHistRange('6m',this)">6M</button>
+          <button class="cr-pill" id="h-rng-ytd" onclick="setHistRange('ytd',this)">YTD</button>
+          <button class="cr-pill" id="h-rng-1y" onclick="setHistRange('1y',this)">1Y</button>
+          <button class="cr-pill on" id="h-rng-all" onclick="setHistRange('all',this)">ALL</button>
+        </div></div>
+        <div class="acard"><div class="ctitle">DAILY PRICE HISTORY — $/MMBTU</div><div class="cw" style="height:280px"><canvas id="hChart"></canvas></div></div>
+        <div class="acard"><div class="ctitle" id="stats-title">STATISTICS</div><div style="overflow-x:auto"><table class="stbl" id="statsTable"></table></div></div>
       </div>
-      <div class="card">
-        <div class="ch">Last session attribution</div>
-        <div id="pnl-attr"></div>
+      <div id="sec-correlation" class="asec">
+        <div style="display:flex;border-bottom:1px solid #151e30;background:#070b14;overflow-x:auto;margin-bottom:0">
+          <button class="anl active" id="ctab-rolling" onclick="cShowTab('rolling',this)" style="font-size:9px;padding:10px 14px">ROLLING</button>
+          <button class="anl" id="ctab-analysis" onclick="cShowTab('analysis',this)" style="font-size:9px;padding:10px 14px">ANALYSIS</button>
+          <button class="anl" id="ctab-matrix" onclick="cShowTab('matrix',this)" style="font-size:9px;padding:10px 14px">MATRIX</button>
+        </div>
+        <div id="csec-rolling" class="csec" style="padding:14px 0 0">
+          <div class="ctrl">
+            <span class="cl">WINDOW</span>
+            <input type="range" min="5" max="60" value="20" id="cr-win" oninput="document.getElementById('cr-win-val').textContent=this.value+'D';cUpdRolling()" style="width:120px;accent-color:#2d7cff">
+            <span id="cr-win-val" style="font-size:10px;color:#4fc3f7;min-width:28px">20D</span>
+            <div class="csep"></div>
+            <span class="cl">METHOD</span>
+            <button class="cr-pill on" id="cr-pearson" onclick="cSetMethod('pearson')">PEARSON</button>
+            <button class="cr-pill" id="cr-spearman" onclick="cSetMethod('spearman')">SPEARMAN</button>
+            <div class="csep"></div>
+            <button class="cr-detect" onclick="cDetect('rolling')">DETECT</button>
+          </div>
+          <div id="cr-pairs-wrap" style="margin-bottom:10px"></div>
+          <div id="cr-detect-panel" style="display:none;margin-bottom:10px"></div>
+          <div class="acard">
+            <div class="ctitle">ROLLING CORRELATION&nbsp;<span id="cr-badge"></span><span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+            <div class="cw" style="height:200px"><canvas id="crChart"></canvas></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:12px" id="cr-stats"></div>
+        </div>
+        <div id="csec-analysis" class="csec" style="padding:14px 0 0;display:none">
+          <div class="ctrl">
+            <span class="cl">A</span>
+            <select id="ca-i1" onchange="cUpdAnalysis()"></select>
+            <select id="ca-t1" onchange="cUpdAnalysis()"></select>
+            <span class="cl">VS</span>
+            <select id="ca-i2" onchange="cUpdAnalysis()"></select>
+            <select id="ca-t2" onchange="cUpdAnalysis()"></select>
+            <div class="csep"></div>
+            <span class="cl">WINDOW</span>
+            <input type="range" min="5" max="60" value="20" id="ca-win" oninput="document.getElementById('ca-win-val').textContent=this.value+'D';cUpdAnalysis()" style="width:100px;accent-color:#2d7cff">
+            <span id="ca-win-val" style="font-size:10px;color:#4fc3f7;min-width:28px">20D</span>
+            <div class="csep"></div>
+            <button class="cr-pill on" id="ca-pearson" onclick="cSetMethodA('pearson')">PEARSON</button>
+            <button class="cr-pill" id="ca-spearman" onclick="cSetMethodA('spearman')">SPEARMAN</button>
+            <div class="csep"></div>
+            <button class="cr-detect" onclick="cDetect('analysis')">DETECT</button>
+          </div>
+          <div id="ca-detect-panel" style="display:none;margin-bottom:10px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="acard">
+              <div class="ctitle">LAG / LEAD<span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+              <div class="cnote" style="margin-bottom:8px;font-size:9px">+lag = A leads B. Peak = optimal lag.</div>
+              <div style="height:150px"><canvas id="caLagChart"></canvas></div>
+              <div id="ca-lag-readout" style="font-size:9px;color:#5a6882;margin-top:6px;padding:5px 8px;background:#070b14;border:1px solid #0f1824">—</div>
+            </div>
+            <div class="acard">
+              <div class="ctitle">SCATTER + REGRESSION<span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+              <div style="height:150px"><canvas id="caScatterChart"></canvas></div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px" id="ca-scatter-stats"></div>
+            </div>
+          </div>
+        </div>
+        <div id="csec-matrix" class="csec" style="padding:14px 0 0;display:none">
+          <div class="ctrl">
+            <span class="cl">METHOD</span>
+            <button class="cr-pill on" id="cm-pearson" onclick="cSetMethodM('pearson')">PEARSON</button>
+            <button class="cr-pill" id="cm-spearman" onclick="cSetMethodM('spearman')">SPEARMAN</button>
+            <div class="csep"></div>
+            <span class="cl">INDICES</span>
+            <div id="cm-index-toggles" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+            <div class="csep"></div>
+            <button class="cr-detect" onclick="cDetect('matrix')">DETECT</button>
+            <button onclick="cExportMatrix()" style="font-size:9px;padding:3px 10px;border:1px solid #22c55e;color:#22c55e;background:none;font-family:inherit;letter-spacing:.1em;cursor:pointer;margin-left:auto">&#8595; EXPORT</button>
+          </div>
+          <div id="cm-detect-panel" style="display:none;margin-bottom:10px"></div>
+          <div class="cnote" style="margin-bottom:10px;font-size:9px">Each index has its own tenor. r (top) + stability &#963; (bottom). Opacity = significance.</div>
+          <div id="cm-tenor-row" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;padding:8px 12px;background:#0a0f1e;border:1px solid #151e30"></div>
+          <div class="acard">
+            <div class="ctitle" id="cm-title">CROSS-TENOR CORRELATION MATRIX<span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+            <div style="overflow-x:auto"><table class="ctbl" id="cmMatrix" style="font-size:10px"></table></div>
+          </div>
+
+        <div style="margin-top:16px;padding:14px 16px;background:#0a0f1e;border:1px solid #151e30;border-left:2px solid #2d7cff">
+          <div style="font-size:9px;letter-spacing:.15em;color:#2d7cff;margin-bottom:12px">HOW TO READ THIS SECTION</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;font-size:9px;line-height:1.7;color:#5a6882">
+            <div>
+              <div style="color:#c8cfe0;font-size:9px;letter-spacing:.1em;margin-bottom:6px">ROLLING TAB</div>
+              Bar height = Pearson r or Spearman r. Range -1 to +1. Solid bars = statistically significant (p&lt;0.05). Faded bars = insufficient data to trust the number. A bar near 0 = indices moved independently. Near +1 = moved together. Negative = moved in opposite directions.<br><br>
+              Stability sigma: std dev of rolling r over time. Low (e.g. 0.05) = consistent relationship. High (e.g. 0.25) = correlation regime switches between periods.
+            </div>
+            <div>
+              <div style="color:#c8cfe0;font-size:9px;letter-spacing:.1em;margin-bottom:6px">ANALYSIS TAB — LAG / LEAD</div>
+              X-axis = lag in days (-10 to +10). Peak bar = optimal lag. If peak is at +2, Index A today predicts Index B in 2 days. If peak is at 0, the indices move synchronously with no timing edge.<br><br>
+              A lag gain of &lt;0.05 over synchronous r is noise. A gain of &gt;0.10 is worth investigating as a timing signal.
+            </div>
+            <div>
+              <div style="color:#c8cfe0;font-size:9px;letter-spacing:.1em;margin-bottom:6px">ANALYSIS TAB — SCATTER</div>
+              Each dot = one day. Orange line = regression. r = relationship strength. R2 = variance explained: R2=0.55 means one index explains 55% of the other's daily moves. Beta slope = how much B moves per unit of A. Tight cluster = reliable. Dispersed cloud = weak or regime-dependent regardless of r.
+            </div>
+            <div>
+              <div style="color:#c8cfe0;font-size:9px;letter-spacing:.1em;margin-bottom:6px">MATRIX TAB</div>
+              Cell: r (top) + sigma stability (bottom). Blue intensity = positive correlation. Red = negative. Faded = not significant, treat as zero. Cross-tenor: compare different delivery months — high r across tenors means the arb relationship persists regardless of delivery timing.<br><br>
+              DETECT scans for: breakdowns (r dropped &gt;0.25 vs 90D avg), developing correlations, unusual lags, and insignificant cells.
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <div id="sec-spread" class="asec">
+        <div class="ctrl"><span class="cl">INDEX 1</span><select id="sp-i1" onchange="updSpread()"></select><select id="sp-t1" onchange="updSpread()"></select><span class="d1"></span><div class="csep"></div><span class="cl">INDEX 2</span><select id="sp-i2" onchange="updSpread()"></select><select id="sp-t2" onchange="updSpread()"></select><span class="d2"></span><div class="csep"></div><span class="cl">RANGE</span><div style="display:flex;gap:3px">
+          <button class="cr-pill" id="sp-rng-1m" onclick="setSpreadRange('1m',this)">1M</button>
+          <button class="cr-pill" id="sp-rng-3m" onclick="setSpreadRange('3m',this)">3M</button>
+          <button class="cr-pill" id="sp-rng-6m" onclick="setSpreadRange('6m',this)">6M</button>
+          <button class="cr-pill" id="sp-rng-ytd" onclick="setSpreadRange('ytd',this)">YTD</button>
+          <button class="cr-pill" id="sp-rng-1y" onclick="setSpreadRange('1y',this)">1Y</button>
+          <button class="cr-pill on" id="sp-rng-all" onclick="setSpreadRange('all',this)">ALL</button>
+        </div></div>
+        <div class="acard"><div class="ctitle" id="sp-title">SPREAD</div><div class="cw" style="height:280px"><canvas id="spChart"></canvas></div></div>
+        <div class="acard"><div class="ctitle">INDIVIDUAL PRICE SERIES</div><div class="cw" style="height:220px"><canvas id="spLegsChart"></canvas></div></div>
+      </div>
+      <div id="sec-forward" class="asec">
+        <div class="ctrl"><span class="cl">INDEX</span><select id="fc-i" onchange="updFC()"></select><div class="csep"></div><span class="cl">DATE 1</span><select id="fc-d1" onchange="updFC()"></select><span class="d1"></span><div class="csep"></div><span class="cl">DATE 2</span><select id="fc-d2" onchange="updFC()"></select><span class="d2"></span></div>
+        <div class="acard"><div class="ctitle" id="fc-title">FORWARD CURVE</div><div class="cw" style="height:320px"><canvas id="fcChart"></canvas></div></div>
+        <div id="fc-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px"></div>
+      </div>
+      <div id="sec-seasonal" class="asec">
+        <div class="ctrl"><span class="cl">INDEX</span><select id="sea-i" onchange="updSea()"></select><div class="csep"></div><span class="cl">VIEW</span><select id="sea-type" onchange="updSea()"><option value="fwd">Forward curve snapshot by year</option><option value="hist">Historical M+1 closes</option></select></div>
+        <div class="acard"><div class="ctitle" id="sea-title">SEASONAL — YEAR OVER YEAR</div><div class="cw" style="height:340px"><canvas id="seaChart"></canvas></div></div>
+        <div class="acard"><div class="ctitle">YEAR-OVER-YEAR SPREAD TABLE</div><div style="overflow-x:auto"><table class="stbl" id="sea-tbl"></table></div></div>
+      </div>
+
+      <!-- OPTIONS PRICER -->
+      <div id="sec-options" class="asec">
+        <div class="ctrl">
+          <span class="cl">MODEL</span>
+          <select id="opt-model" onchange="optRender()">
+            <option value="bs">BLACK-SCHOLES (Lognormal)</option>
+            <option value="gauss">GAUSSIAN / BACHELIER (Normal)</option>
+            <option value="spread">SPREAD OPTION (S₁ − S₂)</option>
+          </select>
+          <div class="csep"></div>
+          <span class="cl">TYPE</span>
+          <select id="opt-type" onchange="optCalc()"><option value="call">CALL</option><option value="put">PUT</option></select>
+          <div class="csep"></div>
+          <button class="sbtn" onclick="optCalc()">CALCULATE</button>
+          <button class="sbtn" onclick="optSolveIV()">SOLVE IMPLIED VOL</button>
+        </div>
+        <div id="opt-body" style="padding:14px 18px"></div>
       </div>
     </div>
   </div>
+</section>
+
+<section class="s-sec" id="section-gasanalytics">
+  <!-- Controls bar -->
+  <div class="ga-topbar">
+    <span class="ga-topbar-title">GAS &amp; LNG ANALYTICS</span>
+    
+    <button class="gbtn grn" onclick="gaRefreshAll()" id="ga-refresh-btn">↺ REFRESH ALL</button>
+    <span class="ts" id="ga-ts-label">Loading…</span>
+  </div>
+
+  <!-- Main tabs -->
+  <div class="ga-maintabs">
+    <button class="gmtab active" id="gmtab-dashboard" onclick="gaMainTab('dashboard',this)">GLOBAL FUNDAMENTALS</button>
+    <button class="gmtab" id="gmtab-lngbal" onclick="gaMainTab('lngbal',this)">LNG BALANCE</button>
+    <button class="gmtab" id="gmtab-eugas"  onclick="gaMainTab('eugas',this)">EU GAS BALANCE</button>
+    
+    <button class="gmtab" id="gmtab-regas"  onclick="gaMainTab('regas',this)">LNG REGAS</button>
+    <button class="gmtab" id="gmtab-storage" onclick="gaMainTab('storage',this)">EU STORAGE</button>
+      <button class="gmtab" id="gmtab-lngvc"  onclick="gaMainTab('lngvc',this)">LNG VALUE CHAIN</button>
+  </div>
+
+  <!-- TAB 1: CHINA SIGNPOSTS -->
+  <div id="ga-tab-dashboard" class="ga-tab-sec active">
+    <div id="ga-dashboard-body"><div style="padding:40px;text-align:center;color:#3d5070;font-size:9px">Loading dashboard…</div></div>
+  </div>
+
+  <div id="ga-tab-lngbal" class="ga-tab-sec">
+
+    <!-- Country selector -->
+    <div id="lngbal-cty-bar" style="display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px">
+      <button id="lngbal-btn-china" class="cty-tab active" onclick="lngbalCountry('china',this)">CHINA</button>
+      <button id="lngbal-btn-india" class="cty-tab" onclick="lngbalCountry('india',this)">INDIA</button>
+    </div>
+    <div id="lngbal-china">
+    <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS &amp; LNG ANALYTICS · CHINA SIGNPOSTS</div>
+    <div class="cs-tabs">
+      <button class="cs-tab active" onclick="csTab('gb',this)">CHINA GAS BALANCE</button>
+      <button class="cs-tab" onclick="csTab('chain',this)">CHINA GAS PRICE CHAIN</button>
+      <button class="cs-tab" onclick="csTab('prices',this)">CHINA GAS PRICES</button>
+    </div>
+
+    <!-- ── TAB 1: CHINA GAS PRICE CHAIN ── -->
+    <div id="cs-pane-0" class="cs-tab-pane">
+      <div class="cs-ctrl-row">
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">REGION</div>
+          <select id="cs-t1-region" onchange="csT1Update()">
+            <option value="north">North China 华北</option>
+            <option value="east">East China 华东</option>
+            <option value="south">South China 华南</option>
+          </select>
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">USD/CNY</div>
+          <input type="number" id="cs-usdcny" value="7.25" step="0.01" style="width:80px" onchange="csT1Update();csT2Update();csT3Update();csT4Update()">
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">HAUL DISTANCE (KM) — <span id="cs-dist-val">300</span></div>
+          <input type="range" id="cs-dist" min="100" max="600" value="300" step="50" oninput="document.getElementById('cs-dist-val').textContent=this.value;csT1Update()">
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">OTHER COSTS (¥/KG)</div>
+          <input type="number" id="cs-other-cost" value="0.20" step="0.01" style="width:70px" onchange="csT1Update()">
+        </div>
+        <div class="cs-ctrl-grp">
+          <div class="cs-ctrl-lbl">PERIOD</div>
+          <div class="cs-rng-btns" id="cs-t1-rng">
+            <button class="cs-rng-btn" onclick="csSetRng('t1','1M',this)">1M</button>
+            <button class="cs-rng-btn active" onclick="csSetRng('t1','3M',this)">3M</button>
+            <button class="cs-rng-btn" onclick="csSetRng('t1','6M',this)">6M</button>
+            <button class="cs-rng-btn" onclick="csSetRng('t1','1Y',this)">1Y</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric cards -->
+      <div class="cs-metric-row" id="cs-t1-metrics"></div>
+
+      <!-- View A: Waterfall -->
+      <div class="cs-divider">VIEW A — PRICE BUILD SNAPSHOT (LATEST) <span class="cs-est-badge" id="cs-badge-t1a"></span></div>
+      <div class="cs-waterfall-wrap">
+        <div class="cs-wf-chart" style="height:320px;position:relative"><canvas id="cs-wf-canvas"></canvas></div>
+        <div class="cs-wf-legend" id="cs-wf-legend"></div>
+      </div>
+      <div class="cs-src">Source: SHPGX (estimated) · CLD, ex-terminal, ex-factory, truck retail · Freight: Longzhong benchmark · VAT: 9%</div>
+
+      <!-- View B: Stack over time -->
+      <div class="cs-divider" style="margin-top:24px">VIEW B — PRICE STACK OVER TIME <span class="cs-est-badge" id="cs-badge-t1b"></span></div>
+      <div class="cs-chart-wrap" style="height:280px"><canvas id="cs-t1-hist-canvas"></canvas></div>
+      <div class="cs-src">Source: SHPGX (estimated) · CLD import price, ex-terminal price, truck retail — all $/MMBtu · Shaded bands = margin at each stage</div>
+    </div>
+
+    <!-- ── TAB 2: TRUCK vs JKM & LT ── -->
+    <div id="cs-pane-prices" class="cs-tab-pane">
+      <div id="cs-prices-body"></div>
+    </div>
+
+    <div id="cs-pane-4" class="cs-tab-pane active">
+      <div id="cs-gb-body">
+        <div style="padding:24px;text-align:center;color:#3d5070;font-size:9px">Loading China gas balance data...</div>
+      </div>
+    </div>
+
+    </div><!-- end lngbal-china -->
+
+    <div id="lngbal-india" style="display:none">
+      <div id="ind-container"></div>
+    </div>
+  </div><!-- end ga-tab-lngbal -->
+
+
+
+  <!-- TAB 2: EUROPEAN GAS BALANCE -->
+  <div id="ga-tab-eugas" class="ga-tab-sec">
+    <div class="ga-subtabs" id="ga-eugas-subtabs">
+      <button class="ga-stab active" onclick="eugasTab('pipeline',this)">PIPELINE IMPORTS</button>
+      <button class="ga-stab" onclick="eugasTab('lngimp',this)">LNG IMPORTS</button>
+      <button class="ga-stab" onclick="eugasTab('balance',this)">GAS BALANCE TABLE</button>
+    </div>
+    <div id="ga-eugas-pane" style="margin-top:2px"></div>
+  </div>
+
+  <!-- TAB 3: EU GAS STORAGE -->
+
+  <div id="ga-tab-storage" class="ga-tab-sec">
+    <div class="ga-subtabs" id="ga-stor-subtabs">
+      <button class="ga-stab active" onclick="storTab('eu',this)">EU AGGREGATE</button>
+      <button class="ga-stab" onclick="storTab('country',this)">BY COUNTRY</button>
+      <button class="ga-stab" onclick="storTab('map',this)">HEATMAP</button>
+      <button class="ga-stab" onclick="storTab('inject',this)">INJECTIONS &amp; WITHDRAWAL</button>
+      <button class="ga-stab" onclick="storTab('lng',this)">LNG STORAGE</button>
+    </div>
+    <div id="ga-stor-pane" style="margin-top:2px"></div>
+  </div>
+
+  <!-- TAB 4: LNG REGAS -->
+
+  <div id="ga-tab-regas" class="ga-tab-sec">
+    <div class="ga-subtabs" id="ga-regas-subtabs">
+      <button class="ga-stab active" onclick="regasTab('heatmap',this)">UTILISATION HEATMAP</button>
+      <button class="ga-stab" onclick="regasTab('sendout',this)">SENDOUT</button>
+      <button class="ga-stab" onclick="regasTab('lngstorage',this)">LNG STORAGE</button>
+    </div>
+    <div id="ga-regas-pane" style="margin-top:2px"></div>
+  </div>
+
+  <!-- TAB 5: MARKET SIGNPOSTS -->
+
+  <!-- TAB 6: LNG VALUE CHAIN -->
+  <div id="ga-tab-lngvc" class="ga-tab-sec">
+    <div id="ga-lngvc-pane" style="padding:16px 18px"></div>
+  </div>
+
+  <!-- Modal (keep) -->
+  <div class="ga-modal-overlay" id="ga-modal">
+    <div class="ga-modal-box">
+      <div class="ga-modal-hdr">
+        <span id="ga-modal-title" style="color:var(--b);font-size:11px;letter-spacing:2px"></span>
+        <button class="gbtn sm" onclick="gaCloseModal()">&#x2715; CLOSE</button>
+      </div>
+      <div id="ga-modal-body"></div>
+    </div>
+  </div>
+</section>
+
+<!-- PORTFOLIO VALUATION -->
+<section class="s-sec" id="section-portfolio">
+  <div class="sh-subnav">
+    <button class="sh-stab active" id="pvtab-morning"   onclick="pvTab('morning')">MORNING BOOK</button>
+    <button class="sh-stab"        id="pvtab-cargo"     onclick="pvTab('cargo')">CARGO BOOK</button>
+    <button class="sh-stab"        id="pvtab-paper"     onclick="pvTab('paper')">PAPER BOOK</button>
+    <button class="sh-stab"        id="pvtab-optim"     onclick="pvTab('optim')">OPTIMIZATION</button>
+    <button class="sh-stab"        id="pvtab-exposure"  onclick="pvTab('exposure')">EXPOSURE</button>
+    <button class="sh-stab"        id="pvtab-spec"      onclick="pvTab('spec')">SPEC BOOK</button>
+    <button class="sh-stab"        id="pvtab-scenarios" onclick="pvTab('scenarios')">SCENARIOS</button>
+    <button class="sh-stab"        id="pvtab-daily"     onclick="pvTab('daily')">DAILY P&amp;L</button>
+    <button class="sh-stab"        id="pvtab-eom"       onclick="pvTab('eom')">END OF MONTH</button>
+  </div>
+  <div id="pv-content"></div>
+</section>
+
+<!-- LNG TOOLBOX -->
+<section class="s-sec" id="section-toolbox">
+  <div class="sh-subnav">
+    <button class="sh-stab active" id="tbtab-converter" onclick="tbTab('converter')">GAS CONVERTER</button>
+    <button class="sh-stab" id="tbtab-gasspec" onclick="tbTab('gasspec')">GAS SPECIFICATIONS</button>
+    <button class="sh-stab" id="tbtab-portcosts" onclick="tbTab('portcosts')">PORT COST DATABASE</button>
+  </div>
+  <div id="tb-content"></div>
+</section>
+
+<!-- DISCLAIMER -->
+<section class="s-sec" id="section-disclaimer">
+  <div class="disc-wrap">
+    <h2>DISCLAIMER — LNG TradeOS™</h2><hr class="disc-div">
+    <div class="disc-h3">TRADEMARK &amp; INTELLECTUAL PROPERTY</div>
+    <p class="disc-p">LNG TradeOS™ is a trademark of Ibrahim Mar. The name, logo, platform architecture, and all associated visual and functional elements are the exclusive intellectual property of their creator. Unauthorized reproduction, redistribution, or commercial use is strictly prohibited without prior written consent.</p>
+    <div class="disc-h3">NO FINANCIAL OR TRADING ADVICE</div>
+    <p class="disc-p">All tools, models, calculations, and analytics are for informational and educational purposes only. Nothing constitutes financial advice or a recommendation to buy, sell, or trade any commodity or financial instrument. All outputs are indicative only.</p>
+    <div class="disc-h3">ACCURACY &amp; LIMITATION OF LIABILITY</div>
+    <p class="disc-p">LNG TradeOS makes no warranties regarding completeness or reliability of any information provided. To the fullest extent permitted by law, Ibrahim Mar and LNG TradeOS shall not be liable for any loss or damage arising from use of this platform.</p>
+    <div class="disc-h3">CONFIDENTIALITY</div>
+    <p class="disc-p">This platform and its underlying methodologies constitute confidential and proprietary information. Any reverse engineering, replication, or disclosure to third parties without written authorisation is prohibited.</p>
+    <div class="disc-copy">© 2026 Ibrahim Mar — LNG TradeOS™. All rights reserved.</div>
+  </div>
+</section>
+
+
+<div id="acer-tpl" style="display:none">
+<div class="topbar">
+  <div class="title">ACER Physical DES — NWE · SE · EU</div>
+  <span id="acer-lastUpdate" class="st">Mar 2023 → Apr 2026 · 730 sessions</span>
 </div>
 
-</div><!-- /content -->
-</div><!-- /app -->
+<div class="ubar">
+  <label class="ubtn" style="cursor:pointer">
+    ↑ LOAD PDF
+    <input type="file" accept=".pdf" style="display:none" onchange="acer_handleFile(this)">
+  </label>
+  <span id="acer-pdfSt" class="st">· select today's YYMMDD_LNGPA.pdf from your downloads</span>
+</div>
 
-<script>
-// ════════════════════════════════════════════════════════════
-// DATA — from actual workbook (17 Mar 2026)
-// ════════════════════════════════════════════════════════════
-const CURVES_DATA = [
-  {m:'Apr-26',JKM:20.2027,TTF:17.5761,HH:3.03,NBP:17.5414,Brent:98.18,OilSlope:0.2068,EUA:67.4},
-  {m:'May-26',JKM:19.29,TTF:17.4775,HH:3.01,NBP:17.3219,Brent:93.89,OilSlope:0.2055,EUA:67.4},
-  {m:'Jun-26',JKM:18.94,TTF:17.3517,HH:3.14,NBP:16.7607,Brent:90.2,OilSlope:0.21,EUA:67.4},
-  {m:'Jul-26',JKM:18.67,TTF:17.2769,HH:3.42,NBP:16.5013,Brent:87.32,OilSlope:0.2138,EUA:67.4},
-  {m:'Aug-26',JKM:18.13,TTF:17.1953,HH:3.5,NBP:16.5412,Brent:84.99,OilSlope:0.2133,EUA:67.4},
-  {m:'Sep-26',JKM:17.82,TTF:17.1681,HH:3.49,NBP:16.5878,Brent:83.37,OilSlope:0.2137,EUA:67.4},
-  {m:'Oct-26',JKM:17.4,TTF:17.0729,HH:3.54,NBP:16.4055,Brent:81.99,OilSlope:0.2122,EUA:67.4},
-  {m:'Nov-26',JKM:17.31,TTF:17.1344,HH:3.84,NBP:16.7381,Brent:80.74,OilSlope:0.2144,EUA:67.4},
-  {m:'Dec-26',JKM:17.46,TTF:17.0932,HH:4.69,NBP:17.004,Brent:79.6,OilSlope:0.2193,EUA:67.4},
-  {m:'Jan-27',JKM:17.35,TTF:16.9629,HH:5.1,NBP:16.9868,Brent:78.7,OilSlope:0.2205,EUA:67.4},
-  {m:'Feb-27',JKM:17.06,TTF:16.6783,HH:4.54,NBP:16.766,Brent:77.92,OilSlope:0.2189,EUA:67.4},
-  {m:'Mar-27',JKM:15.64,TTF:15.6462,HH:3.61,NBP:15.5371,Brent:77.27,OilSlope:0.2024,EUA:67.4},
-  {m:'Apr-27',JKM:13.85,TTF:13.4894,HH:3.24,NBP:13.1657,Brent:76.73,OilSlope:0.1805,EUA:67.4},
-  {m:'May-27',JKM:12.91,TTF:12.4573,HH:3.21,NBP:11.8091,Brent:76.19,OilSlope:0.1694,EUA:67.4},
-  {m:'Jun-27',JKM:12.47,TTF:11.9361,HH:3.35,NBP:11.3981,Brent:75.79,OilSlope:0.1645,EUA:67.4},
-  {m:'Jul-27',JKM:12.5,TTF:11.9053,HH:3.54,NBP:11.4207,Brent:75.45,OilSlope:0.1657,EUA:67.4},
-  {m:'Aug-27',JKM:12.58,TTF:11.9533,HH:3.6,NBP:11.3968,Brent:75.14,OilSlope:0.1674,EUA:67.4},
-  {m:'Sep-27',JKM:12.59,TTF:12.1038,HH:3.58,NBP:11.2611,Brent:74.86,OilSlope:0.1682,EUA:67.4},
-  {m:'Oct-27',JKM:12.63,TTF:11.9517,HH:3.66,NBP:11.4234,Brent:74.57,OilSlope:0.1694,EUA:67.4},
-  {m:'Nov-27',JKM:12.41,TTF:11.8514,HH:3.91,NBP:11.5816,Brent:74.26,OilSlope:0.1671,EUA:67.4},
-  {m:'Dec-27',JKM:12.64,TTF:11.8894,HH:4.58,NBP:11.7319,Brent:73.96,OilSlope:0.1709,EUA:67.4},
-  {m:'Jan-28',JKM:12.4,TTF:11.8203,HH:5.0,NBP:12.0844,Brent:73.76,OilSlope:0.1681,EUA:67.4},
-  {m:'Feb-28',JKM:12.5,TTF:11.8064,HH:4.33,NBP:11.9803,Brent:73.56,OilSlope:0.1699,EUA:67.4},
-  {m:'Mar-28',JKM:11.95,TTF:11.305,HH:3.49,NBP:11.0722,Brent:73.42,OilSlope:0.1628,EUA:67.4},
-  {m:'Apr-28',JKM:9.6,TTF:9.2646,HH:3.16,NBP:9.1885,Brent:73.26,OilSlope:0.131,EUA:67.4},
-  {m:'May-28',JKM:9.07,TTF:8.8012,HH:3.15,NBP:8.4704,Brent:73.07,OilSlope:0.1241,EUA:67.4},
-  {m:'Jun-28',JKM:8.8,TTF:8.5315,HH:3.3,NBP:8.1338,Brent:72.9,OilSlope:0.1207,EUA:67.4},
-  {m:'Jul-28',JKM:8.75,TTF:8.5968,HH:3.51,NBP:7.8659,Brent:72.74,OilSlope:0.1203,EUA:67.4},
-  {m:'Aug-28',JKM:9.06,TTF:8.7014,HH:3.57,NBP:7.8725,Brent:72.6,OilSlope:0.1248,EUA:67.4},
-  {m:'Sep-28',JKM:9.32,TTF:8.8828,HH:3.55,NBP:8.1497,Brent:72.48,OilSlope:0.1286,EUA:67.4},
-  {m:'Oct-28',JKM:9.18,TTF:8.7049,HH:3.63,NBP:8.5417,Brent:72.39,OilSlope:0.1268,EUA:67.4},
-  {m:'Nov-28',JKM:9.23,TTF:8.8479,HH:3.87,NBP:8.8361,Brent:72.27,OilSlope:0.1277,EUA:67.4},
-  {m:'Dec-28',JKM:9.25,TTF:8.8932,HH:4.49,NBP:8.9588,Brent:72.16,OilSlope:0.1282,EUA:67.4},
-  {m:'Jan-29',JKM:9.52,TTF:8.9979,HH:4.83,NBP:9.4578,Brent:72.09,OilSlope:0.1321},
-  {m:'Feb-29',JKM:9.6,TTF:9.0467,HH:4.24,NBP:9.284,Brent:72.05,OilSlope:0.1332},
-  {m:'Mar-29',JKM:9.56,TTF:9.0048,HH:3.4,NBP:9.0429,Brent:71.99,OilSlope:0.1328},
-];
-const CU = {}; CURVES_DATA.forEach(c=>CU[c.m]=c);
-function fwd(m,idx){ const c=CU[m]||CU['Mar-29']||{}; return c[idx]||0; }
-
-const CARGOES = [
-  {id:246,type:'Equity',status:'Fixed',actualized:true,
-   origin:'Sabine Pass',discharge:'Gate',loadMo:'Jul-26',sellMo:'Jul-26',size:3.37,
-   buyInco:'FOB',buyIdx:'HH',buyFormula:'% × Index + Spread',buyMult:1.15,buySpread:1.9,execBuy:5.83,
-   sellInco:'DES',sellIdx:'TTF',sellFormula:'Index + Spread',sellMult:1.0,sellSpread:-0.195,execSell:17.08,
-   freight:1.53,fixedDays:66,totalDays:66,avgFixed:5.83,cpty:'Shell'},
-  {id:247,type:'Equity',status:'Fixed',actualized:false,
-   origin:'Gorgon',discharge:'Dahej',loadMo:'Sep-26',sellMo:'Oct-26',size:3.50,
-   buyInco:'FOB',buyIdx:'Brent',buyFormula:'% × Brent',buyMult:0.08,buySpread:0.0,execBuy:7.24,
-   sellInco:'DES',sellIdx:'JKM',sellFormula:'Index + Spread',sellMult:1.0,sellSpread:0.5,execSell:18.32,
-   freight:1.26,fixedDays:32,totalDays:66,avgFixed:7.89,cpty:'IOC'},
-  {id:248,type:'Quad 4',status:'Tentative',actualized:false,
-   origin:'Sabine Pass',discharge:'Gate',loadMo:'Nov-26',sellMo:'Nov-26',size:3.37,
-   buyInco:'FOB',buyIdx:'HH',buyFormula:'% × Index + Spread',buyMult:1.15,buySpread:1.8,execBuy:5.74,
-   sellInco:'DES',sellIdx:'TTF',sellFormula:'Index + Spread',sellMult:1.0,sellSpread:-0.20,execSell:16.93,
-   freight:1.53,fixedDays:0,totalDays:66,avgFixed:5.74,cpty:'TBD'},
-  {id:249,type:'Bridge',status:'Fixed',actualized:false,
-   origin:'Ras Laffan',discharge:'Sodegaura',loadMo:'Dec-26',sellMo:'Dec-26',size:3.37,
-   buyInco:'DES',buyIdx:'JKM',buyFormula:'Index + Spread',buyMult:1.0,buySpread:-0.30,execBuy:17.16,
-   sellInco:'DES',sellIdx:'JKM',sellFormula:'Index + Spread',sellMult:1.0,sellSpread:0.45,execSell:17.91,
-   freight:0,fixedDays:0,totalDays:44,avgFixed:17.16,cpty:'JERA'},
-];
-
-const HEDGES = [
-  {id:1234,cargoId:null,idx:'HH',dir:'Buy',mo:'Apr-26',lots:100,exec:3.35,cpty:'OB'},
-  {id:1235,cargoId:246,idx:'TTF',dir:'Sell',mo:'Jul-26',lots:120,exec:17.65,cpty:'Marex'},
-];
-
-const SPECS = [
-  {strat:'Long outright',pos:'Buy',idx:'JKM',lots:50,mo:'Jun-26',entry:12.0,target:25.0,sl:5.65,mark:18.94},
-  {strat:'Long Gas',pos:'Buy',idx:'TTF',lots:100,mo:'Q4-26',entry:36.0,target:70.0,sl:19.0,mark:17.10},
-  {strat:'Oil long',pos:'Buy',idx:'Brent',lots:100,mo:'Q1-27',entry:80.0,target:120.0,sl:60.0,mark:77.96},
-  {strat:'TFU outright',pos:'Buy',idx:'TFU',lots:25,mo:'Q1-27',entry:15.0,target:30.0,sl:7.5,mark:16.43},
-];
-
-const LOT={JKM:10000,TTF:10000,HH:2500,TFU:10000,NBP:10000,Brent:1000};
-
-// ════════════════════════════════════════════════════════════
-// PRICING ENGINE
-// ════════════════════════════════════════════════════════════
-function resolvePrice(idx,formula,mult,spread,mo,curveOverride){
-  const c = curveOverride || CU[mo] || {};
-  const base = {HH:c.HH,JKM:c.JKM,TTF:c.TTF,NBP:c.NBP,Brent:c.Brent}[idx]||0;
-  if(formula==='Flat') return spread;
-  return mult*base+spread;
-}
-
-function cargoPnL(cargo,curveOverride){
-  const c=cargo;
-  const buyP=resolvePrice(c.buyIdx,c.buyFormula,c.buyMult,c.buySpread,c.loadMo,curveOverride?curveOverride[c.loadMo]:null);
-  const sellP=resolvePrice(c.sellIdx,c.sellFormula,c.sellMult,c.sellSpread,c.sellMo,curveOverride?curveOverride[c.sellMo]:null);
-  const fr=(c.buyInco==='FOB'&&c.sellInco==='DES')||(c.buyInco==='DES'&&c.sellInco==='FOB')?c.freight:0;
-  const EDQ=c.size*(1-0.0015*13); // approx BOG
-  let pnlM;
-  if(c.buyInco==='FOB'&&c.sellInco==='DES'){
-    pnlM=sellP*EDQ-buyP*c.size-fr*EDQ;
-  } else if(c.buyInco==='DES'&&c.sellInco==='FOB'){
-    pnlM=sellP*c.size-buyP*EDQ-fr*c.size;
-  } else {
-    pnlM=(sellP-buyP)*c.size;
-  }
-  return {pnlM,buyP,sellP,fr,spread:sellP-buyP-fr,EDQ};
-}
-
-function hedgePnL(h){
-  const mtm=fwd(h.mo,h.idx);
-  const diff=h.dir==='Buy'?(mtm-h.exec):(h.exec-mtm);
-  return diff*h.lots*(LOT[h.idx]||10000)/1e6;
-}
-function specMtM(s){
-  const diff=s.pos==='Buy'?(s.mark-s.entry):(s.entry-s.mark);
-  return diff*s.lots*(LOT[s.idx]||10000)/1e6;
-}
-
-function classifyCargo(c){
-  if(c.actualized){
-    const res=cargoPnL(c);
-    return {C:0,U:0,T:res.pnlM,raf:0,fr:c.fixedDays/c.totalDays};
-  }
-  const fr=Math.min(1,c.fixedDays/Math.max(c.totalDays,1));
-  const res=cargoPnL(c);
-  const C=res.pnlM*fr, U=res.pnlM*(1-fr);
-  const raf=Math.abs(C)+Math.abs(U)>0?Math.abs(U)/(Math.abs(C)+Math.abs(U)):0;
-  return {C,U,T:0,raf,fr};
-}
-
-// ════════════════════════════════════════════════════════════
-// HELPERS
-// ════════════════════════════════════════════════════════════
-const g=id=>document.getElementById(id);
-const fmtM=(v,dp=2)=>`<span class="${v>=0?'pos':'neg'}">${v>=0?'+':'−'}$${Math.abs(v).toFixed(dp)}M</span>`;
-const fmtU=(v,dp=3)=>`<span class="${v>=0?'pos':'neg'}">${v>=0?'+':'−'}${Math.abs(v).toFixed(dp)}</span>`;
-const fmtK=v=>`${v>=0?'+':'−'}$${(Math.abs(v)/1000).toFixed(0)}k`;
-const pill=(t,txt)=>{const m={C:'p-c',U:'p-u',T:'p-t',Fixed:'p-fix',Tentative:'p-ten',Bid:'p-bid'};return `<span class="pill ${m[t]||'p-bid'}">${txt||t}</span>`;};
-const dot=(c)=>`<span class="dot" style="background:${c}"></span>`;
-
-// ════════════════════════════════════════════════════════════
-// NAVIGATION
-// ════════════════════════════════════════════════════════════
-const PAGES=['morning','curves','cargo','cut','explain','spec','pnl'];
-function page(p){
-  PAGES.forEach(n=>{
-    g('page-'+n).classList.toggle('active',n===p);
-    g('t-'+n).classList.toggle('active',n===p);
-  });
-  g('content').scrollTop=0;
-  if(p==='curves') buildCurves();
-  if(p==='cargo') buildCargo();
-  if(p==='cut') buildCUT();
-  if(p==='explain') buildExplain();
-  if(p==='spec') buildSpec();
-  if(p==='pnl') renderPnl();
-}
-
-// ════════════════════════════════════════════════════════════
-// MORNING BOOK
-// ════════════════════════════════════════════════════════════
-function buildMorning(){
-  const physMtm=CARGOES.reduce((a,c)=>a+cargoPnL(c).pnlM,0);
-  const hedgeMtm=HEDGES.reduce((a,h)=>a+hedgePnL(h),0);
-  const specMtm=SPECS.reduce((a,s)=>a+specMtM(s),0);
-  const total=physMtm+hedgeMtm+specMtm;
-  const cut=CARGOES.reduce((a,c)=>{const r=classifyCargo(c);a.C+=r.C;a.U+=r.U;a.T+=r.T;return a;},{C:0,U:0,T:0});
-  const raf=Math.abs(cut.U)/(Math.abs(cut.C)+Math.abs(cut.U)+.001)*100;
-
-  g('m-metrics').innerHTML=[
-    {l:'Physical MTM',v:fmtM(physMtm),s:`${CARGOES.length} cargoes`},
-    {l:'Hedge P&L',v:fmtM(hedgeMtm),s:`${HEDGES.length} trades`},
-    {l:'Spec MtM',v:fmtM(specMtm),s:`${SPECS.length} positions`},
-    {l:'Combined book',v:fmtM(total),s:'all books'},
-    {l:'Portfolio RAF',v:`<span class="${raf>60?'neg':raf>30?'warn':'pos'} ">${raf.toFixed(0)}%</span>`,s:'uncertain fraction'},
-  ].map(m=>`<div class="met"><div class="ml">${m.l}</div><div class="mv">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
-
-  // Cargo table
-  const cRows=CARGOES.map(c=>{
-    const r=cargoPnL(c);
-    const fr=c.buyInco==='FOB'&&c.sellInco==='DES';
-    return `<tr>
-      <td style="font-family:var(--mono)">${c.id}</td>
-      <td>${pill(c.status)}</td>
-      <td style="font-size:10px;color:var(--text2)">${c.origin.split(' ')[0]}→${c.discharge}</td>
-      <td>${c.sellMo}</td>
-      <td style="font-family:var(--mono)">${c.buyInco}/${c.sellInco}</td>
-      <td style="text-align:right;font-family:var(--mono)">${r.buyP.toFixed(3)}</td>
-      <td style="text-align:right;font-family:var(--mono)">${r.sellP.toFixed(3)}</td>
-      <td style="text-align:right;font-family:var(--mono)">${fr?r.fr.toFixed(3):'—'}</td>
-      <td style="text-align:right;font-weight:600" class="${r.spread>=0?'pos':'neg'}">${r.spread>=0?'+':'−'}${Math.abs(r.spread).toFixed(3)}</td>
-      <td style="text-align:right;font-weight:600" class="${r.pnlM>=0?'pos':'neg'}">${r.pnlM>=0?'+':'−'}$${Math.abs(r.pnlM).toFixed(2)}M</td>
-    </tr>`;
-  }).join('');
-  g('m-cargo-tbl').innerHTML=`<thead><tr><th>#</th><th>Status</th><th>Route</th><th>Del.</th><th>Inco</th><th style="text-align:right">Buy $</th><th style="text-align:right">Sell $</th><th style="text-align:right">Fr.</th><th style="text-align:right">Net $/MMBtu</th><th style="text-align:right">P&L $M</th></tr></thead><tbody>${cRows}<tr class="tr-tot"><td colspan="9">Total physical</td><td style="text-align:right" class="${physMtm>=0?'pos':'neg'}">${physMtm>=0?'+':'−'}$${Math.abs(physMtm).toFixed(2)}M</td></tr></tbody>`;
-
-  // Hedge table
-  const hRows=HEDGES.map(h=>{
-    const mtm=fwd(h.mo,h.idx);
-    const pnl=hedgePnL(h);
-    return `<tr>
-      <td style="font-family:var(--mono)">${h.id}</td>
-      <td>${h.idx}</td>
-      <td><span class="${h.dir==='Buy'?'pos':'neg'}">${h.dir}</span></td>
-      <td>${h.mo}</td>
-      <td style="text-align:right">${h.lots}</td>
-      <td style="text-align:right;font-family:var(--mono)">${h.exec.toFixed(3)}</td>
-      <td style="text-align:right;font-family:var(--mono)">${mtm.toFixed(3)}</td>
-      <td style="text-align:right;font-weight:600" class="${pnl>=0?'pos':'neg'}">${fmtK(pnl*1e6)}</td>
-    </tr>`;
-  }).join('');
-  g('m-hedge-tbl').innerHTML=`<thead><tr><th>Trade</th><th>Idx</th><th>Dir</th><th>Month</th><th style="text-align:right">Lots</th><th style="text-align:right">Exec</th><th style="text-align:right">Mark</th><th style="text-align:right">P&L</th></tr></thead><tbody>${hRows}<tr class="tr-tot"><td colspan="7">Total hedge P&L</td><td style="text-align:right" class="${hedgeMtm>=0?'pos':'neg'}">${fmtK(hedgeMtm*1e6)}</td></tr></tbody>`;
-
-  // Waterfall
-  const wfItems=[
-    {l:'Opening (T-1)',v:-1.20,c:'#475569',base:true},
-    {l:'JKM curve +0.27',v:+0.38,c:'#3b82f6'},
-    {l:'TTF curve −0.14',v:-0.19,c:'#ef4444'},
-    {l:'Fixing: #246 HH avg',v:+0.22,c:'#22c55e'},
-    {l:'Freight re-mark',v:-0.07,c:'#ef4444'},
-    {l:'New trade #248',v:+0.31,c:'#a78bfa'},
-    {l:'Hedge offset',v:hedgeMtm,c:'#60a5fa'},
-    {l:'Closing (today)',v:total,c:'#475569',base:true},
-  ];
-  const mxW=Math.max(...wfItems.map(i=>Math.abs(i.v)));
-  g('m-wfall').innerHTML=wfItems.map(i=>{
-    const w=(Math.abs(i.v)/mxW*100).toFixed(0);
-    const vc=i.base?'var(--text2)':(i.v>=0?'#4ade80':'#f87171');
-    return `<div class="wf">
-      <div class="wfl" style="${i.base?'color:var(--text);font-weight:500':''}">${i.l}</div>
-      <div class="wft"><div class="wfb" style="width:${w}%;background:${i.c};opacity:${i.base?.3:.85}"></div></div>
-      <div class="wfv" style="color:${vc}">${i.base?'$'+i.v.toFixed(2)+'M':(i.v>=0?'+':'−')+'$'+Math.abs(i.v).toFixed(2)+'M'}</div>
-    </div>`;
-  }).join('');
-
-  // CUT
-  const abs=Math.abs(cut.C)+Math.abs(cut.U)+Math.abs(cut.T)+.001;
-  g('m-cut').innerHTML=[
-    {l:'Certain',v:cut.C,c:'#3b82f6'},{l:'Uncertain',v:cut.U,c:'#f59e0b'},{l:'Treasury',v:cut.T,c:'#22c55e'},
-  ].map(b=>`<div class="cmp-bar">
-    <div class="cmp-lbl">
-      <span style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:${b.c}"></span>${b.l}</span>
-      <span class="wfv ${b.v>=0?'pos':'neg'}">${b.v>=0?'+':'−'}$${Math.abs(b.v).toFixed(2)}M</span>
+<div class="sec">
+  <div class="ctrl">
+    <span class="stitle">Historical Physical Price $/MMBtu</span>
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <div class="btns" id="acer-hIdx">
+        <button class="b nwe on" onclick="acer_setIdx('h','nwe',this)">NWE</button>
+        <button class="b se"     onclick="acer_setIdx('h','se',this)">SE</button>
+        <button class="b eu"     onclick="acer_setIdx('h','eu',this)">EU</button>
+        <button class="b all"    onclick="acer_setIdx('h','all',this)">ALL</button>
+      </div>
+      <select class="pd" id="acer-hPer" onchange="acer_renderHist()"></select>
     </div>
-    <div class="cmp-track"><div class="cmp-fill" style="width:${(Math.abs(b.v)/abs*100).toFixed(0)}%;background:${b.c}"></div></div>
-  </div>`).join('')+`<div class="divider"></div><div style="font-family:var(--mono);font-size:11px;display:flex;justify-content:space-between"><span style="color:var(--text3)">Portfolio RAF</span><span class="${raf>60?'neg':raf>30?'warn':'pos'}">${raf.toFixed(0)}%</span></div>`;
+  </div>
+  <div class="cw" style="height:215px"><canvas id="acer-histChart"></canvas></div>
+  <div id="acer-stats" style="display:flex;flex-wrap:wrap;gap:1px;margin-top:1px;background:#0d1320"></div>
+</div>
+<div class="divider"></div>
 
-  // Spec summary
-  const sRows=SPECS.slice(0,3).map(s=>{
-    const mtm=specMtM(s);
-    const atSL=s.pos==='Buy'?s.mark<=s.sl:s.mark>=s.sl;
-    const atTgt=s.pos==='Buy'?s.mark>=s.target:s.mark<=s.target;
-    const status=atTgt?'<span class="tgt-hit" style="font-size:10px;color:var(--t)">TGT</span>':atSL?'<span class="sl-hit" style="font-size:10px;color:var(--r)">SL</span>':'<span class="open" style="font-size:10px;color:var(--c)">Open</span>';
-    return `<tr><td>${s.idx}</td><td>${s.mo}</td><td style="text-align:right;font-family:var(--mono)">${s.mark.toFixed(2)}</td><td style="text-align:right" class="${mtm>=0?'pos':'neg'}">${fmtK(mtm*1e6)}</td><td>${status}</td></tr>`;
-  }).join('');
-  g('m-spec-tbl').innerHTML=`<thead><tr><th>Idx</th><th>Mo</th><th style="text-align:right">Mark</th><th style="text-align:right">MtM</th><th>Status</th></tr></thead><tbody>${sRows}</tbody>`;
-}
+<div class="sec">
+  <div class="ctrl" style="margin-bottom:6px">
+    <span class="stitle">Daily Values</span>
+    <span id="acer-tbl-info" class="st"></span>
+  </div>
+  <div id="acer-tbl-wrap" style="overflow-x:auto;max-height:340px;overflow-y:auto">
+    <table id="acer-tbl" style="width:100%;border-collapse:collapse">
+      <thead id="acer-tbl-head"></thead>
+      <tbody id="acer-tbl-body"></tbody>
+    </table>
+  </div>
+</div>
 
-// ════════════════════════════════════════════════════════════
-// CURVES
-// ════════════════════════════════════════════════════════════
-const CV_INDICES=[
-  {key:'JKM',label:'JKM $/MMBtu',color:'#3b82f6'},
-  {key:'TTF',label:'TTF $/MMBtu',color:'#f59e0b'},
-  {key:'HH',label:'HH $/MMBtu',color:'#22c55e'},
-  {key:'NBP',label:'NBP $/MMBtu',color:'#a78bfa'},
-  {key:'Brent',label:'Brent $/bbl',color:'#f87171'},
-];
-let activeCvIdx='JKM';
+<div class="fn">
+  Physical = ACER DES Spot − TTF implied · $/MMBtu = EUR/MWh × 1.09 ÷ 3.41214 · Table reflects index and period selected above · most recent first · Source: ACER TERMINAL
+</div>
 
-function buildCurves(){
-  // Selector
-  g('cv-sel').innerHTML=CV_INDICES.map(i=>`<div class="cv-btn ${i.key===activeCvIdx?'active':''}" onclick="selectCurve('${i.key}')">${i.label}</div>`).join('');
-  drawCurve();
-  buildCurveTable();
-  buildSpreads();
-}
-
-function selectCurve(k){activeCvIdx=k;buildCurves();}
-
-function drawCurve(){
-  const idx=CV_INDICES.find(i=>i.key===activeCvIdx);
-  g('cv-title').textContent=idx.label;
-  const vals=CURVES_DATA.map(c=>c[activeCvIdx]).filter(v=>v!=null);
-  const months=CURVES_DATA.filter(c=>c[activeCvIdx]!=null).map(c=>c.m);
-  const minV=Math.min(...vals), maxV=Math.max(...vals);
-  const range=maxV-minV||1;
-  const W=700,H=160,pad={l:0,r:8,t:8,b:28};
-  const iW=W-pad.l-pad.r, iH=H-pad.t-pad.b;
-  const x=i=>pad.l+i/(vals.length-1)*iW;
-  const y=v=>pad.t+iH-(v-minV)/range*iH;
-
-  const pts=vals.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-  const areaPath=`M${x(0)},${y(vals[0])} `+vals.slice(1).map((v,i)=>`L${x(i+1).toFixed(1)},${y(v).toFixed(1)}`).join(' ')+` L${x(vals.length-1)},${H-pad.b} L${x(0)},${H-pad.b} Z`;
-
-  // Month labels (every 6)
-  const xLabels=months.filter((_,i)=>i%6===0).map((m,j)=>{
-    const i=months.indexOf(m);
-    return `<text x="${x(i).toFixed(0)}" y="${H-6}" fill="#52525b" font-size="9" text-anchor="middle" font-family="IBM Plex Mono">${m}</text>`;
-  }).join('');
-
-  // Y labels
-  const ySteps=4;
-  const yLabels=Array.from({length:ySteps+1},(_,i)=>{
-    const v=minV+(i/ySteps)*range;
-    const yp=y(v);
-    return `<text x="${W-2}" y="${yp+3}" fill="#52525b" font-size="9" text-anchor="end" font-family="IBM Plex Mono">${v.toFixed(1)}</text>
-            <line x1="0" y1="${yp}" x2="${W}" y2="${yp}" stroke="#27272a" stroke-width="0.5"/>`;
-  }).join('');
-
-  g('cv-chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px" xmlns="http://www.w3.org/2000/svg">
-    ${yLabels}
-    <defs><linearGradient id="cvg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${idx.color}" stop-opacity="0.2"/>
-      <stop offset="100%" stop-color="${idx.color}" stop-opacity="0.02"/>
-    </linearGradient></defs>
-    <path d="${areaPath}" fill="url(#cvg)"/>
-    <polyline points="${pts}" fill="none" stroke="${idx.color}" stroke-width="1.5" stroke-linejoin="round"/>
-    ${months.map((m,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(vals[i]).toFixed(1)}" r="2" fill="${idx.color}" opacity="0.7"/>`).join('')}
-    ${xLabels}
-  </svg>`;
-}
-
-function buildCurveTable(){
-  const rows=CURVES_DATA.map(c=>{
-    const jkmttf=(c.JKM-c.TTF).toFixed(3);
-    const sign=parseFloat(jkmttf)>=0?'pos':'neg';
-    return `<tr>
-      <td style="font-family:var(--mono)">${c.m}</td>
-      <td style="text-align:right;font-family:var(--mono);color:#60a5fa">${c.JKM?.toFixed(3)||'—'}</td>
-      <td style="text-align:right;font-family:var(--mono);color:#fcd34d">${c.TTF?.toFixed(3)||'—'}</td>
-      <td style="text-align:right;font-family:var(--mono);color:#4ade80">${c.HH?.toFixed(3)||'—'}</td>
-      <td style="text-align:right;font-family:var(--mono);color:#c4b5fd">${c.NBP?.toFixed(3)||'—'}</td>
-      <td style="text-align:right;font-family:var(--mono);color:#f87171">${c.Brent?.toFixed(2)||'—'}</td>
-      <td style="text-align:right;font-family:var(--mono)" class="${sign}">${jkmttf}</td>
-    </tr>`;
-  }).join('');
-  g('cv-tbl').innerHTML=`<thead><tr><th>Month</th><th style="text-align:right;color:#60a5fa">JKM</th><th style="text-align:right;color:#fcd34d">TTF</th><th style="text-align:right;color:#4ade80">HH</th><th style="text-align:right;color:#c4b5fd">NBP</th><th style="text-align:right;color:#f87171">Brent</th><th style="text-align:right">JKM−TTF</th></tr></thead><tbody>${rows}</tbody>`;
-}
-
-function buildSpreads(){
-  const data=CURVES_DATA.slice(0,12);
-  const rows=data.map((c,i)=>{
-    if(i===0) return '';
-    const prev=data[i-1];
-    const jkmRoll=c.JKM&&prev.JKM?(c.JKM-prev.JKM).toFixed(3):'—';
-    const ttfRoll=c.TTF&&prev.TTF?(c.TTF-prev.TTF).toFixed(3):'—';
-    const contango_jkm=parseFloat(jkmRoll)||0;
-    const contango_ttf=parseFloat(ttfRoll)||0;
-    return `<tr>
-      <td style="font-family:var(--mono)">${c.m}</td>
-      <td style="text-align:right" class="${contango_jkm>=0?'neg':'pos'}">${jkmRoll}</td>
-      <td style="text-align:right" class="${contango_ttf>=0?'neg':'pos'}">${ttfRoll}</td>
-      <td style="text-align:right;font-family:var(--mono)">${c.OilSlope?(c.OilSlope*100).toFixed(2)+'%':'—'}</td>
-    </tr>`;
-  }).join('');
-  g('cv-spreads').innerHTML=`<thead><tr><th>Month</th><th style="text-align:right">JKM M/M</th><th style="text-align:right">TTF M/M</th><th style="text-align:right">Oil slope</th></tr></thead><tbody>${rows}</tbody>`;
-}
-
-// ════════════════════════════════════════════════════════════
-// CARGO BOOK
-// ════════════════════════════════════════════════════════════
-function buildCargo(){
-  const physMtm=CARGOES.reduce((a,c)=>a+cargoPnL(c).pnlM,0);
-  const tBtu=CARGOES.reduce((a,c)=>a+c.size,0);
-
-  g('cargo-metrics').innerHTML=[
-    {l:'Total physical MTM',v:fmtM(physMtm),s:`${CARGOES.length} cargoes`},
-    {l:'Total loaded TBtu',v:`<span style="font-weight:600">${tBtu.toFixed(2)}</span>`,s:'across all cargoes'},
-    {l:'Avg net $/MMBtu',v:`<span style="font-weight:600" class="${physMtm>=0?'pos':'neg'}">${(physMtm/tBtu).toFixed(3)}</span>`,s:'P&L ÷ volume'},
-    {l:'Fixed cargoes',v:`<span style="font-weight:600">${CARGOES.filter(c=>c.status==='Fixed').length}</span>`,s:`of ${CARGOES.length} active`},
-  ].map(m=>`<div class="met"><div class="ml">${m.l}</div><div class="mv">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
-
-  const rows=CARGOES.map(c=>{
-    const r=cargoPnL(c);
-    const hasFr=c.buyInco==='FOB'&&c.sellInco==='DES';
-    const cut=classifyCargo(c);
-    const cutTag=c.actualized?pill('T','Treasury'):cut.fr>=1?pill('C','Certain'):cut.fr===0?pill('U','Uncertain'):`<span class="pill p-u">Partial</span>`;
-    return `<tr>
-      <td style="font-family:var(--mono)">${c.id}</td>
-      <td>${pill(c.status)}</td>
-      <td>${c.type}</td>
-      <td style="font-size:10px">${c.origin.split(' ')[0]}</td>
-      <td style="font-size:10px">${c.discharge}</td>
-      <td>${c.sellMo}</td>
-      <td style="font-family:var(--mono)">${c.buyInco}/${c.sellInco}</td>
-      <td style="text-align:right">${c.size.toFixed(2)}</td>
-      <td style="font-size:10px">${c.buyFormula.replace('% × ','').replace(' + Spread','')}</td>
-      <td style="text-align:right;font-family:var(--mono)">${r.buyP.toFixed(3)}</td>
-      <td style="font-size:10px">${c.sellFormula.replace('% × ','').replace(' + Spread','')}</td>
-      <td style="text-align:right;font-family:var(--mono)">${r.sellP.toFixed(3)}</td>
-      <td style="text-align:right;font-family:var(--mono)">${hasFr?r.fr.toFixed(3):'—'}</td>
-      <td style="text-align:right;font-family:var(--mono);font-weight:600" class="${r.spread>=0?'pos':'neg'}">${r.spread>=0?'+':'−'}${Math.abs(r.spread).toFixed(3)}</td>
-      <td style="text-align:right;font-family:var(--mono);font-weight:600" class="${r.pnlM>=0?'pos':'neg'}">${r.pnlM>=0?'+':'−'}$${Math.abs(r.pnlM).toFixed(2)}M</td>
-      <td>${cutTag}</td>
-    </tr>`;
-  }).join('');
-  g('cargo-tbl').innerHTML=`<thead><tr><th>#</th><th>Status</th><th>Type</th><th>Origin</th><th>Disch.</th><th>Del.</th><th>Inco</th><th style="text-align:right">TBtu</th><th>Buy formula</th><th style="text-align:right">Buy $</th><th>Sell formula</th><th style="text-align:right">Sell $</th><th style="text-align:right">Freight</th><th style="text-align:right">Net $/MMBtu</th><th style="text-align:right">P&L $M</th><th>C/U/T</th></tr></thead><tbody>${rows}<tr class="tr-tot"><td colspan="14">Total</td><td style="text-align:right" class="${physMtm>=0?'pos':'neg'}">${physMtm>=0?'+':'−'}$${Math.abs(physMtm).toFixed(2)}M</td><td></td></tr></tbody>`;
-
-  // By origin
-  const byOrig={};
-  CARGOES.forEach(c=>{if(!byOrig[c.origin])byOrig[c.origin]={n:0,pnl:0,tbtu:0};byOrig[c.origin].n++;byOrig[c.origin].pnl+=cargoPnL(c).pnlM;byOrig[c.origin].tbtu+=c.size;});
-  g('origin-tbl').innerHTML=`<thead><tr><th>Origin</th><th>Count</th><th style="text-align:right">TBtu</th><th style="text-align:right">MTM $M</th></tr></thead><tbody>`+Object.entries(byOrig).map(([o,d])=>`<tr><td style="font-size:11px">${o}</td><td>${d.n}</td><td style="text-align:right">${d.tbtu.toFixed(2)}</td><td style="text-align:right" class="${d.pnl>=0?'pos':'neg'}">${d.pnl>=0?'+':'−'}$${Math.abs(d.pnl).toFixed(2)}M</td></tr>`).join('')+`</tbody>`;
-
-  const byType={};
-  CARGOES.forEach(c=>{if(!byType[c.type])byType[c.type]={n:0,pnl:0};byType[c.type].n++;byType[c.type].pnl+=cargoPnL(c).pnlM;});
-  g('type-tbl').innerHTML=`<thead><tr><th>Type</th><th>Count</th><th style="text-align:right">MTM $M</th></tr></thead><tbody>`+Object.entries(byType).map(([t,d])=>`<tr><td>${t}</td><td>${d.n}</td><td style="text-align:right" class="${d.pnl>=0?'pos':'neg'}">${d.pnl>=0?'+':'−'}$${Math.abs(d.pnl).toFixed(2)}M</td></tr>`).join('')+`</tbody>`;
-
-  const byMo={};
-  CARGOES.forEach(c=>{if(!byMo[c.sellMo])byMo[c.sellMo]={n:0,pnl:0};byMo[c.sellMo].n++;byMo[c.sellMo].pnl+=cargoPnL(c).pnlM;});
-  g('month-tbl').innerHTML=`<thead><tr><th>Delivery</th><th>Count</th><th style="text-align:right">MTM $M</th></tr></thead><tbody>`+Object.entries(byMo).map(([m,d])=>`<tr><td style="font-family:var(--mono)">${m}</td><td>${d.n}</td><td style="text-align:right" class="${d.pnl>=0?'pos':'neg'}">${d.pnl>=0?'+':'−'}$${Math.abs(d.pnl).toFixed(2)}M</td></tr>`).join('')+`</tbody>`;
-}
-
-// ════════════════════════════════════════════════════════════
-// C / U / T
-// ════════════════════════════════════════════════════════════
-function buildCUT(){
-  const results=CARGOES.map(c=>({...c,...classifyCargo(c),...cargoPnL(c)}));
-  const totC=results.reduce((a,r)=>a+r.C,0);
-  const totU=results.reduce((a,r)=>a+r.U,0);
-  const totT=results.reduce((a,r)=>a+r.T,0);
-  const totAll=totC+totU+totT;
-  const raf=Math.abs(totU)/(Math.abs(totC)+Math.abs(totU)+.001)*100;
-
-  g('cut-metrics').innerHTML=[
-    {l:'Certain MtM',v:fmtM(totC),s:'Zero market sensitivity'},
-    {l:'Uncertain MtM',v:fmtM(totU),s:'Moves with forward curves'},
-    {l:'Treasury',v:fmtM(totT),s:'Realised — settled'},
-    {l:'Portfolio RAF',v:`<span class="${raf>60?'neg':raf>30?'warn':'pos'} ">${raf.toFixed(0)}%</span>`,s:'Uncertain / (C+U)'},
-  ].map(m=>`<div class="met"><div class="ml">${m.l}</div><div class="mv">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
-
-  const rows=results.map(r=>{
-    const tot=r.C+r.U+r.T;
-    const cls=r.actualized?pill('T','Treasury'):r.fr>=1?pill('C','Certain'):r.fr===0?pill('U','Uncertain'):`<span class="pill p-u">Partial ${(r.fr*100).toFixed(0)}%</span>`;
-    return `<tr>
-      <td style="font-family:var(--mono)">${r.id}</td>
-      <td>${r.type}</td>
-      <td>${pill(r.status)}</td>
-      <td style="font-size:10px">${r.origin.split(' ')[0]}→${r.discharge}</td>
-      <td>${r.sellMo}</td>
-      <td style="font-family:var(--mono);text-align:right">${(r.fr*100).toFixed(0)}%</td>
-      <td style="text-align:right" class="${r.C>=0?'pos':'neg'}">${r.C!==0?(r.C>=0?'+':'−')+'$'+Math.abs(r.C).toFixed(2)+'M':'—'}</td>
-      <td style="text-align:right" class="${r.U>=0?'pos':'neg'}">${r.U!==0?(r.U>=0?'+':'−')+'$'+Math.abs(r.U).toFixed(2)+'M':'—'}</td>
-      <td style="text-align:right" class="${r.T>=0?'pos':'neg'}">${r.T!==0?(r.T>=0?'+':'−')+'$'+Math.abs(r.T).toFixed(2)+'M':'—'}</td>
-      <td style="text-align:right;font-weight:600" class="${tot>=0?'pos':'neg'}">${tot>=0?'+':'−'}$${Math.abs(tot).toFixed(2)}M</td>
-      <td>${cls}</td>
-    </tr>`;
-  }).join('');
-  g('cut-tbl').innerHTML=`<thead><tr><th>#</th><th>Type</th><th>Status</th><th>Route</th><th>Del.</th><th style="text-align:right">Fix%</th><th style="text-align:right">Certain</th><th style="text-align:right">Uncertain</th><th style="text-align:right">Treasury</th><th style="text-align:right">Total</th><th>Class</th></tr></thead><tbody>${rows}<tr class="tr-tot"><td colspan="6">Total</td><td style="text-align:right" class="${totC>=0?'pos':'neg'}">${totC>=0?'+':'−'}$${Math.abs(totC).toFixed(2)}M</td><td style="text-align:right" class="${totU>=0?'pos':'neg'}">${totU>=0?'+':'−'}$${Math.abs(totU).toFixed(2)}M</td><td style="text-align:right" class="${totT>=0?'pos':'neg'}">${totT>=0?'+':'−'}$${Math.abs(totT).toFixed(2)}M</td><td style="text-align:right" class="${totAll>=0?'pos':'neg'}">${totAll>=0?'+':'−'}$${Math.abs(totAll).toFixed(2)}M</td><td></td></tr></tbody>`;
-
-  // Composition bars
-  const absSum=Math.abs(totC)+Math.abs(totU)+Math.abs(totT)+.001;
-  g('cut-comp').innerHTML=[
-    {l:'Certain',v:totC,c:'#3b82f6'},{l:'Uncertain',v:totU,c:'#f59e0b'},{l:'Treasury',v:totT,c:'#22c55e'},
-  ].map(b=>`<div class="cmp-bar">
-    <div class="cmp-lbl">
-      <span style="display:flex;align-items:center;gap:5px"><span class="dot" style="background:${b.c}"></span>${b.l}</span>
-      <span style="font-family:var(--mono);font-size:11px" class="${b.v>=0?'pos':'neg'}">${b.v>=0?'+':'−'}$${Math.abs(b.v).toFixed(2)}M <span style="color:var(--text3)">${(Math.abs(b.v)/absSum*100).toFixed(0)}%</span></span>
-    </div>
-    <div class="cmp-track"><div class="cmp-fill" style="width:${(Math.abs(b.v)/absSum*100).toFixed(0)}%;background:${b.c}"></div></div>
-  </div>`).join('');
-
-  // RAF decay
-  const days=45;
-  g('cut-decay').innerHTML=results.filter(r=>!r.actualized&&r.fr<1).map(r=>{
-    const bars=Array.from({length:days},(_,i)=>{
-      const sim=Math.min(1,r.fr+(i/(days*0.8))*(1-r.fr));
-      const raf=Math.max(0,1-sim);
-      const h=Math.max(3,raf*100);
-      const c=raf>.6?'#f59e0b':raf>.25?'#3b82f6':'#22c55e';
-      return `<div style="flex:1;height:${h.toFixed(0)}%;background:${c};border-radius:1px 1px 0 0;align-self:flex-end;opacity:.9"></div>`;
-    }).join('');
-    return `<div class="raf-row">
-      <div class="raf-lbl">Deal ${r.id} · ${r.origin.split(' ')[0]}→${r.discharge}</div>
-      <div style="flex:1;display:flex;height:32px;gap:1.5px;align-items:flex-end;background:var(--bg3);border-radius:4px;overflow:hidden;padding:2px 3px">${bars}</div>
-      <div class="raf-pct" style="color:${r.raf>.6?'#f87171':r.raf>.3?'#fbbf24':'#4ade80'}">${(r.raf*100).toFixed(0)}%</div>
-    </div>`;
-  }).join('')||`<div style="color:var(--text3);font-size:11px;padding:8px 0">All deals fully fixed or settled</div>`;
-
-  // Timelines
-  g('cut-timelines').innerHTML=results.filter(r=>!r.actualized).map(r=>{
-    const pct=(r.fr*100).toFixed(0);
-    return `<div style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
-        <span>Deal ${r.id} — ${r.buyFormula.replace('% × ','').replace(' + Spread','')} ${r.buyIdx} buy / ${r.sellIdx} sell</span>
-        <span style="font-family:var(--mono);color:${r.fr>=1?'#4ade80':r.fr===0?'#f59e0b':'#60a5fa'}">${pct}% fixed</span>
-      </div>
-      <div class="tl">
-        <div class="tl-c" style="width:${pct}%"></div>
-        <div class="tl-u" style="left:${pct}%;width:${100-pct}%"></div>
-        <div class="tl-now" style="left:${Math.min(+pct,97)}%"></div>
-      </div>
-      <div class="tl-lab"><span>${r.fixedDays} days fixed</span><span>RAF: ${(r.raf*100).toFixed(0)}%</span><span>${r.totalDays-r.fixedDays} days open</span></div>
-    </div>`;
-  }).join('');
-}
-
-// ════════════════════════════════════════════════════════════
-// EXPLAIN P&L
-// ════════════════════════════════════════════════════════════
-function buildExplain(){
-  // T-1 curve inputs (default = today minus small delta to show attribution)
-  const T1_DEFAULTS={JKM:19.93,TTF:17.41,HH:3.0,Brent:97.91};
-  if(!g('ex-jkm')){
-    g('explain-inputs').innerHTML=Object.entries(T1_DEFAULTS).map(([k,v])=>`
-      <div class="ig"><label>${k} T-1 $/MMBtu</label>
-        <input type="number" id="ex-${k.toLowerCase()}" value="${v}" step="0.01" style="width:90px" oninput="computeExplain()">
-      </div>`).join('');
-  }
-  computeExplain();
-}
-
-function computeExplain(){
-  const getV=id=>{const el=g(id);return el?+el.value:0;};
-  const T1={
-    JKM:getV('ex-jkm')||19.93, TTF:getV('ex-ttf')||17.41,
-    HH:getV('ex-hh')||3.0, Brent:getV('ex-brent')||97.91,
-  };
-
-  // Build T-1 curves using T1 deltas for near months and current for rest
-  const t1Curves={};
-  CURVES_DATA.forEach(c=>{
-    t1Curves[c.m]={...c};
-    if(c.m==='Apr-26'||c.m==='May-26'||c.m==='Jun-26'){
-      Object.keys(T1).forEach(k=>{if(c[k])t1Curves[c.m][k]=T1[k];});
-    }
-  });
-
-  // Compute T-1 and today MtM per cargo
-  const cargoResults=CARGOES.map(c=>{
-    const t1res=cargoPnL(c,t1Curves);
-    const todayRes=cargoPnL(c);
-    const delta=todayRes.pnlM-t1res.pnlM;
-
-    // Decompose delta
-    // Curve move: change due to index price movement on uncertain portion
-    const fixRatio=Math.min(1,c.fixedDays/Math.max(c.totalDays,1));
-    const curveDelta=delta*(1-fixRatio); // simplified: uncertain portion drove the move
-    const fixDelta=delta*fixRatio;       // certain portion: fixing impact
-
-    return {id:c.id,type:c.type,t1Mtm:t1res.pnlM,todayMtm:todayRes.pnlM,delta,curveDelta,fixDelta,fixRatio};
-  });
-
-  const totalT1=cargoResults.reduce((a,r)=>a+r.t1Mtm,0);
-  const totalToday=cargoResults.reduce((a,r)=>a+r.todayMtm,0);
-  const totalDelta=totalToday-totalT1;
-  const curveMoveTotal=cargoResults.reduce((a,r)=>a+r.curveDelta,0);
-  const fixingTotal=cargoResults.reduce((a,r)=>a+r.fixDelta,0);
-  const hedgeDelta=HEDGES.reduce((a,h)=>a+hedgePnL(h),0)-(-0.08); // vs T-1 hedge
-  const newTradeDelta=+0.31; // cargo #248 booked today
-  const theta=-0.04;
-  const residual=totalDelta-curveMoveTotal-fixingTotal-hedgeDelta-newTradeDelta-theta;
-
-  g('explain-metrics').innerHTML=[
-    {l:'Opening MTM (T-1)',v:fmtM(totalT1),s:'Yesterday EOD'},
-    {l:'Day P&L',v:fmtM(totalDelta),s:'Today − T-1'},
-    {l:'Closing MTM',v:fmtM(totalToday),s:'Current MtM'},
-    {l:'Hedge contribution',v:fmtM(hedgeDelta),s:'Financial hedges'},
-  ].map(m=>`<div class="met"><div class="ml">${m.l}</div><div class="mv">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
-
-  // Waterfall
-  const wfItems=[
-    {l:'Opening MTM',v:totalT1,c:'#475569',base:true},
-    {l:`Curve move (index Δ)`,v:curveMoveTotal,c:'#3b82f6',sub:`Uncertain exposure × price change`},
-    {l:'Fixing impact (RAF Δ)',v:fixingTotal,c:'#22c55e',sub:'Settled fixings moved C→U'},
-    {l:'New trade #248',v:newTradeDelta,c:'#a78bfa',sub:'Booked today, not in T-1'},
-    {l:'Theta / time decay',v:theta,c:'#f87171',sub:'1 day closer to delivery'},
-    {l:'Hedge P&L',v:hedgeDelta,c:'#60a5fa',sub:'Financial book offset'},
-    {l:'Residual',v:residual,c:'#6b7280',sub:'Freight / rounding'},
-    {l:'Closing MTM',v:totalToday,c:'#475569',base:true},
-  ];
-  const mxW=Math.max(...wfItems.map(i=>Math.abs(i.v)));
-  g('explain-wfall').innerHTML=wfItems.map(i=>{
-    const w=(Math.abs(i.v)/mxW*100).toFixed(0);
-    const vc=i.base?'var(--text2)':(i.v>=0?'#4ade80':'#f87171');
-    return `<div class="wf">
-      <div style="width:190px;flex-shrink:0">
-        <div class="wfl" style="${i.base?'color:var(--text);font-weight:600':''}">${i.l}</div>
-        ${i.sub?`<div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:1px">${i.sub}</div>`:''}
-      </div>
-      <div class="wft"><div class="wfb" style="width:${w}%;background:${i.c};opacity:${i.base?.25:.85}"></div></div>
-      <div class="wfv" style="color:${vc}">${i.base?'$'+i.v.toFixed(2)+'M':(i.v>=0?'+':'−')+'$'+Math.abs(i.v).toFixed(2)+'M'}</div>
-    </div>`;
-  }).join('');
-
-  // Per-cargo attribution table
-  const rows=cargoResults.map(r=>`<tr>
-    <td style="font-family:var(--mono)">${r.id}</td>
-    <td>${r.type}</td>
-    <td style="text-align:right;font-family:var(--mono)">${r.t1Mtm>=0?'+':'−'}$${Math.abs(r.t1Mtm).toFixed(2)}M</td>
-    <td style="text-align:right;font-family:var(--mono)">${r.todayMtm>=0?'+':'−'}$${Math.abs(r.todayMtm).toFixed(2)}M</td>
-    <td style="text-align:right;font-weight:600" class="${r.delta>=0?'pos':'neg'}">${r.delta>=0?'+':'−'}$${Math.abs(r.delta).toFixed(2)}M</td>
-    <td style="text-align:right;font-size:11px" class="${r.curveDelta>=0?'pos':'neg'}">${r.curveDelta>=0?'+':'−'}$${Math.abs(r.curveDelta).toFixed(2)}M</td>
-    <td style="text-align:right;font-size:11px" class="${r.fixDelta>=0?'pos':'neg'}">${r.fixDelta>=0?'+':'−'}$${Math.abs(r.fixDelta).toFixed(2)}M</td>
-    <td style="font-family:var(--mono);font-size:10px;color:var(--text3)">${(r.fixRatio*100).toFixed(0)}% fixed</td>
-  </tr>`).join('');
-  g('explain-tbl').innerHTML=`<thead><tr><th>#</th><th>Type</th><th style="text-align:right">T-1 MtM</th><th style="text-align:right">Today MtM</th><th style="text-align:right">Δ Total</th><th style="text-align:right">Δ Curve</th><th style="text-align:right">Δ Fixing</th><th>RAF status</th></tr></thead><tbody>${rows}</tbody>`;
-}
-
-// ════════════════════════════════════════════════════════════
-// SPEC BOOK
-// ════════════════════════════════════════════════════════════
-function buildSpec(){
-  const totalMtm=SPECS.reduce((a,s)=>a+specMtM(s),0);
-  const totalRisk=SPECS.reduce((a,s)=>a+Math.abs(s.entry-s.sl)*s.lots*(LOT[s.idx]||10000),0);
-  const totalReward=SPECS.reduce((a,s)=>a+Math.abs(s.target-s.entry)*s.lots*(LOT[s.idx]||10000),0);
-
-  g('spec-metrics').innerHTML=[
-    {l:'Total spec MtM',v:fmtM(totalMtm),s:`${SPECS.length} positions`},
-    {l:'Total risk $ (to SL)',v:`<span style="font-weight:600" class="neg">$${(totalRisk/1e6).toFixed(1)}M</span>`,s:'max loss at stops'},
-    {l:'Total reward $ (to tgt)',v:`<span style="font-weight:600" class="pos">$${(totalReward/1e6).toFixed(1)}M</span>`,s:'max gain at targets'},
-    {l:'Avg R:R',v:`<span style="font-weight:600">${(totalReward/totalRisk).toFixed(2)}x</span>`,s:'reward ÷ risk'},
-    {l:'Limit utilisation',v:`<span style="font-weight:600" class="pos">${(totalRisk/90e6*100).toFixed(0)}%</span>`,s:'of $90M cap'},
-  ].map(m=>`<div class="met"><div class="ml">${m.l}</div><div class="mv">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
-
-  const rows=SPECS.map(s=>{
-    const mtm=specMtM(s);
-    const risk=Math.abs(s.entry-s.sl)*s.lots*(LOT[s.idx]||10000);
-    const reward=Math.abs(s.target-s.entry)*s.lots*(LOT[s.idx]||10000);
-    const rr=(reward/risk).toFixed(2);
-    const atSL=s.pos==='Buy'?s.mark<=s.sl:s.mark>=s.sl;
-    const atTgt=s.pos==='Buy'?s.mark>=s.target:s.mark<=s.target;
-    const status=atTgt?`<span style="color:var(--t);font-size:11px">● Target hit</span>`:atSL?`<span style="color:var(--r);font-size:11px">● SL hit</span>`:`<span style="color:var(--c);font-size:11px">● Open</span>`;
-    // Progress bar from SL to target
-    const range=Math.abs(s.target-s.sl);
-    const pos=Math.max(0,Math.min(1,Math.abs(s.mark-s.sl)/range));
-    const pBarW=(pos*100).toFixed(0);
-    const pBarColor=pos>.75?'#22c55e':pos>.4?'#3b82f6':'#f59e0b';
-    return `<tr>
-      <td>${s.strat}</td>
-      <td>${s.idx}</td>
-      <td>${s.mo}</td>
-      <td style="text-align:right">${s.lots}</td>
-      <td style="text-align:right;font-family:var(--mono)">${s.entry.toFixed(2)}</td>
-      <td style="text-align:right;font-family:var(--mono);color:var(--r)">${s.sl.toFixed(2)}</td>
-      <td style="text-align:right;font-family:var(--mono);color:var(--t)">${s.target.toFixed(2)}</td>
-      <td style="text-align:right;font-family:var(--mono);font-weight:600">${s.mark.toFixed(2)}</td>
-      <td style="width:80px"><div style="height:5px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="width:${pBarW}%;height:100%;background:${pBarColor};border-radius:3px"></div></div></td>
-      <td style="text-align:right;font-family:var(--mono)">${rr}x</td>
-      <td style="text-align:right;font-weight:600" class="${mtm>=0?'pos':'neg'}">${fmtK(mtm*1e6)}</td>
-      <td>${status}</td>
-    </tr>`;
-  }).join('');
-  g('spec-tbl').innerHTML=`<thead><tr><th>Strategy</th><th>Idx</th><th>Month</th><th style="text-align:right">Lots</th><th style="text-align:right">Entry</th><th style="text-align:right">SL</th><th style="text-align:right">Target</th><th style="text-align:right">Mark</th><th>Progress</th><th style="text-align:right">R:R</th><th style="text-align:right">MtM</th><th>Status</th></tr></thead><tbody>${rows}<tr class="tr-tot"><td colspan="10">Total spec MtM</td><td style="text-align:right" class="${totalMtm>=0?'pos':'neg'}">${fmtK(totalMtm*1e6)}</td><td></td></tr></tbody>`;
-
-  const limitRows=[
-    {l:'Max total risk $ (SL)',cap:90,used:totalRisk/1e6},
-    {l:'JKM gross lots',cap:500,used:SPECS.filter(s=>s.idx==='JKM').reduce((a,s)=>a+s.lots,0)},
-    {l:'TTF gross lots',cap:500,used:SPECS.filter(s=>s.idx==='TTF').reduce((a,s)=>a+s.lots,0)},
-    {l:'Brent gross lots',cap:300,used:SPECS.filter(s=>s.idx==='Brent').reduce((a,s)=>a+s.lots,0)},
-  ].map(l=>{
-    const pct=l.used/l.cap*100;
-    const c=pct>80?'#f87171':pct>50?'#fbbf24':'#4ade80';
-    return `<tr><td>${l.l}</td><td style="text-align:right;font-family:var(--mono)">${l.cap}${l.l.includes('$')?'M':''}</td><td style="text-align:right;font-family:var(--mono)">${l.used.toFixed(l.cap>10?0:1)}${l.l.includes('$')?'M':''}</td><td style="text-align:right;font-family:var(--mono)" style="color:${c}">${pct.toFixed(0)}%</td></tr>`;
-  }).join('');
-  g('spec-limits').innerHTML=`<thead><tr><th>Limit</th><th style="text-align:right">Cap</th><th style="text-align:right">Used</th><th style="text-align:right">Util.</th></tr></thead><tbody>${limitRows}</tbody>`;
-}
-
-// ════════════════════════════════════════════════════════════
-// P&L LOG
-// ════════════════════════════════════════════════════════════
-let SNAPS=[
-  {d:'15-Mar-26',v:-1.82,dod:null},{d:'16-Mar-26',v:-1.41,dod:+0.41},{d:'17-Mar-26',v:-1.20,dod:+0.21},
-];
-
-function renderPnl(){
-  const physMtm=CARGOES.reduce((a,c)=>a+cargoPnL(c).pnlM,0);
-  const hedgeMtm=HEDGES.reduce((a,h)=>a+hedgePnL(h),0);
-  const specMtmTotal=SPECS.reduce((a,s)=>a+specMtM(s),0);
-  const total=physMtm+hedgeMtm+specMtmTotal;
-  const lastSnap=SNAPS[SNAPS.length-1]?.v||0;
-  const dayPnl=total-lastSnap;
-
-  g('pnl-metrics').innerHTML=[
-    {l:'Current combined MtM',v:fmtM(total),s:'Live'},
-    {l:'Day P&L vs last snap',v:fmtM(dayPnl),s:'Today − last EOD'},
-    {l:'Physical MtM',v:fmtM(physMtm),s:'Cargo book'},
-    {l:'Hedge + Spec',v:fmtM(hedgeMtm+specMtmTotal),s:'Financial books'},
-  ].map(m=>`<div class="met"><div class="ml">${m.l}</div><div class="mv">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
-
-  const maxAbs=Math.max(...SNAPS.map(s=>Math.abs(s.v)));
-  g('snap-log').innerHTML=[...SNAPS].reverse().map(s=>`<div class="snap">
-    <div class="snap-date">${s.d}</div>
-    <div class="snap-val ${s.v>=0?'pos':'neg'}">${s.v>=0?'+':'−'}$${Math.abs(s.v).toFixed(2)}M</div>
-    <div class="snap-dod" style="color:${s.dod===null?'var(--text3)':s.dod>=0?'#4ade80':'#f87171'}">${s.dod===null?'—':(s.dod>=0?'+':'−')+'$'+Math.abs(s.dod).toFixed(2)+'M'}</div>
-    <div class="snap-bar"><div class="snap-fill" style="width:${(Math.abs(s.v)/maxAbs*100).toFixed(0)}%;background:${s.v>=0?'#22c55e':'#ef4444'}"></div></div>
-  </div>`).join('');
-
-  // SVG line chart
-  const vals=SNAPS.map(s=>s.v);
-  const mn=Math.min(...vals)-.2, mx=Math.max(...vals)+.2;
-  const W=400,H=120,pl=8,pr=8,pt=10,pb=20;
-  const iW=W-pl-pr,iH=H-pt-pb;
-  const xp=i=>pl+i/(vals.length-1)*iW;
-  const yp=v=>pt+iH-(v-mn)/(mx-mn)*iH;
-  const pts=vals.map((v,i)=>`${xp(i).toFixed(1)},${yp(v).toFixed(1)}`).join(' ');
-  const area=`M${xp(0)},${yp(vals[0])} `+vals.slice(1).map((v,i)=>`L${xp(i+1).toFixed(1)},${yp(v).toFixed(1)}`).join(' ')+` L${xp(vals.length-1)},${H-pb} L${xp(0)},${H-pb} Z`;
-  const dotsCurr=`<circle cx="${xp(vals.length-1).toFixed(1)}" cy="${yp(vals[vals.length-1]).toFixed(1)}" r="3" fill="${vals[vals.length-1]>=0?'#22c55e':'#ef4444'}"/>`;
-  const labs=SNAPS.map((s,i)=>`<text x="${xp(i).toFixed(0)}" y="${H-4}" fill="#52525b" font-size="9" text-anchor="middle" font-family="IBM Plex Mono">${s.d.slice(0,6)}</text>`).join('');
-  const yline=v=>`<line x1="0" y1="${yp(v)}" x2="${W}" y2="${yp(v)}" stroke="#27272a" stroke-width="0.5"/><text x="${W-2}" y="${yp(v)+3}" fill="#52525b" font-size="9" text-anchor="end" font-family="IBM Plex Mono">${v.toFixed(2)}</text>`;
-  g('pnl-chart-area').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px" xmlns="http://www.w3.org/2000/svg">
-    ${yline(mn)}<line x1="${W/2}" y1="0" x2="${W/2}" y2="${H-pb}" stroke="#27272a" stroke-width="0.5"/>
-    <defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${vals[vals.length-1]>=0?'#22c55e':'#ef4444'}" stop-opacity="0.2"/><stop offset="100%" stop-color="${vals[vals.length-1]>=0?'#22c55e':'#ef4444'}" stop-opacity="0.01"/></linearGradient></defs>
-    <path d="${area}" fill="url(#pg)"/>
-    <polyline points="${pts}" fill="none" stroke="${vals[vals.length-1]>=0?'#22c55e':'#ef4444'}" stroke-width="1.5" stroke-linejoin="round"/>
-    ${dotsCurr}${labs}
-  </svg>`;
-
-  // Attribution waterfall for last session
-  const wfItems=[
-    {l:'Physical Δ (curves)',v:+0.19,c:'#3b82f6'},
-    {l:'Fixing impact',v:+0.09,c:'#22c55e'},
-    {l:'Hedge P&L',v:hedgeMtm*0.3,c:'#60a5fa'},
-    {l:'Spec MtM Δ',v:specMtmTotal*0.1,c:'#a78bfa'},
-  ];
-  const mxW=Math.max(...wfItems.map(i=>Math.abs(i.v)));
-  g('pnl-attr').innerHTML=wfItems.map(i=>{
-    const w=(Math.abs(i.v)/mxW*100).toFixed(0);
-    return `<div class="wf">
-      <div class="wfl">${i.l}</div>
-      <div class="wft"><div class="wfb" style="width:${w}%;background:${i.c};opacity:.85"></div></div>
-      <div class="wfv ${i.v>=0?'pos':'neg'}">${i.v>=0?'+':'−'}$${Math.abs(i.v).toFixed(2)}M</div>
-    </div>`;
-  }).join('');
-}
-
-function addSnap(){
-  const physMtm=CARGOES.reduce((a,c)=>a+cargoPnL(c).pnlM,0);
-  const hedgeMtm=HEDGES.reduce((a,h)=>a+hedgePnL(h),0);
-  const specTotal=SPECS.reduce((a,s)=>a+specMtM(s),0);
-  const total=physMtm+hedgeMtm+specTotal;
-  const now=new Date();
-  const d=`${now.getDate().toString().padStart(2,'0')}-${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][now.getMonth()]}-${now.getFullYear().toString().slice(2)}`;
-  const last=SNAPS[SNAPS.length-1];
-  SNAPS.push({d,v:total,dod:last?total-last.v:null});
-  renderPnl();
-}
-
-// ════════════════════════════════════════════════════════════
-// INIT
-// ════════════════════════════════════════════════════════════
-g('today-chip').textContent='Today: '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
-buildMorning();
-</script>
+</div>
 </body>
 </html>
