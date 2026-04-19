@@ -4387,10 +4387,11 @@ window.fdFrSubTab = function(i){
   FD_FR_STATE.subTab = +i;
   const host = document.getElementById('fd-fr-body');
   if(host) _fdFrRenderBody(host);
-  // update tab button active states
   document.querySelectorAll('[data-fd-fr-tab]').forEach(b => {
     b.classList.toggle('active', +b.dataset.fdFrTab === FD_FR_STATE.subTab);
   });
+  // Refresh the status bar so the chip flips to "freight curves pending feed"
+  _fdFrRefreshStatus();
 };
 
 function _fdFrRenderBody(host){
@@ -4398,36 +4399,128 @@ function _fdFrRenderBody(host){
   else if(FD_FR_STATE.subTab === 1) host.innerHTML = renderMatParams();
 }
 
+// ── Feed: push F.matrix → CP.freight so the LNG Global Netback consumes our rates
+// The netback module expects CP.freight keyed as "<origin>_<destAlias>" where some
+// destinations use aliases (huelva→iberia, revithoussa→rev, aliaga→ali, ainsukhna→
+// ain, rotterdam→gate for non-Sabine origins). Populate both raw and aliased keys
+// to be safe — downstream consumers pick whichever exists.
+const FD_FR_DEST_ALIAS = {
+  huelva:'iberia', revithoussa:'rev', aliaga:'ali', ainsukhna:'ain',
+};
+function _fdFrFreightKeyCandidates(origId, destId){
+  const keys = [origId + '_' + destId];
+  if(FD_FR_DEST_ALIAS[destId]) keys.push(origId + '_' + FD_FR_DEST_ALIAS[destId]);
+  // Non-Sabine origins historically use "gate" for the NWE/Rotterdam slot
+  if(destId === 'rotterdam' && origId !== 'sabine') keys.push(origId + '_gate');
+  return keys;
+}
+
+window.fdFrUpdateMatrix = function(){
+  try {
+    if(!F.blng || !F.params){ initFreight(); }
+    computeMatrix();
+    alert('Freight matrix rebuilt (' + Object.keys(F.matrix||{}).length + ' origins × ' + Object.keys(F.matrix?.sabine||{}).length + ' destinations × 24 months).');
+    _fdFrRefreshStatus();
+  } catch(e){
+    alert('Matrix build failed: ' + e.message);
+    console.error(e);
+  }
+};
+
+window.fdFrFeedNetback = function(){
+  if(!F.matrix){
+    alert('No freight matrix yet. Click UPDATE MATRIX first.');
+    return;
+  }
+  try {
+    // Load existing CP.freight (or seed) so we don't drop unknown keys
+    const existing = cpGet('cp_freight', JSON.parse(JSON.stringify(CP_SEED_FR)));
+    const next = Object.assign({}, existing);
+    let written = 0;
+    Object.keys(F.matrix).forEach(origId => {
+      Object.keys(F.matrix[origId]).forEach(destId => {
+        const arr = F.matrix[origId][destId]
+          .map(cell => (cell && typeof cell.freight === 'number') ? +cell.freight.toFixed(4) : null);
+        _fdFrFreightKeyCandidates(origId, destId).forEach(k => {
+          next[k] = arr;
+          written += 1;
+        });
+      });
+    });
+    cpSet('cp_freight', next);
+    localStorage.setItem('cp_freight_feed_ts', new Date().toISOString());
+    if(typeof CP !== 'undefined' && CP){ CP.freight = next; }
+    alert('LNG Global Netback updated with ' + written + ' route/month series.\nReturn to Physical Trading → LNG Global Netback to see the new physical diffs.');
+    _fdFrRefreshStatus();
+  } catch(e){
+    alert('Feed failed: ' + e.message);
+    console.error(e);
+  }
+};
+
+function _fdFrRefreshStatus(){
+  const bar = document.getElementById('fd-fr-status');
+  if(!bar) return;
+  const hasMatrix = !!(F.matrix && Object.keys(F.matrix).length);
+  const matrixStale = F.matrixTs && F.blngTs && F.blngTs > F.matrixTs;
+  const cpFreight = cpGet('cp_freight', null);
+  const cpFeedTs = localStorage.getItem('cp_freight_feed_ts');
+  const needsFeed = hasMatrix && (!cpFeedTs || (F.matrixTs && cpFeedTs < F.matrixTs));
+  bar.innerHTML = `
+    <span class="${matrixStale ? 'warn' : hasMatrix ? 'ok' : 'todo'}">
+      ${matrixStale ? '⚠ MATRIX STALE' : hasMatrix ? '🟢 MATRIX BUILT' : '⚪ MATRIX NOT BUILT'}
+    </span>
+    <span class="${cpFreight ? 'ok' : 'todo'}">
+      ${cpFreight ? '🟢 NETBACK FED' : '⚪ NETBACK NOT FED'}${cpFeedTs ? ' · ' + cpFeedTs.slice(0,16).replace('T',' ') : ''}
+    </span>
+    ${needsFeed ? '<span class="warn">⚠ FEED PENDING — matrix updated since last feed</span>' : ''}
+  `;
+}
+
 function renderFoundationFreight(c){
-  // Ensure freight state is populated — if Physical → Freight hasn't been visited,
-  // F.blng/F.params/F.posArr/F.repoArr are null and editors would throw.
   if(!F.blng || !F.params){
     try { initFreight(); } catch(e){ console.warn('initFreight failed', e); }
   }
-  const stale = F.matrixTs && F.blngTs && F.blngTs > F.matrixTs;
   c.innerHTML = `
     <style>
       .fdfr-wrap{padding:18px 22px 40px;color:var(--tx);font-family:inherit}
       .fdfr-hdr{border-bottom:1px solid var(--bl);padding-bottom:12px;margin-bottom:10px}
       .fdfr-hdr-ttl{font-size:16px;color:var(--th);letter-spacing:.03em}
       .fdfr-hdr-sub{font-size:10px;color:var(--td);letter-spacing:.05em;line-height:1.6;max-width:840px;margin-top:4px}
-      .fdfr-banner{background:#071a2b;border:1px solid #1e3a5f;padding:7px 14px;display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:9px;letter-spacing:.1em}
-      .fdfr-banner .ok{color:#81c784;font-weight:700}
-      .fdfr-banner .warn{color:#ff9800;font-weight:700}
+      .fdfr-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#071a2b;border:1px solid #1e3a5f;margin-bottom:10px}
+      .fdfr-actions .grp{display:flex;gap:8px}
+      .fdfr-actions button{font-family:inherit;font-size:10px;letter-spacing:.08em;padding:8px 14px;border:1px solid var(--bl);background:var(--bg3);color:var(--tx);cursor:pointer}
+      .fdfr-actions button.primary{background:rgba(77,158,245,.15);border-color:var(--b);color:var(--th);font-weight:600}
+      .fdfr-actions button.feed{background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.4);color:var(--gr);font-weight:600}
+      .fdfr-actions button:hover{filter:brightness(1.15)}
+      #fd-fr-status{display:flex;gap:12px;font-size:9px;letter-spacing:.08em;align-items:center;flex-wrap:wrap;margin-left:auto}
+      #fd-fr-status .ok{color:var(--gr)}
+      #fd-fr-status .warn{color:#fbbf24}
+      #fd-fr-status .todo{color:var(--td)}
       .fdfr-tabs{display:flex;gap:0;border-bottom:2px solid var(--bl);margin-bottom:12px}
       .fdfr-tab{padding:11px 22px;background:none;border:none;color:var(--td);font-family:inherit;font-size:10px;letter-spacing:.12em;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500}
       .fdfr-tab:hover{color:var(--tx)}
       .fdfr-tab.active{color:var(--th);border-bottom-color:var(--b)}
+      /* Tighter alignment for the embedded BLNG curves table — overrides .f-tbl */
+      #fd-fr-body .f-tbl th, #fd-fr-body .f-tbl td{padding:4px 6px}
+      #fd-fr-body .f-tbl input.f-inp{width:74px;padding:3px 6px;font-size:10.5px}
+      #fd-fr-body .f-tbl input[style*="width:56px"]{width:52px!important}
+      #fd-fr-body .f-tbl input[style*="width:88px"]{width:78px!important}
+      #fd-fr-body .f-tbl th[colspan="3"]{padding-top:8px;padding-bottom:4px}
+      #fd-fr-body .f-tbl tr:nth-child(even) td{background:rgba(77,158,245,.02)}
+      #fd-fr-body .f-sec{letter-spacing:.12em;color:var(--b);font-size:10px;margin-top:14px}
     </style>
     <div class="fdfr-wrap">
       <div class="fdfr-hdr">
         <div class="fdfr-hdr-ttl">FREIGHT CURVES + SHIP PARAMETERS</div>
-        <div class="fdfr-hdr-sub">Cornerstone inputs for the freight engine. Changes here persist to your browser and flow into NM-based $/MMBtu calculations everywhere in the platform (Global LNG Netback, Cargo Book MTM, Morning Book, Exposure).</div>
+        <div class="fdfr-hdr-sub">Cornerstone inputs for the freight engine. Flow: edit curves / params → <b>UPDATE MATRIX</b> (rebuild $/MMBtu grid) → <b>FEED LNG GLOBAL NETBACK</b> (push into the physical diff model). Both persist to your browser.</div>
       </div>
-      <div class="fdfr-banner">
-        <span class="ok">PERSISTENT — FEEDS LNG GLOBAL NETBACK</span>
-        <span style="flex:1"></span>
-        ${stale ? '<span class="warn">⚠ MATRIX STALE — update curves then return to Physical Trading → Freight Calculator to rebuild the matrix</span>' : '<span style="color:#4caf50">MATRIX CURRENT</span>'}
+      <div class="fdfr-actions">
+        <div class="grp">
+          <button class="primary" onclick="fdFrUpdateMatrix()">① UPDATE MATRIX</button>
+          <button class="feed" onclick="fdFrFeedNetback()">② FEED LNG GLOBAL NETBACK →</button>
+        </div>
+        <div id="fd-fr-status"></div>
       </div>
       <div class="fdfr-tabs">
         <button class="fdfr-tab ${FD_FR_STATE.subTab===0?'active':''}" data-fd-fr-tab="0" onclick="fdFrSubTab(0)">① FREIGHT CURVES</button>
@@ -4438,6 +4531,7 @@ function renderFoundationFreight(c){
   `;
   const host = document.getElementById('fd-fr-body');
   if(host) _fdFrRenderBody(host);
+  _fdFrRefreshStatus();
 }
 
 function tbTab(tab){
