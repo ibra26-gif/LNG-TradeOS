@@ -20,6 +20,7 @@
   </div>
   <div class="nav-tabs">
     <div class="nav-tab active" id="tab-home"         onclick="shellNav('home')">HOME</div>
+    <div class="nav-tab"        id="tab-foundation"   onclick="shellNav('foundation')">FOUNDATION</div>
     <div class="nav-tab"        id="tab-physical"     onclick="shellNav('physical')">PHYSICAL TRADING</div>
     <div class="nav-tab"        id="tab-financial"    onclick="shellNav('financial')">FINANCIAL TRADING</div>
     <div class="nav-tab"        id="tab-gasanalytics" onclick="shellNav('gasanalytics')">GAS &amp; LNG ANALYTICS</div>
@@ -89,6 +90,19 @@
     <div class="ft"><span class="dot"></span>LNG TRADEOS™ v1.3 — PERSONAL TRADING ANALYTICS</div>
     <div class="ft">© 2026 IBRAHIM MAR — LNG TRADEOS™ — ALL RIGHTS RESERVED</div>
   </div>
+</section>
+
+<!-- FOUNDATION -->
+<section class="s-sec" id="section-foundation">
+  <div class="sh-subnav">
+    <button class="sh-stab active" id="fdtab-financial" onclick="fdTab('financial')">FINANCIAL CURVES</button>
+    <button class="sh-stab"        id="fdtab-physical"  onclick="fdTab('physical')">PHYSICAL CURVES</button>
+    <button class="sh-stab"        id="fdtab-freight"   onclick="fdTab('freight')">FREIGHT CURVES + SHIP PARAMS</button>
+    <button class="sh-stab"        id="fdtab-nm"        onclick="fdTab('nm')">NAUTICAL MILES</button>
+    <button class="sh-stab"        id="fdtab-portcost"  onclick="fdTab('portcost')">PORT COST</button>
+  </div>
+  <div id="fd-readiness"></div>
+  <div id="fd-content"></div>
 </section>
 
 <!-- PHYSICAL -->

@@ -2007,6 +2007,7 @@ function shellNav(sec,sub){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('section-'+sec).classList.add('active');
   document.getElementById('tab-'+sec).classList.add('active');
+  if(sec==='foundation') fdTab(sub||'financial');
   if(sec==='physical') phTab(sub||'overview');
   if(sec==='financial'){
     if(!finLoaded) lDrive();
@@ -4017,6 +4018,86 @@ const pvBook = (function(){
     _state: state
   };
 })();
+
+// ══════════════════════════════════════════════════════════════════════════
+// FOUNDATION — platform cornerstone data (config / admin side)
+//
+// Data flow:
+//   1. FINANCIAL CURVES   (independent market data: HH, TTF, JKM, NBP, Brent,
+//                          Dated Brent, Slope, THE, PSV, PEG, PVB, ZTP)
+//   2. PORT COST          (static, yearly/quarterly)
+//   3. NAUTICAL MILES     (static, Cape of Good Hope default — Suez/Bab el-Mandeb
+//                          off by default due to Houthi risk)
+//   4. FREIGHT CURVES     (derived from NM + port cost + ship/fuel params)
+//   5. PHYSICAL CURVES    (NWE + JKTC + Iberia + UK are editable anchors;
+//                          rest derived from freight delta)
+//
+// Downstream models (Cargo Book MTM, Morning Book, Exposure, Scenarios, Optim,
+// Spec, Daily P&L, EOM) all gate on Foundation readiness.
+// ══════════════════════════════════════════════════════════════════════════
+
+const FD_META = {
+  financial: {title:'FINANCIAL CURVES',    desc:'Daily forward curves for HH · TTF · JKM · NBP · Brent · Dated Brent · Slope · THE · PSV · PEG · PVB · ZTP',                         phase:'A.5'},
+  physical : {title:'PHYSICAL CURVES',     desc:'Mirror of PHYS DIFFERENTIALS. Editable anchors: NWE · Iberia · UK · JKTC. Derived: all others + Guanabara, Escobar (FOB-netback).', phase:'A.4'},
+  freight  : {title:'FREIGHT CURVES + SHIP PARAMS', desc:'Route × month $/MMBtu freight derived from NM + ship/fuel/hire/EUA inputs. Feeds Global LNG Netback.',                   phase:'A.3'},
+  nm       : {title:'NAUTICAL MILES',      desc:'Origin × destination distance table. Default routing: Cape of Good Hope (Suez / Bab el-Mandeb off due to Houthi risk).',          phase:'A.2'},
+  portcost : {title:'PORT COST',           desc:'Load + discharge port fees per terminal. Static reference, updated annually/quarterly.',                                           phase:'A.1'},
+};
+
+function fdReadiness(){
+  // Returns {ok, items:[{key,label,status,hint}]}
+  const items = [
+    {key:'financial', label:'Financial Curves', status:'pending'},
+    {key:'portcost',  label:'Port Cost',        status:'pending'},
+    {key:'nm',        label:'Nautical Miles',   status:'pending'},
+    {key:'freight',   label:'Freight Curves',   status:'pending'},
+    {key:'physical',  label:'Physical Curves',  status:'pending'},
+  ];
+  // Actual checks land in later steps; for now everything is "pending" (shell only).
+  const ok = items.every(i => i.status === 'ok');
+  return {ok, items};
+}
+
+function renderFdReadiness(){
+  const el = document.getElementById('fd-readiness');
+  if(!el) return;
+  const {ok, items} = fdReadiness();
+  const dot = s => s==='ok' ? '🟢' : s==='warn' ? '🟡' : s==='err' ? '🔴' : '⚪';
+  el.innerHTML = `
+    <div style="padding:10px 22px;border-bottom:1px solid var(--bl);display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:var(--bg2);font-size:10px;letter-spacing:.05em;color:var(--td)">
+      <span style="color:${ok?'var(--gr)':'#fbbf24'};font-weight:600;letter-spacing:.1em">
+        ${ok ? '🟢 FOUNDATION READY' : '⚪ FOUNDATION · SHELL ONLY · BUILD IN PROGRESS'}
+      </span>
+      <span style="color:var(--td)">|</span>
+      ${items.map(i => `<span style="font-size:9px">${dot(i.status)} ${i.label}</span>`).join('<span style="color:var(--bl)">·</span>')}
+    </div>`;
+}
+
+function fdTab(tab){
+  document.querySelectorAll('[id^="fdtab-"]').forEach(t=>t.classList.remove('active'));
+  const el = document.getElementById('fdtab-'+tab);
+  if(el) el.classList.add('active');
+  const c = document.getElementById('fd-content');
+  if(!c) return;
+  renderFdReadiness();
+  const meta = FD_META[tab];
+  if(!meta){ c.innerHTML=''; return; }
+  // Phase A.0 — shell only. Each sub-tab is a labelled stub until its phase lands.
+  c.innerHTML = `
+    <div style="padding:38px 28px;max-width:880px">
+      <div style="font-size:10px;letter-spacing:.15em;color:var(--b);margin-bottom:6px">FOUNDATION · ${meta.phase}</div>
+      <div style="font-size:20px;color:var(--th);font-weight:500;letter-spacing:.03em;margin-bottom:10px">${meta.title}</div>
+      <div style="font-size:11px;color:var(--td);line-height:1.7;margin-bottom:22px">${meta.desc}</div>
+      <div style="border:1px dashed var(--bl);padding:24px 20px;background:var(--bg2);color:var(--td);font-size:11px;letter-spacing:.03em;line-height:1.7">
+        <div style="color:var(--th);font-size:12px;margin-bottom:8px">Under construction — Phase ${meta.phase}</div>
+        This sub-section is a placeholder. The Foundation build order is:
+        <div style="margin-top:10px;font-family:inherit">
+          A.1 · Port Cost mirror &nbsp;→&nbsp; A.2 · NM Database &nbsp;→&nbsp; A.3 · Freight Curves + Ship Params &nbsp;→&nbsp; A.4 · Physical Curves &nbsp;→&nbsp; A.5 · Financial Curves
+        </div>
+      </div>
+    </div>`;
+  window.scrollTo(0,0);
+}
 
 function tbTab(tab){
   document.querySelectorAll('[id^="tbtab-"]').forEach(t=>t.classList.remove('active'));
