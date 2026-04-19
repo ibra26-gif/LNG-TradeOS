@@ -41,20 +41,20 @@
       "msg_id": "2026-28___________________002"
     },
     {
-      "title": "Gas production field unavailability · Planned",
-      "asset": "Gullfaks",
-      "impact": "-9.1 mcm/d",
-      "from": "2026-04-18",
-      "to": "2026-04-19",
-      "type": "planned",
-      "published": "2026-04-18T06:00:00",
-      "msg_id": "2026-186__________________001"
+      "title": "Other unavailability · Unplanned",
+      "asset": "Åsgard",
+      "impact": "-5.4 mcm/d",
+      "from": "2026-04-19",
+      "to": "2026-04-20",
+      "type": "unplanned",
+      "published": "2026-04-19T09:51:37.507000",
+      "msg_id": "2026-189__________________002"
     }
   ],
   "_meta": {
-    "updated": "2026-04-18T20:03:59Z",
+    "updated": "2026-04-19T08:46:31Z",
     "source": "gassco xlexport",
-    "total_messages": 165,
+    "total_messages": 164,
     "active_count": 7
   }
 }
