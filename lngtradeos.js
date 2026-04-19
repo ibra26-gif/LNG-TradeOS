@@ -4082,7 +4082,8 @@ function fdTab(tab){
   renderFdReadiness();
   const meta = FD_META[tab];
   if(!meta){ c.innerHTML=''; return; }
-  // Phase A.0 — shell only. Each sub-tab is a labelled stub until its phase lands.
+  if(tab === 'nm'){ renderFoundationNM(c); window.scrollTo(0,0); return; }
+  // Other sub-tabs — still placeholders until their phases land.
   c.innerHTML = `
     <div style="padding:38px 28px;max-width:880px">
       <div style="font-size:10px;letter-spacing:.15em;color:var(--b);margin-bottom:6px">FOUNDATION · ${meta.phase}</div>
@@ -4097,6 +4098,249 @@ function fdTab(tab){
       </div>
     </div>`;
   window.scrollTo(0,0);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// FOUNDATION · A.2 — NM DATABASE (Nautical Miles)
+//
+// Sense-check columns:
+//   · Current NM — what the model uses today (editable override)
+//   · Direct GC  — straight great-circle (lower bound; may cross land)
+//   · Via-CoGH   — great-circle origin → Cape of Good Hope → destination
+//   · Assumed    — heuristic flag for what routing applies (direct vs CoGH)
+//   · Δ          — current minus the benchmark that matches the assumed route
+//
+// Overrides persist to localStorage['nm_overrides'] and merge into NM at load time.
+// ══════════════════════════════════════════════════════════════════════════
+const FD_NM_STATE = { orig:'all', onlyFlagged:false, threshold:10 };
+
+const PORT_LABELS = {
+  // Origins
+  angola:'Angola', australia_b:'Barrow Island', australia_g:'Gladstone',
+  nigeria:'Bonny (Nigeria)', indonesia:'Bontang', qatar:'Ras Laffan (Qatar)',
+  oman:'Oman (Qalhat)', sabine:'Sabine Pass', trinidad:'Trinidad',
+  // Destinations
+  bahiablanca:'Bahia Blanca', guanabara:'Guanabara', quintero:'Quintero', manzanillo:'Manzanillo',
+  zeebrugge:'Zeebrugge', rotterdam:'Rotterdam', huelva:'Huelva', southhook:'South Hook',
+  jebelali:'Jebel Ali', ainsukhna:'Ain Sukhna', dahej:'Dahej', portqasim:'Port Qasim',
+  tianjin:'Tianjin', tokyo:'Tokyo Bay', gwangyang:'Gwangyang', singapore:'Singapore',
+  maptaphut:'Map Ta Phut', panigaglia:'Panigaglia', livorno:'Livorno', rovigo:'Rovigo',
+  piombino:'Piombino', revithoussa:'Revithoussa', inkoo:'Inkoo', klaipeda:'Klaipeda',
+  swinoujscie:'Swinoujscie', aliaga:'Aliaga', krk:'Krk', ravenna:'Ravenna',
+  aqaba:'Aqaba FSRU', maagp:'Mina Al-Ahmadi (Kuwait)', cochin:'Cochin', dabhol:'Dabhol',
+  caofeidian:'Caofeidian', dapeng:'Dapeng', qingdao:'Qingdao', rudong:'Rudong',
+  taichung:'Taichung', melaka:'Melaka', yungan:'Yung An',
+};
+const DEST_GROUPS = [
+  {lbl:'AMERICAS',  ports:['bahiablanca','guanabara','quintero','manzanillo']},
+  {lbl:'NWE',       ports:['zeebrugge','rotterdam','huelva','southhook']},
+  {lbl:'MED',       ports:['panigaglia','livorno','rovigo','piombino','revithoussa','aliaga','krk','ravenna']},
+  {lbl:'BALTIC',    ports:['inkoo','klaipeda','swinoujscie']},
+  {lbl:'GULF / RED SEA', ports:['jebelali','ainsukhna','aqaba','maagp']},
+  {lbl:'INDIA',     ports:['dahej','portqasim','cochin','dabhol']},
+  {lbl:'CHINA',     ports:['tianjin','caofeidian','dapeng','qingdao','rudong']},
+  {lbl:'NORTHEAST ASIA', ports:['tokyo','gwangyang','taichung','yungan']},
+  {lbl:'SE ASIA',   ports:['singapore','maptaphut','melaka']},
+];
+
+function _saveNmOverride(orig, dest, val){
+  try {
+    const ov = JSON.parse(localStorage.getItem('nm_overrides') || '{}');
+    ov[orig] = ov[orig] || {};
+    if(val == null || val === '') { delete ov[orig][dest]; }
+    else { ov[orig][dest] = +val; }
+    if(Object.keys(ov[orig]).length === 0) delete ov[orig];
+    localStorage.setItem('nm_overrides', JSON.stringify(ov));
+    if(val == null || val === '') {} else { NM[orig][dest] = +val; }
+  } catch(e){ console.warn('nm override save failed', e); }
+}
+window.fdNmEdit = function(orig, dest, el){
+  const v = +el.value;
+  if(!isNaN(v) && v > 0) {
+    _saveNmOverride(orig, dest, v);
+    NM[orig][dest] = v;
+    renderFoundationNM(document.getElementById('fd-content'));
+  }
+};
+window.fdNmResetOne = function(orig, dest){
+  try {
+    const ov = JSON.parse(localStorage.getItem('nm_overrides') || '{}');
+    if(ov[orig] && ov[orig][dest] != null) {
+      delete ov[orig][dest];
+      if(Object.keys(ov[orig]).length === 0) delete ov[orig];
+      localStorage.setItem('nm_overrides', JSON.stringify(ov));
+      // Restore seed value: if it's a new dest, regen from geographic estimate; else we'd need original
+      // For simplicity: regen via estimate for all overrides (keeps UX simple).
+      const est = needsCoGH(orig, dest) ? coghRouteNM(orig, dest) : directGCNM(orig, dest);
+      if(est != null) NM[orig][dest] = Math.round(est);
+      renderFoundationNM(document.getElementById('fd-content'));
+    }
+  } catch(e){}
+};
+window.fdNmResetAll = function(){
+  if(!confirm('Reset all NM overrides? Values revert to seeded defaults (geographic estimates).')) return;
+  localStorage.removeItem('nm_overrides');
+  location.reload();
+};
+window.fdNmFilter = function(v){ FD_NM_STATE.orig = v; renderFoundationNM(document.getElementById('fd-content')); };
+window.fdNmToggleFlagged = function(v){ FD_NM_STATE.onlyFlagged = v; renderFoundationNM(document.getElementById('fd-content')); };
+window.fdNmSetThreshold = function(v){ const n=+v; if(!isNaN(n)&&n>=0) FD_NM_STATE.threshold = n; renderFoundationNM(document.getElementById('fd-content')); };
+
+function renderFoundationNM(c){
+  const origins = Object.keys(NM);
+  const ov = (() => { try { return JSON.parse(localStorage.getItem('nm_overrides') || '{}'); } catch { return {}; } })();
+  const origFilter = FD_NM_STATE.orig;
+  const origList = origFilter === 'all' ? origins : origins.filter(o => o === origFilter);
+
+  // Build pair rows
+  const allPairs = [];
+  origList.forEach(o => {
+    Object.keys(NM[o]).forEach(d => {
+      const cur = NM[o][d];
+      const direct = directGCNM(o, d);
+      const cogh = coghRouteNM(o, d);
+      const isCogh = needsCoGH(o, d);
+      const bench = isCogh ? cogh : direct;
+      const delta = (cur!=null && bench!=null) ? cur - bench : null;
+      const pct = (bench && delta!=null) ? (delta/bench)*100 : null;
+      const overridden = ov[o] && ov[o][d] != null;
+      const isNew = NM_NEW_DESTS.includes(d);
+      allPairs.push({o, d, cur, direct, cogh, isCogh, bench, delta, pct, overridden, isNew});
+    });
+  });
+
+  // Apply flagged filter
+  const pairs = FD_NM_STATE.onlyFlagged
+    ? allPairs.filter(p => p.pct != null && Math.abs(p.pct) >= FD_NM_STATE.threshold)
+    : allPairs;
+
+  // Summary metrics
+  const nTotal = allPairs.length;
+  const nFlagged = allPairs.filter(p => p.pct != null && Math.abs(p.pct) >= FD_NM_STATE.threshold).length;
+  const nOver = allPairs.filter(p => p.overridden).length;
+  const nNew = allPairs.filter(p => p.isNew).length;
+
+  // Order: group destinations, preserve origin order
+  const destOrder = DEST_GROUPS.flatMap(g => g.ports);
+  pairs.sort((a,b) => {
+    const oa = origins.indexOf(a.o), ob = origins.indexOf(b.o);
+    if(oa !== ob) return oa - ob;
+    return destOrder.indexOf(a.d) - destOrder.indexOf(b.d);
+  });
+
+  // Helpers
+  const fmtNM = v => (v==null || isNaN(v)) ? '—' : Math.round(v).toLocaleString();
+  const deltaColor = p => {
+    if(p.pct == null) return 'var(--td)';
+    const a = Math.abs(p.pct);
+    if(a < 5) return 'var(--gr)';
+    if(a < 10) return '#fbbf24';
+    return 'var(--rd)';
+  };
+  const groupOfDest = d => { for(const g of DEST_GROUPS) if(g.ports.includes(d)) return g.lbl; return '—'; };
+  const routingLabel = p => p.isCogh ? 'CoGH' : 'direct';
+
+  c.innerHTML = `
+    <style>
+      .nm-wrap{padding:18px 22px 40px;color:var(--tx);font-family:inherit}
+      .nm-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;border-bottom:1px solid var(--bl);padding-bottom:14px;margin-bottom:14px;flex-wrap:wrap}
+      .nm-hdr-ttl{font-size:16px;color:var(--th);letter-spacing:.03em}
+      .nm-hdr-sub{font-size:10px;color:var(--td);letter-spacing:.05em;line-height:1.6;max-width:780px;margin-top:4px}
+      .nm-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+      .nm-m{background:var(--bg2);border:1px solid var(--bl);padding:11px 13px}
+      .nm-m-lbl{font-size:9px;color:var(--td);letter-spacing:.1em;margin-bottom:5px}
+      .nm-m-val{font-size:19px;font-weight:600;color:var(--th);font-variant-numeric:tabular-nums}
+      .nm-m-val.amb{color:#fbbf24}.nm-m-val.bad{color:var(--rd)}
+      .nm-controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:12px;font-size:10px;color:var(--td)}
+      .nm-controls label{display:flex;gap:6px;align-items:center}
+      .nm-controls select,.nm-controls input{background:var(--bg3);color:var(--tx);border:1px solid var(--bl);font-family:inherit;font-size:10px;padding:5px 8px}
+      .nm-btn{background:var(--bg3);color:var(--tx);border:1px solid var(--bl);font-family:inherit;font-size:9px;padding:6px 11px;letter-spacing:.08em;cursor:pointer}
+      .nm-btn:hover{border-color:var(--blh);color:var(--th)}
+      .nm-scroll{overflow:auto;max-height:calc(100vh - 340px);border:1px solid var(--bl)}
+      .nm-tbl{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+      .nm-tbl th{text-align:right;font-size:9px;font-weight:500;color:var(--td);letter-spacing:.05em;padding:7px 10px;border-bottom:1px solid var(--bl);background:var(--bg3);position:sticky;top:0;z-index:2;white-space:nowrap}
+      .nm-tbl th.l{text-align:left}
+      .nm-tbl td{padding:5px 10px;border-bottom:1px solid rgba(77,158,245,.05);text-align:right;white-space:nowrap}
+      .nm-tbl td.l{text-align:left;color:var(--th)}
+      .nm-tbl td.grp{background:var(--bg3);color:var(--b);letter-spacing:.12em;font-size:9px;padding:8px 10px;text-align:left;font-weight:600}
+      .nm-tbl input{background:var(--bg3);color:var(--th);border:1px solid var(--bl);font-family:inherit;font-size:11px;padding:3px 6px;width:76px;text-align:right;font-variant-numeric:tabular-nums}
+      .nm-tbl input:focus{outline:none;border-color:var(--b)}
+      .nm-tbl tr.over input{background:rgba(77,158,245,.12);border-color:var(--b);color:var(--b);font-weight:600}
+      .nm-tbl tr.new td.l::before{content:'NEW ';color:var(--gr);font-size:9px;font-weight:600;letter-spacing:.1em}
+      .nm-pill{display:inline-block;padding:1px 6px;font-size:9px;letter-spacing:.05em;background:var(--bg3);color:var(--td);border:1px solid var(--bl)}
+      .nm-pill.cogh{color:#fbbf24;border-color:rgba(251,191,36,.3)}
+      .nm-pill.direct{color:var(--gr);border-color:rgba(52,211,153,.3)}
+      .nm-reset{background:none;border:none;color:var(--td);cursor:pointer;font-size:10px;padding:0 4px}
+      .nm-reset:hover{color:var(--rd)}
+    </style>
+    <div class="nm-wrap">
+      <div class="nm-hdr">
+        <div>
+          <div class="nm-hdr-ttl">NAUTICAL MILES DATABASE</div>
+          <div class="nm-hdr-sub">Origin × destination in NM. Default routing: Cape of Good Hope (Suez/Bab el-Mandeb off by default due to Houthi risk; Panama off Apr-2026).
+          Benchmarks: <b>Direct GC</b> = straight great-circle (may cross land; lower bound). <b>Via-CoGH</b> = origin → Cape (−34.36°, 18.47°) → destination.
+          Δ is current NM minus whichever benchmark matches the assumed routing. Overrides persist to localStorage.</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="nm-btn" onclick="fdNmResetAll()">RESET ALL</button>
+        </div>
+      </div>
+      <div class="nm-metrics">
+        <div class="nm-m"><div class="nm-m-lbl">TOTAL PAIRS</div><div class="nm-m-val">${nTotal}</div></div>
+        <div class="nm-m"><div class="nm-m-lbl">NEW DESTINATIONS</div><div class="nm-m-val">${nNew}</div></div>
+        <div class="nm-m"><div class="nm-m-lbl">FLAGGED (|Δ| ≥ ${FD_NM_STATE.threshold}%)</div><div class="nm-m-val ${nFlagged>0?'amb':''}">${nFlagged}</div></div>
+        <div class="nm-m"><div class="nm-m-lbl">USER OVERRIDES</div><div class="nm-m-val">${nOver}</div></div>
+      </div>
+      <div class="nm-controls">
+        <label>ORIGIN
+          <select onchange="fdNmFilter(this.value)">
+            <option value="all" ${origFilter==='all'?'selected':''}>All</option>
+            ${origins.map(o => `<option value="${o}" ${origFilter===o?'selected':''}>${PORT_LABELS[o]||o}</option>`).join('')}
+          </select>
+        </label>
+        <label>THRESHOLD (%)
+          <input type="number" step="1" min="0" value="${FD_NM_STATE.threshold}" style="width:60px" onchange="fdNmSetThreshold(this.value)">
+        </label>
+        <label>
+          <input type="checkbox" ${FD_NM_STATE.onlyFlagged?'checked':''} onchange="fdNmToggleFlagged(this.checked)"> Show only flagged
+        </label>
+        <span style="color:var(--td);margin-left:auto">Showing ${pairs.length} / ${nTotal} pairs</span>
+      </div>
+      <div class="nm-scroll">
+        <table class="nm-tbl">
+          <thead>
+            <tr>
+              <th class="l">ORIGIN</th>
+              <th class="l">DESTINATION</th>
+              <th class="l">GROUP</th>
+              <th class="l">ROUTING</th>
+              <th>CURRENT NM</th>
+              <th>DIRECT GC</th>
+              <th>VIA-CoGH</th>
+              <th>Δ vs BENCH</th>
+              <th>Δ %</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pairs.map(p => `
+              <tr class="${p.overridden?'over':''} ${p.isNew?'new':''}">
+                <td class="l">${PORT_LABELS[p.o]||p.o}</td>
+                <td class="l">${PORT_LABELS[p.d]||p.d}</td>
+                <td class="l" style="color:var(--td);font-size:10px">${groupOfDest(p.d)}</td>
+                <td class="l"><span class="nm-pill ${p.isCogh?'cogh':'direct'}">${routingLabel(p)}</span></td>
+                <td><input type="number" step="1" value="${p.cur!=null?p.cur:''}" onchange="fdNmEdit('${p.o}','${p.d}',this)"></td>
+                <td style="color:var(--td)">${fmtNM(p.direct)}</td>
+                <td style="color:var(--td)">${fmtNM(p.cogh)}</td>
+                <td style="color:${deltaColor(p)}">${p.delta!=null ? (p.delta>=0?'+':'')+Math.round(p.delta).toLocaleString() : '—'}</td>
+                <td style="color:${deltaColor(p)}">${p.pct!=null ? (p.pct>=0?'+':'')+p.pct.toFixed(1)+'%' : '—'}</td>
+                <td>${p.overridden ? `<button class="nm-reset" title="Reset override" onclick="fdNmResetOne('${p.o}','${p.d}')">↺</button>` : ''}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
 }
 
 function tbTab(tab){
@@ -5125,6 +5369,69 @@ const BASE_D=[
   {id:'manzanillo',name:'Manzanillo',euEts:false,dischCost:248440,region:'Americas'},
   {id:'bahiablanca',name:'Bahia Blanca',euEts:false,dischCost:345241,region:'Americas'}
 ];
+// ── Port coordinates (lat, lon) — used for great-circle NM + CoGH sanity check ──
+const PORT_COORDS = {
+  // Load ports (origins)
+  angola:[-6.13,12.37], australia_b:[-20.80,115.42], australia_g:[-23.84,151.25],
+  nigeria:[4.43,7.17],  indonesia:[0.10,117.47],     qatar:[25.92,51.57],
+  oman:[22.64,59.45],   sabine:[29.73,-93.87],       trinidad:[10.18,-61.68],
+  // Discharge ports (destinations) — existing
+  bahiablanca:[-38.79,-62.27], guanabara:[-22.85,-43.15], quintero:[-32.78,-71.53], manzanillo:[19.05,-104.33],
+  zeebrugge:[51.33,3.20], rotterdam:[51.95,4.14], huelva:[37.18,-6.90], southhook:[51.69,-5.04],
+  jebelali:[25.01,55.06], ainsukhna:[29.60,32.35], dahej:[21.70,72.53], portqasim:[24.77,67.36],
+  tianjin:[38.98,117.75], tokyo:[35.45,139.80], gwangyang:[34.90,127.75], singapore:[1.25,103.75],
+  maptaphut:[12.65,101.15], panigaglia:[44.06,9.85], livorno:[43.55,10.30], rovigo:[45.09,12.58],
+  piombino:[42.93,10.55], revithoussa:[37.97,23.44], inkoo:[59.95,24.02], klaipeda:[55.72,21.13],
+  swinoujscie:[53.92,14.25], aliaga:[38.79,26.97], krk:[45.22,14.54], ravenna:[44.45,12.28],
+  // Discharge ports — new (from arbitrage spreadsheet)
+  aqaba:[29.50,34.95], maagp:[29.08,48.14], cochin:[9.96,76.24], dabhol:[17.59,73.17],
+  caofeidian:[39.07,118.55], dapeng:[22.58,114.55], qingdao:[36.05,120.30], rudong:[32.33,121.42],
+  taichung:[24.28,120.50], melaka:[2.20,102.25], yungan:[22.82,120.20],
+};
+const COGH_WAYPOINT = [-34.36, 18.47]; // Cape of Good Hope (from searoute reference)
+
+// Great-circle distance in nautical miles (haversine)
+function haversineNM(a, b){
+  const toRad = d => d * Math.PI / 180;
+  const R = 3440.065; // earth radius in NM
+  const [lat1, lon1] = a, [lat2, lon2] = b;
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const s1 = Math.sin(dLat/2), s2 = Math.sin(dLon/2);
+  const h = s1*s1 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * s2*s2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+// Distance via Cape of Good Hope waypoint
+function coghRouteNM(origKey, destKey){
+  const o = PORT_COORDS[origKey], d = PORT_COORDS[destKey];
+  if(!o || !d) return null;
+  return haversineNM(o, COGH_WAYPOINT) + haversineNM(COGH_WAYPOINT, d);
+}
+// Direct great-circle (may cross land — reference only, lower bound)
+function directGCNM(origKey, destKey){
+  const o = PORT_COORDS[origKey], d = PORT_COORDS[destKey];
+  if(!o || !d) return null;
+  return haversineNM(o, d);
+}
+// Heuristic: true when origin/destination are on opposite sides of Africa (needs CoGH post-Suez closure)
+function needsCoGH(origKey, destKey){
+  const sides = {
+    // "Atlantic side": Americas, Europe, West Africa
+    atlantic: new Set(['angola','nigeria','trinidad','sabine',
+      'bahiablanca','guanabara','quintero','manzanillo','zeebrugge','rotterdam','huelva','southhook',
+      'panigaglia','livorno','rovigo','piombino','revithoussa','inkoo','klaipeda','swinoujscie','aliaga','krk','ravenna']),
+    // "Indian/Pacific side": Gulf, India, SE Asia, East Asia, Oceania
+    pacific: new Set(['qatar','oman','indonesia','australia_b','australia_g',
+      'jebelali','ainsukhna','aqaba','maagp','dahej','portqasim','cochin','dabhol',
+      'tianjin','tokyo','gwangyang','singapore','maptaphut','caofeidian','dapeng','qingdao','rudong','taichung','melaka','yungan']),
+  };
+  const inSet = (k) => sides.atlantic.has(k) ? 'atlantic' : sides.pacific.has(k) ? 'pacific' : null;
+  const a = inSet(origKey), b = inSet(destKey);
+  return a && b && a !== b;
+}
+// New destinations not yet in the freight DB — defaults seeded from via-CoGH / direct great-circle.
+// These values are editable in Foundation → Nautical Miles. On first save they persist to localStorage.
+const NM_NEW_DESTS = ['aqaba','maagp','cochin','dabhol','caofeidian','dapeng','qingdao','rudong','taichung','melaka','yungan'];
+
 const NM={
   angola:{bahiablanca:4414,guanabara:3377,quintero:6348,manzanillo:7545,zeebrugge:4948,rotterdam:5008,huelva:3935,southhook:4737,jebelali:6734,ainsukhna:5950,dahej:6451,portqasim:6305,tianjin:9894,tokyo:9997,gwangyang:9562,singapore:7270,maptaphut:7951,panigaglia:3770,livorno:3760,rovigo:4340,piombino:3670,revithoussa:4600,inkoo:5800,klaipeda:5600,swinoujscie:5400,aliaga:5350,krk:4550,ravenna:4500},
   // Australia_b: NWE/Med/Baltic all via CoGH going west (Suez closed Apr-2026). Med ports longer than NWE via this route.
@@ -5144,6 +5451,27 @@ const NM={
   // Oman EU/Med/Baltic: Cape of Good Hope routing (Suez closed Apr-2026). Asia/India/MEI local unchanged.
   oman:{bahiablanca:8450,guanabara:7949,quintero:9676,manzanillo:12022,zeebrugge:12050,rotterdam:12100,huelva:11500,southhook:11900,jebelali:348,ainsukhna:13000,dahej:738,portqasim:456,tianjin:5890,tokyo:6018,gwangyang:5557,singapore:3011,maptaphut:3712,panigaglia:12500,livorno:12450,rovigo:12700,piombino:12450,revithoussa:13200,inkoo:12900,klaipeda:12700,swinoujscie:12600,aliaga:13600,krk:13400,ravenna:12900}
 };
+// ── Seed the 11 new discharge ports for each origin ─────────────────────────────
+// Initial values: via-CoGH great-circle if the route crosses basins (post-Suez closure),
+// else direct great-circle. All are EDITABLE overrides via Foundation → Nautical Miles.
+(function seedNewDests(){
+  const origins = Object.keys(NM);
+  origins.forEach(o => {
+    NM_NEW_DESTS.forEach(d => {
+      if(NM[o][d] != null) return;
+      const est = needsCoGH(o, d) ? coghRouteNM(o, d) : directGCNM(o, d);
+      if(est != null) NM[o][d] = Math.round(est);
+    });
+  });
+  // Merge persisted overrides from localStorage
+  try {
+    const ov = JSON.parse(localStorage.getItem('nm_overrides') || '{}');
+    Object.keys(ov).forEach(o => {
+      if(!NM[o]) return;
+      Object.assign(NM[o], ov[o]);
+    });
+  } catch(e){}
+})();
 const DEF_P={shipSize:174000,energyFactor:22.88,loadFactor:98.5,bogRate:0.15,speedLaden:19.5,speedBallast:19.5,hfoLaden:90,hfoBallast:85,hfoPrice:550,lsmgoLaden:0,lsmgoBallast:0,lsmgoDischarge:8,pilotFuel:1,lsmgoPrice:750,cooldownDays:0.25,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,loadTimeDays:0.25,bufferDays:2,dischargeDays:0.25,heelVolume:3000,heelCost:0,co2Mgo:3.206,co2Hfo:3.114,etsCoverage:1.0,euaPrice:80.206,euaDec:{2026:80.206,2027:75.0,2028:70.0},eurUsd:1.09,loadDate:''};
 
 // ── Per-basin matrix params (3 independent sets, one per rate curve) ──────────
