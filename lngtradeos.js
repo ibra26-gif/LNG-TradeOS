@@ -4154,12 +4154,20 @@ function _saveNmOverride(orig, dest, val){
     if(val == null || val === '') {} else { NM[orig][dest] = +val; }
   } catch(e){ console.warn('nm override save failed', e); }
 }
+// Deferred re-render — prevents "DOM destroyed mid-event" crashes when a <select>
+// or <input> inside the table triggers a full re-render.
+function _rerenderNm(){
+  setTimeout(() => {
+    const el = document.getElementById('fd-content');
+    if(el) try { renderFoundationNM(el); } catch(e){ console.error('NM render failed', e); }
+  }, 0);
+}
 window.fdNmEdit = function(orig, dest, el){
   const v = +el.value;
   if(!isNaN(v) && v > 0) {
     _saveNmOverride(orig, dest, v);
     NM[orig][dest] = v;
-    renderFoundationNM(document.getElementById('fd-content'));
+    _rerenderNm();
   }
 };
 window.fdNmResetOne = function(orig, dest){
@@ -4169,22 +4177,21 @@ window.fdNmResetOne = function(orig, dest){
       delete ov[orig][dest];
       if(Object.keys(ov[orig]).length === 0) delete ov[orig];
       localStorage.setItem('nm_overrides', JSON.stringify(ov));
-      // Restore seed value: if it's a new dest, regen from geographic estimate; else we'd need original
-      // For simplicity: regen via estimate for all overrides (keeps UX simple).
-      const est = needsCoGH(orig, dest) ? coghRouteNM(orig, dest) : directGCNM(orig, dest);
-      if(est != null) NM[orig][dest] = Math.round(est);
-      renderFoundationNM(document.getElementById('fd-content'));
+      // Restore engine-computed default for this pair
+      const rt = nmRoute(orig, dest);
+      if(rt && rt.nm != null) NM[orig][dest] = Math.round(rt.nm);
+      _rerenderNm();
     }
-  } catch(e){}
+  } catch(e){ console.warn(e); }
 };
 window.fdNmResetAll = function(){
   if(!confirm('Reset all NM overrides? Values revert to seeded defaults (geographic estimates).')) return;
   localStorage.removeItem('nm_overrides');
   location.reload();
 };
-window.fdNmFilter = function(v){ FD_NM_STATE.orig = v; renderFoundationNM(document.getElementById('fd-content')); };
-window.fdNmToggleFlagged = function(v){ FD_NM_STATE.onlyFlagged = v; renderFoundationNM(document.getElementById('fd-content')); };
-window.fdNmSetThreshold = function(v){ const n=+v; if(!isNaN(n)&&n>=0) FD_NM_STATE.threshold = n; renderFoundationNM(document.getElementById('fd-content')); };
+window.fdNmFilter = function(v){ FD_NM_STATE.orig = v; _rerenderNm(); };
+window.fdNmToggleFlagged = function(v){ FD_NM_STATE.onlyFlagged = v; _rerenderNm(); };
+window.fdNmSetThreshold = function(v){ const n=+v; if(!isNaN(n)&&n>=0) FD_NM_STATE.threshold = n; _rerenderNm(); };
 
 function renderFoundationNM(c){
   const origins = Object.keys(NM);
@@ -4192,20 +4199,21 @@ function renderFoundationNM(c){
   const origFilter = FD_NM_STATE.orig;
   const origList = origFilter === 'all' ? origins : origins.filter(o => o === origFilter);
 
-  // Build pair rows
+  // Build pair rows — benchmark is the route the engine picks (direct / Gibraltar /
+  // Med-Suez / Suez / CapeHorn / CoGH / Pacific-direct), not just direct-vs-CoGH.
   const allPairs = [];
   origList.forEach(o => {
     Object.keys(NM[o]).forEach(d => {
       const cur = NM[o][d];
       const direct = directGCNM(o, d);
       const cogh = coghRouteNM(o, d);
-      const isCogh = needsCoGH(o, d);
-      const bench = isCogh ? cogh : direct;
+      const rt = nmRoute(o, d);
+      const bench = rt.nm;
       const delta = (cur!=null && bench!=null) ? cur - bench : null;
       const pct = (bench && delta!=null) ? (delta/bench)*100 : null;
       const overridden = ov[o] && ov[o][d] != null;
-      const isNew = NM_NEW_DESTS.includes(d);
-      allPairs.push({o, d, cur, direct, cogh, isCogh, bench, delta, pct, overridden, isNew});
+      const isNew = NEW_DESTINATIONS.has(d);
+      allPairs.push({o, d, cur, direct, cogh, rt, bench, delta, pct, overridden, isNew});
     });
   });
 
@@ -4238,7 +4246,13 @@ function renderFoundationNM(c){
     return 'var(--rd)';
   };
   const groupOfDest = d => { for(const g of DEST_GROUPS) if(g.ports.includes(d)) return g.lbl; return '—'; };
-  const routingLabel = p => p.isCogh ? 'CoGH' : 'direct';
+  // Route label styles: direct/Pacific-direct → green, CoGH/CapeHorn → amber,
+  // Gibraltar/Suez/Med-Suez → blue.
+  const routeClass = name => {
+    if(name === 'direct' || name === 'Pacific-direct') return 'direct';
+    if(name === 'CoGH' || name === 'CapeHorn')         return 'cogh';
+    return 'canal';  // Gibraltar, Med-Suez, Suez
+  };
 
   c.innerHTML = `
     <style>
@@ -4270,6 +4284,7 @@ function renderFoundationNM(c){
       .nm-pill{display:inline-block;padding:1px 6px;font-size:9px;letter-spacing:.05em;background:var(--bg3);color:var(--td);border:1px solid var(--bl)}
       .nm-pill.cogh{color:#fbbf24;border-color:rgba(251,191,36,.3)}
       .nm-pill.direct{color:var(--gr);border-color:rgba(52,211,153,.3)}
+      .nm-pill.canal{color:var(--b);border-color:var(--blh)}
       .nm-reset{background:none;border:none;color:var(--td);cursor:pointer;font-size:10px;padding:0 4px}
       .nm-reset:hover{color:var(--rd)}
     </style>
@@ -4277,9 +4292,9 @@ function renderFoundationNM(c){
       <div class="nm-hdr">
         <div>
           <div class="nm-hdr-ttl">NAUTICAL MILES DATABASE</div>
-          <div class="nm-hdr-sub">Origin × destination in NM. Default routing: Cape of Good Hope (Suez/Bab el-Mandeb off by default due to Houthi risk; Panama off Apr-2026).
-          Benchmarks: <b>Direct GC</b> = straight great-circle (may cross land; lower bound). <b>Via-CoGH</b> = origin → Cape (−34.36°, 18.47°) → destination.
-          Δ is current NM minus whichever benchmark matches the assumed routing. Overrides persist to localStorage.</div>
+          <div class="nm-hdr-sub">Origin × destination in NM. <b>No Panama Canal in this model.</b>
+          Route types: <span style="color:var(--gr)">direct</span> (same region) · <span style="color:var(--b)">Gibraltar</span> (Atlantic ↔ Med/Baltic) · <span style="color:var(--b)">Med-Suez</span> (Atlantic ↔ Red Sea North) · <span style="color:var(--b)">Suez</span> (Med ↔ Red Sea North) · <span style="color:#fbbf24">CapeHorn</span> (Atlantic ↔ Pacific Americas) · <span style="color:#fbbf24">CoGH</span> (Atlantic/Med ↔ Gulf/Asia; Gulf ↔ Red Sea).
+          Δ compares CURRENT to the route the engine picks. Cell edits persist to localStorage.</div>
         </div>
         <div style="display:flex;gap:8px">
           <button class="nm-btn" onclick="fdNmResetAll()">RESET ALL</button>
@@ -4328,7 +4343,7 @@ function renderFoundationNM(c){
                 <td class="l">${PORT_LABELS[p.o]||p.o}</td>
                 <td class="l">${PORT_LABELS[p.d]||p.d}</td>
                 <td class="l" style="color:var(--td);font-size:10px">${groupOfDest(p.d)}</td>
-                <td class="l"><span class="nm-pill ${p.isCogh?'cogh':'direct'}">${routingLabel(p)}</span></td>
+                <td class="l"><span class="nm-pill ${routeClass(p.rt.name)}">${p.rt.name}</span></td>
                 <td><input type="number" step="1" value="${p.cur!=null?p.cur:''}" onchange="fdNmEdit('${p.o}','${p.d}',this)"></td>
                 <td style="color:var(--td)">${fmtNM(p.direct)}</td>
                 <td style="color:var(--td)">${fmtNM(p.cogh)}</td>
@@ -5388,7 +5403,11 @@ const PORT_COORDS = {
   caofeidian:[39.07,118.55], dapeng:[22.58,114.55], qingdao:[36.05,120.30], rudong:[32.33,121.42],
   taichung:[24.28,120.50], melaka:[2.20,102.25], yungan:[22.82,120.20],
 };
-const COGH_WAYPOINT = [-34.36, 18.47]; // Cape of Good Hope (from searoute reference)
+// Routing waypoints — no Panama Canal in this model.
+const COGH_WAYPOINT      = [-34.36, 18.47];   // Cape of Good Hope
+const GIBRALTAR_WAYPOINT = [ 35.93, -5.60];   // Strait of Gibraltar
+const SUEZ_N_WAYPOINT    = [ 31.25, 32.32];   // Suez Canal, Mediterranean end
+const CAPE_HORN_WAYPOINT = [-55.98,-67.27];   // Cape Horn
 
 // Great-circle distance in nautical miles (haversine)
 function haversineNM(a, b){
@@ -5400,76 +5419,101 @@ function haversineNM(a, b){
   const h = s1*s1 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * s2*s2;
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
-// Distance via Cape of Good Hope waypoint
+function _via(pts){
+  let t = 0;
+  for(let i = 0; i < pts.length-1; i++) t += haversineNM(pts[i], pts[i+1]);
+  return t;
+}
 function coghRouteNM(origKey, destKey){
   const o = PORT_COORDS[origKey], d = PORT_COORDS[destKey];
   if(!o || !d) return null;
-  return haversineNM(o, COGH_WAYPOINT) + haversineNM(COGH_WAYPOINT, d);
+  return _via([o, COGH_WAYPOINT, d]);
 }
-// Direct great-circle (may cross land — reference only, lower bound)
 function directGCNM(origKey, destKey){
   const o = PORT_COORDS[origKey], d = PORT_COORDS[destKey];
   if(!o || !d) return null;
   return haversineNM(o, d);
 }
-// Heuristic: true when origin/destination are on opposite sides of Africa (needs CoGH post-Suez closure)
-function needsCoGH(origKey, destKey){
-  const sides = {
-    // "Atlantic side": Americas, Europe, West Africa
-    atlantic: new Set(['angola','nigeria','trinidad','sabine',
-      'bahiablanca','guanabara','quintero','manzanillo','zeebrugge','rotterdam','huelva','southhook',
-      'panigaglia','livorno','rovigo','piombino','revithoussa','inkoo','klaipeda','swinoujscie','aliaga','krk','ravenna']),
-    // "Indian/Pacific side": Gulf, India, SE Asia, East Asia, Oceania
-    pacific: new Set(['qatar','oman','indonesia','australia_b','australia_g',
-      'jebelali','ainsukhna','aqaba','maagp','dahej','portqasim','cochin','dabhol',
-      'tianjin','tokyo','gwangyang','singapore','maptaphut','caofeidian','dapeng','qingdao','rudong','taichung','melaka','yungan']),
-  };
-  const inSet = (k) => sides.atlantic.has(k) ? 'atlantic' : sides.pacific.has(k) ? 'pacific' : null;
-  const a = inSet(origKey), b = inSet(destKey);
-  return a && b && a !== b;
-}
-// New destinations not yet in the freight DB — defaults seeded from via-CoGH / direct great-circle.
-// These values are editable in Foundation → Nautical Miles. On first save they persist to localStorage.
-const NM_NEW_DESTS = ['aqaba','maagp','cochin','dabhol','caofeidian','dapeng','qingdao','rudong','taichung','melaka','yungan'];
-
-const NM={
-  angola:{bahiablanca:4414,guanabara:3377,quintero:6348,manzanillo:7545,zeebrugge:4948,rotterdam:5008,huelva:3935,southhook:4737,jebelali:6734,ainsukhna:5950,dahej:6451,portqasim:6305,tianjin:9894,tokyo:9997,gwangyang:9562,singapore:7270,maptaphut:7951,panigaglia:3770,livorno:3760,rovigo:4340,piombino:3670,revithoussa:4600,inkoo:5800,klaipeda:5600,swinoujscie:5400,aliaga:5350,krk:4550,ravenna:4500},
-  // Australia_b: NWE/Med/Baltic all via CoGH going west (Suez closed Apr-2026). Med ports longer than NWE via this route.
-  australia_b:{bahiablanca:8888,guanabara:8333,quintero:8939,manzanillo:8821,zeebrugge:13900,rotterdam:13950,huelva:13300,southhook:13750,jebelali:4640,ainsukhna:14850,dahej:3744,portqasim:4043,tianjin:3845,tokyo:3788,gwangyang:3497,singapore:1712,maptaphut:2350,panigaglia:13750,livorno:13700,rovigo:14250,piombino:13650,revithoussa:14850,inkoo:15300,klaipeda:14950,swinoujscie:14650,aliaga:15350,krk:14650,ravenna:14350},
-  nigeria:{bahiablanca:4643,guanabara:3414,quintero:6653,manzanillo:10055,zeebrugge:4372,rotterdam:4432,huelva:3359,southhook:4161,jebelali:7553,ainsukhna:5374,dahej:7246,portqasim:7100,tianjin:10689,tokyo:10792,gwangyang:10357,singapore:8065,maptaphut:8746,panigaglia:3060,livorno:3050,rovigo:3630,piombino:2950,revithoussa:4600,inkoo:5800,klaipeda:5600,swinoujscie:5400,aliaga:5250,krk:4550,ravenna:4500},
-  // Indonesia: NWE/Med/Baltic all via CoGH going west (Suez closed Apr-2026).
-  indonesia:{bahiablanca:9901,guanabara:9347,quintero:9654,manzanillo:8109,zeebrugge:13200,rotterdam:13250,huelva:12600,southhook:13100,jebelali:4741,ainsukhna:14150,dahej:3823,portqasim:4129,tianjin:2625,tokyo:2587,gwangyang:2277,singapore:1206,maptaphut:1726,panigaglia:13100,livorno:13000,rovigo:13600,piombino:13000,revithoussa:14200,inkoo:14600,klaipeda:14300,swinoujscie:14000,aliaga:14700,krk:14000,ravenna:13700},
-  // Qatar EU/Med/Baltic: Cape of Good Hope routing (Suez closed Apr-2026). Asia/India/MEI local unchanged.
-  qatar:{bahiablanca:9054,guanabara:8499,quintero:10933,manzanillo:12452,zeebrugge:13550,rotterdam:13600,huelva:13000,southhook:13400,jebelali:197,ainsukhna:14500,dahej:1280,portqasim:903,tianjin:6458,tokyo:6576,gwangyang:6125,singapore:3674,maptaphut:4422,panigaglia:14000,livorno:13950,rovigo:14200,piombino:13950,revithoussa:14700,inkoo:14400,klaipeda:14200,swinoujscie:14100,aliaga:15100,krk:14900,ravenna:14400},
-  // Australia_g: NWE/Med/Baltic all via CoGH going west (Suez closed Apr-2026).
-  australia_g:{bahiablanca:7522,guanabara:8763,quintero:6750,manzanillo:8581,zeebrugge:13337,rotterdam:13366,huelva:12324,southhook:13126,jebelali:7005,ainsukhna:14266,dahej:6087,portqasim:6391,tianjin:4466,tokyo:3778,gwangyang:3963,singapore:3545,maptaphut:4133,panigaglia:13200,livorno:13100,rovigo:13700,piombino:13100,revithoussa:14300,inkoo:14700,klaipeda:14400,swinoujscie:14100,aliaga:14800,krk:14100,ravenna:13800},
-  // Sabine: CoGH for all Indian Ocean/Gulf/SE Asia/NE Asia destinations (Suez closed, Panama removed Apr-2026). NWE/Med direct Atlantic.
-  sabine:{bahiablanca:6733,guanabara:5365,quintero:4153,manzanillo:3292,zeebrugge:4969,rotterdam:5030,huelva:4670,southhook:4623,jebelali:13000,ainsukhna:6767,dahej:12800,portqasim:12600,tianjin:16200,tokyo:16300,gwangyang:15900,singapore:13600,maptaphut:14300,panigaglia:5350,livorno:5340,rovigo:5970,piombino:5240,revithoussa:5800,inkoo:6100,klaipeda:5900,swinoujscie:5700,aliaga:6450,krk:5750,ravenna:5700},
-  // ── Trinidad NM: eastbound via CoGH · ainsukhna via Med/Suez (Ain Sukhna = Med terminal) ──
-  // Method: Trinidad→Cape=6,400nm. Cape→destination derived from Angola anchor values.
-  trinidad:{bahiablanca:4543,guanabara:3175,quintero:6943,manzanillo:2914,zeebrugge:3984,rotterdam:4044,huelva:3383,southhook:3682,jebelali:11300,ainsukhna:5438,dahej:11100,portqasim:10900,tianjin:14500,tokyo:14600,gwangyang:14200,singapore:11900,maptaphut:12600,panigaglia:4450,livorno:4440,rovigo:5070,piombino:4340,revithoussa:5100,inkoo:5400,klaipeda:5200,swinoujscie:5000,aliaga:5750,krk:5050,ravenna:5000},
-  // Oman EU/Med/Baltic: Cape of Good Hope routing (Suez closed Apr-2026). Asia/India/MEI local unchanged.
-  oman:{bahiablanca:8450,guanabara:7949,quintero:9676,manzanillo:12022,zeebrugge:12050,rotterdam:12100,huelva:11500,southhook:11900,jebelali:348,ainsukhna:13000,dahej:738,portqasim:456,tianjin:5890,tokyo:6018,gwangyang:5557,singapore:3011,maptaphut:3712,panigaglia:12500,livorno:12450,rovigo:12700,piombino:12450,revithoussa:13200,inkoo:12900,klaipeda:12700,swinoujscie:12600,aliaga:13600,krk:13400,ravenna:12900}
+// Region classification — drives the route-type picker.
+//   ATL    : Americas east coast (incl. USGC), WAF, Europe Atlantic (NWE)
+//   MED    : Mediterranean + Baltic (reachable from Atlantic via Gibraltar)
+//   RED    : Red Sea North (Ain Sukhna, Aqaba) — reachable from Atlantic via Med + Suez southbound
+//   PAC_AM : Pacific Americas (Manzanillo, Quintero)
+//   GULF   : Persian Gulf + India
+//   FE_SEA : Far East + SE Asia + Oceania origins
+const NM_REGIONS = {
+  ATL   : new Set(['angola','nigeria','trinidad','sabine',
+                   'bahiablanca','guanabara','zeebrugge','rotterdam','huelva','southhook']),
+  MED   : new Set(['panigaglia','livorno','rovigo','piombino','revithoussa','aliaga','krk','ravenna',
+                   'inkoo','klaipeda','swinoujscie']),
+  RED   : new Set(['ainsukhna','aqaba']),
+  PAC_AM: new Set(['quintero','manzanillo']),
+  GULF  : new Set(['qatar','oman','jebelali','maagp','dahej','portqasim','cochin','dabhol']),
+  FE_SEA: new Set(['indonesia','australia_b','australia_g',
+                   'tianjin','tokyo','gwangyang','singapore','maptaphut',
+                   'caofeidian','dapeng','qingdao','rudong','taichung','melaka','yungan']),
 };
-// ── Seed the 11 new discharge ports for each origin ─────────────────────────────
-// Initial values: via-CoGH great-circle if the route crosses basins (post-Suez closure),
-// else direct great-circle. All are EDITABLE overrides via Foundation → Nautical Miles.
-(function seedNewDests(){
-  const origins = Object.keys(NM);
-  origins.forEach(o => {
-    NM_NEW_DESTS.forEach(d => {
-      if(NM[o][d] != null) return;
-      const est = needsCoGH(o, d) ? coghRouteNM(o, d) : directGCNM(o, d);
-      if(est != null) NM[o][d] = Math.round(est);
-    });
-  });
-  // Merge persisted overrides from localStorage
+function _nmRegion(k){
+  for(const g of Object.keys(NM_REGIONS)) if(NM_REGIONS[g].has(k)) return g;
+  return null;
+}
+// Routing picker — returns {name, nm} for the canonical route this pair uses.
+// Never uses Panama. Uses direct / Gibraltar / Med-Suez / Suez / Cape Horn / CoGH / Pacific-direct.
+function nmRoute(origKey, destKey){
+  const O = PORT_COORDS[origKey], D = PORT_COORDS[destKey];
+  if(!O || !D) return {name:'?', nm:null};
+  const go = _nmRegion(origKey), gd = _nmRegion(destKey);
+  const direct = haversineNM(O, D);
+  if(go === gd) return {name:'direct', nm:direct};
+  const pair = new Set([go, gd]);
+  const is = (...xs) => xs.every(x => pair.has(x));
+  if(is('ATL','MED'))    return {name:'Gibraltar', nm:_via([O, GIBRALTAR_WAYPOINT, D])};
+  if(is('ATL','RED'))    return {name:'Med-Suez',  nm:_via([O, GIBRALTAR_WAYPOINT, SUEZ_N_WAYPOINT, D])};
+  if(is('MED','RED'))    return {name:'Suez',      nm:_via([O, SUEZ_N_WAYPOINT, D])};
+  if(is('ATL','PAC_AM')) return {name:'CapeHorn',  nm:_via([O, CAPE_HORN_WAYPOINT, D])};
+  if(is('MED','PAC_AM')) return {name:'CapeHorn',  nm:_via([O, GIBRALTAR_WAYPOINT, CAPE_HORN_WAYPOINT, D])};
+  if(is('RED','PAC_AM')) return {name:'CapeHorn',  nm:_via([O, SUEZ_N_WAYPOINT, GIBRALTAR_WAYPOINT, CAPE_HORN_WAYPOINT, D])};
+  if(is('PAC_AM','FE_SEA') || is('PAC_AM','GULF')) return {name:'Pacific-direct', nm:direct};
+  // Anything that still crosses sides → CoGH
+  return {name:'CoGH', nm:_via([O, COGH_WAYPOINT, D])};
+}
+// Legacy helper kept for callers that just ask "does this pair use CoGH?"
+function needsCoGH(origKey, destKey){
+  return nmRoute(origKey, destKey).name === 'CoGH';
+}
+// Destinations added in Phase A.2 (not present in the pre-refactor database).
+// Foundation → Nautical Miles tags these rows with "NEW".
+const NEW_DESTINATIONS = new Set([
+  'aqaba','maagp','cochin','dabhol','caofeidian','dapeng','qingdao','rudong','taichung','melaka','yungan',
+]);
+
+// ── NM Database · recomputed Apr-2026 ───────────────────────────────────────────
+// Routing rules (no Panama):
+//   · direct / Pacific-direct       — same region, no canal required
+//   · Gibraltar                     — Atlantic ↔ Med/Baltic
+//   · Med-Suez                      — Atlantic ↔ Red Sea North (Suez southbound only)
+//   · Suez                          — Med/Baltic ↔ Red Sea North
+//   · CapeHorn                      — Atlantic ↔ Pacific Americas
+//   · CoGH (Cape of Good Hope)      — any Atlantic/Med ↔ Gulf/Asia; Gulf ↔ Red Sea N
+// Values computed from port coordinates + waypoints (Gibraltar 35.93°N -5.60°E,
+// Suez N 31.25°N 32.32°E, Cape Horn -55.98°N -67.27°W, CoGH -34.36°N 18.47°E).
+// User overrides persist in localStorage['nm_overrides'] and merge below.
+const NM={
+  angola      :{bahiablanca:4455, guanabara:3358, quintero:6155, manzanillo:9632, zeebrugge:3482, rotterdam:3513, huelva:2816, southhook:3585, jebelali:5858, ainsukhna:4725, dahej:6293, portqasim:6240, tianjin:8771, tokyo:9690, gwangyang:9121, singapore:6941, maptaphut:7204, panigaglia:3581, livorno:3584, rovigo:3713, piombino:3578, revithoussa:4114, inkoo:4560, klaipeda:4333, swinoujscie:4082, aliaga:4276, krk:3791, ravenna:3684, aqaba:4798, maagp:5893, cochin:5953, dabhol:6141, caofeidian:8807, dapeng:8171, qingdao:8811, rudong:8769, taichung:8506, melaka:6899, yungan:8449},
+  australia_b :{bahiablanca:8805, guanabara:8307, quintero:7566, manzanillo:8567, zeebrugge:10242, rotterdam:10271, huelva:9558, southhook:10348, jebelali:4467, ainsukhna:8955, dahej:3582, portqasim:3918, tianjin:3592, tokyo:3651, gwangyang:3417, singapore:1491, maptaphut:2178, panigaglia:9767, livorno:9734, rovigo:9816, piombino:9696, revithoussa:9386, inkoo:10704, klaipeda:10445, swinoujscie:10340, aliaga:9452, krk:9818, ravenna:9779, aqaba:8981, maagp:4910, cochin:2959, dabhol:3391, caofeidian:3599, dapeng:2605, qingdao:3425, rudong:3209, taichung:2723, melaka:1583, yungan:2634},
+  australia_g :{bahiablanca:10167, guanabara:9669, quintero:6618, manzanillo:6624, zeebrugge:11604, rotterdam:11633, huelva:10920, southhook:11710, jebelali:6309, ainsukhna:10317, dahej:5346, portqasim:5682, tianjin:4215, tokyo:3619, gwangyang:3772, singapore:3151, maptaphut:3666, panigaglia:11129, livorno:11096, rovigo:11178, piombino:11058, revithoussa:10748, inkoo:12066, klaipeda:11807, swinoujscie:11702, aliaga:10814, krk:11180, ravenna:11141, aqaba:10343, maagp:6736, cochin:4840, dabhol:5204, caofeidian:4200, dapeng:3515, qingdao:4002, rudong:3781, taichung:3399, melaka:3258, yungan:3336},
+  nigeria     :{bahiablanca:4625, guanabara:3373, quintero:6513, manzanillo:9989, zeebrugge:2823, rotterdam:2857, huelva:2113, southhook:2902, jebelali:6544, ainsukhna:4023, dahej:6980, portqasim:6927, tianjin:9457, tokyo:10377, gwangyang:9808, singapore:7628, maptaphut:7891, panigaglia:2879, livorno:2882, rovigo:3011, piombino:2876, revithoussa:3412, inkoo:3858, klaipeda:3631, swinoujscie:3380, aliaga:3574, krk:3089, ravenna:2982, aqaba:4096, maagp:6579, cochin:6640, dabhol:6828, caofeidian:9494, dapeng:8858, qingdao:9498, rudong:9456, taichung:9193, melaka:7586, yungan:9136},
+  indonesia   :{bahiablanca:9623, guanabara:9125, quintero:8780, manzanillo:8091, zeebrugge:11060, rotterdam:11089, huelva:10376, southhook:11165, jebelali:3911, ainsukhna:9773, dahej:2932, portqasim:3262, tianjin:2334, tokyo:2463, gwangyang:2167, singapore:827, maptaphut:1230, panigaglia:10584, livorno:10552, rovigo:10634, piombino:10513, revithoussa:10204, inkoo:11522, klaipeda:11263, swinoujscie:11157, aliaga:10270, krk:10635, ravenna:10596, aqaba:9799, maagp:4322, cochin:2533, dabhol:2818, caofeidian:2341, dapeng:1360, qingdao:2164, rudong:1948, taichung:1462, melaka:922, yungan:1373},
+  qatar       :{bahiablanca:7851, guanabara:7352, quintero:7836, manzanillo:7763, zeebrugge:9288, rotterdam:9317, huelva:8603, southhook:9393, jebelali:197, ainsukhna:8000, dahej:1177, portqasim:859, tianjin:3370, tokyo:4441, gwangyang:3889, singapore:3355, maptaphut:2902, panigaglia:8812, livorno:8779, rovigo:8861, piombino:8741, revithoussa:8432, inkoo:9749, klaipeda:9490, swinoujscie:9385, aliaga:8498, krk:8863, ravenna:8824, aqaba:8027, maagp:263, cochin:1698, dabhol:1302, caofeidian:3406, dapeng:3420, qingdao:3518, rudong:3620, taichung:3703, melaka:3249, yungan:3714},
+  oman        :{bahiablanca:7915, guanabara:7416, quintero:8155, manzanillo:8129, zeebrugge:9352, rotterdam:9381, huelva:8667, southhook:9457, jebelali:280, ainsukhna:8064, dahej:729, portqasim:453, tianjin:3107, tokyo:4176, gwangyang:3602, singapore:2884, maptaphut:2451, panigaglia:8876, livorno:8844, rovigo:8925, piombino:8805, revithoussa:8496, inkoo:9814, klaipeda:9555, swinoujscie:9449, aliaga:8562, krk:8927, ravenna:8888, aqaba:8091, maagp:722, cochin:1229, dabhol:830, caofeidian:3144, dapeng:3035, qingdao:3233, rudong:3307, taichung:3336, melaka:2777, yungan:3338},
+  sabine      :{bahiablanca:4478, guanabara:4305, quintero:6727, manzanillo:10204, zeebrugge:4282, rotterdam:4298, huelva:4224, southhook:3988, jebelali:11546, ainsukhna:6316, dahej:11981, portqasim:11929, tianjin:14459, tokyo:15379, gwangyang:14809, singapore:12629, maptaphut:12893, panigaglia:5171, livorno:5174, rovigo:5303, piombino:5168, revithoussa:5704, inkoo:6151, klaipeda:5923, swinoujscie:5672, aliaga:5867, krk:5381, ravenna:5275, aqaba:6389, maagp:11581, cochin:11642, dabhol:11829, caofeidian:14495, dapeng:13859, qingdao:14500, rudong:14458, taichung:14195, melaka:12587, yungan:14137},
+  trinidad    :{bahiablanca:2940, guanabara:2263, quintero:5386, manzanillo:8863, zeebrugge:3991, rotterdam:4034, huelva:3363, southhook:3704, jebelali:9398, ainsukhna:5411, dahej:9833, portqasim:9780, tianjin:12311, tokyo:13231, gwangyang:12661, singapore:10481, maptaphut:10744, panigaglia:4185, livorno:4201, rovigo:4306, piombino:4209, revithoussa:4799, inkoo:4746, klaipeda:4657, swinoujscie:4414, aliaga:4959, krk:4389, ravenna:4291, aqaba:5484, maagp:9433, cochin:9493, dabhol:9681, caofeidian:12347, dapeng:11711, qingdao:12351, rudong:12309, taichung:12046, melaka:10439, yungan:11989},
+};
+// Merge user overrides (persisted in localStorage) on top of the defaults.
+(function applyNmOverrides(){
   try {
     const ov = JSON.parse(localStorage.getItem('nm_overrides') || '{}');
-    Object.keys(ov).forEach(o => {
-      if(!NM[o]) return;
-      Object.assign(NM[o], ov[o]);
-    });
+    Object.keys(ov).forEach(o => { if(NM[o]) Object.assign(NM[o], ov[o]); });
   } catch(e){}
 })();
 const DEF_P={shipSize:174000,energyFactor:22.88,loadFactor:98.5,bogRate:0.15,speedLaden:19.5,speedBallast:19.5,hfoLaden:90,hfoBallast:85,hfoPrice:550,lsmgoLaden:0,lsmgoBallast:0,lsmgoDischarge:8,pilotFuel:1,lsmgoPrice:750,cooldownDays:0.25,cooldownEnabled:true,gasUpDays:0.25,gasUpEnabled:false,loadTimeDays:0.25,bufferDays:2,dischargeDays:0.25,heelVolume:3000,heelCost:0,co2Mgo:3.206,co2Hfo:3.114,etsCoverage:1.0,euaPrice:80.206,euaDec:{2026:80.206,2027:75.0,2028:70.0},eurUsd:1.09,loadDate:''};
