@@ -370,7 +370,7 @@
     <div id="lngbal-cty-bar" style="display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px">
       <button id="lngbal-btn-china" class="cty-tab active" onclick="lngbalCountry('china',this)">CHINA</button>
       <button id="lngbal-btn-india" class="cty-tab" onclick="lngbalCountry('india',this)">INDIA</button>
-      <button id="lngbal-btn-sam" class="cty-tab" onclick="lngbalCountry('sam',this)">SOUTH AMERICA</button>
+      <button id="lngbal-btn-sam" class="cty-tab" onclick="samShow(this)">SOUTH AMERICA</button>
     </div>
     <div id="lngbal-china">
     <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS &amp; LNG ANALYTICS · CHINA SIGNPOSTS</div>
@@ -797,31 +797,33 @@
 (function(){
 'use strict';
 
-/* Extend lngbalCountry to handle 'sam'. If original exists, preserve china/india behaviour. */
-var _origLngbalCountry = window.lngbalCountry;
-window.lngbalCountry = function(c, btn) {
-  var samEl = document.getElementById('lngbal-sam');
+/* Standalone SAM nav handler — does NOT wrap the existing lngbalCountry.
+   lngtradeos.js loads with defer, so it executes AFTER this inline script;
+   any wrapper we set here would be overwritten. Instead, SOUTH AMERICA button
+   calls samShow() directly, and we hook CHINA/INDIA on DOMContentLoaded
+   (which fires after defer scripts) to hide SAM when they're clicked. */
+window.samShow = function(btn) {
   var chinaEl = document.getElementById('lngbal-china');
   var indiaEl = document.getElementById('lngbal-india');
-  if (c === 'sam') {
-    if (chinaEl) chinaEl.style.display = 'none';
-    if (indiaEl) indiaEl.style.display = 'none';
-    if (samEl) samEl.style.display = '';
-    document.querySelectorAll('#lngbal-cty-bar .cty-tab').forEach(function(b){ b.classList.remove('active'); });
-    if (btn) btn.classList.add('active');
-    if (!SAM.inited) { SAM.init(); SAM.inited = true; }
-    return;
-  }
-  if (samEl) samEl.style.display = 'none';
-  if (typeof _origLngbalCountry === 'function') {
-    _origLngbalCountry(c, btn);
-  } else {
-    if (chinaEl) chinaEl.style.display = (c==='china') ? '' : 'none';
-    if (indiaEl) indiaEl.style.display = (c==='india') ? '' : 'none';
-    document.querySelectorAll('#lngbal-cty-bar .cty-tab').forEach(function(b){ b.classList.remove('active'); });
-    if (btn) btn.classList.add('active');
-  }
+  var samEl   = document.getElementById('lngbal-sam');
+  if (chinaEl) chinaEl.style.display = 'none';
+  if (indiaEl) indiaEl.style.display = 'none';
+  if (samEl)   samEl.style.display   = '';
+  document.querySelectorAll('#lngbal-cty-bar .cty-tab').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  if (!SAM.inited) { SAM.init(); SAM.inited = true; }
 };
+
+document.addEventListener('DOMContentLoaded', function() {
+  var bar = document.getElementById('lngbal-cty-bar');
+  if (!bar) return;
+  bar.addEventListener('click', function(e) {
+    var b = e.target.closest('.cty-tab');
+    if (!b || b.id === 'lngbal-btn-sam') return;
+    var samEl = document.getElementById('lngbal-sam');
+    if (samEl) samEl.style.display = 'none';
+  });
+});
 
 var SAM = window.SAM = { inited: false };
 
