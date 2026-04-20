@@ -60,7 +60,7 @@ jobs:
       - name: Run SHPGX scraper
         run: python scripts/fetch_china_shpgx.py
 
-      - name: Commit data if changed
+      - name: Commit data if changed (rebase-retry on push)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -84,7 +84,19 @@ jobs:
           ")
 
           git commit -m "chore: update china/shpgx ${UPDATED}" -m "Series: ${SUMMARY}"
-          git push
+
+          # Retry up to 5 times with rebase — handles races vs ENTSOG or manual
+          # pushes landing on main during this run.
+          for attempt in 1 2 3 4 5; do
+            if git pull --rebase origin main && git push; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Push attempt $attempt failed — sleeping $((attempt * 5))s before retry"
+            sleep $((attempt * 5))
+          done
+          echo "::error::Failed to push after 5 attempts"
+          exit 1
 
       - name: Upload scraper log as artifact (on failure)
         if: failure()
