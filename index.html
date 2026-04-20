@@ -148,11 +148,8 @@
     </div>
     <div class="sbar" id="sbar">
       <span class="sdot"></span><span id="stext"></span>
-      <button class="sbtn" onclick="document.getElementById('fileInput2').click()" style="margin-left:auto">+ ADD FILES</button>
-      <button class="sbtn" style="color:#4fc3f7" onclick="MCP_AVAILABLE?fAuthGate(()=>loadPricesFromGmail(true)):alert('Gmail scrape requires Claude.ai — use + ADD FILES instead.')">📧 + GMAIL</button>
+      <span style="margin-left:auto;color:#3d5070;font-size:9px;letter-spacing:.08em">Data management in <a onclick="shellNav('foundation','financial')" style="color:#4fc3f7;cursor:pointer;text-decoration:underline">Foundation → Financial Curves</a></span>
       <button class="sbtn" onclick="exportToExcel()" style="color:#22c55e">↓ EXPORT XLSX</button>
-      <button class="sbtn" onclick="syncNewFiles(false)" style="color:#4fc3f7">↺ SYNC</button>
-      <button class="sbtn red" id="clearCacheBtn">↺ CLEAR CACHE</button>
       <input type="file" id="fileInput2" multiple accept=".xlsx,.xls" style="display:none">
     </div>
     <div class="amin">

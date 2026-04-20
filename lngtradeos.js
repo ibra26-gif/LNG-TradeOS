@@ -4110,10 +4110,11 @@ function fdTab(tab){
   renderFdReadiness();
   const meta = FD_META[tab];
   if(!meta){ c.innerHTML=''; return; }
-  if(tab === 'nm')       { renderFoundationNM(c);       window.scrollTo(0,0); return; }
-  if(tab === 'portcost') { renderFoundationPortCost(c); window.scrollTo(0,0); return; }
-  if(tab === 'freight')  { renderFoundationFreight(c);  window.scrollTo(0,0); return; }
-  if(tab === 'physical') { renderFoundationPhysical(c); window.scrollTo(0,0); return; }
+  if(tab === 'nm')        { renderFoundationNM(c);        window.scrollTo(0,0); return; }
+  if(tab === 'portcost')  { renderFoundationPortCost(c);  window.scrollTo(0,0); return; }
+  if(tab === 'freight')   { renderFoundationFreight(c);   window.scrollTo(0,0); return; }
+  if(tab === 'physical')  { renderFoundationPhysical(c);  window.scrollTo(0,0); return; }
+  if(tab === 'financial') { renderFoundationFinancial(c); window.scrollTo(0,0); return; }
   // Other sub-tabs — still placeholders until their phases land.
   c.innerHTML = `
     <div style="padding:38px 28px;max-width:880px">
@@ -4719,6 +4720,108 @@ function renderFoundationPhysical(c){
     </div>
   `;
   _fdPhysRefresh();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// FOUNDATION · A.5 — FINANCIAL CURVES (Data Management)
+//
+// Single control plane for all EOD curve data consumed by Physical Trading →
+// Financial Trading (Dashboard / Historical / Correlation / Spread / Forward
+// Curve / Seasonal / Options Pricer). File upload, Gmail scrape, Drive sync,
+// cache management, and a list of loaded dates all live here — the analytics
+// tab itself is now a pure consumer (no data controls).
+// ══════════════════════════════════════════════════════════════════════════
+function renderFoundationFinancial(c){
+  const hasData = (typeof sDates !== 'undefined') && Array.isArray(sDates) && sDates.length>0;
+  const latest = hasData ? sDates[sDates.length-1] : null;
+  const fmt = (typeof fmtD === 'function') ? fmtD : (d=>d);
+  c.innerHTML = `
+    <style>
+      .fdfc-wrap{padding:18px 22px 40px;color:var(--tx);font-family:inherit}
+      .fdfc-hdr{border-bottom:1px solid var(--bl);padding-bottom:12px;margin-bottom:16px}
+      .fdfc-card{background:#0a1628;border:1px solid #1e3a5f;border-radius:4px;padding:14px}
+      .fdfc-lbl{font-size:10px;letter-spacing:.12em;color:#546e7a;margin-bottom:10px}
+      .fdfc-dz{background:#0a1628;border:2px dashed #1e3a5f;border-radius:6px;padding:30px;text-align:center;cursor:pointer;transition:border-color .15s}
+      .fdfc-dz.over{border-color:#4fc3f7;background:#0d1e36}
+      .fdfc-btn{background:transparent;border:1px solid;padding:6px 12px;font-family:inherit;font-size:9px;font-weight:600;letter-spacing:.08em;cursor:pointer}
+      .fdfc-btn:hover{opacity:.8}
+    </style>
+    <div class="fdfc-wrap">
+      <div class="fdfc-hdr">
+        <div style="font-size:16px;color:var(--th);letter-spacing:.03em">FINANCIAL CURVES — Data Management</div>
+        <div style="font-size:10px;color:var(--td);margin-top:4px;line-height:1.6;max-width:980px">
+          Single control surface for every EOD curve consumed downstream (HH · TTF · JKM · NBP · Brent · Dated Brent · Slope · THE · PSV · PEG · PVB · ZTP).
+          Upload files, scrape Gmail, sync Drive, export, or wipe cache here. The analytics in <b>Physical Trading → Financial Trading</b> read from this data — no controls there.
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="fdfc-card">
+          <div class="fdfc-lbl">STATUS</div>
+          ${hasData ? `
+            <div style="color:#4caf50;font-size:12px;font-weight:600;margin-bottom:4px">● ${sDates.length} EOD DATES CACHED</div>
+            <div style="color:#c8d6e5;font-size:11px">Latest: <b>${fmt(latest)}</b></div>
+            <div style="color:#3d5070;font-size:9px;margin-top:6px">Auto-sync on app open. Analytics downstream will reflect any update after you click SYNC or ADD FILES.</div>
+          ` : `
+            <div style="color:#ffa726;font-size:12px;font-weight:600;margin-bottom:4px">⚠ NO DATA LOADED</div>
+            <div style="color:#546e7a;font-size:10px;line-height:1.6">Add files via drop zone below, run a Gmail scrape, or let SYNC pull from Drive. Analytics page won't render until at least one day of data is present.</div>
+          `}
+        </div>
+        <div class="fdfc-card">
+          <div class="fdfc-lbl">ACTIONS</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="fdfc-btn" style="border-color:#4fc3f7;color:#4fc3f7" onclick="document.getElementById('fdfc-fi').click()">+ ADD FILES</button>
+            <button class="fdfc-btn" style="border-color:#4fc3f7;color:#4fc3f7" onclick="fdfcGmailScrape()">📧 GMAIL SCRAPE</button>
+            <button class="fdfc-btn" style="border-color:#4fc3f7;color:#4fc3f7" onclick="syncNewFiles(false)">↺ SYNC DRIVE</button>
+            <button class="fdfc-btn" style="border-color:#22c55e;color:#22c55e" onclick="typeof exportToExcel==='function'?exportToExcel():alert('Export not ready — load data first.')">↓ EXPORT XLSX</button>
+            <button class="fdfc-btn" style="border-color:#ef5350;color:#ef5350" onclick="clearCache()">⚠ CLEAR CACHE</button>
+          </div>
+          <input type="file" id="fdfc-fi" multiple accept=".xlsx,.xls" style="display:none" onchange="fdfcOnUpload(this)">
+          <div style="color:#3d5070;font-size:9px;margin-top:10px;line-height:1.6">
+            <b>Gmail</b> requires the Claude.ai MCP connector. <b>Clear cache</b> is password-protected and reloads the app.
+          </div>
+        </div>
+      </div>
+      <div class="fdfc-dz" id="fdfc-dz" onclick="document.getElementById('fdfc-fi').click()">
+        <div style="font-size:22px;color:#4fc3f7;margin-bottom:6px">⬇</div>
+        <div style="color:#c8d6e5;font-size:12px;font-weight:600;letter-spacing:.05em">DROP EOD CURVE FILES HERE</div>
+        <div style="color:#546e7a;font-size:10px;margin-top:4px">Click to browse or drag .xlsx / .xls files (folder drag supported). Files cache locally after first parse.</div>
+      </div>
+      ${hasData ? `
+        <div class="fdfc-card" style="margin-top:14px">
+          <div class="fdfc-lbl">LOADED DATES &nbsp;(${sDates.length})</div>
+          <div style="max-height:260px;overflow-y:auto;font-family:IBM Plex Mono,monospace;font-size:10px;color:#90a4ae;columns:4;column-gap:16px">
+            ${sDates.slice().reverse().map(d=>`<div style="padding:1px 0">${fmt(d)}</div>`).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  // Wire up the drop zone (Foundation re-renders dynamically so we attach each time)
+  const dz = document.getElementById('fdfc-dz');
+  if(dz){
+    ['dragover','dragleave','drop'].forEach(evt=>{
+      dz.addEventListener(evt, e=>{
+        e.preventDefault(); e.stopPropagation();
+        if(evt==='dragover') dz.classList.add('over');
+        else dz.classList.remove('over');
+        if(evt==='drop'){
+          const fs=[...(e.dataTransfer?.files||[])];
+          if(fs.length && typeof handleFiles==='function') handleFiles(fs,true);
+        }
+      });
+    });
+  }
+}
+function fdfcOnUpload(inp){
+  if(inp.files.length && typeof handleFiles==='function') handleFiles([...inp.files], true);
+}
+function fdfcGmailScrape(){
+  if(typeof MCP_AVAILABLE !== 'undefined' && MCP_AVAILABLE && typeof loadPricesFromGmail==='function'){
+    if(typeof fAuthGate==='function') fAuthGate(()=>loadPricesFromGmail(true));
+    else loadPricesFromGmail(true);
+  } else {
+    alert('Gmail scrape requires the Claude.ai MCP connector. Use ADD FILES or SYNC DRIVE instead.');
+  }
 }
 
 function tbTab(tab){
@@ -8645,14 +8748,40 @@ function cpPricesSeedDiff(){
 function cpFreightApplySeed(){
   const d=cpFreightSeedDiff();
   if(!d.hasDiff){alert('✓ Freight already matches seed ('+CP_FREIGHT_VER+').');return;}
-  const msg='Apply freight seed updates?\n\n'
-    +'• New routes: '+d.newKeys.length+'\n'
-    +'• Changed routes: '+d.changedKeys.length+'\n'
-    +'• Total cells affected: '+d.cellDiffs+'\n\n'
-    +'Your manual cell overrides will be overwritten for these routes. Continue?';
+  // Smart 3-way merge: only overwrite cells that still match the prior snapshot
+  // (i.e., user never touched them). Manual edits and matrix-fed values are ALWAYS
+  // preserved. Matches the silent auto-migrate behavior, but explicit + audited.
+  const seed=CP_SEED_FR;
+  const snap=cpGet('cp_freight_snap',null);
+  const cached=cpGet('cp_freight',{})||{};
+  let autoCells=0,userCells=0,newCells=0;
+  const out=Object.assign({},cached);
+  Object.keys(seed).forEach(k=>{
+    const sd=seed[k],sn=Array.isArray(snap)?snap[k]:(snap?snap[k]:null),cv=cached[k];
+    if(!Array.isArray(sd))return;
+    if(!Array.isArray(cv)){out[k]=sd.slice();newCells+=sd.length;return;}
+    const merged=cv.slice();
+    sd.forEach((sNew,i)=>{
+      const sOld=Array.isArray(sn)?sn[i]:undefined;
+      const c=cv[i];
+      if(c==null||isNaN(c)){merged[i]=sNew;autoCells++;return;}
+      if(sOld==null){userCells++;return;} // no baseline → treat cached as user data
+      const cMatchesOld=Math.abs(c-sOld)<1e-4;
+      const seedChanged=sNew==null||Math.abs(sNew-sOld)>=1e-4;
+      if(cMatchesOld&&seedChanged){merged[i]=sNew;autoCells++;}
+      else if(!cMatchesOld&&Math.abs(c-(sNew??0))>=1e-4){userCells++;}
+    });
+    out[k]=merged;
+  });
+  const msg='Apply freight seed updates (smart merge)?\n\n'
+    +'• Untouched cells to update to new seed: '+autoCells+'\n'
+    +'• New routes added: '+newCells+'\n'
+    +'• Your manual edits / matrix values (PRESERVED): '+userCells+'\n\n'
+    +'Manual edits are always kept — only seed-aligned cells update. Continue?';
   if(!confirm(msg))return;
-  cpSet('cp_freight',JSON.parse(JSON.stringify(CP_SEED_FR)));
+  cpSet('cp_freight',out);
   cpSet('cp_freight_ver',CP_FREIGHT_VER);
+  cpSet('cp_freight_snap',JSON.parse(JSON.stringify(seed)));
   CP.freight=cpMergeFreight();renderCargo();
 }
 function cpPhysApplySeed(){
