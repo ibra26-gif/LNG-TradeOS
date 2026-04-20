@@ -10270,10 +10270,10 @@ window.syncEEX=syncEEX;
   }catch(e){}
 })();
 const INSTS=[{k:'JKM',label:'JKM',unit:'$/MMBtu'},{k:'TTF',label:'TTF',unit:'$/MMBtu'},{k:'HH',label:'HH',unit:'$/MMBtu'},{k:'NBP',label:'NBP',unit:'$/MMBtu'},{k:'Brent',label:'Brent',unit:'$/bbl'},{k:'Dated',label:'Dated Brent',unit:'$/bbl'},{k:'Slope',label:'Slope',unit:'%'},{k:'SP_JT',label:'JKM/TTF Spread',unit:'$/MMBtu'},{k:'SP_JH',label:'JKM/HH Spread',unit:'$/MMBtu'},{k:'SP_TH',label:'TTF/HH Spread',unit:'$/MMBtu'},{k:'SP_JN',label:'JKM/NBP Spread',unit:'$/MMBtu'},{k:'SP_HN',label:'HH/NBP Spread',unit:'$/MMBtu'},{k:'SP_TN',label:'TTF/NBP Spread',unit:'$/MMBtu'},
-  {k:'THE',label:'THE (Germany)',unit:'$/MMBtu'},{k:'PEG',label:'PEG (France)',unit:'$/MMBtu'},{k:'PVB',label:'PVB (Spain)',unit:'$/MMBtu'},{k:'PSV',label:'PSV (Italy)',unit:'$/MMBtu'}];
+  {k:'THE',label:'THE (Germany)',unit:'$/MMBtu'},{k:'PEG',label:'PEG (France)',unit:'$/MMBtu'},{k:'PVB',label:'PVB (Spain)',unit:'$/MMBtu'},{k:'PSV',label:'PSV (Italy)',unit:'$/MMBtu'},{k:'ZTP',label:'ZTP (Belgium)',unit:'$/MMBtu'}];
 const INST={};INSTS.forEach(i=>INST[i.k]=i);
 const CI=['JKM','TTF','HH','NBP','Brent','Dated'];
-const EEX_HUBS=['THE','PEG','PVB','PSV'];
+const EEX_HUBS=['THE','PEG','PVB','PSV','ZTP'];
 const EEX_CK='eex_v1'; // localStorage cache key for EEX data
 const EEX_EURUSD_KEY='eex_eurusd';
 const EEX_MO={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
