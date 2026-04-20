@@ -8322,9 +8322,9 @@ const CP_SEED_FR={
     // Maptaphut — tokyo minus 2046 NM (constant delta)
     sabine_maptaphut:   nmScale('sabine_tokyo',      14254/16300),
     trinidad_maptaphut: nmScale('trinidad_tokyo',    12554/14600),
-    // South America — Sabine → Guanabara ~5365 NM, Sabine → Escobar ~7000 NM
-    sabine_guanabara:   nmScale('sabine_rotterdam',  5365/5030),
-    sabine_escobar:     nmScale('sabine_rotterdam',  7000/5030),
+    // South America — Sabine → Guanabara 5359 NM, Sabine → Escobar 6497 NM
+    sabine_guanabara:   nmScale('sabine_rotterdam',  5359/5030),
+    sabine_escobar:     nmScale('sabine_rotterdam',  6497/5030),
   });
 })();
 
@@ -8477,7 +8477,7 @@ function cpDerived(){
     jkmTtf,frDiff,arbOpen,profEur,profAsia};
 }
 // ── Freight seed version: bump whenever seed curves change to force cache refresh ──
-const CP_FREIGHT_VER='v54_sa_apr2026';
+const CP_FREIGHT_VER='v55_sa_nm_apr2026';
 
 function cpMergeFreight(){
   // Additive merge only — never auto-wipes user edits.
@@ -8567,7 +8567,53 @@ function cpPricesApplySeed(){
   CP.fp=JSON.parse(JSON.stringify(CP_SEED_PRICES));renderCargo();
 }
 
+// ── Auto-migration (3-way merge) ─────────────────────────────────────────────
+// Silently migrate cells whose cached value still matches the *previously-applied*
+// seed. Cells where cached ≠ prior seed are treated as explicit user edits and
+// preserved. Runs on initCargo so new deploys flow through without RESET ALL.
+function _autoMigrateSeed(seedMap,snapKey,cacheKey){
+  const snap=cpGet(snapKey,null);
+  const cached=cpGet(cacheKey,null);
+  if(!snap){
+    // First run of this feature — can't know prior seed. Adopt current seed as
+    // baseline so subsequent seed changes can be auto-migrated.
+    cpSet(snapKey,JSON.parse(JSON.stringify(seedMap)));
+    return 0;
+  }
+  if(!cached||typeof cached!=='object'){cpSet(snapKey,JSON.parse(JSON.stringify(seedMap)));return 0;}
+  let migrated=0;
+  const out={...cached};
+  Object.keys(seedMap).forEach(k=>{
+    const sd=seedMap[k], sn=snap[k], cv=cached[k];
+    if(!Array.isArray(sd))return;
+    if(!Array.isArray(cv)){
+      // Key added to seed since last snap — adopt wholesale (no user edits possible yet).
+      out[k]=sd.slice();migrated+=sd.length;return;
+    }
+    const merged=cv.slice();
+    sd.forEach((sNew,i)=>{
+      const sOld=Array.isArray(sn)?sn[i]:undefined;
+      const c=cv[i];
+      if(sOld==null)return; // no prior baseline for this cell — don't touch user data
+      const cMatchesOld=c!=null&&!isNaN(c)&&Math.abs(c-sOld)<1e-4;
+      const seedChanged=sNew==null||sOld==null||Math.abs(sNew-sOld)>=1e-4;
+      if(cMatchesOld&&seedChanged){merged[i]=sNew;migrated++;}
+    });
+    out[k]=merged;
+  });
+  if(migrated>0)cpSet(cacheKey,out);
+  cpSet(snapKey,JSON.parse(JSON.stringify(seedMap)));
+  return migrated;
+}
 function initCargo(){
+  // Auto-migrate cells that still match the previously-applied seed. User edits
+  // (cached ≠ prior seed) are preserved. Collect counts for a single status toast.
+  const _migF=_autoMigrateSeed(CP_SEED_FR,     'cp_freight_snap','cp_freight');
+  const _migH=_autoMigrateSeed(CP_SEED_PHYS,   'cp_phys_snap',   'cp_phys');
+  const _migP=_autoMigrateSeed(CP_SEED_PRICES, 'cp_prices_snap', 'cp_fp');
+  if(_migF+_migH+_migP>0){
+    console.log('[LNG TradeOS] Auto-migrated seed updates — freight:'+_migF+' phys:'+_migH+' prices:'+_migP);
+  }
   // Persist seeds on first load so seed-diff buttons show ✓ until user edits something.
   const _fp0=cpGet('cp_fp',null);
   CP.fp=_fp0||JSON.parse(JSON.stringify(CP_SEED_PRICES));
