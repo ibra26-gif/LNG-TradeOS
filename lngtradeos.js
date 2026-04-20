@@ -10229,6 +10229,33 @@ async function syncPublicState(){
   }catch(e){return false;}
 }
 window.syncPublicState=syncPublicState;
+
+// Auto-fetch EEX Gas Curves XLSX — runs independently of public_state.json so
+// curves update whenever the scraper laptop pushes a new xlsx to the repo.
+// Uses HEAD + Last-Modified to skip re-parse when the file hasn't changed.
+const EEX_XLSX_URL='data/EEX_Gas_Curves.xlsx';
+async function syncEEX(){
+  try{
+    // Cheap freshness check first — avoid downloading 500KB if unchanged
+    const head=await fetch(EEX_XLSX_URL+'?t='+Date.now(),{method:'HEAD',cache:'no-cache'});
+    if(!head.ok)return false;
+    const remoteTs=head.headers.get('Last-Modified')||head.headers.get('ETag')||'';
+    if(!remoteTs)return false;
+    const localTs=localStorage.getItem('lngtradeos_eex_xlsx_ts')||'';
+    if(localTs===remoteTs)return false;
+    // File is new — download and parse
+    const res=await fetch(EEX_XLSX_URL+'?t='+Date.now(),{cache:'no-cache'});
+    if(!res.ok)return false;
+    const buf=await res.arrayBuffer();
+    if(typeof XLSX==='undefined'||typeof parseEEXFile!=='function')return false;
+    const added=parseEEXFile(buf);
+    localStorage.setItem('lngtradeos_eex_xlsx_ts',remoteTs);
+    console.log('[LNG TradeOS] Synced EEX XLSX — '+added+' new dates, remoteTs='+remoteTs);
+    return added>0;
+  }catch(e){console.warn('[LNG TradeOS] EEX auto-fetch failed:',e.message);return false;}
+}
+window.syncEEX=syncEEX;
+
 // Fire once per session (before modules init) — if we get fresh data, reload
 // so every IIFE reads the new values from localStorage.
 (function boot(){
@@ -10236,7 +10263,10 @@ window.syncPublicState=syncPublicState;
     if(sessionStorage.getItem('lngtradeos_synced')==='1')return;
     sessionStorage.setItem('lngtradeos_synced','1');
     // Fire and forget; initial module init uses stale data for ~1s then reloads
-    syncPublicState().then(changed=>{ if(changed) location.reload(); });
+    Promise.all([
+      syncPublicState(),
+      syncEEX(),
+    ]).then(changed=>{ if(changed.some(Boolean)) location.reload(); });
   }catch(e){}
 })();
 const INSTS=[{k:'JKM',label:'JKM',unit:'$/MMBtu'},{k:'TTF',label:'TTF',unit:'$/MMBtu'},{k:'HH',label:'HH',unit:'$/MMBtu'},{k:'NBP',label:'NBP',unit:'$/MMBtu'},{k:'Brent',label:'Brent',unit:'$/bbl'},{k:'Dated',label:'Dated Brent',unit:'$/bbl'},{k:'Slope',label:'Slope',unit:'%'},{k:'SP_JT',label:'JKM/TTF Spread',unit:'$/MMBtu'},{k:'SP_JH',label:'JKM/HH Spread',unit:'$/MMBtu'},{k:'SP_TH',label:'TTF/HH Spread',unit:'$/MMBtu'},{k:'SP_JN',label:'JKM/NBP Spread',unit:'$/MMBtu'},{k:'SP_HN',label:'HH/NBP Spread',unit:'$/MMBtu'},{k:'SP_TN',label:'TTF/NBP Spread',unit:'$/MMBtu'},
