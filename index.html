@@ -9,8 +9,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="lngtradeos.css?v=20260420a">
-<script src="lngtradeos.js?v=20260420a" defer></script>
+<link rel="stylesheet" href="lngtradeos.css?v=20260421">
+<script src="lngtradeos.js?v=20260421" defer></script>
 </head>
 <body>
 <nav class="topnav">
@@ -520,6 +520,7 @@
 <div class="sam-ctabs">
   <button class="sam-ct act" data-c="brazil" onclick="samCountry('brazil',this)">BRAZIL</button>
   <button class="sam-ct" data-c="argentina" onclick="samCountry('argentina',this)">ARGENTINA</button>
+  <button class="sam-ct" data-c="colombia" onclick="samCountry('colombia',this)">COLOMBIA</button>
 </div>
 
 <div class="sam-cpane act" id="sam-c-brazil">
@@ -632,6 +633,83 @@
     ENARGAS-based. Supply: <code>GETD Total Sistema</code> (production: Neuquén + Austral + NOA) + Bolivia YABOG (declining, near-zero by 2026) + LNG imports at Escobar FSRU (seasonal winter reactivation). Demand: <code>GED</code> by category + <code>Exportaciones.xlsx</code> split by destination (Chile: GasAndes + Norandino + Methanex-Magallanes; other: Uruguay). Future LNG Exports row reserved for Southern Energy FLNG (first gas 2027), YPF-Shell LNG (pre-FID), Argentina LNG Phase 2 (pre-FID) — enabled by RIGI regime.<br><br>
     Balance: <code>Supply − Demand = Storage injection / losses</code> (red row). Argentina has real underground storage at Diadema, Saturno, Sierra Barrosa — residual reflects genuine seasonal flows. Density: <code>0.78 kg/Sm³</code>. Seasonal chart overlays 2024–2026 — rebuilt from ENARGAS historical archive.
   </div>
+</div>
+
+<div class="sam-cpane" id="sam-c-colombia">
+
+<div class="sam-tabs">
+  <button class="sam-tb act" data-p="cpg" onclick="samSubTabCO('cpg',this)">GAS BALANCE</button>
+  <button class="sam-tb" data-p="cph" onclick="samSubTabCO('cph',this)">HYDRO RESERVES</button>
+</div>
+
+<div class="sam-pane act" id="sam-cpg">
+  <div class="sam-topbar">
+    <div class="sam-fresh"><span class="dot"></span>SOURCES: BMC · UPME · ECOPETROL · NATURGAS — DATA LAG ~1 MONTH</div>
+    <div class="sam-utog" id="sam-co-utog">
+      <button class="sam-tgl act" data-u="mcm">MCM / MONTH</button>
+      <button class="sam-tgl" data-u="mtpm">MTPM</button>
+    </div>
+  </div>
+  <div class="sam-kpis">
+    <div class="sam-kc"><div class="sam-kl">TOTAL SUPPLY · JAN 26</div><div><span class="sam-kv" id="sam-co-k1">—</span><span class="sam-ku" id="sam-co-k1u">MCM</span></div><div class="sam-ks up">YoY −3.1%</div></div>
+    <div class="sam-kc"><div class="sam-kl">TOTAL DEMAND · JAN 26</div><div><span class="sam-kv" id="sam-co-k2">—</span><span class="sam-ku" id="sam-co-k2u">MCM</span></div><div class="sam-ks up">YoY +1.8%</div></div>
+    <div class="sam-kc"><div class="sam-kl">LNG IMPORTS · JAN 26</div><div><span class="sam-kv" id="sam-co-k3">—</span><span class="sam-ku" id="sam-co-k3u">MCM</span></div><div class="sam-ks up">SPEC Cartagena FSRU</div></div>
+    <div class="sam-kc"><div class="sam-kl">THERMAL YoY · JAN 26</div><div><span class="sam-kv" style="color:#ef4444">+8.4%</span></div><div class="sam-ks dn">Hydro below 65% · LNG bullish</div></div>
+  </div>
+  <div class="sam-sect">
+    <div class="sam-stt">COLOMBIA GAS BALANCE · 12 MONTHS</div>
+    <div style="overflow-x:auto">
+      <table class="sam-bt">
+        <thead><tr><th></th><th>FEB 25</th><th>MAR 25</th><th>APR 25</th><th>MAY 25</th><th>JUN 25</th><th>JUL 25</th><th>AUG 25</th><th>SEP 25</th><th>OCT 25</th><th>NOV 25</th><th>DEC 25</th><th>JAN 26</th></tr></thead>
+        <tbody id="sam-co-btb"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="sam-chg">
+    <div class="sam-cb"><div class="sam-stt">SUPPLY COMPOSITION</div><div class="sam-cw"><canvas id="sam-co-ch1"></canvas></div></div>
+    <div class="sam-cb"><div class="sam-stt">DEMAND COMPOSITION</div><div class="sam-cw"><canvas id="sam-co-ch2"></canvas></div></div>
+  </div>
+  <div class="sam-sect">
+    <div class="sam-stt">SEASONAL COMPARISON · MULTI-YEAR</div>
+    <div class="sam-ss-ctrl">
+      <span class="sam-ss-lab">COMPONENT</span>
+      <select class="sam-ss-sel" id="sam-co-compSel">
+        <optgroup label="Supply"><option value="prod_guaj">La Guajira offshore</option><option value="prod_llan">Cusiana / Cupiagua / Piedemonte</option><option value="prod_oth">Other fields</option><option value="lng">LNG imports (SPEC Cartagena)</option><option value="sup_total">Total supply</option></optgroup>
+        <optgroup label="Demand · domestic"><option value="res">Residential</option><option value="com">Commercial</option><option value="ind">Industrial</option><option value="pow" selected>Thermal power generation</option><option value="gnv">Automotive (GNV / CNG)</option><option value="ref">Refineries (Ecopetrol)</option><option value="oth">Other</option></optgroup>
+        <optgroup label="Aggregates"><option value="dem_total">Total demand</option><option value="bal">Pipeline fuel / losses residual</option></optgroup>
+      </select>
+      <span class="sam-ss-lab" style="margin-left:12px">YEARS</span>
+      <div class="sam-yr-group" id="sam-co-yrSel">
+        <button class="sam-yr-btn act" data-y="2024">2024</button>
+        <button class="sam-yr-btn act" data-y="2025">2025</button>
+        <button class="sam-yr-btn act" data-y="2026">2026</button>
+      </div>
+    </div>
+    <div style="height:300px;position:relative"><canvas id="sam-co-sc"></canvas></div>
+  </div>
+  <div class="sam-notes">
+    <div class="sam-nt">DATA MODEL NOTES</div>
+    BMC monthly reports (<code>informes-mensuales</code>) + UPME <em>Balance de Gas Natural</em> + Ecopetrol production + Naturgas aggregates. Supply: La Guajira offshore (Chuchupa + Ballena, steep decline as fields mature) + Cusiana / Cupiagua / Piedemonte (Ecopetrol onshore Llanos, steady) + other onshore (Gibraltar, Nelson, Clarinete) + LNG imports at <strong>SPEC Cartagena FSRU</strong> (2.5 MTPA capacity, seasonal winter + El Niño reactivation). Demand: residential + commercial distribution + industrial + thermal power (CENIT + TEBSA + Termocandelaria) + GNV vehicles + Ecopetrol refineries (Barrancabermeja + Cartagena). Density: <code>0.78 kg/Sm³</code>.<br><br>
+    Balance residual: mostly pipeline fuel (compressor stations burning ~1–2% of throughput) + measurement imbalance across BMC / TGI / Promigas / Ecopetrol. Colombia has no strategic underground storage — near-zero balance expected; large residuals trigger review. Thermal is <strong>hydro-linked</strong>: during El Niño dry spells (Dec–Apr typical) with embalse agregado &lt; 60%, thermal ramps hard → LNG demand spikes at Cartagena.
+  </div>
+</div>
+
+<div class="sam-pane" id="sam-cph">
+  <div class="sam-topbar">
+    <div class="sam-fresh"><span class="dot"></span>XM SINERGOX · VOLUMEN ÚTIL DIARIO POR EMBALSE — UPDATED DAILY 06H UTC</div>
+  </div>
+  <div class="sam-hst" id="sam-co-hst">
+    <div class="sam-hc"><div class="sam-hl">EMBALSE AGREGADO (SIN)</div><div class="sam-hm"><span class="sam-hv" style="color:#fbbf24">58.42</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#ef4444">-0.9 pp W/W</span></div><div class="sam-hb"><div style="width:58.42%;background:#fbbf24"></div></div></div>
+    <div class="sam-hc"><div class="sam-hl">PEÑOL-GUATAPÉ (EPM)</div><div class="sam-hm"><span class="sam-hv" style="color:#fbbf24">62.15</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#ef4444">-1.2 pp W/W</span></div><div class="sam-hb"><div style="width:62.15%;background:#fbbf24"></div></div></div>
+    <div class="sam-hc"><div class="sam-hl">GUAVIO (ENEL)</div><div class="sam-hm"><span class="sam-hv" style="color:#ef4444">45.80</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#ef4444">-1.8 pp W/W</span></div><div class="sam-hb"><div style="width:45.8%;background:#ef4444"></div></div></div>
+    <div class="sam-hc"><div class="sam-hl">PUNCHINÁ (ISAGEN)</div><div class="sam-hm"><span class="sam-hv" style="color:#10b981">71.30</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#10b981">+0.4 pp W/W</span></div><div class="sam-hb"><div style="width:71.3%;background:#10b981"></div></div></div>
+  </div>
+  <div class="sam-notes">
+    <div class="sam-nt">HYDRO DATA MODEL NOTES</div>
+    Source: XM <em>Sinergox</em> API (<code>portalbissrs.xm.com.co</code>) — latest <code>Volumen Útil Diario por Embalse</code> reading per reservoir, fetched daily at 06:00 UTC (01:00 COT) via Vercel cron. Aggregated SIN level = weighted by capacity across Peñol-Guatapé, Guavio, Punchiná, Riogrande II + smaller reservoirs. Thresholds: green &gt;70% (bearish LNG), amber 30–70%, red &lt;30% (bullish LNG · thermal ramp, Cartagena FSRU reactivation likely). El Niño cycles create sustained deficits Dec–May; ONI index &lt; -0.5 triggers CREG thermal firm-capacity auctions.
+  </div>
+</div>
+
 </div>
 
 </div>

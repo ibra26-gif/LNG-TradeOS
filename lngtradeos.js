@@ -17126,6 +17126,181 @@ function arRenderSeasonalChart() {
   });
 }
 
+/* ========== COLOMBIA ========== */
+/* Placeholder data keyed to published Colombia baselines (2025). Swap in
+   live BMC / UPME / Ecopetrol figures via samLoadColombia() when the
+   Vercel proxy is wired. All values in MCM/day-avg; multiply by days-in-
+   month for monthly MCM.
+
+   Supply rows:
+     prod_guaj — La Guajira offshore (Chuchupa/Ballena/Riohacha), declining
+     prod_llan — Cusiana+Cupiagua+Piedemonte (Ecopetrol Llanos), steady
+     prod_oth  — Other onshore (Gibraltar/Nelson/Clarinete)
+     lng       — SPEC Cartagena FSRU imports (seasonal + El Niño reactive)
+
+   Demand rows:
+     res / com / ind  — Residential / Commercial / Industrial distribution
+     pow              — Thermal power (CENIT, TEBSA, Termocandelaria); swings
+                        hard with hydro — El Niño Dec–Apr → strong ramp
+     gnv              — Automotive CNG (GNV)
+     ref              — Refineries (Barrancabermeja + Cartagena, Ecopetrol)
+     oth              — Other
+*/
+var CO_D = { rows: [
+  {id:'prod_guaj',lbl:'La Guajira offshore (Chuchupa + Ballena)',s:'sup',v:[12.0,11.8,11.5,11.3,11.0,10.8,10.5,10.3,10.0,9.8,9.5,9.3]},
+  {id:'prod_llan',lbl:'Cusiana / Cupiagua / Piedemonte (Ecopetrol)',s:'sup',v:[14.0,14.2,14.5,14.5,14.5,14.5,14.5,14.5,14.5,14.2,14.0,14.0]},
+  {id:'prod_oth',lbl:'Other onshore (Gibraltar, Nelson, Clarinete)',s:'sup',v:[1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5]},
+  {id:'lng',lbl:'LNG imports (SPEC Cartagena FSRU)',s:'sup',v:[6.0,4.0,2.0,1.0,0.5,0.5,1.0,1.5,2.0,3.0,4.5,5.5]},
+  {id:'res',lbl:'Residential',s:'dem',v:[2.2,2.2,2.0,2.0,2.0,2.1,2.1,2.1,2.0,2.0,2.1,2.3]},
+  {id:'com',lbl:'Commercial',s:'dem',v:[0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9]},
+  {id:'ind',lbl:'Industrial',s:'dem',v:[9.0,9.2,9.0,8.8,8.5,8.5,8.5,8.7,9.0,9.2,9.3,9.2]},
+  {id:'pow',lbl:'Thermal power generation',s:'dem',v:[10.5,8.5,5.0,3.5,3.0,3.5,3.5,4.0,4.5,5.0,7.0,9.5]},
+  {id:'gnv',lbl:'Automotive (GNV / CNG)',s:'dem',v:[3.2,3.2,3.3,3.3,3.3,3.2,3.2,3.3,3.3,3.3,3.2,3.3]},
+  {id:'ref',lbl:'Refineries (Barrancabermeja + Cartagena)',s:'dem',v:[3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5]},
+  {id:'oth',lbl:'Other',s:'dem',v:[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]}
+]};
+/* Calendar-month baselines (Jan → Dec) for seasonal multi-year chart */
+var CO_BASE = {
+  prod_guaj:[13.0,12.8,12.5,12.3,12.0,11.8,11.5,11.3,11.0,10.8,10.5,10.3],
+  prod_llan:[14.0,14.0,14.0,14.2,14.3,14.5,14.5,14.5,14.5,14.5,14.3,14.0],
+  prod_oth :[1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5],
+  lng      :[6.5,6.0,4.0,2.0,1.0,0.5,0.5,1.0,1.5,2.5,3.5,5.0],
+  res      :[2.3,2.2,2.1,2.0,2.0,2.0,2.1,2.1,2.1,2.0,2.1,2.3],
+  com      :[0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9],
+  ind      :[9.2,9.0,9.0,8.8,8.5,8.5,8.5,8.7,9.0,9.2,9.3,9.2],
+  pow      :[10.0,9.0,7.0,4.5,3.0,2.5,3.0,3.5,4.0,5.0,7.0,9.5],
+  gnv      :[3.3,3.2,3.2,3.3,3.3,3.3,3.2,3.2,3.3,3.3,3.3,3.3],
+  ref      :[3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5],
+  oth      :[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
+};
+/* Year multipliers: production declining, LNG spiky (El Niño 2024–25 big,
+   2026 normalizing), thermal bullish in El Niño years, rest near-flat. */
+var CO_YMULT = {
+  prod_guaj:{2024:1.10,2025:1.00,2026:0.90},
+  prod_llan:{2024:0.98,2025:1.00,2026:1.02},
+  prod_oth :{2024:1.00,2025:1.00,2026:1.00},
+  lng      :{2024:0.60,2025:1.40,2026:1.00},
+  res      :{2024:0.98,2025:1.00,2026:1.02},
+  com      :{2024:1.00,2025:1.00,2026:1.01},
+  ind      :{2024:0.99,2025:1.00,2026:1.01},
+  pow      :{2024:1.20,2025:1.35,2026:0.90},
+  gnv      :{2024:0.98,2025:1.00,2026:1.00},
+  ref      :{2024:1.00,2025:1.00,2026:1.00},
+  oth      :{2024:1.00,2025:1.00,2026:1.00}
+};
+var CO_YEARS = [2024,2025,2026];
+var CO_YCOL  = {2024:'#4d9ef5',2025:'#fbbf24',2026:'#10b981'};
+var co_currentComp = 'pow';
+var co_activeYears = new Set([2024,2025,2026]);
+var co_c1, co_c2, co_sc;
+
+function coSumS(s, i) { var t=0; CO_D.rows.forEach(function(r){ if (r.s===s) t+=r.v[i]; }); return t; }
+function coSupT(i) { return coSumS('sup', i); }
+function coDemT(i) { return coSumS('dem', i); }
+function coBal(i)  { return coSupT(i) - coDemT(i); }
+
+function coRenderTbl() {
+  var h = '<tr class="sec"><td colspan="13">SUPPLY</td></tr>';
+  CO_D.rows.filter(function(r){return r.s==='sup';}).forEach(function(r){
+    h += '<tr><td>' + r.lbl + '</td>';
+    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    h += '</tr>';
+  });
+  h += '<tr class="tot"><td>Total supply</td>';
+  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(coSupT(i),i,U),U) + '</td>';
+  h += '</tr><tr class="sec"><td colspan="13">DEMAND</td></tr>';
+  CO_D.rows.filter(function(r){return r.s==='dem';}).forEach(function(r){
+    h += '<tr><td>' + r.lbl + '</td>';
+    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    h += '</tr>';
+  });
+  h += '<tr class="tot"><td>Total demand</td>';
+  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(coDemT(i),i,U),U) + '</td>';
+  h += '</tr><tr class="bal"><td>Pipeline fuel / losses / imbalance</td>';
+  for (var i=0;i<12;i++) h += '<td>' + fmtS(conv(coBal(i),i,U),U) + '</td>';
+  h += '</tr>';
+  document.getElementById('sam-co-btb').innerHTML = h;
+}
+function coRenderKpis() {
+  var uL = U === 'mcm' ? 'MCM' : 'MTPM';
+  document.getElementById('sam-co-k1').textContent = fmt(conv(coSupT(11),11,U),U);
+  document.getElementById('sam-co-k1u').textContent = uL;
+  document.getElementById('sam-co-k2').textContent = fmt(conv(coDemT(11),11,U),U);
+  document.getElementById('sam-co-k2u').textContent = uL;
+  var lng = CO_D.rows.find(function(r){return r.id==='lng';}).v[11];
+  document.getElementById('sam-co-k3').textContent = fmt(conv(lng,11,U),U);
+  document.getElementById('sam-co-k3u').textContent = uL;
+}
+function coRenderCharts() {
+  if (typeof Chart === 'undefined') { setTimeout(coRenderCharts, 100); return; }
+  cDefaults();
+  var seq = function(id) { return CO_D.rows.find(function(r){return r.id===id;}).v.map(function(v,i){return conv(v,i,U);}); };
+  var seqSum = function(ids) { return MONTHS.map(function(_,i){ return ids.reduce(function(a,id){ return a + conv(CO_D.rows.find(function(r){return r.id===id;}).v[i],i,U); }, 0); }); };
+  if (co_c1) co_c1.destroy();
+  if (co_c2) co_c2.destroy();
+  co_c1 = new Chart(document.getElementById('sam-co-ch1'), {
+    type: 'bar',
+    data: { labels: MONTHS, datasets: [
+      { label: 'La Guajira offshore', data: seq('prod_guaj'), backgroundColor: '#4d9ef5' },
+      { label: 'Cusiana / Cupiagua', data: seq('prod_llan'), backgroundColor: '#10b981' },
+      { label: 'Other onshore', data: seq('prod_oth'), backgroundColor: '#8b5cf6' },
+      { label: 'LNG imports (Cartagena)', data: seq('lng'), backgroundColor: '#fbbf24' }
+    ]}, options: chartOpts(true)
+  });
+  co_c2 = new Chart(document.getElementById('sam-co-ch2'), {
+    type: 'bar',
+    data: { labels: MONTHS, datasets: [
+      { label: 'Residential + Commercial + GNV + Other', data: seqSum(['res','com','gnv','oth']), backgroundColor: '#10b981' },
+      { label: 'Industrial', data: seq('ind'), backgroundColor: '#8b5cf6' },
+      { label: 'Refineries', data: seq('ref'), backgroundColor: '#4d9ef5' },
+      { label: 'Thermal power', data: seq('pow'), backgroundColor: '#ef4444' }
+    ]}, options: chartOpts(true)
+  });
+}
+function coHistorical(id, year) {
+  if (id === 'sup_total') return CAL_MONTHS.map(function(_,m){ return ['prod_guaj','prod_llan','prod_oth','lng'].reduce(function(a,k){ return a + coHistorical(k,year)[m]; }, 0); });
+  if (id === 'dem_total') {
+    var ids = ['res','com','ind','pow','gnv','ref','oth'];
+    return CAL_MONTHS.map(function(_,m){ return ids.reduce(function(a,k){ return a + coHistorical(k,year)[m]; }, 0); });
+  }
+  if (id === 'bal') return CAL_MONTHS.map(function(_,m){ return coHistorical('sup_total',year)[m] - coHistorical('dem_total',year)[m]; });
+  var mult = CO_YMULT[id][year];
+  return CO_BASE[id].map(function(v){ return v * mult; });
+}
+function coRenderSeasonalChart() {
+  if (typeof Chart === 'undefined') { setTimeout(coRenderSeasonalChart, 100); return; }
+  cDefaults();
+  if (co_sc) co_sc.destroy();
+  var datasets = [];
+  CO_YEARS.filter(function(y){ return co_activeYears.has(y); }).forEach(function(y){
+    var raw = coHistorical(co_currentComp, y);
+    var data = raw.map(function(v,m){ return convCal(v, m, U); });
+    datasets.push({
+      label: String(y), data: data,
+      borderColor: CO_YCOL[y], backgroundColor: CO_YCOL[y] + '20',
+      borderWidth: y === 2026 ? 2.5 : 1.5,
+      pointRadius: y === 2026 ? 3 : 2,
+      tension: 0.25, fill: false
+    });
+  });
+  co_sc = new Chart(document.getElementById('sam-co-sc'), {
+    type: 'line',
+    data: { labels: CAL_MONTHS, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 10, color: '#8a9bb5' } },
+        tooltip: { backgroundColor: '#151829', titleColor: '#f0f4ff', bodyColor: '#f0f4ff', borderColor: 'rgba(77,158,245,0.3)', borderWidth: 1, padding: 10,
+          callbacks: { label: function(c){ return c.dataset.label + ': ' + (U==='mcm' ? Math.round(c.raw).toLocaleString() : c.raw.toFixed(2)) + ' ' + U.toUpperCase(); } } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b7a99', font: { size: 10 } } },
+        y: { grid: { color: 'rgba(77,158,245,0.08)' }, ticks: { color: '#6b7a99', font: { size: 9 } } }
+      }
+    }
+  });
+}
+
 /* ========== NAV HANDLERS ========== */
 window.samCountry = function(c, btn) {
   document.querySelectorAll('#lngbal-sam .sam-ct').forEach(function(b){ b.classList.remove('act'); });
@@ -17139,6 +17314,9 @@ window.samCountry = function(c, btn) {
   } else if (c === 'argentina') {
     arRenderCharts();
     arRenderSeasonalChart();
+  } else if (c === 'colombia') {
+    var sub = document.querySelector('#sam-c-colombia .sam-tb.act');
+    if (sub && sub.dataset.p === 'cpg') { coRenderCharts(); coRenderSeasonalChart(); }
   }
 };
 
@@ -17149,6 +17327,15 @@ window.samSubTab = function(p, btn) {
   var pane = document.getElementById('sam-' + p);
   if (pane) pane.classList.add('act');
   if (p === 'bpg') brRenderCharts();
+};
+
+window.samSubTabCO = function(p, btn) {
+  document.querySelectorAll('#sam-c-colombia .sam-tb').forEach(function(b){ b.classList.remove('act'); });
+  if (btn) btn.classList.add('act');
+  document.querySelectorAll('#sam-c-colombia .sam-pane').forEach(function(x){ x.classList.remove('act'); });
+  var pane = document.getElementById('sam-' + p);
+  if (pane) pane.classList.add('act');
+  if (p === 'cpg') { coRenderCharts(); coRenderSeasonalChart(); }
 };
 
 function syncUnitToggles() {
@@ -17163,12 +17350,14 @@ function handleUnitClick(e) {
   syncUnitToggles();
   brRenderTbl(); brRenderKpis(); brRenderCharts();
   arRenderTbl(); arRenderKpis(); arRenderCharts(); arRenderSeasonalChart();
+  coRenderTbl(); coRenderKpis(); coRenderCharts(); coRenderSeasonalChart();
 }
 
 /* ========== INIT ========== */
 SAM.init = function() {
   document.getElementById('sam-br-utog').addEventListener('click', handleUnitClick);
   document.getElementById('sam-ar-utog').addEventListener('click', handleUnitClick);
+  document.getElementById('sam-co-utog').addEventListener('click', handleUnitClick);
 
   document.getElementById('sam-ar-compSel').addEventListener('change', function(e){
     ar_currentComp = e.target.value;
@@ -17184,8 +17373,23 @@ SAM.init = function() {
     arRenderSeasonalChart();
   });
 
+  document.getElementById('sam-co-compSel').addEventListener('change', function(e){
+    co_currentComp = e.target.value;
+    coRenderSeasonalChart();
+  });
+
+  document.getElementById('sam-co-yrSel').addEventListener('click', function(e){
+    var b = e.target.closest('button');
+    if (!b) return;
+    var y = parseInt(b.dataset.y, 10);
+    if (co_activeYears.has(y)) co_activeYears.delete(y); else co_activeYears.add(y);
+    b.classList.toggle('act');
+    coRenderSeasonalChart();
+  });
+
   brRenderTbl(); brRenderKpis(); brRenderCharts();
   arRenderTbl(); arRenderKpis();
+  coRenderTbl(); coRenderKpis();
 };
 
 /* ── Live-data integration (Vercel proxies) ────────────────────────── */
