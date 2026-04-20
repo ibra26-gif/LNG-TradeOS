@@ -8322,6 +8322,9 @@ const CP_SEED_FR={
     // Maptaphut — tokyo minus 2046 NM (constant delta)
     sabine_maptaphut:   nmScale('sabine_tokyo',      14254/16300),
     trinidad_maptaphut: nmScale('trinidad_tokyo',    12554/14600),
+    // South America — Sabine → Guanabara ~5365 NM, Sabine → Escobar ~7000 NM
+    sabine_guanabara:   nmScale('sabine_rotterdam',  5365/5030),
+    sabine_escobar:     nmScale('sabine_rotterdam',  7000/5030),
   });
 })();
 
@@ -8474,36 +8477,115 @@ function cpDerived(){
     jkmTtf,frDiff,arbOpen,profEur,profAsia};
 }
 // ── Freight seed version: bump whenever seed curves change to force cache refresh ──
-const CP_FREIGHT_VER='v53_hh_apr2026';
+const CP_FREIGHT_VER='v54_sa_apr2026';
 
 function cpMergeFreight(){
+  // Additive merge only — never auto-wipes user edits.
+  // User controls refresh explicitly via "FREIGHT SEED" button (see cpFreightApplySeed).
+  // Seed provides baseline + fills gaps; cached user values win where present.
   const seed=JSON.parse(JSON.stringify(CP_SEED_FR));
-  // If seed version changed, wipe stale localStorage freight and start clean
-  if(cpGet('cp_freight_ver',null)!==CP_FREIGHT_VER){
-    cpSet('cp_freight_ver',CP_FREIGHT_VER);
-    cpSet('cp_freight',{});
-    return seed;
-  }
-  // Smart merge: seed is baseline; only override with cached arrays that have real data
   const cached=cpGet('cp_freight',{});
   const merged=Object.assign({},seed);
   if(cached&&typeof cached==='object'){
     Object.entries(cached).forEach(([k,v])=>{
-      if(Array.isArray(v)&&v.some(x=>x!=null&&!isNaN(x)))merged[k]=v;
+      if(!Array.isArray(v)||!v.some(x=>x!=null&&!isNaN(x)))return;
+      const sd=seed[k];
+      // Per-cell: cached wins when valid, seed fills holes
+      merged[k]=v.map((x,i)=>(x!=null&&!isNaN(x))?x:(sd?sd[i]:null));
     });
   }
   return merged;
 }
+// ── Per-section seed diff & apply helpers ──────────────────────────────────
+// Used by the "confirm-or-refresh" buttons in the Foundation header.
+// Each returns {hasDiff, newKeys, changedKeys, cellDiffs} vs localStorage cache.
+const _EPS=0.001;
+function _arrDiff(seedArr,cachedArr){
+  if(!Array.isArray(seedArr))return 0;
+  if(!Array.isArray(cachedArr))return seedArr.length;
+  let n=0;seedArr.forEach((s,i)=>{const c=cachedArr[i];
+    if(s==null&&c==null)return;
+    if(c==null||isNaN(c)||s==null||isNaN(s))n++;
+    else if(Math.abs(c-s)>_EPS)n++;
+  });return n;
+}
+function cpFreightSeedDiff(){
+  const seed=CP_SEED_FR,cached=cpGet('cp_freight',{})||{};
+  const newKeys=[],changedKeys=[];let cellDiffs=0;
+  Object.keys(seed).forEach(k=>{
+    const c=cached[k];
+    if(!Array.isArray(c)||!c.some(v=>v!=null&&!isNaN(v))){newKeys.push(k);cellDiffs+=seed[k].length;return;}
+    const n=_arrDiff(seed[k],c);if(n>0){changedKeys.push(k);cellDiffs+=n;}
+  });
+  return{hasDiff:newKeys.length>0||changedKeys.length>0,newKeys,changedKeys,cellDiffs};
+}
+function cpPhysSeedDiff(){
+  const seed=CP_SEED_PHYS,cached=cpGet('cp_phys',{})||{};
+  const newKeys=[],changedKeys=[];let cellDiffs=0;
+  Object.keys(seed).forEach(k=>{
+    const c=cached[k];
+    if(!Array.isArray(c)||!c.some(v=>v!=null&&!isNaN(v))){newKeys.push(k);cellDiffs+=seed[k].length;return;}
+    const n=_arrDiff(seed[k],c);if(n>0){changedKeys.push(k);cellDiffs+=n;}
+  });
+  return{hasDiff:newKeys.length>0||changedKeys.length>0,newKeys,changedKeys,cellDiffs};
+}
+function cpPricesSeedDiff(){
+  const seed=CP_SEED_PRICES,cached=cpGet('cp_fp',{})||{};
+  const newKeys=[],changedKeys=[];let cellDiffs=0;
+  Object.keys(seed).forEach(k=>{
+    const c=cached[k];
+    if(!Array.isArray(c)||!c.some(v=>v!=null&&!isNaN(v))){newKeys.push(k);cellDiffs+=seed[k].length;return;}
+    const n=_arrDiff(seed[k],c);if(n>0){changedKeys.push(k);cellDiffs+=n;}
+  });
+  return{hasDiff:newKeys.length>0||changedKeys.length>0,newKeys,changedKeys,cellDiffs};
+}
+function cpFreightApplySeed(){
+  const d=cpFreightSeedDiff();
+  if(!d.hasDiff){alert('✓ Freight already matches seed ('+CP_FREIGHT_VER+').');return;}
+  const msg='Apply freight seed updates?\n\n'
+    +'• New routes: '+d.newKeys.length+'\n'
+    +'• Changed routes: '+d.changedKeys.length+'\n'
+    +'• Total cells affected: '+d.cellDiffs+'\n\n'
+    +'Your manual cell overrides will be overwritten for these routes. Continue?';
+  if(!confirm(msg))return;
+  cpSet('cp_freight',JSON.parse(JSON.stringify(CP_SEED_FR)));
+  cpSet('cp_freight_ver',CP_FREIGHT_VER);
+  CP.freight=cpMergeFreight();renderCargo();
+}
+function cpPhysApplySeed(){
+  const d=cpPhysSeedDiff();
+  if(!d.hasDiff){alert('✓ Physical differentials already match seed.');return;}
+  if(!confirm('Apply phys-diff seed updates?\n\n'+d.cellDiffs+' cells will be reset to seed ('+d.newKeys.length+' new / '+d.changedKeys.length+' changed terminals). Continue?'))return;
+  cpSet('cp_phys',JSON.parse(JSON.stringify(CP_SEED_PHYS)));
+  CP.phys=JSON.parse(JSON.stringify(CP_SEED_PHYS));renderCargo();
+}
+function cpPricesApplySeed(){
+  const d=cpPricesSeedDiff();
+  if(!d.hasDiff){alert('✓ Flat prices already match seed.');return;}
+  if(!confirm('Apply flat-price seed updates?\n\n'+d.cellDiffs+' cells will be reset to seed ('+d.newKeys.length+' new / '+d.changedKeys.length+' changed indices). Continue?'))return;
+  cpSet('cp_fp',JSON.parse(JSON.stringify(CP_SEED_PRICES)));
+  CP.fp=JSON.parse(JSON.stringify(CP_SEED_PRICES));renderCargo();
+}
 
 function initCargo(){
-  CP.fp=cpGet('cp_fp',JSON.parse(JSON.stringify(CP_SEED_PRICES)));
-  CP.phys=cpGet('cp_phys',JSON.parse(JSON.stringify(CP_SEED_PHYS)));
+  // Persist seeds on first load so seed-diff buttons show ✓ until user edits something.
+  const _fp0=cpGet('cp_fp',null);
+  CP.fp=_fp0||JSON.parse(JSON.stringify(CP_SEED_PRICES));
+  if(!_fp0)cpSet('cp_fp',CP.fp);
+  const _phys0=cpGet('cp_phys',null);
+  CP.phys=_phys0||JSON.parse(JSON.stringify(CP_SEED_PHYS));
   // Backfill new CP.phys keys (france/germany/belgium) on old stored blobs
   ['france','germany','belgium'].forEach(k => {
     if(!Array.isArray(CP.phys[k]) || CP.phys[k].length !== 24){
       CP.phys[k] = [...CP_SEED_PHYS[k]];
     }
   });
+  if(!_phys0)cpSet('cp_phys',CP.phys);
+  const _fr0=cpGet('cp_freight',null);
+  if(!_fr0||Object.keys(_fr0).length===0){
+    cpSet('cp_freight',JSON.parse(JSON.stringify(CP_SEED_FR)));
+    cpSet('cp_freight_ver',CP_FREIGHT_VER);
+  }
   CP.freight=cpMergeFreight();
   CP.liqFee=cpGet('cp_liqfee',Array(24).fill(0));
   CP.histSnaps=cpGet('cp_hist_snaps',[]);
@@ -8514,12 +8596,27 @@ function initCargo(){
 }
 function renderCargo(){
   const wrap=document.getElementById('cargo-wrap');if(!wrap)return;
+  // Per-section seed status. Green ✓ = cache matches seed (click to confirm).
+  // Amber ⚠ N = seed has N cell updates pending (click to apply).
+  const prD=cpPricesSeedDiff(),frD=cpFreightSeedDiff(),phD=cpPhysSeedDiff();
+  const seedBtn=(lbl,d,fn,tip)=>{
+    const ok=!d.hasDiff;
+    const bc=ok?'rgba(76,175,80,.4)':'rgba(255,183,77,.55)';
+    const c=ok?'#81c784':'#ffb74d';
+    const suf=ok?' ✓':' ⚠'+d.cellDiffs;
+    return `<button class="f-btn sm" onclick="${fn}()" title="${tip}" style="border-color:${bc};color:${c}">${lbl}${suf}</button>`;
+  };
   wrap.innerHTML=`
-  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
     <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">LNG GLOBAL NETBACK MODEL</span>
     <span style="flex:1"></span>
-    <span style="color:#3d5070;font-size:9px;letter-spacing:.08em;margin-right:8px">v53_hh_apr2026</span><button class="f-btn sm" onclick="cpForceReset()" title="Wipe localStorage cache and reinitialise from seed" style="border-color:rgba(255,82,82,.3);color:#ef5350">⚠ RESET CACHE</button><button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading">↺ SYNC PRICES</button>
+    <span style="color:#3d5070;font-size:9px;letter-spacing:.08em">${CP_FREIGHT_VER}</span>
+    ${seedBtn('PRICES SEED',prD,'cpPricesApplySeed','Flat prices vs seed. ✓ = identical. ⚠ = click to apply pending seed updates (prices changes frequently — use SYNC PRICES for live pulls).')}
+    ${seedBtn('FREIGHT SEED',frD,'cpFreightApplySeed','Freight vs seed. Freight is typically refreshed weekly. ✓ = identical, no action needed. ⚠ = click to apply pending seed updates. Manual cell edits persist until you click apply.')}
+    ${seedBtn('PHYS SEED',phD,'cpPhysApplySeed','Physical differentials vs seed. ✓ = identical. ⚠ = click to apply pending seed updates.')}
+    <button class="f-btn sm" onclick="cpSyncPrices()" title="Pull latest JKM/TTF/HH from Financial Trading tab">↺ SYNC PRICES</button>
     <button class="f-btn sm" onclick="cpSyncFreight()" title="Pull latest freight $/MMBtu from validated freight matrix">↺ SYNC FREIGHT</button>
+    <button class="f-btn sm" onclick="cpForceReset()" title="Wipe ALL localStorage cache and reinitialise from seed" style="border-color:rgba(255,82,82,.3);color:#ef5350">⚠ RESET ALL</button>
   </div>
   <div class="f-subnav">${CP_TABS.map((t,i)=>`<button class="f-tab${CP.tab===i?' active':''}" onclick="cpTab(${i})">${t}</button>`).join('')}</div>
   <div class="f-body" id="cp-body"></div>`;
