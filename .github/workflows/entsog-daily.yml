@@ -33,10 +33,26 @@ jobs:
           OUTPUT_DIR: data
         continue-on-error: true
 
-      - name: Commit and push
+      - name: Commit and push (rebase-retry)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/pipeline_daily.json data/nominations_daily.json data/umm_active.json data/gassco_nominations.json 2>/dev/null || true
-          git diff --cached --quiet || git commit -m "chore: update pipeline/nominations/umm data [$(date -u +%Y-%m-%d_%H:%M)]"
-          git push
+          # Skip commit + push entirely if nothing staged
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: update pipeline/nominations/umm data [$(date -u +%Y-%m-%d_%H:%M)]"
+          # Retry up to 5 times with rebase — handles races vs other scheduled
+          # workflows (China SHPGX etc.) or manual pushes to main.
+          for attempt in 1 2 3 4 5; do
+            if git pull --rebase origin main && git push; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Push attempt $attempt failed — sleeping $((attempt * 5))s before retry"
+            sleep $((attempt * 5))
+          done
+          echo "::error::Failed to push after 5 attempts"
+          exit 1
