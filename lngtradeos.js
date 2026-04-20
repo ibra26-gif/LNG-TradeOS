@@ -5865,15 +5865,15 @@ const NEW_DESTINATIONS = new Set([
 // Suez N 31.25°N 32.32°E, Cape Horn -55.98°N -67.27°W, CoGH -34.36°N 18.47°E).
 // User overrides persist in localStorage['nm_overrides'] and merge below.
 const NM={
-  angola      :{bahiablanca:4414, guanabara:3377, quintero:6348, manzanillo:7545, zeebrugge:4948, rotterdam:5008, huelva:3935, southhook:4737, jebelali:6734, ainsukhna:5950, dahej:6451, portqasim:6305, tianjin:9894, tokyo:9997, gwangyang:9562, singapore:6941, maptaphut:7204, panigaglia:3581, livorno:3584, rovigo:3713, piombino:3578, revithoussa:4114, inkoo:4560, klaipeda:4333, swinoujscie:4082, aliaga:4276, krk:3791, ravenna:3684, aqaba:6222, maagp:7092, cochin:5979, dabhol:6250, caofeidian:9873, dapeng:8598, qingdao:9614, rudong:9415, taichung:8809, melaka:6899, yungan:8449},
+  angola      :{bahiablanca:4414, guanabara:3377, quintero:6348, manzanillo:7545, zeebrugge:4948, rotterdam:5008, huelva:3935, southhook:4737, jebelali:6734, ainsukhna:5950, dahej:6451, portqasim:6305, tianjin:9894, tokyo:9997, gwangyang:9562, singapore:7270, maptaphut:7951, panigaglia:3581, livorno:3584, rovigo:3713, piombino:3578, revithoussa:4114, inkoo:4560, klaipeda:4333, swinoujscie:4082, aliaga:4276, krk:3791, ravenna:3684, aqaba:6222, maagp:7092, cochin:5979, dabhol:6250, caofeidian:9873, dapeng:8598, qingdao:9614, rudong:9415, taichung:8809, melaka:7149, yungan:8723},
   australia_b :{bahiablanca:8805, guanabara:8307, quintero:7566, manzanillo:8567, zeebrugge:10242, rotterdam:10271, huelva:9558, southhook:10348, jebelali:4467, ainsukhna:8955, dahej:3582, portqasim:3918, tianjin:3845, tokyo:3788, gwangyang:3497, singapore:1712, maptaphut:2350, panigaglia:9767, livorno:9734, rovigo:9816, piombino:9696, revithoussa:9386, inkoo:10704, klaipeda:10445, swinoujscie:10340, aliaga:9452, krk:9818, ravenna:9779, aqaba:8981, maagp:4910, cochin:2959, dabhol:3391, caofeidian:3599, dapeng:2752, qingdao:3569, rudong:3365, taichung:2781, melaka:1832, yungan:2683},
   australia_g :{bahiablanca:10167, guanabara:9669, quintero:6618, manzanillo:6624, zeebrugge:11604, rotterdam:11633, huelva:10920, southhook:11710, jebelali:6309, ainsukhna:10317, dahej:5346, portqasim:5682, tianjin:4466, tokyo:3778, gwangyang:3963, singapore:3545, maptaphut:4133, panigaglia:11129, livorno:11096, rovigo:11178, piombino:11058, revithoussa:10748, inkoo:12066, klaipeda:11807, swinoujscie:11702, aliaga:10814, krk:11180, ravenna:11141, aqaba:10343, maagp:6736, cochin:4840, dabhol:5204, caofeidian:4200, dapeng:3878, qingdao:4218, rudong:4034, taichung:3747, melaka:3665, yungan:3645},
-  nigeria     :{bahiablanca:4643, guanabara:3414, quintero:6653, manzanillo:10055, zeebrugge:4372, rotterdam:4432, huelva:3359, southhook:4161, jebelali:7553, ainsukhna:5374, dahej:7246, portqasim:7100, tianjin:10689, tokyo:10792, gwangyang:10357, singapore:7628, maptaphut:7891, panigaglia:2879, livorno:2882, rovigo:3011, piombino:2876, revithoussa:3412, inkoo:3858, klaipeda:3631, swinoujscie:3380, aliaga:3574, krk:3089, ravenna:2982, aqaba:5646, maagp:7911, cochin:6774, dabhol:7045, caofeidian:10668, dapeng:9394, qingdao:10409, rudong:10210, taichung:9604, melaka:7586, yungan:9136},
+  nigeria     :{bahiablanca:4643, guanabara:3414, quintero:6653, manzanillo:10055, zeebrugge:4372, rotterdam:4432, huelva:3359, southhook:4161, jebelali:7553, ainsukhna:5374, dahej:7246, portqasim:7100, tianjin:10689, tokyo:10792, gwangyang:10357, singapore:8065, maptaphut:8746, panigaglia:2879, livorno:2882, rovigo:3011, piombino:2876, revithoussa:3412, inkoo:3858, klaipeda:3631, swinoujscie:3380, aliaga:3574, krk:3089, ravenna:2982, aqaba:5646, maagp:7911, cochin:6774, dabhol:7045, caofeidian:10668, dapeng:9394, qingdao:10409, rudong:10210, taichung:9604, melaka:7944, yungan:9519},
   indonesia   :{bahiablanca:9623, guanabara:9125, quintero:8780, manzanillo:8091, zeebrugge:11060, rotterdam:11089, huelva:10376, southhook:11165, jebelali:3911, ainsukhna:9773, dahej:2932, portqasim:3262, tianjin:2625, tokyo:2587, gwangyang:2277, singapore:1206, maptaphut:1726, panigaglia:10584, livorno:10552, rovigo:10634, piombino:10513, revithoussa:10204, inkoo:11522, klaipeda:11263, swinoujscie:11157, aliaga:10270, krk:10635, ravenna:10596, aqaba:9799, maagp:4322, cochin:2533, dabhol:2818, caofeidian:2341, dapeng:1532, qingdao:2349, rudong:2145, taichung:1561, melaka:1327, yungan:1463},
   qatar       :{bahiablanca:7851, guanabara:7352, quintero:7836, manzanillo:7763, zeebrugge:9288, rotterdam:9317, huelva:8603, southhook:9393, jebelali:197, ainsukhna:8000, dahej:1177, portqasim:859, tianjin:3370, tokyo:4441, gwangyang:3889, singapore:3355, maptaphut:2902, panigaglia:8812, livorno:8779, rovigo:8861, piombino:8741, revithoussa:8432, inkoo:9749, klaipeda:9490, swinoujscie:9385, aliaga:8498, krk:8863, ravenna:8824, aqaba:8027, maagp:263, cochin:1698, dabhol:1302, caofeidian:3406, dapeng:3420, qingdao:3518, rudong:3620, taichung:3703, melaka:3249, yungan:3714},
   oman        :{bahiablanca:7915, guanabara:7416, quintero:8155, manzanillo:8129, zeebrugge:9352, rotterdam:9381, huelva:8667, southhook:9457, jebelali:280, ainsukhna:8064, dahej:729, portqasim:453, tianjin:3107, tokyo:4176, gwangyang:3602, singapore:2884, maptaphut:2451, panigaglia:8876, livorno:8844, rovigo:8925, piombino:8805, revithoussa:8496, inkoo:9814, klaipeda:9555, swinoujscie:9449, aliaga:8562, krk:8927, ravenna:8888, aqaba:8091, maagp:722, cochin:1229, dabhol:830, caofeidian:3144, dapeng:3035, qingdao:3233, rudong:3307, taichung:3336, melaka:2777, yungan:3338},
-  sabine      :{bahiablanca:6733, guanabara:5365, quintero:4153, manzanillo:3292, zeebrugge:4969, rotterdam:5030, huelva:4670, southhook:4623, jebelali:9653, ainsukhna:6767, dahej:9740, portqasim:9541, tianjin:14459, tokyo:15379, gwangyang:14809, singapore:12629, maptaphut:12893, panigaglia:5171, livorno:5174, rovigo:5303, piombino:5168, revithoussa:5704, inkoo:6151, klaipeda:5923, swinoujscie:5672, aliaga:5867, krk:5381, ravenna:5275, aqaba:7040, maagp:10008, cochin:9958, dabhol:9729, caofeidian:10353, dapeng:13859, qingdao:10153, rudong:10082, taichung:14195, melaka:12587, yungan:14137},
-  trinidad    :{bahiablanca:4543, guanabara:3175, quintero:6943, manzanillo:2914, zeebrugge:3984, rotterdam:4044, huelva:3383, southhook:3682, jebelali:10456, ainsukhna:5438, dahej:10173, portqasim:10027, tianjin:12311, tokyo:13231, gwangyang:12661, singapore:10481, maptaphut:10744, panigaglia:4185, livorno:4201, rovigo:4306, piombino:4209, revithoussa:4799, inkoo:4746, klaipeda:4657, swinoujscie:4414, aliaga:4959, krk:4389, ravenna:4291, aqaba:5710, maagp:10814, cochin:9701, dabhol:9701, caofeidian:10005, dapeng:11711, qingdao:9790, rudong:9720, taichung:12046, melaka:10439, yungan:11989},
+  sabine      :{bahiablanca:6733, guanabara:5365, quintero:4153, manzanillo:3292, zeebrugge:4969, rotterdam:5030, huelva:4670, southhook:4623, jebelali:9653, ainsukhna:6767, dahej:9740, portqasim:9541, tianjin:14459, tokyo:15379, gwangyang:14809, singapore:11789, maptaphut:13886, panigaglia:5171, livorno:5174, rovigo:5303, piombino:5168, revithoussa:5704, inkoo:6151, klaipeda:5923, swinoujscie:5672, aliaga:5867, krk:5381, ravenna:5275, aqaba:7040, maagp:10008, cochin:9958, dabhol:9729, caofeidian:10353, dapeng:13859, qingdao:10153, rudong:10082, taichung:14195, melaka:11668, yungan:10530},
+  trinidad    :{bahiablanca:4543, guanabara:3175, quintero:6943, manzanillo:2914, zeebrugge:3984, rotterdam:4044, huelva:3383, southhook:3682, jebelali:10456, ainsukhna:5438, dahej:10173, portqasim:10027, tianjin:12311, tokyo:13231, gwangyang:12661, singapore:10944, maptaphut:11625, panigaglia:4185, livorno:4201, rovigo:4306, piombino:4209, revithoussa:4799, inkoo:4746, klaipeda:4657, swinoujscie:4414, aliaga:4959, krk:4389, ravenna:4291, aqaba:5710, maagp:10814, cochin:9701, dabhol:9701, caofeidian:10005, dapeng:11711, qingdao:9790, rudong:9720, taichung:12046, melaka:10823, yungan:10168},
 };
 // Seed Escobar (Argentina) for every origin via the routing engine (Phase A.4).
 (function seedEscobar(){
@@ -5899,9 +5899,10 @@ const NM={
   } catch(e){}
 })();
 // One-time migration: drop stale overrides for Atlantic origins whose defaults
-// were refreshed 2026-04-20 from the AB NM .xlsx source.
+// were refreshed 2026-04-20 from the AB NM xlsx source (v2 extended Melaka,
+// Singapore, Yung An, Map ta Phut).
 (function purgeStaleAtlanticNm(){
-  const MIG_VER = 'atl_nm_2026_04_20';
+  const MIG_VER = 'atl_nm_2026_04_20_v2';
   try {
     if(localStorage.getItem('nm_atl_migration_ver') === MIG_VER) return;
     const ov = JSON.parse(localStorage.getItem('nm_overrides') || '{}');
@@ -8991,11 +8992,11 @@ function cpGlobalArb(d){
     {id:'oman',   label:'Oman',       basin:'MEI',col:'#ffb74d',
      routes:{eur:nb(d.des.nwe,fr.oman_gate),mei:nb(d.des.mei,fr.oman_dahej),asia:nb(d.des.jktc,fr.oman_tokyo)}},
     {id:'aus_b',  label:'Barrow Is.', basin:'PAC',col:'#81c784',
-     routes:{asia:nb(d.des.jktc,fr.australia_b_tokyo),eur:nb(d.des.nwe,ML.map((_,i)=>fr.australia_b_tokyo[i]*3.683))}},
+     routes:{asia:nb(d.des.jktc,fr.australia_b_tokyo),eur:nb(d.des.nwe,ML.map((_,i)=>fr.australia_b_tokyo[i]*2.712))}},
     {id:'aus_g',  label:'Gladstone',  basin:'PAC',col:'#81c784',
-     routes:{asia:nb(d.des.jktc,fr.australia_g_tokyo),eur:nb(d.des.nwe,ML.map((_,i)=>fr.australia_g_tokyo[i]*3.538))}},
+     routes:{asia:nb(d.des.jktc,fr.australia_g_tokyo),eur:nb(d.des.nwe,ML.map((_,i)=>fr.australia_g_tokyo[i]*3.080))}},
     {id:'bontang',label:'Bontang',    basin:'PAC',col:'#81c784',
-     routes:{asia:nb(d.des.jktc,fr.indonesia_tokyo),eur:nb(d.des.nwe,ML.map((_,i)=>fr.indonesia_tokyo[i]*5.122))}},
+     routes:{asia:nb(d.des.jktc,fr.indonesia_tokyo),eur:nb(d.des.nwe,ML.map((_,i)=>fr.indonesia_tokyo[i]*4.287))}},
   ];
   const DEST_LABEL={eur:'Europe',ain:'Ain Sukhna',mei:'MEI',asia:'JKTC'};
   const BASIN_COL={ATL:'#4fc3f7',MEI:'#ffb74d',PAC:'#81c784'};
@@ -9334,7 +9335,7 @@ function cpAtlanticArb(d){
        {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,      frArr:fr.sabine_ain},
        {label:'Aliaga',               hub:'TTF',arr:d.des.ali,      frArr:fr.sabine_ali},
        {label:'MEI (Dahej)',          hub:'JKM',arr:d.des.mei,      frArr:fr.sabine_dahej},
-       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,    frArr:fr.sabine_maptaphut},
+       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.thailand,frArr:fr.sabine_maptaphut},
        {label:'JKTC',                 hub:'JKM',arr:d.des.jktc,     frArr:fr.sabine_tokyo},
      ]},
     {id:'trinidad',label:'Trinidad',col:'#29b6f6',
@@ -9346,7 +9347,7 @@ function cpAtlanticArb(d){
        {label:'Swinoujscie',          hub:'TTF',arr:d.des.swino,    frArr:fr.trinidad_swinoujscie},
        {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,      frArr:fr.trinidad_ain},
        {label:'MEI (Dahej)',          hub:'JKM',arr:d.des.mei,      frArr:fr.trinidad_dahej},
-       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc,    frArr:fr.trinidad_maptaphut},
+       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.thailand,frArr:fr.trinidad_maptaphut},
        {label:'JKTC',                 hub:'JKM',arr:d.des.jktc,     frArr:fr.trinidad_tokyo},
      ]},
     {id:'angola',label:'Angola',col:'#ff9800',
@@ -9423,29 +9424,32 @@ function cpMEIArb(d){
 
 function cpPacificArb(d){
   const fr=d.freight;
-  // pacFr: scale tokyo curve by NM ratio
+  // pacFr: scale tokyo freight curve by the dest/tokyo NM ratio.
+  // Factors are derived from the current NM table (see const NM). If NM values
+  // change, update these ratios — they must stay in sync.
+  // Barrow Island → Tokyo = 3788 NM  |  Gladstone → Tokyo = 3778  |  Bontang → Tokyo = 2587
   function pacFr(tokyoFr,factor){return ML.map((_,i)=>tokyoFr[i]!=null?+(tokyoFr[i]*factor).toFixed(3):null);}
-  // Corrected NM factors (all_dest_nm / tokyo_nm):
-  // Barrow Island (21S,115E): thai=2700/3788=0.713, dahej=4000/3788=1.056
-  // Gladstone (23S,151E):    thai=3778/3778=1.000, dahej=6500/3778=1.720
-  // Bontang (0N,117E):       thai=1600/2587=0.618, dahej=3900/2587=1.508
-  // Gate (Europe COGH):      barrow=13950/3788=3.683, gladstone=13366/3778=3.538, bontang=13250/2587=5.122
-  const pac_b_thai   =pacFr(fr.australia_b_tokyo, 0.713);
-  const pac_b_dahej  =pacFr(fr.australia_b_tokyo, 1.056);
-  const pac_g_thai   =pacFr(fr.australia_g_tokyo, 1.000);
-  const pac_g_dahej  =pacFr(fr.australia_g_tokyo, 1.720);
-  const pac_id_thai  =pacFr(fr.indonesia_tokyo,   0.618);
-  const pac_id_dahej =pacFr(fr.indonesia_tokyo,   1.508);
-  const pac_b_gate   =pacFr(fr.australia_b_tokyo, 3.683);
-  const pac_g_gate   =pacFr(fr.australia_g_tokyo, 3.538);
-  const pac_id_gate  =pacFr(fr.indonesia_tokyo,   5.122);
+  // NM ratios (dest NM / tokyo NM), from NM table:
+  //   Barrow:    maptaphut 2350/3788=0.620  dahej 3582/3788=0.946  rotterdam 10271/3788=2.712
+  //   Gladstone: maptaphut 4133/3778=1.094  dahej 5346/3778=1.415  rotterdam 11633/3778=3.080
+  //   Bontang:   maptaphut 1726/2587=0.667  dahej 2932/2587=1.133  rotterdam 11089/2587=4.287
+  // Europe leg uses CoGH routing (Suez off — Houthi risk).
+  const pac_b_thai   =pacFr(fr.australia_b_tokyo, 0.620);
+  const pac_b_dahej  =pacFr(fr.australia_b_tokyo, 0.946);
+  const pac_g_thai   =pacFr(fr.australia_g_tokyo, 1.094);
+  const pac_g_dahej  =pacFr(fr.australia_g_tokyo, 1.415);
+  const pac_id_thai  =pacFr(fr.indonesia_tokyo,   0.667);
+  const pac_id_dahej =pacFr(fr.indonesia_tokyo,   1.133);
+  const pac_b_gate   =pacFr(fr.australia_b_tokyo, 2.712);
+  const pac_g_gate   =pacFr(fr.australia_g_tokyo, 3.080);
+  const pac_id_gate  =pacFr(fr.indonesia_tokyo,   4.287);
 
   const cfg={orgs:[
     {id:'aus_b',label:'Barrow Island (Aus)',col:'#81c784',
      hmRoutes:{eur:pac_b_gate,mei:pac_b_dahej,asia:fr.australia_b_tokyo},
      dtRoutes:[
-       {label:'JKTC',                  hub:'JKM',arr:d.des.jktc, frArr:fr.australia_b_tokyo},
-       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc, frArr:pac_b_thai},
+       {label:'JKTC',                  hub:'JKM',arr:d.des.jktc,     frArr:fr.australia_b_tokyo},
+       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.thailand, frArr:pac_b_thai},
        {label:'MEI (Dahej)',           hub:'JKM',arr:d.des.mei,  frArr:pac_b_dahej},
        {label:'NWE (Gate)',            hub:'TTF',arr:d.des.nwe,  frArr:pac_b_gate},
        {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,  frArr:fr.australia_b_ain},
@@ -9453,8 +9457,8 @@ function cpPacificArb(d){
     {id:'aus_g',label:'Gladstone (Aus)',col:'#66bb6a',
      hmRoutes:{eur:pac_g_gate,mei:pac_g_dahej,asia:fr.australia_g_tokyo},
      dtRoutes:[
-       {label:'JKTC',                  hub:'JKM',arr:d.des.jktc, frArr:fr.australia_g_tokyo},
-       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc, frArr:pac_g_thai},
+       {label:'JKTC',                  hub:'JKM',arr:d.des.jktc,     frArr:fr.australia_g_tokyo},
+       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.thailand, frArr:pac_g_thai},
        {label:'MEI (Dahej)',           hub:'JKM',arr:d.des.mei,  frArr:pac_g_dahej},
        {label:'NWE (Gate)',            hub:'TTF',arr:d.des.nwe,  frArr:pac_g_gate},
        {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,  frArr:fr.australia_g_ain},
@@ -9462,8 +9466,8 @@ function cpPacificArb(d){
     {id:'bontang',label:'Bontang (Indonesia)',col:'#a5d6a7',
      hmRoutes:{eur:pac_id_gate,mei:pac_id_dahej,asia:fr.indonesia_tokyo},
      dtRoutes:[
-       {label:'JKTC',                  hub:'JKM',arr:d.des.jktc, frArr:fr.indonesia_tokyo},
-       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.jktc, frArr:pac_id_thai},
+       {label:'JKTC',                  hub:'JKM',arr:d.des.jktc,     frArr:fr.indonesia_tokyo},
+       {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.thailand, frArr:pac_id_thai},
        {label:'MEI (Dahej)',           hub:'JKM',arr:d.des.mei,  frArr:pac_id_dahej},
        {label:'NWE (Gate)',            hub:'TTF',arr:d.des.nwe,  frArr:pac_id_gate},
        {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,  frArr:fr.indonesia_ain},
@@ -9526,9 +9530,9 @@ function cpFrDiffBasis(d){
       label:'Pacific',
       ports:[
         // Pacific: Asia is home/base market. Spread = JKM-TTF (follows paper). Positive = Asia confirmed. Negative = Europe arb opens.
-        {id:'aus_b',   label:'Barrow Island',frGate:ML.map((_,i)=>+(fr.australia_b_tokyo[i]*3.683).toFixed(3)),frAsia:fr.australia_b_tokyo,dir:'asia',spreadFn:(i)=>CP.fp.SP_JT?.[i]??+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3)},
-        {id:'aus_g',   label:'Gladstone',    frGate:ML.map((_,i)=>+(fr.australia_g_tokyo[i]*3.538).toFixed(3)),frAsia:fr.australia_g_tokyo,dir:'asia',spreadFn:(i)=>CP.fp.SP_JT?.[i]??+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3)},
-        {id:'bontang', label:'Bontang',      frGate:ML.map((_,i)=>+(fr.indonesia_tokyo[i]*5.122).toFixed(3)),    frAsia:fr.indonesia_tokyo,  dir:'asia',spreadFn:(i)=>CP.fp.SP_JT?.[i]??+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3)},
+        {id:'aus_b',   label:'Barrow Island',frGate:ML.map((_,i)=>+(fr.australia_b_tokyo[i]*2.712).toFixed(3)),frAsia:fr.australia_b_tokyo,dir:'asia',spreadFn:(i)=>CP.fp.SP_JT?.[i]??+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3)},
+        {id:'aus_g',   label:'Gladstone',    frGate:ML.map((_,i)=>+(fr.australia_g_tokyo[i]*3.080).toFixed(3)),frAsia:fr.australia_g_tokyo,dir:'asia',spreadFn:(i)=>CP.fp.SP_JT?.[i]??+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3)},
+        {id:'bontang', label:'Bontang',      frGate:ML.map((_,i)=>+(fr.indonesia_tokyo[i]*4.287).toFixed(3)),    frAsia:fr.indonesia_tokyo,  dir:'asia',spreadFn:(i)=>CP.fp.SP_JT?.[i]??+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3)},
       ]},
   };
 
