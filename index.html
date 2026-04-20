@@ -444,6 +444,197 @@
     <div id="lngbal-india" style="display:none">
       <div id="ind-container"></div>
     </div>
+
+    <div id="lngbal-sam" style="display:none">
+<style>
+#lngbal-sam{font-family:'IBM Plex Mono',ui-monospace,monospace;color:#f0f4ff;font-size:13px}
+#lngbal-sam .sam-hdr{font-size:9px;letter-spacing:.15em;color:#6b7a99;margin-bottom:18px}
+#lngbal-sam .sam-ctabs{display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px}
+#lngbal-sam .sam-ct{font-family:inherit;font-size:11px;padding:10px 22px;background:transparent;border:none;color:#8a9bb5;cursor:pointer;letter-spacing:1.5px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px}
+#lngbal-sam .sam-ct:hover{color:#f0f4ff}
+#lngbal-sam .sam-ct.act{color:#4d9ef5;border-bottom-color:#4d9ef5}
+#lngbal-sam .sam-cpane{display:none}
+#lngbal-sam .sam-cpane.act{display:block}
+#lngbal-sam .sam-tabs{display:flex;gap:4px;margin:0 0 18px}
+#lngbal-sam .sam-tb{font-family:inherit;font-size:11px;padding:8px 16px;background:transparent;border:1px solid rgba(77,158,245,0.12);color:#8a9bb5;cursor:pointer;letter-spacing:1.2px;border-radius:3px}
+#lngbal-sam .sam-tb:hover{background:#151829;color:#f0f4ff}
+#lngbal-sam .sam-tb.act{background:#4d9ef5;color:#fff;border-color:#4d9ef5}
+#lngbal-sam .sam-pane{display:none}
+#lngbal-sam .sam-pane.act{display:block}
+#lngbal-sam .sam-topbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 18px}
+#lngbal-sam .sam-fresh{font-size:10px;color:#6b7a99;letter-spacing:1px}
+#lngbal-sam .sam-fresh .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#10b981;margin-right:6px;vertical-align:middle}
+#lngbal-sam .sam-utog{display:flex;border:1px solid rgba(77,158,245,0.12);border-radius:3px;overflow:hidden}
+#lngbal-sam .sam-tgl{font-family:inherit;font-size:11px;padding:6px 14px;background:transparent;border:none;color:#8a9bb5;cursor:pointer;letter-spacing:1px}
+#lngbal-sam .sam-tgl.act{background:#4d9ef5;color:#fff}
+#lngbal-sam .sam-tgl:hover:not(.act){background:#151829;color:#f0f4ff}
+#lngbal-sam .sam-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:0 0 22px}
+#lngbal-sam .sam-kc{background:#0f1221;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:14px 16px}
+#lngbal-sam .sam-kl{font-size:9px;color:#6b7a99;margin-bottom:10px;letter-spacing:1.5px}
+#lngbal-sam .sam-kv{font-size:24px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1}
+#lngbal-sam .sam-ku{font-size:10px;color:#6b7a99;margin-left:4px}
+#lngbal-sam .sam-ks{font-size:10px;margin-top:8px;letter-spacing:.5px}
+#lngbal-sam .sam-ks.up{color:#10b981}
+#lngbal-sam .sam-ks.dn{color:#ef4444}
+#lngbal-sam .sam-sect{background:#0f1221;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:16px;margin-bottom:18px}
+#lngbal-sam .sam-stt{font-size:10px;letter-spacing:1.5px;color:#4d9ef5;font-weight:500;margin-bottom:12px}
+#lngbal-sam .sam-bt{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+#lngbal-sam .sam-bt th{text-align:right;padding:8px 7px;font-weight:500;color:#8a9bb5;border-bottom:1px solid rgba(77,158,245,0.12);font-size:10px;letter-spacing:.5px;white-space:nowrap}
+#lngbal-sam .sam-bt th:first-child,#lngbal-sam .sam-bt td:first-child{text-align:left}
+#lngbal-sam .sam-bt td{text-align:right;padding:5px 7px;color:#8a9bb5;white-space:nowrap}
+#lngbal-sam .sam-bt tr.sec td{font-weight:500;color:#4d9ef5;padding-top:16px;padding-bottom:4px;font-size:10px;letter-spacing:1px}
+#lngbal-sam .sam-bt tr.tot td{font-weight:500;color:#f0f4ff;border-top:1px solid rgba(77,158,245,0.12);padding-top:8px;padding-bottom:8px;background:rgba(77,158,245,0.04)}
+#lngbal-sam .sam-bt tr.future td{color:#6b7a99;font-style:italic;opacity:.7}
+#lngbal-sam .sam-bt tr.future td:first-child{color:#fbbf24;font-style:italic;opacity:1}
+#lngbal-sam .sam-bt tr.exp td:first-child{color:#fbbf24}
+#lngbal-sam .sam-bt tr.bal td{color:#ef4444}
+#lngbal-sam .sam-bt tr.bal td:first-child{color:#ef4444;font-weight:500;padding-top:12px;border-top:1px dashed rgba(239,68,68,0.3)}
+#lngbal-sam .sam-chg{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px;margin:0 0 18px}
+#lngbal-sam .sam-cb{background:#0f1221;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:16px}
+#lngbal-sam .sam-cw{height:240px;position:relative}
+#lngbal-sam .sam-notes{background:#0f1221;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:14px 16px;font-size:11px;color:#6b7a99;line-height:1.7}
+#lngbal-sam .sam-nt{font-size:10px;letter-spacing:1.5px;color:#4d9ef5;font-weight:500;margin-bottom:8px}
+#lngbal-sam .sam-notes code{background:#151829;padding:1px 5px;border-radius:2px;font-size:10px;color:#fbbf24}
+#lngbal-sam .sam-hst{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:0 0 22px}
+#lngbal-sam .sam-hc{background:#0f1221;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:14px 16px}
+#lngbal-sam .sam-hl{font-size:10px;color:#6b7a99;margin-bottom:10px;letter-spacing:1.2px}
+#lngbal-sam .sam-hm{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
+#lngbal-sam .sam-hv{font-size:26px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1}
+#lngbal-sam .sam-hp{font-size:11px;color:#6b7a99}
+#lngbal-sam .sam-hd{font-size:10px;margin-left:6px;letter-spacing:.5px}
+#lngbal-sam .sam-hb{height:4px;background:#151829;border-radius:2px;overflow:hidden;margin-top:8px}
+#lngbal-sam .sam-hb>div{height:100%;border-radius:2px}
+#lngbal-sam .sam-ss-ctrl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+#lngbal-sam .sam-ss-lab{font-size:10px;color:#6b7a99;letter-spacing:1px}
+#lngbal-sam .sam-ss-sel{background:#151829;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:5px 10px;color:#f0f4ff;font-family:inherit;font-size:11px;outline:none;cursor:pointer}
+#lngbal-sam .sam-ss-sel:focus{border-color:#4d9ef5}
+#lngbal-sam .sam-yr-group{display:flex;border:1px solid rgba(77,158,245,0.12);border-radius:3px;overflow:hidden}
+#lngbal-sam .sam-yr-btn{font-family:inherit;font-size:10px;padding:5px 10px;background:transparent;border:none;color:#8a9bb5;cursor:pointer;letter-spacing:.5px;border-right:1px solid rgba(77,158,245,0.12)}
+#lngbal-sam .sam-yr-btn:last-child{border-right:none}
+#lngbal-sam .sam-yr-btn.act{background:#4d9ef5;color:#fff}
+#lngbal-sam .sam-yr-btn:hover:not(.act){background:#151829}
+</style>
+
+<div class="sam-hdr">⬡ GAS &amp; LNG ANALYTICS · SOUTH AMERICA SIGNPOSTS</div>
+
+<div class="sam-ctabs">
+  <button class="sam-ct act" data-c="brazil" onclick="samCountry('brazil',this)">BRAZIL</button>
+  <button class="sam-ct" data-c="argentina" onclick="samCountry('argentina',this)">ARGENTINA</button>
+</div>
+
+<div class="sam-cpane act" id="sam-c-brazil">
+
+<div class="sam-tabs">
+  <button class="sam-tb act" data-p="bpg" onclick="samSubTab('bpg',this)">GAS BALANCE</button>
+  <button class="sam-tb" data-p="bph" onclick="samSubTab('bph',this)">HYDRO RESERVES</button>
+</div>
+
+<div class="sam-pane act" id="sam-bpg">
+  <div class="sam-topbar">
+    <div class="sam-fresh"><span class="dot"></span>SOURCES: ABEGÁS · ANP · COMEXSTAT · ONS — THERMAL LIVE D-3, REST ~1 MONTH</div>
+    <div class="sam-utog" id="sam-br-utog">
+      <button class="sam-tgl act" data-u="mcm">MCM / MONTH</button>
+      <button class="sam-tgl" data-u="mtpm">MTPM</button>
+    </div>
+  </div>
+  <div class="sam-kpis">
+    <div class="sam-kc"><div class="sam-kl">TOTAL SUPPLY · JAN 26</div><div><span class="sam-kv" id="sam-br-k1">2,021</span><span class="sam-ku" id="sam-br-k1u">MCM</span></div><div class="sam-ks up">YoY +5.2%</div></div>
+    <div class="sam-kc"><div class="sam-kl">TOTAL DEMAND · JAN 26</div><div><span class="sam-kv" id="sam-br-k2">1,745</span><span class="sam-ku" id="sam-br-k2u">MCM</span></div><div class="sam-ks up">YoY +4.3%</div></div>
+    <div class="sam-kc"><div class="sam-kl">LNG IMPORTS · JAN 26</div><div><span class="sam-kv" id="sam-br-k3">223</span><span class="sam-ku" id="sam-br-k3u">MCM</span></div><div class="sam-ks up">YoY +44%</div></div>
+    <div class="sam-kc"><div class="sam-kl">THERMAL YoY · JAN 26</div><div><span class="sam-kv" style="color:#ef4444">+12.1%</span></div><div class="sam-ks dn">LNG-bullish · hydro stress</div></div>
+  </div>
+  <div class="sam-sect">
+    <div class="sam-stt">BRAZIL GAS BALANCE · 12 MONTHS</div>
+    <div style="overflow-x:auto">
+      <table class="sam-bt">
+        <thead><tr><th></th><th>FEB 25</th><th>MAR 25</th><th>APR 25</th><th>MAY 25</th><th>JUN 25</th><th>JUL 25</th><th>AUG 25</th><th>SEP 25</th><th>OCT 25</th><th>NOV 25</th><th>DEC 25</th><th>JAN 26</th></tr></thead>
+        <tbody id="sam-br-btb"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="sam-chg">
+    <div class="sam-cb"><div class="sam-stt">SUPPLY COMPOSITION</div><div class="sam-cw"><canvas id="sam-br-ch1"></canvas></div></div>
+    <div class="sam-cb"><div class="sam-stt">DEMAND COMPOSITION</div><div class="sam-cw"><canvas id="sam-br-ch2"></canvas></div></div>
+  </div>
+  <div class="sam-notes">
+    <div class="sam-nt">DATA MODEL NOTES</div>
+    MME-style <em>Balanço de Gás Natural Brasil</em>. Supply from ANP Boletim de Produção + ComexStat <code>NCM 2711.21</code> (Bolivia via GASBOL) + <code>NCM 2711.11</code> (LNG imports). Demand from Abegás distribuidora stats + Petrobras refineries/Fafens + ONS <code>geracao_usina_ho</code> filtered by <code>combustivel = "Gás Natural"</code> for plant-level gas-fired thermal (D-3 fresh). Industrial row aggregates refineries + Fafens + distribuidora industrial.<br><br>
+    Balancing row (red): for Brazil, mostly <strong>pipeline fuel consumption</strong> (compressor stations burning ~1–3% of throughput) + measurement imbalance between ANP / ComexStat / Abegás + losses. Brazil has no strategic underground storage — normal range 4–8 MMm³/d-equiv; values outside that range trigger review. Density: <code>0.78 kg/Sm³</code>.
+  </div>
+</div>
+
+<div class="sam-pane" id="sam-bph">
+  <div class="sam-topbar">
+    <div class="sam-fresh"><span class="dot"></span>ONS OPEN DATA · UPDATED WEEKLY (MONDAY 08H UTC)</div>
+  </div>
+  <div class="sam-hst">
+    <div class="sam-hc"><div class="sam-hl">SE / CO SUBSYSTEM</div><div class="sam-hm"><span class="sam-hv" style="color:#fbbf24">67.15</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#ef4444">-1.5 pp W/W</span></div><div class="sam-hb"><div style="width:67.15%;background:#fbbf24"></div></div></div>
+    <div class="sam-hc"><div class="sam-hl">S SUBSYSTEM</div><div class="sam-hm"><span class="sam-hv" style="color:#ef4444">30.50</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#ef4444">-3.2 pp W/W</span></div><div class="sam-hb"><div style="width:30.5%;background:#ef4444"></div></div></div>
+    <div class="sam-hc"><div class="sam-hl">NE SUBSYSTEM</div><div class="sam-hm"><span class="sam-hv" style="color:#10b981">95.31</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#10b981">+0.5 pp W/W</span></div><div class="sam-hb"><div style="width:95.31%;background:#10b981"></div></div></div>
+    <div class="sam-hc"><div class="sam-hl">N SUBSYSTEM</div><div class="sam-hm"><span class="sam-hv" style="color:#10b981">96.07</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#10b981">+0.3 pp W/W</span></div><div class="sam-hb"><div style="width:96.07%;background:#10b981"></div></div></div>
+  </div>
+  <div class="sam-notes">
+    <div class="sam-nt">HYDRO DATA MODEL NOTES</div>
+    Source: ONS Open Data CSV <code>EAR_DIARIO_SUBSISTEMA_2026.csv</code>. Latest EAR% reading per subsystema, fetched weekly (Monday 08:00 UTC / 05:00 BRT) via Vercel cron. EAR = Energia Armazenada (stored energy vs max capacity). Thresholds: green &gt;70% (bearish LNG), amber 30–70%, red &lt;30% (bullish LNG · gas-fired backfill likely).
+  </div>
+</div>
+
+</div>
+
+<div class="sam-cpane" id="sam-c-argentina">
+  <div class="sam-topbar">
+    <div class="sam-fresh"><span class="dot"></span>SOURCES: ENARGAS GETD · GED · GEGU · EXPORTACIONES — DATA LAG ~1 MONTH</div>
+    <div class="sam-utog" id="sam-ar-utog">
+      <button class="sam-tgl act" data-u="mcm">MCM / MONTH</button>
+      <button class="sam-tgl" data-u="mtpm">MTPM</button>
+    </div>
+  </div>
+  <div class="sam-kpis">
+    <div class="sam-kc"><div class="sam-kl">TOTAL SUPPLY · JAN 26</div><div><span class="sam-kv" id="sam-ar-k1">4,464</span><span class="sam-ku" id="sam-ar-k1u">MCM</span></div><div class="sam-ks up">YoY +7.8%</div></div>
+    <div class="sam-kc"><div class="sam-kl">TOTAL DEMAND · JAN 26</div><div><span class="sam-kv" id="sam-ar-k2">4,153</span><span class="sam-ku" id="sam-ar-k2u">MCM</span></div><div class="sam-ks up">YoY +5.2%</div></div>
+    <div class="sam-kc"><div class="sam-kl">NET TRADE · JAN 26</div><div><span class="sam-kv" id="sam-ar-k3" style="color:#10b981">+620</span><span class="sam-ku" id="sam-ar-k3u">MCM</span></div><div class="sam-ks up" id="sam-ar-k3s">Net exporter · Exports − Imports</div></div>
+    <div class="sam-kc"><div class="sam-kl">PRODUCTION YoY · JAN 26</div><div><span class="sam-kv" style="color:#10b981">+11.7%</span></div><div class="sam-ks up">Vaca Muerta ramp</div></div>
+  </div>
+  <div class="sam-sect">
+    <div class="sam-stt">ARGENTINA GAS BALANCE · 12 MONTHS</div>
+    <div style="overflow-x:auto">
+      <table class="sam-bt">
+        <thead><tr><th></th><th>FEB 25</th><th>MAR 25</th><th>APR 25</th><th>MAY 25</th><th>JUN 25</th><th>JUL 25</th><th>AUG 25</th><th>SEP 25</th><th>OCT 25</th><th>NOV 25</th><th>DEC 25</th><th>JAN 26</th></tr></thead>
+        <tbody id="sam-ar-btb"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="sam-chg">
+    <div class="sam-cb"><div class="sam-stt">SUPPLY COMPOSITION</div><div class="sam-cw"><canvas id="sam-ar-ch1"></canvas></div></div>
+    <div class="sam-cb"><div class="sam-stt">DEMAND COMPOSITION (INCL. EXPORTS + FUTURE LNG)</div><div class="sam-cw"><canvas id="sam-ar-ch2"></canvas></div></div>
+  </div>
+  <div class="sam-sect">
+    <div class="sam-stt">SEASONAL COMPARISON · MULTI-YEAR</div>
+    <div class="sam-ss-ctrl">
+      <span class="sam-ss-lab">COMPONENT</span>
+      <select class="sam-ss-sel" id="sam-ar-compSel">
+        <optgroup label="Supply"><option value="prod">Domestic production</option><option value="bol">Bolivia pipeline (YABOG)</option><option value="lng">LNG imports (Escobar)</option><option value="sup_total">Total supply</option></optgroup>
+        <optgroup label="Demand · domestic"><option value="res">Residential</option><option value="com">Commercial</option><option value="ind">Industrial (GEGU)</option><option value="pow" selected>Power generation (CEPU)</option><option value="gnc">Automotive (CNG / GNC)</option><option value="oth">Other</option></optgroup>
+        <optgroup label="Demand · exports"><option value="excl">Exports to Chile</option><option value="exot">Exports · other (Uruguay)</option></optgroup>
+        <optgroup label="Aggregates"><option value="dem_total">Total demand</option><option value="bal">Storage / losses residual</option></optgroup>
+      </select>
+      <span class="sam-ss-lab" style="margin-left:12px">YEARS</span>
+      <div class="sam-yr-group" id="sam-ar-yrSel">
+        <button class="sam-yr-btn act" data-y="2024">2024</button>
+        <button class="sam-yr-btn act" data-y="2025">2025</button>
+        <button class="sam-yr-btn act" data-y="2026">2026</button>
+      </div>
+    </div>
+    <div style="height:300px;position:relative"><canvas id="sam-ar-sc"></canvas></div>
+  </div>
+  <div class="sam-notes">
+    <div class="sam-nt">DATA MODEL NOTES</div>
+    ENARGAS-based. Supply: <code>GETD Total Sistema</code> (production: Neuquén + Austral + NOA) + Bolivia YABOG (declining, near-zero by 2026) + LNG imports at Escobar FSRU (seasonal winter reactivation). Demand: <code>GED</code> by category + <code>Exportaciones.xlsx</code> split by destination (Chile: GasAndes + Norandino + Methanex-Magallanes; other: Uruguay). Future LNG Exports row reserved for Southern Energy FLNG (first gas 2027), YPF-Shell LNG (pre-FID), Argentina LNG Phase 2 (pre-FID) — enabled by RIGI regime.<br><br>
+    Balance: <code>Supply − Demand = Storage injection / losses</code> (red row). Argentina has real underground storage at Diadema, Saturno, Sierra Barrosa — residual reflects genuine seasonal flows. Density: <code>0.78 kg/Sm³</code>. Seasonal chart overlays 2024–2026 — rebuilt from ENARGAS historical archive.
+  </div>
+</div>
+
+</div>
   </div><!-- end ga-tab-lngbal -->
 
 
