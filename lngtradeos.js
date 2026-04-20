@@ -1979,6 +1979,35 @@ const ML=(function(){
   return out;
 })();
 
+// ══ HORIZON CAP + EXPIRY ══════════════════════════════════════════════════
+// All netback-consuming modules (Phys Curves, DES Prices, Arb tables, Regas)
+// cap their display at this fixed expiry month. Once the current front-month
+// passes the target, expiry auto-rolls forward one year so no module ever
+// renders an empty window. Single source of truth — update HORIZON_TARGET_Y
+// to extend the cap without touching any module code.
+const HORIZON_TARGET_M=5;      // Jun (0-indexed month)
+const HORIZON_TARGET_Y=2027;   // Year of the target expiry
+const HORIZON_MIN_LEN=6;       // Safety floor: never show fewer than N months
+const _HZ_MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function horizonLabel(){
+  // Returns "MMM-YY" of the effective expiry. Auto-rolls forward in whole years
+  // once the front-month has reached or passed the stored target.
+  let m=HORIZON_TARGET_M,y=HORIZON_TARGET_Y;
+  const [fmMo,fmYy]=(ML[0]||'').split('-');
+  const fmM=_HZ_MO.indexOf(fmMo), fmY=2000+(+fmYy||0);
+  if(fmM>=0){
+    while(y<fmY || (y===fmY && m<=fmM+HORIZON_MIN_LEN-1)){ y++; }
+  }
+  return `${_HZ_MO[m]}-${String(y).slice(2)}`;
+}
+function horizonIdx(){
+  // Returns visible-length N such that ML.slice(0,N) ends at horizonLabel().
+  const i=ML.indexOf(horizonLabel());
+  if(i>=0)return i+1;
+  return Math.min(HORIZON_MIN_LEN,ML.length);
+}
+function vML(){return ML.slice(0,horizonIdx());}
+
 // ══ SHELL ══
 // Brent monthly fallback ($/bbl) — used when EOD not loaded
 // Sources: ICE Brent M+1 monthly settlement averages, approximate
@@ -4422,6 +4451,10 @@ function _fdFrFreeQuotaSpace(){
   try { localStorage.removeItem('f_matrix'); } catch(e){}
   try { localStorage.removeItem('f_matrix_prev'); } catch(e){}
   try { localStorage.removeItem('f_mat_audit'); } catch(e){}
+  // Snapshot keys are rebuilt on next initCargo, safe to drop under pressure
+  try { localStorage.removeItem('cp_freight_snap'); } catch(e){}
+  try { localStorage.removeItem('cp_phys_snap');    } catch(e){}
+  try { localStorage.removeItem('cp_prices_snap');  } catch(e){}
 }
 
 window.fdFrUpdateMatrix = function(){
@@ -4457,12 +4490,13 @@ window.fdFrUpdateMatrix = function(){
   }
 };
 
-// Slim feed: only write freight series under canonical route keys the netback uses.
-// Skip alias variants unless the seed already has them (avoids duplicating large arrays).
+// Slim feed: start fresh from seed, then overlay matrix values. Prior fix
+// merged with `existing`, which caused cp_freight to grow on every feed as
+// stale keys from prior matrix builds accumulated — eventually blowing the
+// 5MB localStorage quota. Seed-as-baseline gives deterministic size every run.
 function _fdFrSlimFeedPayload(){
   const seedKeys = new Set(Object.keys(CP_SEED_FR || {}));
-  const existing = cpGet('cp_freight', JSON.parse(JSON.stringify(CP_SEED_FR)));
-  const out = Object.assign({}, existing);
+  const out = JSON.parse(JSON.stringify(CP_SEED_FR));
   let written = 0;
   Object.keys(F.matrix).forEach(origId => {
     Object.keys(F.matrix[origId]).forEach(destId => {
@@ -4679,7 +4713,7 @@ function renderFoundationPhysical(c){
         <span><span class="dot" style="background:#4fc3f7"></span>ANCHOR (editable)</span>
         <span><span class="dot" style="background:#81c784"></span>DERIVED (auto)</span>
         <span><span class="dot" style="background:#ffb74d"></span>MANUAL OVERRIDE</span>
-        <span style="color:var(--b);font-weight:600">·&nbsp;&nbsp;NATURAL TRADING WINDOW: <b style="color:var(--th)">${ML[0]} → ${ML[ML.length-1]}</b> (front month = calendar month + 1; rolls as soon as we enter the next month — once we are in May, the front month becomes Jun-26)</span>
+        <span style="color:var(--b);font-weight:600">·&nbsp;&nbsp;DISPLAY WINDOW: <b style="color:var(--th)">${ML[0]} → ${horizonLabel()}</b> (${horizonIdx()}M cap, auto-rolls on expiry) · NATURAL WINDOW: <b style="color:var(--th)">${ML[0]} → ${ML[ML.length-1]}</b> · (front month = calendar month + 1; rolls monthly)</span>
       </div>
       <div id="fd-phys-body"></div>
     </div>
@@ -8669,7 +8703,10 @@ function renderCargo(){
   renderCargoTab();
 }
 function cpTab(i){CP.tab=i;if(i!==CP._lastTab)CP.selBasinOrg=null;CP._lastTab=i;document.querySelectorAll('#cargo-wrap .f-tab').forEach((t,j)=>t.classList.toggle('active',j===i));renderCargoTab();}
-function renderCargoTab(){const b=document.getElementById('cp-body');if(!b)return;const d=cpDerived();
+function renderCargoTab(){const b=document.getElementById('cp-body');if(!b)return;
+  // Clamp selMonth to horizon cap so tabs never access out-of-range months after expiry roll
+  const _vN=horizonIdx();if(CP.selMonth==null||CP.selMonth<0||CP.selMonth>=_vN)CP.selMonth=0;
+  const d=cpDerived();
   if(CP.tab===0)b.innerHTML=cpPhysDiff(d);
   else if(CP.tab===1)b.innerHTML=cpDesPrices(d);
   else if(CP.tab===2)b.innerHTML=cpGlobalArb(d);
@@ -8721,8 +8758,12 @@ function cpSyncFreight(){
 }
 
 // ── Tab 0: Phys Differentials ───────────────────────────────────────────────
+// Uses the global horizonIdx()/vML() helpers so the cap stays in sync with
+// every other netback-consuming module and rolls forward on expiry.
 function cpPhysDiff(d){
   const ov=cpGet('cp_phys_ov',{});
+  const vN=horizonIdx();
+  const vMLx=vML();
   // Color groups: NWE=blue, Med=amber, Baltic=teal, MEI=purple, JKTC=red, Thailand=orange
   const GRP={nwe:'#4fc3f7',iberia:'#4fc3f7',uk:'#4fc3f7',
     france:'#4fc3f7',germany:'#4fc3f7',belgium:'#4fc3f7',
@@ -8759,14 +8800,14 @@ function cpPhysDiff(d){
   let tbody='';let lastGrp='';
   rows.forEach(row=>{
     if(row.grp&&row.grp!==lastGrp){
-      tbody+=`<tr><td colspan="${ML.length+2}" style="padding:6px 8px 2px;font-size:9px;font-weight:700;letter-spacing:.1em;color:${GRP_COL[row.grp]||'#546e7a'}">${row.grp}</td></tr>`;
+      tbody+=`<tr><td colspan="${vN+2}" style="padding:6px 8px 2px;font-size:9px;font-weight:700;letter-spacing:.1em;color:${GRP_COL[row.grp]||'#546e7a'}">${row.grp}</td></tr>`;
       lastGrp=row.grp;
     }
     const col=GRP[row.k]||'#c8d6e5';
     tbody+=`<tr><td style="color:${col};font-size:10px;white-space:nowrap;padding:3px 6px">${row.label}</td>
     <td style="color:#546e7a;font-size:10px;padding:3px 4px">${row.hub}</td>
-    ${row.data.map((v,i)=>{
-      if(row.isEgyptPrem&&i===0)return`<td colspan="${ML.length}" style="padding:2px 8px"><span style="color:#546e7a;font-size:9px">User input — applies to all months: </span><input class="f-inp" style="width:62px;text-align:right;color:#d4e157" type="number" step="0.01" value="${(CP.egyptPremium??0.50).toFixed(2)}" onchange="CP.egyptPremium=+this.value;renderCargoTab()"></td>`;
+    ${row.data.slice(0,vN).map((v,i)=>{
+      if(row.isEgyptPrem&&i===0)return`<td colspan="${vN}" style="padding:2px 8px"><span style="color:#546e7a;font-size:9px">User input — applies to all months: </span><input class="f-inp" style="width:62px;text-align:right;color:#d4e157" type="number" step="0.01" value="${(CP.egyptPremium??0.50).toFixed(2)}" onchange="CP.egyptPremium=+this.value;renderCargoTab()"></td>`;
       if(row.isEgyptPrem)return'';
       if(row.editable)return`<td style="padding:2px 3px"><input class="f-inp" style="width:62px;text-align:right;color:${col}" type="number" step="0.01" value="${fv(v,3)}" onchange="cpSetPhys('${row.physKey}',${i},this.value)"></td>`;
       if(row.computed){const cellOv=ov[row.ovKey+'_'+i]!=null;return`<td style="padding:2px 3px"><input class="f-inp" style="width:62px;text-align:right;color:${cellOv?'#ffb74d':'#81c784'}" type="number" step="0.01" value="${fvi(v,3)}" onchange="cpSetOv('${row.ovKey}',${i},this.value)"></td>`;}
@@ -8783,12 +8824,13 @@ function cpPhysDiff(d){
   </div>
   <div style="overflow-x:auto"><table class="f-tbl"><thead><tr>
     <th style="min-width:140px">TERMINAL</th><th style="min-width:50px">HUB</th>
-    ${ML.map(m=>`<th class="tr" style="min-width:68px">${m}</th>`).join('')}
+    ${vMLx.map(m=>`<th class="tr" style="min-width:68px">${m}</th>`).join('')}
   </tr></thead><tbody>${tbody}</tbody></table></div>`;
 }
 
 // ── Tab 1: DES Absolute Prices ───────────────────────────────────────────────
 function cpDesPrices(d){
+  const vN=horizonIdx(),vMLx=vML();
   const rows=[
     // NWE group - blue
     {l:'DES NWE',        h:'TTF', arr:d.des.nwe,      col:'#4fc3f7', grp:'NWE TERMINALS'},
@@ -8819,22 +8861,22 @@ function cpDesPrices(d){
   let tbody='';let lastGrp='';
   rows.forEach(row=>{
     if(row.grp&&row.grp!==lastGrp){
-      tbody+=`<tr><td colspan="${ML.length+2}" style="padding:6px 8px 2px;font-size:9px;font-weight:700;letter-spacing:.1em;color:${GRP_COL[row.grp]||'#546e7a'}">${row.grp}</td></tr>`;
+      tbody+=`<tr><td colspan="${vN+2}" style="padding:6px 8px 2px;font-size:9px;font-weight:700;letter-spacing:.1em;color:${GRP_COL[row.grp]||'#546e7a'}">${row.grp}</td></tr>`;
       lastGrp=row.grp;
     }
-    tbody+=`<tr><td style="font-size:10px;color:${row.col};padding:3px 6px">${row.l}</td><td style="color:#546e7a;font-size:10px;padding:3px 4px">${row.h}</td>${row.arr.map(v=>`<td class="tr" style="color:${row.col}">${fv(v)}</td>`).join('')}</tr>`;
+    tbody+=`<tr><td style="font-size:10px;color:${row.col};padding:3px 6px">${row.l}</td><td style="color:#546e7a;font-size:10px;padding:3px 4px">${row.h}</td>${row.arr.slice(0,vN).map(v=>`<td class="tr" style="color:${row.col}">${fv(v)}</td>`).join('')}</tr>`;
   });
   return`<div class="f-sec">DES ABSOLUTE PRICES — $/Mmbtu</div>
   <div style="overflow-x:auto;margin-bottom:20px"><table class="f-tbl"><thead><tr>
     <th style="min-width:140px">TERMINAL</th><th>HUB</th>
-    ${ML.map(m=>`<th class="tr" style="min-width:68px">${m}</th>`).join('')}
+    ${vMLx.map(m=>`<th class="tr" style="min-width:68px">${m}</th>`).join('')}
   </tr></thead><tbody>${tbody}</tbody></table></div>
   <div class="f-sec">REFERENCE INDICES — $/Mmbtu</div>
   <div style="overflow-x:auto"><table class="f-tbl"><thead><tr>
     <th style="min-width:140px">INDEX</th><th>HUB</th>
-    ${ML.map(m=>`<th class="tr" style="min-width:68px">${m}</th>`).join('')}
+    ${vMLx.map(m=>`<th class="tr" style="min-width:68px">${m}</th>`).join('')}
   </tr></thead><tbody>
-  ${refs.map(r=>`<tr><td style="font-size:10px;color:${r.col}">${r.l}</td><td style="color:#546e7a;font-size:10px">${r.h}</td>${r.arr.map(v=>`<td class="tr" style="color:${r.col}">${fv(v)}</td>`).join('')}</tr>`).join('')}
+  ${refs.map(r=>`<tr><td style="font-size:10px;color:${r.col}">${r.l}</td><td style="color:#546e7a;font-size:10px">${r.h}</td>${r.arr.slice(0,vN).map(v=>`<td class="tr" style="color:${r.col}">${fv(v)}</td>`).join('')}</tr>`).join('')}
   </tbody></table></div>`;
 }
 
@@ -9032,7 +9074,7 @@ function cpGlobalArb(d){
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">ROUTE RANKING —</span>
     <span style="color:#c8d6e5;font-size:9px;font-weight:700">${MONTHS12[Math.min(selM,11)]||ML[selM]}</span>
     <span style="flex:1"></span>
-    <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===selM?' selected':''}>${mo}</option>`).join('')}</select>
+    <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${vML().map((mo,i)=>`<option value="${i}"${i===selM?' selected':''}>${mo}</option>`).join('')}</select>
   </div>
   <div style="padding:12px 0">${rkHtml}</div>
   <style>.cp-popup .leaflet-popup-content-wrapper{background:#0d1e36;border:1px solid #1e3a5f;border-radius:2px;box-shadow:none}.cp-popup .leaflet-popup-tip{background:#0d1e36}.cp-tooltip{background:#070b14;border:1px solid #1e3a5f;color:#c8d6e5;font-family:IBM Plex Mono,monospace;font-size:10px;box-shadow:none}</style>`;
@@ -9105,8 +9147,11 @@ function cpBasinTab(cfg,d){
   const idxA=idx==='JKM'?CP.fp.JKM:idx==='HH'?CP.fp.HH.map(v=>+(v*sl).toFixed(3)):CP.fp.TTF;
   const idxLbl=idx==='HH'?'HH flat':idx+' flat';
   const fr=d.freight;
+  // Clamp selected month to within the active horizon cap
+  const _vN=horizonIdx();
+  if(CP.selMonth!=null&&CP.selMonth>=_vN)CP.selMonth=0;
   const m=CP.selMonth??0;
-  const M12=ML.slice(0,12);
+  const M12=ML.slice(0,Math.min(12,_vN));
   const selOrg=cfg.orgs.find(o=>o.id===(CP.selBasinOrg||cfg.orgs[0].id))||cfg.orgs[0];
 
   function nbx(dt,i){
@@ -9223,7 +9268,7 @@ function cpBasinTab(cfg,d){
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">SUPPLY SOURCE</span>${orgSel}
     <span style="color:#1e3a5f;font-size:14px">│</span>
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">MONTH</span>
-    <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>
+    <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${vML().map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>
   </div>
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:8px">
     <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">ROUTE RANKING</span>
@@ -9479,7 +9524,7 @@ function cpFrDiffBasis(d){
 
   const basinBtns=Object.entries(BASINS).map(([k,b])=>`<button class="f-btn sm${selBasin===k?' on':''}" onclick="CP.frBasin='${k}';CP.frPort=null;renderCargoTab()">${b.label}</button>`).join('');
   const portSel=`<select class="f-sel" onchange="CP.frPort=this.value;renderCargoTab()">${basin.ports.map(p=>`<option value="${p.id}"${(CP.frPort||basin.ports[0].id)===p.id?' selected':''}>${p.label}</option>`).join('')}</select>`;
-  const mSel=`<select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${ML.map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>`;
+  const mSel=`<select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${vML().map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>`;
   const id1='cpFrCh_'+Date.now();
 
   return`
@@ -10991,6 +11036,11 @@ function rgP(k,v){RG[k]=v;rgs(k,v);rgRT();}
 
 function rgRT(){
   const b=document.getElementById('rg-body');if(!b)return;
+  // Clamp Regas month pickers to horizon cap — keeps selectors valid on expiry roll
+  const _vN=horizonIdx();
+  ['selMonth','cgMonth','dashMonth1','dashMonth2'].forEach(k=>{
+    if(RG[k]!=null&&(RG[k]<0||RG[k]>=_vN))RG[k]=0;
+  });
   // Check lock for protected tabs
   if(RG_LOCK_TABS.has(RG.tab)&&!RG_UNLOCK[RG.tab]){b.innerHTML=rgLock(RG.tab);return;}
   if(RG.tab===0)b.innerHTML=rgDashboard();
@@ -11038,11 +11088,11 @@ function rgDES(tid,mi){return rgTTF(mi)+((RG.diffs[tid]||[])[mi]||0);}
 function rgVar(t,mi){const hp=rgHP(t.hub,mi),gik=(t.gik/100)*hp/(1-t.gik/100),emiss=t.cqs*RG.eua*RG.eurUsd/1000,gridV=t.hub==='NBP'?RG.tsoOpex:0;return{gik,emiss,gridV,total:gik+emiss+gridV};}
 function rgFix(t){const fixCap=t.tt==='per_mmbtu'?t.trf*RG.eurUsd:t.slot*RG.eurUsd/RG.cargo,gridF=RG.gridCapex,marit=t.mar*RG.eurUsd/RG.cargo;return{fixCap,gridF,marit,total:fixCap+gridF+marit};}
 function fmm(v,d=4){return v!=null&&!isNaN(v)?Number(v).toFixed(d):'-';}
-function msel(){return`<select class="f-sel" style="width:100px" onchange="RG.selMonth=+this.value;rgRT()">${ML.map((m,i)=>`<option value="${i}"${RG.selMonth===i?' selected':''}>${m}</option>`).join('')}</select>`;}
+function msel(){return`<select class="f-sel" style="width:100px" onchange="RG.selMonth=+this.value;rgRT()">${vML().map((m,i)=>`<option value="${i}"${RG.selMonth===i?' selected':''}>${m}</option>`).join('')}</select>`;}
 
 // ── TAB 0: HUB CURVES ──
 function rgHub(){
-  const rows=ML.map((m,i)=>`<tr><td style="color:#8a9bb5;min-width:56px">${m}</td>
+  const rows=vML().map((m,i)=>`<tr><td style="color:#8a9bb5;min-width:56px">${m}</td>
     <td style="padding:2px 3px"><input class="rg-inp" style="width:70px;text-align:right" type="number" step="0.01" value="${RG.ttfCurve[i].toFixed(2)}" onchange="rgSetTTF(${i},+this.value)"></td>
     <td class="tr" style="color:#4fc3f7">${rgTTF(i).toFixed(4)}</td>
     ${['ZEE','PEG','THE','PSV','PVB','NBP'].map(h=>`<td class="tr" style="color:${h==='PSV'?'#81c784':h==='NBP'?'#ffb74d':h==='PVB'?'#ab47bc':'#c8d6e5'}">${rgHP(h,i).toFixed(3)}</td>`).join('')}
@@ -11282,7 +11332,7 @@ function rgCostGraph(){
       <div style="display:flex;align-items:center;gap:5px"><span style="color:#546e7a;font-size:9px;letter-spacing:1px">UNIT</span>${uBtn('usd','$/MMBtu')}${uBtn('eur','€/MWh')}</div>
       <div style="display:flex;align-items:center;gap:5px"><span style="color:#546e7a;font-size:9px;letter-spacing:1px">COST</span>${tBtn(false,'VARIABLE ONLY')}${tBtn(true,'TOTAL (VAR+FIX)')}</div>
       <div style="display:flex;align-items:center;gap:5px"><span style="color:#546e7a;font-size:9px;letter-spacing:1px">MONTH</span>
-        <select class="f-sel" style="width:90px" onchange="RG.cgMonth=+this.value;rgRT()">${ML.map((m,i)=>`<option value="${i}"${RG.cgMonth===i?' selected':''}>${m}</option>`).join('')}</select>
+        <select class="f-sel" style="width:90px" onchange="RG.cgMonth=+this.value;rgRT()">${vML().map((m,i)=>`<option value="${i}"${RG.cgMonth===i?' selected':''}>${m}</option>`).join('')}</select>
       </div>
     </div>
     <div class="f-card" style="overflow-x:auto;padding:16px">${svgStr}</div>
@@ -15832,13 +15882,15 @@ function rgTsLabel(key){
 }
 
 // ── Rolling 8-month selector ─────────────────────────────────────
+// Clamped to the global horizon cap so indices never exceed the Jun-27 expiry.
 function getRollingMonths(){
   const now=new Date(),mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const next=new Date(now.getFullYear(),now.getMonth()+1,1);
   const lbl=mo[next.getMonth()]+'-'+String(next.getFullYear()).slice(2);
   let idx=ML.indexOf(lbl);
   if(idx<0)idx=RG.selMonth||0;
-  return Array.from({length:8},(_,i)=>idx+i).filter(i=>i>=0&&i<ML.length);
+  const cap=horizonIdx();
+  return Array.from({length:8},(_,i)=>idx+i).filter(i=>i>=0&&i<cap);
 }
 function msel8(){
   const r8=getRollingMonths();
@@ -16001,7 +16053,7 @@ function rgHub(){
   const hasCurves=RG.hubCurves&&RG.hubCurves.TTF&&RG.hubCurves.TTF.length>0;
   const HUBS=['ZEE','PEG','THE','PSV','PVB','NBP'];
   const HC={ZEE:'#c8d6e5',PEG:'#ffb74d',THE:'#80cbc4',PSV:'#81c784',PVB:'#ce93d8',NBP:'#fb8c00'};
-  const rows=ML.map((m,i)=>`<tr>
+  const rows=vML().map((m,i)=>`<tr>
     <td style="color:#8a9bb5;min-width:56px">${m}</td>
     <td style="padding:2px 3px"><input class="rg-inp" style="width:70px;text-align:right" type="number" step="0.01" value="${(RG.ttfCurve[i]||46).toFixed(2)}" onchange="rgSetTTF(${i},+this.value)"></td>
     <td class="tr" style="color:#4fc3f7">${rgTTF(i).toFixed(3)}</td>
@@ -16058,7 +16110,7 @@ function rgDashboard(){
   const TH='style="color:#4fc3f7;font-size:9px;padding:5px 8px;border-bottom:1px solid #1e3a5f;background:#080e1c"';
   const THR='style="color:#4fc3f7;font-size:9px;padding:5px 8px;border-bottom:1px solid #1e3a5f;background:#080e1c;text-align:right"';
   const itmRows=itmAll.slice(0,10).map((r,i)=>{const mc=r.itm?'#4caf50':'#f44336';return`<tr style="border-bottom:1px solid #0d1929"><td style="color:#546e7a;font-size:10px;text-align:center;padding:5px 4px">${i+1}</td><td style="color:#c8d6e5;font-size:10px;font-weight:600;padding:5px 8px">${r.t.name}</td><td style="color:#546e7a;font-size:9px;padding:5px 6px">${r.t.country}</td><td style="color:#4fc3f7;font-size:10px;padding:5px 6px">${r.t.hub}</td><td style="color:#c8d6e5;font-size:10px;text-align:right;padding:5px 8px">${fmm(r.des)}</td><td style="color:#546e7a;font-size:10px;text-align:right;padding:5px 8px">${fmm(r.varC)}</td><td style="color:#c8d6e5;font-size:10px;text-align:right;padding:5px 8px">${fmm(r.hp)}</td><td style="color:${mc};font-size:11px;font-weight:700;text-align:right;padding:5px 8px">${r.money>=0?'+':''}${fmm(r.money)}</td><td style="color:${mc};font-size:9px;text-align:center;padding:5px 6px">${r.itm?'✅ ITM':'⛔ OTM'}</td></tr>`;}).join('');
-  const mSel1=`<select class="f-sel" style="width:86px" onchange="RG.dashMonth1=+this.value;rgs('dashMonth1',RG.dashMonth1);rgRT()">${ML.map((m,i)=>`<option value="${i}"${mi1===i?' selected':''}>${m}</option>`).join('')}</select>`;
+  const mSel1=`<select class="f-sel" style="width:86px" onchange="RG.dashMonth1=+this.value;rgs('dashMonth1',RG.dashMonth1);rgRT()">${vML().map((m,i)=>`<option value="${i}"${mi1===i?' selected':''}>${m}</option>`).join('')}</select>`;
   const beAll=RG.terminals.map(t=>{
     const v=rgVar(t,mi2),fx=rgFix(t,mi2);
     if(v.suppressed||fx.suppressed)return{t,be:null,suppressed:true};
@@ -16066,7 +16118,7 @@ function rgDashboard(){
     return{t,be};
   }).sort((a,b)=>(b.be===null?-999:b.be)-(a.be===null?-999:a.be));
   const beRows=beAll.map(r=>{const bc=r.suppressed?'#3d5070':r.be>=0?'#81c784':'#ef9a9a';return`<tr style="border-bottom:1px solid #0d1929"><td style="color:#c8d6e5;font-size:10px;font-weight:600;padding:5px 8px">${r.t.name}</td><td style="color:#4fc3f7;font-size:10px;padding:5px 6px">${r.t.hub}</td><td style="color:${bc};font-size:10px;font-weight:700;text-align:right;padding:5px 8px">${r.suppressed?'N/A':((r.be>=0?'+':'')+fmm(r.be))}</td></tr>`;}).join('');
-  const mSel2=`<select class="f-sel" style="width:86px" onchange="RG.dashMonth2=+this.value;rgs('dashMonth2',RG.dashMonth2);rgRT()">${ML.map((m,i)=>`<option value="${i}"${mi2===i?' selected':''}>${m}</option>`).join('')}</select>`;
+  const mSel2=`<select class="f-sel" style="width:86px" onchange="RG.dashMonth2=+this.value;rgs('dashMonth2',RG.dashMonth2);rgRT()">${vML().map((m,i)=>`<option value="${i}"${mi2===i?' selected':''}>${m}</option>`).join('')}</select>`;
   return statusBar+`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><div class="f-card" style="padding:14px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div><div style="color:#4fc3f7;font-size:11px;font-weight:700;letter-spacing:2px">TOP 10 ITM</div><div style="color:#546e7a;font-size:8.5px">${itmCnt} of ${itmAll.length} ITM · TTF ${fmm(ttf1)} $/MMBtu</div></div><div style="display:flex;align-items:center;gap:5px"><span style="color:#546e7a;font-size:8px">MONTH</span>${mSel1}</div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th ${TH}>#</th><th ${TH}>TERMINAL</th><th ${TH}>COUNTRY</th><th ${TH}>HUB</th><th ${THR}>DES</th><th ${THR}>VarC</th><th ${THR}>Hub</th><th ${THR}>MONEY</th><th ${TH}>STATUS</th></tr></thead><tbody>${itmRows}</tbody></table></div><div style="margin-top:6px;color:#3d5070;font-size:8px">$/MMBtu · Spain: Barcelona representative</div></div><div class="f-card" style="padding:14px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div><div style="color:#ffeb3b;font-size:11px;font-weight:700;letter-spacing:2px">BREAKEVEN PRICE</div><div style="color:#546e7a;font-size:8.5px">Max DES diff (vs TTF) · ${ML[mi2]}</div></div><div style="display:flex;align-items:center;gap:5px"><span style="color:#546e7a;font-size:8px">MONTH</span>${mSel2}</div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th ${TH}>TERMINAL</th><th ${TH}>HUB</th><th ${THR}>BREAKEVEN</th></tr></thead><tbody>${beRows}</tbody></table></div><div style="margin-top:6px;color:#3d5070;font-size:8px">$/MMBtu · Breakeven = Hub − VarCost − TTF</div></div></div>`;
 }
 
