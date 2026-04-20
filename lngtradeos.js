@@ -2055,6 +2055,11 @@ const TB_T={converter:'NATURAL GAS CONVERTER',gasspec:'GAS SPECIFICATIONS',portc
 const TB_D={converter:'Unit conversion across mmBtu, MWh, GJ, Mcm, Bcm, MT LNG',gasspec:'LNG and natural gas quality specifications',portcosts:'130+ terminals — loading and discharge port costs'};
 
 function shellNav(sec,sub){
+  // Foundation is admin-only — viewers get bounced to home.
+  if(sec==='foundation' && typeof isAdmin==='function' && !isAdmin()){
+    alert('Foundation is restricted to the admin.\n\nViewers see read-only data on every other section.');
+    sec='home';
+  }
   document.querySelectorAll('.s-sec').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('section-'+sec).classList.add('active');
@@ -4796,10 +4801,12 @@ function renderFoundationFinancial(c){
             <button class="fdfc-btn" style="border-color:#4fc3f7;color:#4fc3f7" onclick="fdfcGmailScrape()">📧 GMAIL SCRAPE</button>
             <button class="fdfc-btn" style="border-color:#4fc3f7;color:#4fc3f7" onclick="syncNewFiles(false)">↺ SYNC DRIVE</button>
             <button class="fdfc-btn" style="border-color:#22c55e;color:#22c55e" onclick="typeof exportToExcel==='function'?exportToExcel():alert('Export not ready — load data first.')">↓ EXPORT XLSX</button>
+            <button class="fdfc-btn" style="border-color:#fbbf24;color:#fbbf24" onclick="exportPublicState()" title="Package ALL state (EOD, freight, phys, NM, gas balances, regas) into public_state.json for viewers">↑ EXPORT STATE TO REPO</button>
             <button class="fdfc-btn" style="border-color:#ef5350;color:#ef5350" onclick="clearCache()">⚠ CLEAR CACHE</button>
           </div>
           <input type="file" id="fdfc-fi" multiple accept=".xlsx,.xls" style="display:none" onchange="fdfcOnUpload(this)">
           <div style="color:#3d5070;font-size:9px;margin-top:10px;line-height:1.6">
+            <b>EXPORT STATE TO REPO</b> → downloads <code>public_state.json</code>. Commit it to <code>/data/</code> in ibra26-gif/LNG-TradeOS and every viewer sees your curated data on their next page load.<br>
             <b>Gmail</b> requires the Claude.ai MCP connector. <b>Clear cache</b> is password-protected and reloads the app.
           </div>
         </div>
@@ -10131,6 +10138,107 @@ async function toAB(src){
 const MA=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const SC=['#2d7cff','#22c55e','#f59e0b','#ef4444','#a78bfa','#38bdf8'];
 const CK='lngTradeOS_v5';
+
+// ══════════════════════════════════════════════════════════════════════════
+// SHARED STATE — admin publishes curated data; all viewers fetch it on load.
+// Admin workflow: visit `?admin=1`, upload/edit as usual, click EXPORT STATE,
+// drop the downloaded JSON into /data/public_state.json in the repo, commit.
+// Viewer workflow: just open the site — data is fetched + written to their
+// localStorage automatically. Viewer write-controls are hidden.
+// ══════════════════════════════════════════════════════════════════════════
+const PUBLIC_STATE_URL='data/public_state.json';
+const PUBLIC_STATE_KEYS=[
+  // EOD curve caches
+  'lngTradeOS_v5','eex_v1',
+  // Scraped / uploaded sheets
+  'lng_shpgx_v1','lng_china_gb_v1','lng_india_gb_v1',
+  // Freight + physical + prices
+  'cp_freight','cp_freight_snap','cp_freight_ver',
+  'cp_phys','cp_phys_snap','cp_phys_ov',
+  'cp_fp','cp_prices_snap',
+  'cp_liqfee','cp_hh_slope','cp_egypt_prem',
+  'cp_global_arb_idx','cp_cogh_mode','cp_hist_snaps',
+  // NM overrides
+  'nm_overrides',
+  // Freight engine + voyage inputs
+  'f_blng','f_blng_ts','f_posArr','f_repoArr','f_params','f_extraD','f_extraS','f_extraNM',
+  // Regas
+  'rg_terminals','rg_ttfCurve','rg_hubSpreads','rg_eurUsd','rg_gbpUsd',
+  'rg_eua','rg_cargo','rg_hubCurves','rg_secA','rgDiffs',
+  // Market structure
+  'ms_state',
+];
+function isAdmin(){
+  try{
+    if(new URLSearchParams(location.search).get('admin')==='1'){
+      localStorage.setItem('lngtradeos_admin','1');
+      return true;
+    }
+    if(new URLSearchParams(location.search).get('admin')==='0'){
+      localStorage.removeItem('lngtradeos_admin');
+      return false;
+    }
+    return localStorage.getItem('lngtradeos_admin')==='1';
+  }catch{return false;}
+}
+window.isAdmin=isAdmin;
+function exportPublicState(){
+  if(!isAdmin()){alert('Admin mode required.\nAdd ?admin=1 to the URL and reload.');return;}
+  const state={__meta:{exportedAt:new Date().toISOString(),version:1,
+    exportedFrom:location.hostname||'localhost'}};
+  let kept=0;
+  PUBLIC_STATE_KEYS.forEach(k=>{
+    const v=localStorage.getItem(k);
+    if(v!=null){state[k]=v;kept++;}
+  });
+  const blob=new Blob([JSON.stringify(state)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='public_state.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  alert('public_state.json downloaded ('+kept+' keys, '+(blob.size/1024).toFixed(1)+' KB).\n\n'
+      +'Next steps:\n'
+      +'1. Drop this file into the /data/ folder of ibra26-gif/LNG-TradeOS\n'
+      +'2. Commit + push (or use GitHub web editor)\n'
+      +'3. GitHub Pages / Vercel rebuild ≈30s\n'
+      +'4. All viewers see the update on their next page load');
+}
+window.exportPublicState=exportPublicState;
+async function syncPublicState(){
+  // Pull the admin-published state, overwrite matching localStorage keys, then
+  // reload if anything changed. Skips if already synced with the current remote
+  // timestamp (tracked per-browser in lngtradeos_public_state_ts).
+  try{
+    const res=await fetch(PUBLIC_STATE_URL+'?t='+Date.now(),{cache:'no-cache'});
+    if(!res.ok)return false;
+    const state=await res.json();
+    const remoteTs=state?.__meta?.exportedAt||'';
+    if(!remoteTs)return false;
+    const localTs=localStorage.getItem('lngtradeos_public_state_ts')||'';
+    if(localTs===remoteTs)return false;
+    let applied=0;
+    PUBLIC_STATE_KEYS.forEach(k=>{
+      if(state[k]!=null){
+        try{localStorage.setItem(k,state[k]);applied++;}catch(e){}
+      }
+    });
+    localStorage.setItem('lngtradeos_public_state_ts',remoteTs);
+    console.log('[LNG TradeOS] Synced '+applied+' keys from public_state.json (exported '+remoteTs+')');
+    return true;
+  }catch(e){return false;}
+}
+window.syncPublicState=syncPublicState;
+// Fire once per session (before modules init) — if we get fresh data, reload
+// so every IIFE reads the new values from localStorage.
+(function boot(){
+  try{
+    if(sessionStorage.getItem('lngtradeos_synced')==='1')return;
+    sessionStorage.setItem('lngtradeos_synced','1');
+    // Fire and forget; initial module init uses stale data for ~1s then reloads
+    syncPublicState().then(changed=>{ if(changed) location.reload(); });
+  }catch(e){}
+})();
 const INSTS=[{k:'JKM',label:'JKM',unit:'$/MMBtu'},{k:'TTF',label:'TTF',unit:'$/MMBtu'},{k:'HH',label:'HH',unit:'$/MMBtu'},{k:'NBP',label:'NBP',unit:'$/MMBtu'},{k:'Brent',label:'Brent',unit:'$/bbl'},{k:'Dated',label:'Dated Brent',unit:'$/bbl'},{k:'Slope',label:'Slope',unit:'%'},{k:'SP_JT',label:'JKM/TTF Spread',unit:'$/MMBtu'},{k:'SP_JH',label:'JKM/HH Spread',unit:'$/MMBtu'},{k:'SP_TH',label:'TTF/HH Spread',unit:'$/MMBtu'},{k:'SP_JN',label:'JKM/NBP Spread',unit:'$/MMBtu'},{k:'SP_HN',label:'HH/NBP Spread',unit:'$/MMBtu'},{k:'SP_TN',label:'TTF/NBP Spread',unit:'$/MMBtu'},
   {k:'THE',label:'THE (Germany)',unit:'$/MMBtu'},{k:'PEG',label:'PEG (France)',unit:'$/MMBtu'},{k:'PVB',label:'PVB (Spain)',unit:'$/MMBtu'},{k:'PSV',label:'PSV (Italy)',unit:'$/MMBtu'}];
 const INST={};INSTS.forEach(i=>INST[i.k]=i);
@@ -11969,6 +12077,13 @@ window.addEventListener('DOMContentLoaded',()=>{
   setupDrop();
   eex_lCache(); // load EEX cache on page load
   if(lCache()){showAnalyticsUI();initUI();const st=$id('stext');if(st)st.textContent=`${sDates.length} DATES · EOD ${fmtD(sDates[sDates.length-1])} · CHECKING DRIVE…`;syncNewFiles(true);syncEEXDrive();}
+  // Viewer mode — hide the Foundation nav tab (admin reaches it via ?admin=1)
+  try{
+    if(typeof isAdmin==='function' && !isAdmin()){
+      const fdTab=document.getElementById('tab-foundation');
+      if(fdTab) fdTab.style.display='none';
+    }
+  }catch(e){}
 });
 
 
