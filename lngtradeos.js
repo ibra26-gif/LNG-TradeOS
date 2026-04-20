@@ -16906,10 +16906,13 @@ var ar_currentComp = 'pow';
 var ar_activeYears = new Set([2024,2025,2026]);
 var ar_c1, ar_c2, ar_sc;
 
-/* Helpers */
-function conv(m, i, u) { var mcm = m * DIM[i]; return u === 'mcm' ? mcm : mcm * DEN / 1000; }
-function convCal(m, i, u) { var mcm = m * CAL_DIM[i]; return u === 'mcm' ? mcm : mcm * DEN / 1000; }
-function fmt(v, u) { return u === 'mcm' ? Math.round(v).toLocaleString() : v.toFixed(2); }
+/* Helpers
+   All data arrays store MCM/DAY averages. Display units:
+     'mcm'  → MCM/D (daily average, 1 decimal)
+     'mtpm' → million tonnes per month (monthly rollup × density) */
+function conv(m, i, u) { return u === 'mcm' ? m : (m * DIM[i] * DEN / 1000); }
+function convCal(m, i, u) { return u === 'mcm' ? m : (m * CAL_DIM[i] * DEN / 1000); }
+function fmt(v, u) { return u === 'mcm' ? v.toFixed(1) : v.toFixed(2); }
 function fmtS(v, u) { return (v >= 0 ? '+' : '') + fmt(v, u); }
 function cDefaults() {
   if (typeof Chart === 'undefined') return;
@@ -16924,7 +16927,7 @@ function chartOpts(stacked, unitSuffix) {
     plugins: {
       legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 10, color: '#8a9bb5' } },
       tooltip: { backgroundColor: '#151829', titleColor: '#f0f4ff', bodyColor: '#f0f4ff', borderColor: 'rgba(77,158,245,0.3)', borderWidth: 1, padding: 10,
-        callbacks: { label: function(c){ return c.dataset.label + ': ' + (U==='mcm' ? Math.round(c.raw).toLocaleString() : c.raw.toFixed(2)) + ' ' + (unitSuffix || U.toUpperCase()); } } }
+        callbacks: { label: function(c){ return c.dataset.label + ': ' + fmt(c.raw, U) + ' ' + (unitSuffix || (U==='mcm' ? 'MCM/D' : 'MTPM')); } } }
     },
     scales: {
       x: { stacked: !!stacked, grid: { display: false }, ticks: { color: '#6b7a99', font: { size: 9 } } },
@@ -16962,7 +16965,7 @@ function brRenderTbl() {
   document.getElementById('sam-br-btb').innerHTML = h;
 }
 function brRenderKpis() {
-  var uL = U === 'mcm' ? 'MCM' : 'MTPM';
+  var uL = U === 'mcm' ? 'MCM/D' : 'MTPM';
   document.getElementById('sam-br-k1').textContent = fmt(conv(brSupT(11),11,U),U);
   document.getElementById('sam-br-k1u').textContent = uL;
   document.getElementById('sam-br-k2').textContent = fmt(conv(brDemT(11),11,U),U);
@@ -17041,7 +17044,7 @@ function arRenderTbl() {
   document.getElementById('sam-ar-btb').innerHTML = h;
 }
 function arRenderKpis() {
-  var uL = U === 'mcm' ? 'MCM' : 'MTPM';
+  var uL = U === 'mcm' ? 'MCM/D' : 'MTPM';
   document.getElementById('sam-ar-k1').textContent = fmt(conv(arSupT(11),11,U),U);
   document.getElementById('sam-ar-k1u').textContent = uL;
   document.getElementById('sam-ar-k2').textContent = fmt(conv(arDemT(11),11,U),U);
@@ -17116,7 +17119,7 @@ function arRenderSeasonalChart() {
       plugins: {
         legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 10, color: '#8a9bb5' } },
         tooltip: { backgroundColor: '#151829', titleColor: '#f0f4ff', bodyColor: '#f0f4ff', borderColor: 'rgba(77,158,245,0.3)', borderWidth: 1, padding: 10,
-          callbacks: { label: function(c){ return c.dataset.label + ': ' + (U==='mcm' ? Math.round(c.raw).toLocaleString() : c.raw.toFixed(2)) + ' ' + U.toUpperCase(); } } }
+          callbacks: { label: function(c){ return c.dataset.label + ': ' + fmt(c.raw, U) + ' ' + (U==='mcm' ? 'MCM/D' : 'MTPM'); } } }
       },
       scales: {
         x: { grid: { display: false }, ticks: { color: '#6b7a99', font: { size: 10 } } },
@@ -17222,7 +17225,7 @@ function coRenderTbl() {
   document.getElementById('sam-co-btb').innerHTML = h;
 }
 function coRenderKpis() {
-  var uL = U === 'mcm' ? 'MCM' : 'MTPM';
+  var uL = U === 'mcm' ? 'MCM/D' : 'MTPM';
   document.getElementById('sam-co-k1').textContent = fmt(conv(coSupT(11),11,U),U);
   document.getElementById('sam-co-k1u').textContent = uL;
   document.getElementById('sam-co-k2').textContent = fmt(conv(coDemT(11),11,U),U);
@@ -17291,7 +17294,7 @@ function coRenderSeasonalChart() {
       plugins: {
         legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 10, color: '#8a9bb5' } },
         tooltip: { backgroundColor: '#151829', titleColor: '#f0f4ff', bodyColor: '#f0f4ff', borderColor: 'rgba(77,158,245,0.3)', borderWidth: 1, padding: 10,
-          callbacks: { label: function(c){ return c.dataset.label + ': ' + (U==='mcm' ? Math.round(c.raw).toLocaleString() : c.raw.toFixed(2)) + ' ' + U.toUpperCase(); } } }
+          callbacks: { label: function(c){ return c.dataset.label + ': ' + fmt(c.raw, U) + ' ' + (U==='mcm' ? 'MCM/D' : 'MTPM'); } } }
       },
       scales: {
         x: { grid: { display: false }, ticks: { color: '#6b7a99', font: { size: 10 } } },
