@@ -8341,8 +8341,8 @@ const CP_SEED_PRICES={
 };
 const CP_SEED_PHYS={
   nwe    :Array(24).fill(-0.40),
-  iberia :Array(24).fill(-0.35),
-  uk     :Array(24).fill(-0.80),
+  iberia :Array(24).fill(-0.40),
+  uk     :Array(24).fill(-0.40),
   // France, Germany, Belgium — seeded equal to DES NWE; editable overrides per
   // terminal. Feed the Global LNG Netback for FR/DE/BE terminals and the Regas
   // model's TTF-differential tab.
@@ -8502,6 +8502,8 @@ function cpDerived(){
     mei:     ML.map((_,i)=>fp.JKM[i]+phyMei[i]),
     jktc:    ML.map((_,i)=>fp.JKM[i]+phys.jktc[i]),
     thailand:ML.map((_,i)=>{const ov2=cpGet('cp_phys_ov',{});const base=fp.JKM[i]+(ov2['thailand_'+i]!=null?ov2['thailand_'+i]:phyThailand[i]);return base;}),
+    brazil:  ML.map((_,i)=>phyBrazil[i]!=null?fp.TTF[i]+phyBrazil[i]:null),
+    argentina:ML.map((_,i)=>phyArgentina[i]!=null?fp.TTF[i]+phyArgentina[i]:null),
   };
   // ── USGC FOB cost ──────────────────────────────────────────────────────────
   const usgcFob=ML.map((_,i)=>sl*fp.HH[i]+(CP.liqFee[i]||0));
@@ -8840,8 +8842,8 @@ function cpPhysDiff(d){
     brazil:'#66bb6a',argentina:'#66bb6a'};
   const rows=[
     {k:'nwe',      label:'DES NWE',      hub:'TTF',data:CP.phys.nwe,       editable:true, physKey:'nwe',      grp:'NWE TERMINALS'},
-    {k:'iberia',   label:'Iberia (TVB)', hub:'PVB',data:CP.phys.iberia,    editable:true, physKey:'iberia'},
-    {k:'uk',       label:'UK Terminals', hub:'NBP',data:CP.phys.uk,        editable:true, physKey:'uk'},
+    {k:'iberia',   label:'Iberia (TVB)', hub:'TTF',data:CP.phys.iberia,    editable:true, physKey:'iberia'},
+    {k:'uk',       label:'UK Terminals', hub:'TTF',data:CP.phys.uk,        editable:true, physKey:'uk'},
     {k:'france',   label:'France',       hub:'TTF',data:CP.phys.france,    editable:true, physKey:'france'},
     {k:'germany',  label:'Germany',      hub:'TTF',data:CP.phys.germany,   editable:true, physKey:'germany'},
     {k:'belgium',  label:'Belgium',      hub:'TTF',data:CP.phys.belgium,   editable:true, physKey:'belgium'},
@@ -8901,8 +8903,8 @@ function cpDesPrices(d){
   const rows=[
     // NWE group - blue
     {l:'DES NWE',        h:'TTF', arr:d.des.nwe,      col:'#4fc3f7', grp:'NWE TERMINALS'},
-    {l:'Iberia (TVB)',   h:'PVB', arr:d.des.iberia,   col:'#4fc3f7'},
-    {l:'UK Terminals',  h:'NBP', arr:d.des.uk,        col:'#4fc3f7'},
+    {l:'Iberia (TVB)',   h:'TTF', arr:d.des.iberia,   col:'#4fc3f7'},
+    {l:'UK Terminals',  h:'TTF', arr:d.des.uk,        col:'#4fc3f7'},
     // Med group - amber
     {l:'DES Italy',      h:'TTF', arr:d.des.italy,    col:'#ffb74d', grp:'MED TERMINALS'},
     {l:'Revithoussa',   h:'TTF', arr:d.des.rev,       col:'#ffb74d'},
@@ -8917,8 +8919,11 @@ function cpDesPrices(d){
     {l:'DES MEI',        h:'JKM', arr:d.des.mei,      col:'#ab47bc', grp:'ASIA'},
     {l:'DES JKTC',       h:'JKM', arr:d.des.jktc,     col:'#ef9a9a'},
     {l:'DES Thailand',   h:'JKM', arr:d.des.thailand, col:'#ff9800'},
+    // South America group - green (FOB-netback derived from USGC)
+    {l:'DES Guanabara (Brazil)',  h:'TTF', arr:d.des.brazil,    col:'#66bb6a', grp:'SOUTH AMERICA'},
+    {l:'DES Escobar (Argentina)', h:'TTF', arr:d.des.argentina, col:'#66bb6a'},
   ];
-  const GRP_COL={'NWE TERMINALS':'#4fc3f7','MED TERMINALS':'#ffb74d','BALTIC TERMINALS':'#26c6da','ASIA':'#ab47bc'};
+  const GRP_COL={'NWE TERMINALS':'#4fc3f7','MED TERMINALS':'#ffb74d','BALTIC TERMINALS':'#26c6da','ASIA':'#ab47bc','SOUTH AMERICA':'#66bb6a'};
   const refs=[
     {l:'HH flat',    h:'HH',  arr:CP.fp.HH,  col:'#8a9bb5'},
     {l:'JKM flat',   h:'JKM', arr:CP.fp.JKM, col:'#8a9bb5'},
