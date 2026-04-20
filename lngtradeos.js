@@ -769,8 +769,24 @@ function csPricesUpdate(){
   const rng=window._cnPrRange||'1Y';
 
   // ── Live prices ─────────────────────────────────────────────────────────────
-  const cpFP=cpGet('cp_fp',null);
-  const jkmM1=cpFP?.JKM?.[0]??null;
+  // Prefer live EOD JKM (aD/sDates) over cp_fp — cp_fp can drift to seed defaults
+  // if user hasn't clicked SYNC PRICES since an EOD load.
+  let jkmM1=null;
+  try{
+    if(typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length){
+      const latDs=sDates[sDates.length-1];
+      const latDate=aD[latDs]?.date;
+      if(latDate){
+        const pk=rPK(latDate,latDate.getDate()>=16?2:1);
+        const row=(aD[latDs].rows||[]).find(r=>r.pk===pk);
+        jkmM1=row?.JKM??null;
+      }
+    }
+  }catch(e){}
+  if(jkmM1==null){
+    const cpFP=cpGet('cp_fp',null);
+    jkmM1=cpFP?.JKM?.[0]??null;
+  }
   const jkmDES=jkmM1!=null?+(jkmM1-0.15).toFixed(3):null;
 
   // Brent — same pattern as csT2Update, with BRENT_HIST fallback
@@ -897,7 +913,7 @@ function csPricesUpdate(){
       <div style="font-size:9px;letter-spacing:.1em;color:#546e7a;margin-bottom:8px">SUPPLY STACK · $/MMBTU (GCV) · HIGHEST → LOWEST</div>
       ${(()=>{
         const items=[
-          {sort:jkmDES,html:box('#c8d6e5','JKM DES China · M+1',fmtVal(jkmDES),'JKM M+1 − $0.15 basis · from EOD files')},
+          {sort:jkmM1,html:box('#c8d6e5','JKM flat Price M+1',fmtVal(jkmM1),'JKM M+1 · from EOD files in Financial Trading')},
           {sort:ltCeil||(brentLatest?brentLatest*0.125:null),html:box('#f87171','LNG LT oil-indexed',ltFloor&&ltCeil?'$'+ltFloor+'–$'+ltCeil:'— load EOD','11–14% × Brent'+(brentLatest?' $'+brentLatest.toFixed(2):'')+' · from EOD Brent')},
           {sort:truckUSD,html:box('#7F77DD','LNG truck retail (N.China)',fmtVal(truckUSD,'— upload SHPGX'),'Ex-terminal · daily SHPGX',chgBadge(truckChg))},
           {sort:NDRC_IND,html:box('#ffb74d','Industrial max bid (NDRC)','$'+NDRC_IND.toFixed(2),'¥3.58/m³ · 36-city industrial avg')},
@@ -1780,7 +1796,7 @@ window.csPricesUpdate=csPricesUpdate;
         <div class="ga-card">
           <div class="ga-sec">STORAGE ADJUSTMENT <span class="ga-tag">BCM · seasonal est.</span></div>
           <div class="ga-ch-wrap" style="height:220px"><canvas id="cn-gb-storage"></canvas></div>
-          <div class="ga-source">Amber bars ↑ = withdrawal (drawn from storage) · Teal bars ↓ = injection (into storage) · Seasonal est.</div>
+          <div class="ga-source">Teal bars ↑ = injection (into storage) · Amber bars ↓ = withdrawal (drawn from storage) · Seasonal est.</div>
         </div>
       </div>
 
@@ -1843,14 +1859,17 @@ window.csPricesUpdate=csPricesUpdate;
            plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}},
                     tooltip:{callbacks:{afterBody(items){const mo=filt[items[0].dataIndex].mo;const tot=totImports[items[0].dataIndex];if(!tot)return[];const lng=filt[items[0].dataIndex].lng||0;const pipe=filt[items[0].dataIndex].pipe||0;return[`LNG: ${(lng/tot*100).toFixed(1)}%`,`Pipeline: ${(pipe/tot*100).toFixed(1)}%`];}}}}});
 
-        // Chart 3: Storage adj — amber = withdrawal, teal = injection
-        const storV=filt.map(r=>CN_STOR_ADJ[r.mo.slice(5,7)]||0);
+        // Chart 3: Storage adj — display convention: injection positive (gas
+        // flowing INTO storage), withdrawal negative (gas flowing OUT).
+        // CN_STOR_ADJ is signed from the demand-balance perspective (+ = adds
+        // to apparent demand), so we flip the sign for display only.
+        const storV=filt.map(r=>-(CN_STOR_ADJ[r.mo.slice(5,7)]||0));
         gaMakeChart('cn-gb-storage','bar',{labels,datasets:[{
           label:'Storage Δ (BCM)',data:storV,
-          backgroundColor:storV.map(v=>v>0?'rgba(255,183,77,0.55)':'rgba(77,208,225,0.55)'),
-          borderColor:storV.map(v=>v>0?'#ffb74d':'#4dd0e1'),borderWidth:1,
+          backgroundColor:storV.map(v=>v>=0?'rgba(77,208,225,0.55)':'rgba(255,183,77,0.55)'),
+          borderColor:storV.map(v=>v>=0?'#4dd0e1':'#ffb74d'),borderWidth:1,
         }]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:'BCM',color:'#3d5070',font:{size:9}}}},plugins:{legend:{display:false},
-          tooltip:{callbacks:{afterLabel(ctx){return ctx.raw>0?'↑ WITHDRAWAL (storage draw)':'↓ INJECTION (into storage)';}}}}});
+          tooltip:{callbacks:{afterLabel(ctx){return ctx.raw>=0?'↑ INJECTION (into storage)':'↓ WITHDRAWAL (storage draw)';}}}}});
 
         // Chart 4: Seasonal
         const curY=new Date().getFullYear();
@@ -1932,17 +1951,21 @@ window.csPricesUpdate=csPricesUpdate;
     window.csGBToggleYr=csGBToggleYr;
 window.csGBUpdate = csGBUpdate;
 
-    // ── Init: try cache first, then fetch ─────────────────────
+    // ── Init: cache-first (no auto-expiry — user uploads persist) ───
+    // Previously the cache expired after 24h and triggered an API refetch,
+    // which silently overwrote user-uploaded CSVs if the API returned stale
+    // or empty data. Now cache persists indefinitely; user clicks Refresh to
+    // pull live data explicitly.
     function csGBInit() {
       try {
         const cached = JSON.parse(localStorage.getItem(GB.cache_key)||'null');
-        if (cached?.rows?.length && Date.now()-cached.ts < 86400000) {
+        if (cached?.rows?.length) {
           GB.data = cached.rows;
           csGBUpdate();
           return;
         }
       } catch(e) {}
-      // No cache — use historical and trigger background fetch
+      // No cache at all — show historical placeholder, try live once in background
       csGBUpdate();
       setTimeout(csGBFetch, 500);
     }
@@ -4806,14 +4829,38 @@ function renderFoundationFinancial(c){
         else dz.classList.remove('over');
         if(evt==='drop'){
           const fs=[...(e.dataTransfer?.files||[])];
-          if(fs.length && typeof handleFiles==='function') handleFiles(fs,true);
+          if(fs.length && typeof handleFiles==='function'){
+            const hasData=typeof sDates!=='undefined'&&sDates&&sDates.length>0;
+            handleFiles(fs, hasData);
+            setTimeout(()=>{
+              const cc=document.getElementById('fd-content');
+              const at=document.querySelector('[id^="fdtab-"].active');
+              if(cc&&at?.id==='fdtab-financial'&&typeof renderFoundationFinancial==='function'){
+                renderFoundationFinancial(cc);
+              }
+              if(typeof renderFdReadiness==='function') renderFdReadiness();
+            }, 1500);
+          }
         }
       });
     });
   }
 }
 function fdfcOnUpload(inp){
-  if(inp.files.length && typeof handleFiles==='function') handleFiles([...inp.files], true);
+  if(!inp.files.length||typeof handleFiles!=='function')return;
+  // First load: use addMode=false so the Financial Trading analytics UI gets
+  // fully initialized (showAnalyticsUI + initUI). Subsequent: append only.
+  const hasData=typeof sDates!=='undefined'&&sDates&&sDates.length>0;
+  handleFiles([...inp.files], hasData);
+  // Re-render Foundation pane after processing so status/loaded-dates refresh.
+  setTimeout(()=>{
+    const c=document.getElementById('fd-content');
+    const activeTab=document.querySelector('[id^="fdtab-"].active');
+    if(c&&activeTab?.id==='fdtab-financial'&&typeof renderFoundationFinancial==='function'){
+      renderFoundationFinancial(c);
+    }
+    if(typeof renderFdReadiness==='function') renderFdReadiness();
+  }, 1500);
 }
 function fdfcGmailScrape(){
   if(typeof MCP_AVAILABLE !== 'undefined' && MCP_AVAILABLE && typeof loadPricesFromGmail==='function'){
@@ -13218,16 +13265,11 @@ async function renderGaDashboard(){
       }catch(e){}
     }
 
-// ── Read JKM M+1: cp_fp primary (matches China Gas Prices tab), aD/sDates fallback ──
+// ── Read JKM M+1: EOD (aD/sDates) primary, cp_fp fallback ──
+    // Live EOD is the source of truth. cp_fp can lag behind seed defaults if the
+    // user hasn't synced prices since loading the latest file.
     let latJKM=null, latDateStr='';
-    try{
-      if(typeof cpGet==='function'){
-        const cpFP=cpGet('cp_fp',null);
-        const jkmM1=cpFP?.JKM?.[0];
-        if(jkmM1!=null) latJKM=+Number(jkmM1).toFixed(3);
-      }
-    }catch(e){}
-    if(latJKM==null&&typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length){
+    if(typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length){
       const latDs=sDates[sDates.length-1];
       const latDate=aD[latDs]?.date;
       if(latDate){
@@ -13237,7 +13279,16 @@ async function renderGaDashboard(){
         latDateStr=latDs;
       }
     }
-    // Stamp the JKM tile with the latest EOD date if cp_fp path didn't set one
+    if(latJKM==null){
+      try{
+        if(typeof cpGet==='function'){
+          const cpFP=cpGet('cp_fp',null);
+          const jkmM1=cpFP?.JKM?.[0];
+          if(jkmM1!=null) latJKM=+Number(jkmM1).toFixed(3);
+        }
+      }catch(e){}
+    }
+    // Backfill the tile date if EOD path didn't set one
     if(latJKM!=null&&!latDateStr&&typeof sDates!=='undefined'&&sDates.length){
       latDateStr=sDates[sDates.length-1];
     }
@@ -13246,10 +13297,8 @@ async function renderGaDashboard(){
 
     if(truckCny!=null&&latJKM!=null){
       const latTruck=+(truckCny*1000/usdcny/52.5).toFixed(2);
-const diff=+(latTruck-latJKM).toFixed(2);
-      const diffCol=diff<0?'#f87171':'#4ade80';
       chinaHtml=`
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
         <div style="background:#050c14;padding:8px;border:1px solid #1e3a5f">
           <div style="font-size:7px;color:#546e7a;letter-spacing:1px">JKM M+1</div>
           <div style="font-size:18px;font-weight:700;color:#f0f4ff">$${latJKM.toFixed(2)}</div>
@@ -13260,14 +13309,7 @@ const diff=+(latTruck-latJKM).toFixed(2);
           <div style="font-size:18px;font-weight:700;color:#f0f4ff">$${latTruck.toFixed(2)}</div>
           <div style="font-size:7px;color:#3d5070">¥${truckCny.toFixed(2)}/kg · ${truckDate}</div>
         </div>
-      </div>
-      <div style="padding:6px 8px;background:rgba(77,158,245,.05);border-left:2px solid ${diffCol}">
-        <div style="display:flex;justify-content:space-between;align-items:baseline">
-          <span style="font-size:9px;color:#dde4f0;letter-spacing:1px">TRUCK − JKM</span>
-          <span style="font-size:13px;font-weight:700;color:${diffCol}">${diff>=0?'+':''}$${diff.toFixed(2)}</span>
-        </div>
       </div>`;
-      
     } else if(truckCny!=null){
       const latTruck=+(truckCny*1000/usdcny/52.5).toFixed(2);
       chinaHtml=`
@@ -15000,10 +15042,18 @@ function indLoadCsv(input){
       }
       const cnt=Object.keys(newRows).length;
       if(cnt===0){alert('No valid rows found. Check month format is YYYY-MM.');return;}
-      // Aggressively clear all non-critical cache to make room for India data
-      // Keep: lng_india_gb_v1, cp_*, ms_*, EEX_curves, OB_EOD_*, PORT_DB
+      // Aggressively clear non-critical cache to make room for India data.
+      // Keep EVERYTHING that matters:
+      //   · lng* — covers lng_china_gb_v1, lng_india_gb_v1, lng_shpgx_v1,
+      //            lng_ffa_*, AND lngTradeOS_v5 (the EOD curve cache).
+      //   · cp_* — prices, phys, freight, overrides
+      //   · ms_* — market structure
+      //   · EEX_* — EEX curve cache
+      //   · OB_EOD* — OB FFA cache
+      //   · PORT_DB, nm_*, f_* — ports, NM overrides, freight matrix metadata
+      //   · eex_* / shpgx_* / brent_* / gd2_* — other known working caches
       try{
-        const KEEP_PREFIXES=['lng_india','cp_','ms_','EEX_','OB_EOD','PORT_DB','lng_ffa'];
+        const KEEP_PREFIXES=['lng','cp_','ms_','EEX_','OB_EOD','PORT_DB','nm_','f_','eex_','shpgx_','brent_'];
         const keep=k=>KEEP_PREFIXES.some(p=>k.startsWith(p));
         Object.keys(localStorage).filter(k=>!keep(k)).forEach(k=>{
           try{localStorage.removeItem(k);}catch(e){}
@@ -15240,9 +15290,25 @@ function renderIndPrices(el){
   const m1Date=new Date(now.getFullYear(),now.getMonth()+1,1);
   const m1Label=`${GA_MO[m1Date.getMonth()]}-${String(m1Date.getFullYear()).slice(2)}`;
 
-  const cpFP=cpGet('cp_fp',null);
-  const jkmM1=cpFP?.JKM?.[0]??null;
-  const jkmDES=jkmM1!=null?+(jkmM1-0.35).toFixed(3):null;
+  // Prefer live EOD JKM over cp_fp (cp_fp can lag behind seed defaults).
+  let jkmM1=null;
+  try{
+    if(typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length){
+      const latDs=sDates[sDates.length-1];
+      const latDate=aD[latDs]?.date;
+      if(latDate){
+        const pk=rPK(latDate,latDate.getDate()>=16?2:1);
+        const row=(aD[latDs].rows||[]).find(r=>r.pk===pk);
+        jkmM1=row?.JKM??null;
+      }
+    }
+  }catch(e){}
+  if(jkmM1==null){
+    const cpFP=cpGet('cp_fp',null);
+    jkmM1=cpFP?.JKM?.[0]??null;
+  }
+  // User requested "JKM flat Price M+1" — show raw EOD JKM without shipping diff.
+  const jkmDES=jkmM1!=null?+jkmM1:null;
   // Get latest Brent from EOD — same tenor logic as China signpost, with BRENT_HIST fallback
   const brentLatest=(()=>{
     try{
@@ -15279,9 +15345,9 @@ function renderIndPrices(el){
     <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--t);margin-bottom:16px">INDIA GAS SUPPLY STACK — $/MMBTU (GCV) · highest → lowest</div>
 
     ${box('#c8d6e5',
-      `JKM DES India · ${m1Label}`,
+      `JKM flat Price M+1`,
       jkmDES!=null?`$${jkmDES}`:'— load EOD',
-      `JKM M+1 rolling − $0.35/MMBtu shipping diff · from EOD files in Financial Trading`
+      `JKM M+1 · from EOD files in Financial Trading`
     )}
     ${box('#f87171',
       `LT oil-indexed contracts · current range`,
