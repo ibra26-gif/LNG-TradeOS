@@ -16577,3 +16577,511 @@ function renderRegasLngStorage(pane){
 }
 
 // Also update the old regasTab first-load to use heatmap
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// SOUTH AMERICA MODULE — ported from legacy index.html (BRAZIL + ARGENTINA)
+// Panels render into #lngbal-sam inside GAS & LNG ANALYTICS → LNG BALANCE tab.
+// Live-data patch calls Vercel proxies at /api/brazil-* and /api/argentina-*
+// — placeholder arrays stay visible until proxies respond (graceful degrade).
+// ══════════════════════════════════════════════════════════════════════════
+(function samBootstrap(){
+/* ============================================================
+   LNG TradeOS v198 — SOUTH AMERICA MODULE (self-contained)
+   Plugs into the existing LNG Balance tab alongside China/India.
+   Real data wiring (Vercel proxies) replaces placeholder arrays.
+   ============================================================ */
+(function(){
+'use strict';
+
+/* Standalone SAM nav handler — does NOT wrap the existing lngbalCountry.
+   lngtradeos.js loads with defer, so it executes AFTER this inline script;
+   any wrapper we set here would be overwritten. Instead, SOUTH AMERICA button
+   calls samShow() directly, and we hook CHINA/INDIA on DOMContentLoaded
+   (which fires after defer scripts) to hide SAM when they're clicked. */
+window.samShow = function(btn) {
+  var chinaEl = document.getElementById('lngbal-china');
+  var indiaEl = document.getElementById('lngbal-india');
+  var samEl   = document.getElementById('lngbal-sam');
+  if (chinaEl) chinaEl.style.display = 'none';
+  if (indiaEl) indiaEl.style.display = 'none';
+  if (samEl)   samEl.style.display   = '';
+  document.querySelectorAll('#lngbal-cty-bar .cty-tab').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  if (!SAM.inited) { SAM.init(); SAM.inited = true; }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+  var bar = document.getElementById('lngbal-cty-bar');
+  if (!bar) return;
+  bar.addEventListener('click', function(e) {
+    var b = e.target.closest('.cty-tab');
+    if (!b || b.id === 'lngbal-btn-sam') return;
+    var samEl = document.getElementById('lngbal-sam');
+    if (samEl) samEl.style.display = 'none';
+  });
+});
+
+var SAM = window.SAM = { inited: false };
+
+/* Constants */
+var MONTHS = ['Feb 25','Mar 25','Apr 25','May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26'];
+var DIM    = [28,31,30,31,30,31,31,30,31,30,31,31];
+var CAL_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var CAL_DIM    = [31,28,31,30,31,30,31,31,30,31,30,31];
+var DEN = 0.78;
+var U = 'mcm';
+
+/* Brazil data — placeholder until ANP/ComexStat/Abegás/ONS proxies wired */
+var BR_D = { rows: [
+  {id:'prod',lbl:'Domestic production',s:'sup',v:[48.5,48.7,48.9,49.0,49.0,49.0,49.0,49.2,49.3,48.8,49.0,49.5]},
+  {id:'bol',lbl:'Bolivia pipeline (GASBOL)',s:'sup',v:[9.0,9.2,9.1,9.1,9.0,9.0,9.0,8.9,8.8,8.6,8.5,8.5]},
+  {id:'lng',lbl:'LNG imports',s:'sup',v:[3.0,3.5,5.5,8.0,9.5,11.0,10.5,9.0,8.0,6.5,6.8,7.2]},
+  {id:'ind',lbl:'Industrial (incl. refineries, Fafens)',s:'dem',v:[29.0,29.0,29.0,29.0,29.0,29.0,29.0,29.0,29.0,29.0,29.0,29.0]},
+  {id:'the',lbl:'Thermal power generation',s:'dem',v:[13.0,14.5,16.5,19.5,22.0,24.5,24.0,22.0,19.5,17.0,17.5,18.5]},
+  {id:'res',lbl:'Residential',s:'dem',v:[1.5,1.5,1.6,1.8,1.8,1.8,1.7,1.7,1.6,1.5,1.5,1.6]},
+  {id:'com',lbl:'Commercial',s:'dem',v:[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]},
+  {id:'auto',lbl:'Automotive (CNG)',s:'dem',v:[4.2,4.2,4.2,4.2,4.2,4.2,4.2,4.1,4.1,4.0,3.9,4.0]},
+  {id:'cog',lbl:'Cogeneration',s:'dem',v:[1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.2,1.2,1.2]},
+  {id:'fed',lbl:'Feedstock',s:'dem',v:[0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5]},
+  {id:'oth',lbl:'Other',s:'dem',v:[0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5]}
+]};
+var br_c1, br_c2;
+
+/* Argentina data */
+var AR_D = { rows: [
+  {id:'prod',lbl:'Domestic production (Neuquén + Austral + NOA)',s:'sup',v:[128,130,132,135,138,140,140,138,138,139,141,143]},
+  {id:'bol',lbl:'Bolivia pipeline imports (YABOG)',s:'sup',v:[3.0,2.5,3.5,5.0,8.0,8.5,7.5,4.5,3.0,2.0,1.5,1.0]},
+  {id:'lng',lbl:'LNG imports (Escobar FSRU)',s:'sup',v:[0,0,0,0,3.0,8.0,5.0,1.0,0,0,0,0]},
+  {id:'res',lbl:'Residential',s:'dem',v:[11,15,28,50,72,85,75,48,28,16,12,10]},
+  {id:'com',lbl:'Commercial (incl. sub-distribution)',s:'dem',v:[3,3,4,5,6,6,6,5,4,3,3,3]},
+  {id:'ind',lbl:'Industrial (GEGU large users)',s:'dem',v:[28,28,28,27,25,25,26,27,28,28,28,28]},
+  {id:'pow',lbl:'Power generation (CEPU)',s:'dem',v:[62,58,45,36,30,28,30,36,44,54,62,63]},
+  {id:'gnc',lbl:'Automotive (CNG / GNC)',s:'dem',v:[6,6,6,6,5.5,5.5,5.5,6,6,6,6,6]},
+  {id:'oth',lbl:'Other',s:'dem',v:[2,2,2,2,2,2,2,2,2,2,2,2]},
+  {id:'excl',lbl:'Exports to Chile (pipeline)',s:'dem-exp',v:[15,14,12,8,2,0,0,5,12,16,19,21]},
+  {id:'exot',lbl:'Exports · other (Uruguay)',s:'dem-exp',v:[1,1,1,1,0.5,0,0,1,1,1,1,1]},
+  {id:'flng',lbl:'Future LNG Exports (Southern Energy, YPF-Shell)',s:'dem-fut',v:[0,0,0,0,0,0,0,0,0,0,0,0]}
+]};
+var AR_BASE = {
+  prod:[131,129,131,134,137,139,139,138,137,137,138,140],
+  bol:[2.0,3.0,3.5,5.0,8.0,8.5,7.5,4.5,3.0,2.0,1.8,1.3],
+  lng:[0,0,0,0,1.5,5,3,0.5,0,0,0,0],
+  res:[10,11,15,28,50,72,85,75,48,28,16,12],
+  com:[3,3,3,4,5,6,6,6,5,4,3,3],
+  ind:[28,28,28,28,27,25,25,26,27,28,28,28],
+  pow:[63,62,58,45,36,30,28,30,36,44,54,62],
+  gnc:[6,6,6,6,6,5.5,5.5,5.5,6,6,6,6],
+  oth:[2,2,2,2,2,2,2,2,2,2,2,2],
+  excl:[21,15,14,12,8,2,0,0,5,12,16,19],
+  exot:[1,1,1,1,1,0.5,0,0,1,1,1,1]
+};
+var AR_YMULT = {
+  prod:{2024:1.00,2025:1.08,2026:1.17},
+  bol :{2024:1.00,2025:0.70,2026:0.40},
+  lng :{2024:1.00,2025:1.80,2026:0.60},
+  res :{2024:1.00,2025:1.02,2026:1.04},
+  com :{2024:1.00,2025:1.02,2026:1.04},
+  ind :{2024:1.00,2025:1.00,2026:1.01},
+  pow :{2024:1.00,2025:0.98,2026:0.97},
+  gnc :{2024:1.00,2025:0.98,2026:0.97},
+  oth :{2024:1.00,2025:1.00,2026:1.00},
+  excl:{2024:1.00,2025:1.80,2026:2.30},
+  exot:{2024:1.00,2025:1.00,2026:1.00}
+};
+var AR_YEARS = [2024,2025,2026];
+var AR_YCOL = {2024:'#4d9ef5',2025:'#fbbf24',2026:'#10b981'};
+var ar_currentComp = 'pow';
+var ar_activeYears = new Set([2024,2025,2026]);
+var ar_c1, ar_c2, ar_sc;
+
+/* Helpers */
+function conv(m, i, u) { var mcm = m * DIM[i]; return u === 'mcm' ? mcm : mcm * DEN / 1000; }
+function convCal(m, i, u) { var mcm = m * CAL_DIM[i]; return u === 'mcm' ? mcm : mcm * DEN / 1000; }
+function fmt(v, u) { return u === 'mcm' ? Math.round(v).toLocaleString() : v.toFixed(2); }
+function fmtS(v, u) { return (v >= 0 ? '+' : '') + fmt(v, u); }
+function cDefaults() {
+  if (typeof Chart === 'undefined') return;
+  Chart.defaults.color = '#8a9bb5';
+  Chart.defaults.font.family = "IBM Plex Mono, ui-monospace, monospace";
+  Chart.defaults.font.size = 10;
+  Chart.defaults.borderColor = 'rgba(77,158,245,0.1)';
+}
+function chartOpts(stacked, unitSuffix) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 10, color: '#8a9bb5' } },
+      tooltip: { backgroundColor: '#151829', titleColor: '#f0f4ff', bodyColor: '#f0f4ff', borderColor: 'rgba(77,158,245,0.3)', borderWidth: 1, padding: 10,
+        callbacks: { label: function(c){ return c.dataset.label + ': ' + (U==='mcm' ? Math.round(c.raw).toLocaleString() : c.raw.toFixed(2)) + ' ' + (unitSuffix || U.toUpperCase()); } } }
+    },
+    scales: {
+      x: { stacked: !!stacked, grid: { display: false }, ticks: { color: '#6b7a99', font: { size: 9 } } },
+      y: { stacked: !!stacked, grid: { color: 'rgba(77,158,245,0.08)' }, ticks: { color: '#6b7a99', font: { size: 9 } } }
+    }
+  };
+}
+
+/* ========== BRAZIL ========== */
+function brSumS(s, i) { var t = 0; BR_D.rows.forEach(function(r){ if (r.s === s) t += r.v[i]; }); return t; }
+function brSupT(i) { return brSumS('sup', i); }
+function brDemT(i) { return brSumS('dem', i); }
+function brBal(i)  { return brSupT(i) - brDemT(i); }
+
+function brRenderTbl() {
+  var h = '<tr class="sec"><td colspan="13">SUPPLY</td></tr>';
+  BR_D.rows.filter(function(r){return r.s==='sup';}).forEach(function(r){
+    h += '<tr><td>' + r.lbl + '</td>';
+    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    h += '</tr>';
+  });
+  h += '<tr class="tot"><td>Total supply</td>';
+  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(brSupT(i),i,U),U) + '</td>';
+  h += '</tr><tr class="sec"><td colspan="13">DEMAND</td></tr>';
+  BR_D.rows.filter(function(r){return r.s==='dem';}).forEach(function(r){
+    h += '<tr><td>' + r.lbl + '</td>';
+    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    h += '</tr>';
+  });
+  h += '<tr class="tot"><td>Total demand</td>';
+  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(brDemT(i),i,U),U) + '</td>';
+  h += '</tr><tr class="bal"><td>Pipeline fuel / losses / imbalance</td>';
+  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(brBal(i),i,U),U) + '</td>';
+  h += '</tr>';
+  document.getElementById('sam-br-btb').innerHTML = h;
+}
+function brRenderKpis() {
+  var uL = U === 'mcm' ? 'MCM' : 'MTPM';
+  document.getElementById('sam-br-k1').textContent = fmt(conv(brSupT(11),11,U),U);
+  document.getElementById('sam-br-k1u').textContent = uL;
+  document.getElementById('sam-br-k2').textContent = fmt(conv(brDemT(11),11,U),U);
+  document.getElementById('sam-br-k2u').textContent = uL;
+  var lng = BR_D.rows.find(function(r){return r.id==='lng';}).v[11];
+  document.getElementById('sam-br-k3').textContent = fmt(conv(lng,11,U),U);
+  document.getElementById('sam-br-k3u').textContent = uL;
+}
+function brRenderCharts() {
+  if (typeof Chart === 'undefined') { setTimeout(brRenderCharts, 100); return; }
+  cDefaults();
+  var seq = function(id) { return BR_D.rows.find(function(r){return r.id===id;}).v.map(function(v,i){return conv(v,i,U);}); };
+  var seqSum = function(ids) { return MONTHS.map(function(_,i){ return ids.reduce(function(a,id){ return a + conv(BR_D.rows.find(function(r){return r.id===id;}).v[i],i,U); }, 0); }); };
+  if (br_c1) br_c1.destroy();
+  if (br_c2) br_c2.destroy();
+  br_c1 = new Chart(document.getElementById('sam-br-ch1'), {
+    type: 'bar',
+    data: { labels: MONTHS, datasets: [
+      { label: 'Domestic production', data: seq('prod'), backgroundColor: '#10b981' },
+      { label: 'Bolivia pipeline', data: seq('bol'), backgroundColor: '#4d9ef5' },
+      { label: 'LNG imports', data: seq('lng'), backgroundColor: '#fbbf24' }
+    ]}, options: chartOpts(true)
+  });
+  br_c2 = new Chart(document.getElementById('sam-br-ch2'), {
+    type: 'bar',
+    data: { labels: MONTHS, datasets: [
+      { label: 'Industrial total', data: seqSum(['ind','fed','cog','oth']), backgroundColor: '#8b5cf6' },
+      { label: 'Thermal', data: seq('the'), backgroundColor: '#ef4444' },
+      { label: 'Res + Com + Auto', data: seqSum(['res','com','auto']), backgroundColor: '#10b981' }
+    ]}, options: chartOpts(true)
+  });
+}
+
+/* ========== ARGENTINA ========== */
+function arSumS(s, i) { var t = 0; AR_D.rows.forEach(function(r){ if (r.s === s || (s === 'dem_all' && r.s.indexOf('dem') === 0)) t += r.v[i]; }); return t; }
+function arSupT(i) { return arSumS('sup', i); }
+function arDemT(i) { return arSumS('dem_all', i); }
+function arBal(i)  { return arSupT(i) - arDemT(i); }
+function arNetTrade(i) {
+  return AR_D.rows.find(function(r){return r.id==='excl';}).v[i]
+       + AR_D.rows.find(function(r){return r.id==='exot';}).v[i]
+       - AR_D.rows.find(function(r){return r.id==='bol';}).v[i]
+       - AR_D.rows.find(function(r){return r.id==='lng';}).v[i];
+}
+
+function arRenderTbl() {
+  var h = '<tr class="sec"><td colspan="13">SUPPLY</td></tr>';
+  AR_D.rows.filter(function(r){return r.s==='sup';}).forEach(function(r){
+    h += '<tr><td>' + r.lbl + '</td>';
+    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    h += '</tr>';
+  });
+  h += '<tr class="tot"><td>Total supply</td>';
+  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(arSupT(i),i,U),U) + '</td>';
+  h += '</tr><tr class="sec"><td colspan="13">DEMAND</td></tr>';
+  AR_D.rows.filter(function(r){return r.s==='dem';}).forEach(function(r){
+    h += '<tr><td>' + r.lbl + '</td>';
+    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    h += '</tr>';
+  });
+  AR_D.rows.filter(function(r){return r.s==='dem-exp';}).forEach(function(r){
+    h += '<tr class="exp"><td>' + r.lbl + '</td>';
+    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    h += '</tr>';
+  });
+  AR_D.rows.filter(function(r){return r.s==='dem-fut';}).forEach(function(r){
+    h += '<tr class="future"><td>' + r.lbl + ' · from 2027</td>';
+    r.v.forEach(function(){ h += '<td>—</td>'; });
+    h += '</tr>';
+  });
+  h += '<tr class="tot"><td>Total demand</td>';
+  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(arDemT(i),i,U),U) + '</td>';
+  h += '</tr><tr class="bal"><td>Storage injection / losses (Supply − Demand)</td>';
+  for (var i=0;i<12;i++) h += '<td>' + fmtS(conv(arBal(i),i,U),U) + '</td>';
+  h += '</tr>';
+  document.getElementById('sam-ar-btb').innerHTML = h;
+}
+function arRenderKpis() {
+  var uL = U === 'mcm' ? 'MCM' : 'MTPM';
+  document.getElementById('sam-ar-k1').textContent = fmt(conv(arSupT(11),11,U),U);
+  document.getElementById('sam-ar-k1u').textContent = uL;
+  document.getElementById('sam-ar-k2').textContent = fmt(conv(arDemT(11),11,U),U);
+  document.getElementById('sam-ar-k2u').textContent = uL;
+  var np = arNetTrade(11);
+  var npConv = conv(np, 11, U);
+  var k3 = document.getElementById('sam-ar-k3');
+  var k3s = document.getElementById('sam-ar-k3s');
+  k3.textContent = fmtS(npConv, U);
+  k3.style.color = np >= 0 ? '#10b981' : '#ef4444';
+  document.getElementById('sam-ar-k3u').textContent = uL;
+  k3s.textContent = np >= 0 ? 'Net exporter · Exports − Imports' : 'Net importer · Exports − Imports';
+  k3s.className = 'sam-ks ' + (np >= 0 ? 'up' : 'dn');
+}
+function arRenderCharts() {
+  if (typeof Chart === 'undefined') { setTimeout(arRenderCharts, 100); return; }
+  cDefaults();
+  var seq = function(id) { return AR_D.rows.find(function(r){return r.id===id;}).v.map(function(v,i){return conv(v,i,U);}); };
+  var seqSum = function(ids) { return MONTHS.map(function(_,i){ return ids.reduce(function(a,id){ return a + conv(AR_D.rows.find(function(r){return r.id===id;}).v[i],i,U); }, 0); }); };
+  if (ar_c1) ar_c1.destroy();
+  if (ar_c2) ar_c2.destroy();
+  ar_c1 = new Chart(document.getElementById('sam-ar-ch1'), {
+    type: 'bar',
+    data: { labels: MONTHS, datasets: [
+      { label: 'Domestic production', data: seq('prod'), backgroundColor: '#10b981' },
+      { label: 'Bolivia pipeline', data: seq('bol'), backgroundColor: '#4d9ef5' },
+      { label: 'LNG imports (Escobar)', data: seq('lng'), backgroundColor: '#fbbf24' }
+    ]}, options: chartOpts(true)
+  });
+  ar_c2 = new Chart(document.getElementById('sam-ar-ch2'), {
+    type: 'bar',
+    data: { labels: MONTHS, datasets: [
+      { label: 'Residential + Commercial + GNC + Other', data: seqSum(['res','com','gnc','oth']), backgroundColor: '#10b981' },
+      { label: 'Industrial', data: seq('ind'), backgroundColor: '#8b5cf6' },
+      { label: 'Power generation', data: seq('pow'), backgroundColor: '#ef4444' },
+      { label: 'Exports (Chile + other)', data: seqSum(['excl','exot']), backgroundColor: '#fbbf24' }
+    ]}, options: chartOpts(true)
+  });
+}
+
+function arHistorical(id, year) {
+  if (id === 'sup_total') return CAL_MONTHS.map(function(_,m){ return arHistorical('prod',year)[m] + arHistorical('bol',year)[m] + arHistorical('lng',year)[m]; });
+  if (id === 'dem_total') {
+    var ids = ['res','com','ind','pow','gnc','oth','excl','exot'];
+    return CAL_MONTHS.map(function(_,m){ return ids.reduce(function(a,k){ return a + arHistorical(k,year)[m]; }, 0); });
+  }
+  if (id === 'bal') return CAL_MONTHS.map(function(_,m){ return arHistorical('sup_total',year)[m] - arHistorical('dem_total',year)[m]; });
+  var mult = AR_YMULT[id][year];
+  return AR_BASE[id].map(function(v){ return v * mult; });
+}
+function arRenderSeasonalChart() {
+  if (typeof Chart === 'undefined') { setTimeout(arRenderSeasonalChart, 100); return; }
+  cDefaults();
+  if (ar_sc) ar_sc.destroy();
+  var datasets = [];
+  AR_YEARS.filter(function(y){ return ar_activeYears.has(y); }).forEach(function(y){
+    var raw = arHistorical(ar_currentComp, y);
+    var data = raw.map(function(v,m){ return convCal(v, m, U); });
+    datasets.push({
+      label: String(y), data: data,
+      borderColor: AR_YCOL[y], backgroundColor: AR_YCOL[y] + '20',
+      borderWidth: y === 2026 ? 2.5 : 1.5,
+      pointRadius: y === 2026 ? 3 : 2,
+      tension: 0.25, fill: false
+    });
+  });
+  ar_sc = new Chart(document.getElementById('sam-ar-sc'), {
+    type: 'line',
+    data: { labels: CAL_MONTHS, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 10, color: '#8a9bb5' } },
+        tooltip: { backgroundColor: '#151829', titleColor: '#f0f4ff', bodyColor: '#f0f4ff', borderColor: 'rgba(77,158,245,0.3)', borderWidth: 1, padding: 10,
+          callbacks: { label: function(c){ return c.dataset.label + ': ' + (U==='mcm' ? Math.round(c.raw).toLocaleString() : c.raw.toFixed(2)) + ' ' + U.toUpperCase(); } } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b7a99', font: { size: 10 } } },
+        y: { grid: { color: 'rgba(77,158,245,0.08)' }, ticks: { color: '#6b7a99', font: { size: 9 } } }
+      }
+    }
+  });
+}
+
+/* ========== NAV HANDLERS ========== */
+window.samCountry = function(c, btn) {
+  document.querySelectorAll('#lngbal-sam .sam-ct').forEach(function(b){ b.classList.remove('act'); });
+  if (btn) btn.classList.add('act');
+  document.querySelectorAll('#lngbal-sam .sam-cpane').forEach(function(p){ p.classList.remove('act'); });
+  var pane = document.getElementById('sam-c-' + c);
+  if (pane) pane.classList.add('act');
+  if (c === 'brazil') {
+    var sub = document.querySelector('#sam-c-brazil .sam-tb.act');
+    if (sub && sub.dataset.p === 'bpg') brRenderCharts();
+  } else if (c === 'argentina') {
+    arRenderCharts();
+    arRenderSeasonalChart();
+  }
+};
+
+window.samSubTab = function(p, btn) {
+  document.querySelectorAll('#sam-c-brazil .sam-tb').forEach(function(b){ b.classList.remove('act'); });
+  if (btn) btn.classList.add('act');
+  document.querySelectorAll('#sam-c-brazil .sam-pane').forEach(function(x){ x.classList.remove('act'); });
+  var pane = document.getElementById('sam-' + p);
+  if (pane) pane.classList.add('act');
+  if (p === 'bpg') brRenderCharts();
+};
+
+function syncUnitToggles() {
+  document.querySelectorAll('#lngbal-sam .sam-utog .sam-tgl').forEach(function(x){
+    x.classList.toggle('act', x.dataset.u === U);
+  });
+}
+function handleUnitClick(e) {
+  var b = e.target.closest('button');
+  if (!b) return;
+  U = b.dataset.u;
+  syncUnitToggles();
+  brRenderTbl(); brRenderKpis(); brRenderCharts();
+  arRenderTbl(); arRenderKpis(); arRenderCharts(); arRenderSeasonalChart();
+}
+
+/* ========== INIT ========== */
+SAM.init = function() {
+  document.getElementById('sam-br-utog').addEventListener('click', handleUnitClick);
+  document.getElementById('sam-ar-utog').addEventListener('click', handleUnitClick);
+
+  document.getElementById('sam-ar-compSel').addEventListener('change', function(e){
+    ar_currentComp = e.target.value;
+    arRenderSeasonalChart();
+  });
+
+  document.getElementById('sam-ar-yrSel').addEventListener('click', function(e){
+    var b = e.target.closest('button');
+    if (!b) return;
+    var y = parseInt(b.dataset.y, 10);
+    if (ar_activeYears.has(y)) ar_activeYears.delete(y); else ar_activeYears.add(y);
+    b.classList.toggle('act');
+    arRenderSeasonalChart();
+  });
+
+  brRenderTbl(); brRenderKpis(); brRenderCharts();
+  arRenderTbl(); arRenderKpis();
+};
+
+/* ── Live-data integration (Vercel proxies) ────────────────────────── */
+async function samLoadBrazil() {
+  try {
+    const r = await fetch('/api/brazil-gas-balance');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+    if (j.rows && j.rows.length) {
+      BR_D.rows = j.rows;
+      if (j.months && j.months.length === 12) {
+        // Update MONTHS if server gives labels (only for this country's table)
+        // Note: MONTHS is shared across all 3 countries; skip overwrite to avoid drift.
+      }
+      if (typeof brRenderTbl === 'function') brRenderTbl();
+      if (typeof brRenderKpis === 'function') brRenderKpis();
+      if (typeof brRenderCharts === 'function') brRenderCharts();
+    }
+    console.log('[SAM] Brazil data loaded', j.meta);
+  } catch (err) {
+    console.warn('[SAM] Brazil fetch failed, using placeholder:', err.message);
+  }
+}
+
+async function samLoadBrazilHydro() {
+  try {
+    const r = await fetch('/api/brazil-ons-hydro');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+    if (!j.subsystems) return;
+    const map = { seco: 'SE / CO', s: 'S', ne: 'NE', n: 'N' };
+    const thresholds = (pct) => pct >= 70 ? '#10b981' : pct >= 30 ? '#fbbf24' : '#ef4444';
+
+    const hst = document.querySelector('#sam-bph .sam-hst');
+    if (!hst) return;
+    hst.innerHTML = '';
+    for (const [key, _] of Object.entries(map)) {
+      const d = j.subsystems[key];
+      const hc = document.createElement('div');
+      hc.className = 'sam-hc';
+      if (!d) {
+        hc.innerHTML = `<div class="sam-hl">${map[key]} SUBSYSTEM</div><div class="sam-hm"><span class="sam-hv" style="color:#6b7a99">—</span></div>`;
+      } else {
+        const color = thresholds(d.current);
+        const wowColor = d.wow >= 0 ? '#10b981' : '#ef4444';
+        const wowStr = (d.wow >= 0 ? '+' : '') + d.wow.toFixed(1) + ' pp W/W';
+        hc.innerHTML = `
+          <div class="sam-hl">${map[key]} SUBSYSTEM</div>
+          <div class="sam-hm">
+            <span class="sam-hv" style="color:${color}">${d.current.toFixed(2)}</span>
+            <span class="sam-hp">%</span>
+            <span class="sam-hd" style="color:${wowColor}">${wowStr}</span>
+          </div>
+          <div class="sam-hb"><div style="width:${d.current}%;background:${color}"></div></div>`;
+      }
+      hst.appendChild(hc);
+    }
+    console.log('[SAM] Brazil hydro loaded');
+  } catch (err) {
+    console.warn('[SAM] Brazil hydro fetch failed:', err.message);
+  }
+}
+
+async function samLoadArgentina() {
+  try {
+    const r = await fetch('/api/argentina-enargas');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+    if (j.rows && j.rows.length) {
+      AR_D.rows = j.rows;
+      if (typeof arRenderTbl === 'function') arRenderTbl();
+      if (typeof arRenderKpis === 'function') arRenderKpis();
+      if (typeof arRenderCharts === 'function') arRenderCharts();
+    }
+    if (j.meta?.warnings?.length) console.warn('[SAM] AR warnings:', j.meta.warnings);
+  } catch (err) {
+    console.warn('[SAM] Argentina fetch failed:', err.message);
+  }
+}
+
+async function samLoadColombia() {
+  try {
+    const r = await fetch('/api/colombia-bmc');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+    if (j.rows && j.rows.length) {
+      CO_D.rows = j.rows;
+      if (typeof coRenderTbl === 'function') coRenderTbl();
+      if (typeof coRenderKpis === 'function') coRenderKpis();
+      if (typeof coRenderCharts === 'function') coRenderCharts();
+    }
+    console.log('[SAM] Colombia loaded', j.meta);
+  } catch (err) {
+    console.warn('[SAM] Colombia fetch failed:', err.message);
+  }
+}
+
+// Monkey-patch SAM.init so live-load runs right after initial placeholder render.
+// This preserves the existing init() and simply appends async data loading.
+const _origInit = SAM.init;
+SAM.init = function() {
+  _origInit.call(this);
+  samLoadBrazil();
+  samLoadBrazilHydro();
+  samLoadArgentina();
+  samLoadColombia();
+};
+
+})();
+})();
