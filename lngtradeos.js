@@ -4425,18 +4425,35 @@ function _fdFrFreeQuotaSpace(){
 }
 
 window.fdFrUpdateMatrix = function(){
+  // Pre-free quota space BEFORE computeMatrix so its internal fs() calls don't hit
+  // the ceiling. computeMatrix tries to save ~3MB of full calcF cells.
+  _fdFrFreeQuotaSpace();
+  ['f_snaps','f_hist_curves','f_matrix_prev','cp_freight_prev'].forEach(k => {
+    try { localStorage.removeItem(k); } catch(e){}
+  });
   try {
-    if(!F.blng || !F.params){ initFreight(); }
+    if(!F || !F.blng || !F.params){
+      console.log('[FD] initFreight required');
+      initFreight();
+    }
+    console.log('[FD] computeMatrix starting — origins:', (typeof allS==='function'?allS().length:'?'),
+                'destinations:', (typeof allD==='function'?allD().length:'?'));
     computeMatrix();
-    // Free the big matrix from localStorage — kept in memory via F.matrix only.
+    // computeMatrix's fs() calls tried to re-save ~3MB of f_matrix — purge again.
     _fdFrFreeQuotaSpace();
-    const origins = Object.keys(F.matrix||{}).length;
-    const dests = Object.keys(F.matrix?.sabine||{}).length;
-    alert('Freight matrix rebuilt (' + origins + ' origins × ' + dests + ' destinations × 24 months).');
+    const origins = F.matrix ? Object.keys(F.matrix).length : 0;
+    const dests   = (F.matrix && F.matrix.sabine) ? Object.keys(F.matrix.sabine).length : 0;
+    if(origins === 0 || dests === 0){
+      alert('Matrix build returned no cells. Origins=' + origins + ', destinations=' + dests +
+            '. Check browser console for errors.');
+      console.error('[FD] F.matrix:', F.matrix);
+      return;
+    }
+    alert('✓ Freight matrix rebuilt: ' + origins + ' origins × ' + dests + ' destinations × 24 months');
     _fdFrRefreshStatus();
   } catch(e){
-    alert('Matrix build failed: ' + e.message);
-    console.error(e);
+    alert('Matrix build FAILED: ' + e.message + '\n\nCheck browser console for the full stack trace.');
+    console.error('[FD] Matrix build failed:', e);
   }
 };
 
@@ -8233,7 +8250,18 @@ const CP_SEED_PRICES={
   TTF:[16.857,16.857,16.876,16.878,16.870,16.868,16.868,16.939,17.022,16.983,16.865,16.080,14.030,13.094,12.866,12.824,12.834,12.743,12.657,12.699,12.926,12.773,12.581,11.813],
   JKM:[18.157,18.157,18.126,18.303,18.145,17.868,17.318,17.289,17.622,17.358,17.215,16.030,14.380,13.419,13.341,13.299,13.384,13.243,13.257,13.199,13.551,13.523,13.306,12.213]
 };
-const CP_SEED_PHYS={nwe:Array(24).fill(-0.40),iberia:Array(24).fill(-0.35),uk:Array(24).fill(-0.80),jktc:[0.05,0.05,0.05,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10]};
+const CP_SEED_PHYS={
+  nwe    :Array(24).fill(-0.40),
+  iberia :Array(24).fill(-0.35),
+  uk     :Array(24).fill(-0.80),
+  // France, Germany, Belgium — seeded equal to DES NWE; editable overrides per
+  // terminal. Feed the Global LNG Netback for FR/DE/BE terminals and the Regas
+  // model's TTF-differential tab.
+  france :Array(24).fill(-0.40),
+  germany:Array(24).fill(-0.40),
+  belgium:Array(24).fill(-0.40),
+  jktc   :[0.05,0.05,0.05,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10]
+};
 const CP_SEED_FR={
     sabine_rotterdam:[0.942, 0.942, 0.935, 0.935, 0.922, 0.989, 1.022, 0.989, 0.869, 0.804, 0.751, 0.738, 0.738, 0.758, 0.771, 0.748, 0.622, 0.622, 0.622, 0.622, 0.622, 0.624, 0.697, 0.674],
     sabine_tokyo:[3.053, 3.053, 3.03, 3.03, 2.988, 3.205, 3.312, 3.205, 2.816, 2.605, 2.434, 2.392, 2.392, 2.456, 2.498, 2.424, 2.016, 2.016, 2.016, 2.016, 2.016, 2.022, 2.259, 2.184],
@@ -8470,6 +8498,12 @@ function cpMergeFreight(){
 function initCargo(){
   CP.fp=cpGet('cp_fp',JSON.parse(JSON.stringify(CP_SEED_PRICES)));
   CP.phys=cpGet('cp_phys',JSON.parse(JSON.stringify(CP_SEED_PHYS)));
+  // Backfill new CP.phys keys (france/germany/belgium) on old stored blobs
+  ['france','germany','belgium'].forEach(k => {
+    if(!Array.isArray(CP.phys[k]) || CP.phys[k].length !== 24){
+      CP.phys[k] = [...CP_SEED_PHYS[k]];
+    }
+  });
   CP.freight=cpMergeFreight();
   CP.liqFee=cpGet('cp_liqfee',Array(24).fill(0));
   CP.histSnaps=cpGet('cp_hist_snaps',[]);
@@ -8548,6 +8582,7 @@ function cpPhysDiff(d){
   const ov=cpGet('cp_phys_ov',{});
   // Color groups: NWE=blue, Med=amber, Baltic=teal, MEI=purple, JKTC=red, Thailand=orange
   const GRP={nwe:'#4fc3f7',iberia:'#4fc3f7',uk:'#4fc3f7',
+    france:'#4fc3f7',germany:'#4fc3f7',belgium:'#4fc3f7',
     italy:'#ffb74d',rev:'#ffb74d',krk:'#ffb74d',ain:'#ffb74d',ali:'#ffb74d',
     swino:'#80cbc4',klaipeda:'#26c6da',inkoo:'#26c6da',
     mei:'#ab47bc',jktc:'#ef9a9a',thailand:'#ff9800',
@@ -8556,6 +8591,9 @@ function cpPhysDiff(d){
     {k:'nwe',      label:'DES NWE',      hub:'TTF',data:CP.phys.nwe,       editable:true, physKey:'nwe',      grp:'NWE TERMINALS'},
     {k:'iberia',   label:'Iberia (TVB)', hub:'PVB',data:CP.phys.iberia,    editable:true, physKey:'iberia'},
     {k:'uk',       label:'UK Terminals', hub:'NBP',data:CP.phys.uk,        editable:true, physKey:'uk'},
+    {k:'france',   label:'France',       hub:'TTF',data:CP.phys.france,    editable:true, physKey:'france'},
+    {k:'germany',  label:'Germany',      hub:'TTF',data:CP.phys.germany,   editable:true, physKey:'germany'},
+    {k:'belgium',  label:'Belgium',      hub:'TTF',data:CP.phys.belgium,   editable:true, physKey:'belgium'},
     {k:'italy',    label:'DES Italy',    hub:'TTF',data:d.phyItaly,        computed:true, ovKey:'italy',      grp:'MED TERMINALS'},
     {k:'rev',      label:'Revithoussa',  hub:'TTF',data:d.phyRev,          computed:true, ovKey:'rev'},
     {k:'krk',      label:'KRK',          hub:'TTF',data:d.phyKrk,          computed:true, ovKey:'krk'},
