@@ -8748,40 +8748,22 @@ function cpPricesSeedDiff(){
 function cpFreightApplySeed(){
   const d=cpFreightSeedDiff();
   if(!d.hasDiff){alert('✓ Freight already matches seed ('+CP_FREIGHT_VER+').');return;}
-  // Smart 3-way merge: only overwrite cells that still match the prior snapshot
-  // (i.e., user never touched them). Manual edits and matrix-fed values are ALWAYS
-  // preserved. Matches the silent auto-migrate behavior, but explicit + audited.
-  const seed=CP_SEED_FR;
-  const snap=cpGet('cp_freight_snap',null);
-  const cached=cpGet('cp_freight',{})||{};
-  let autoCells=0,userCells=0,newCells=0;
-  const out=Object.assign({},cached);
-  Object.keys(seed).forEach(k=>{
-    const sd=seed[k],sn=Array.isArray(snap)?snap[k]:(snap?snap[k]:null),cv=cached[k];
-    if(!Array.isArray(sd))return;
-    if(!Array.isArray(cv)){out[k]=sd.slice();newCells+=sd.length;return;}
-    const merged=cv.slice();
-    sd.forEach((sNew,i)=>{
-      const sOld=Array.isArray(sn)?sn[i]:undefined;
-      const c=cv[i];
-      if(c==null||isNaN(c)){merged[i]=sNew;autoCells++;return;}
-      if(sOld==null){userCells++;return;} // no baseline → treat cached as user data
-      const cMatchesOld=Math.abs(c-sOld)<1e-4;
-      const seedChanged=sNew==null||Math.abs(sNew-sOld)>=1e-4;
-      if(cMatchesOld&&seedChanged){merged[i]=sNew;autoCells++;}
-      else if(!cMatchesOld&&Math.abs(c-(sNew??0))>=1e-4){userCells++;}
-    });
-    out[k]=merged;
-  });
-  const msg='Apply freight seed updates (smart merge)?\n\n'
-    +'• Untouched cells to update to new seed: '+autoCells+'\n'
-    +'• New routes added: '+newCells+'\n'
-    +'• Your manual edits / matrix values (PRESERVED): '+userCells+'\n\n'
-    +'Manual edits are always kept — only seed-aligned cells update. Continue?';
+  // NUCLEAR OVERWRITE — replaces ALL cached freight with the hardcoded seed.
+  // Use this when stale matrix-fed values or prior manual edits drift away from
+  // current NM/routing assumptions and you want a clean baseline. The silent
+  // auto-migrate on page load handles the "preserve edits" case separately.
+  const msg='⚠ RESET FREIGHT TO SEED\n\n'
+    +'This overwrites ALL freight curves with the hardcoded seed ('+CP_FREIGHT_VER+'):\n'
+    +'• New routes to add: '+d.newKeys.length+'\n'
+    +'• Routes that will be reset: '+d.changedKeys.length+'\n'
+    +'• Total cells updated: '+d.cellDiffs+'\n\n'
+    +'Your manual edits AND matrix-fed values will be replaced. To rebuild matrix-\n'
+    +'based freight after this, go to Foundation → Freight Curves → UPDATE MATRIX.\n\n'
+    +'Continue?';
   if(!confirm(msg))return;
-  cpSet('cp_freight',out);
+  cpSet('cp_freight',JSON.parse(JSON.stringify(CP_SEED_FR)));
   cpSet('cp_freight_ver',CP_FREIGHT_VER);
-  cpSet('cp_freight_snap',JSON.parse(JSON.stringify(seed)));
+  cpSet('cp_freight_snap',JSON.parse(JSON.stringify(CP_SEED_FR)));
   CP.freight=cpMergeFreight();renderCargo();
 }
 function cpPhysApplySeed(){
