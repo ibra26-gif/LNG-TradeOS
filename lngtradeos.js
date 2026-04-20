@@ -4416,11 +4416,23 @@ function _fdFrFreightKeyCandidates(origId, destId){
   return keys;
 }
 
+// localStorage is ~5MB; F.matrix (full calcF cells) eats ~3MB. We keep it in
+// memory but DON'T persist it — the matrix is cheap to recompute on demand.
+function _fdFrFreeQuotaSpace(){
+  try { localStorage.removeItem('f_matrix'); } catch(e){}
+  try { localStorage.removeItem('f_matrix_prev'); } catch(e){}
+  try { localStorage.removeItem('f_mat_audit'); } catch(e){}
+}
+
 window.fdFrUpdateMatrix = function(){
   try {
     if(!F.blng || !F.params){ initFreight(); }
     computeMatrix();
-    alert('Freight matrix rebuilt (' + Object.keys(F.matrix||{}).length + ' origins × ' + Object.keys(F.matrix?.sabine||{}).length + ' destinations × 24 months).');
+    // Free the big matrix from localStorage — kept in memory via F.matrix only.
+    _fdFrFreeQuotaSpace();
+    const origins = Object.keys(F.matrix||{}).length;
+    const dests = Object.keys(F.matrix?.sabine||{}).length;
+    alert('Freight matrix rebuilt (' + origins + ' origins × ' + dests + ' destinations × 24 months).');
     _fdFrRefreshStatus();
   } catch(e){
     alert('Matrix build failed: ' + e.message);
@@ -4428,35 +4440,62 @@ window.fdFrUpdateMatrix = function(){
   }
 };
 
+// Slim feed: only write freight series under canonical route keys the netback uses.
+// Skip alias variants unless the seed already has them (avoids duplicating large arrays).
+function _fdFrSlimFeedPayload(){
+  const seedKeys = new Set(Object.keys(CP_SEED_FR || {}));
+  const existing = cpGet('cp_freight', JSON.parse(JSON.stringify(CP_SEED_FR)));
+  const out = Object.assign({}, existing);
+  let written = 0;
+  Object.keys(F.matrix).forEach(origId => {
+    Object.keys(F.matrix[origId]).forEach(destId => {
+      const arr = F.matrix[origId][destId]
+        .map(cell => (cell && typeof cell.freight === 'number') ? +cell.freight.toFixed(4) : null);
+      _fdFrFreightKeyCandidates(origId, destId).forEach(k => {
+        // Only write alias keys that already exist in the seed dictionary, plus the
+        // canonical origId_destId key. Prevents bloating cp_freight with dead aliases.
+        if(k === origId + '_' + destId || seedKeys.has(k)){
+          out[k] = arr;
+          written += 1;
+        }
+      });
+    });
+  });
+  return {payload: out, written};
+}
+
 window.fdFrFeedNetback = function(){
   if(!F.matrix){
     alert('No freight matrix yet. Click UPDATE MATRIX first.');
     return;
   }
+  const {payload, written} = _fdFrSlimFeedPayload();
+  // First pass: free obvious space hogs, then try to save.
+  _fdFrFreeQuotaSpace();
+  let saved = false;
   try {
-    // Load existing CP.freight (or seed) so we don't drop unknown keys
-    const existing = cpGet('cp_freight', JSON.parse(JSON.stringify(CP_SEED_FR)));
-    const next = Object.assign({}, existing);
-    let written = 0;
-    Object.keys(F.matrix).forEach(origId => {
-      Object.keys(F.matrix[origId]).forEach(destId => {
-        const arr = F.matrix[origId][destId]
-          .map(cell => (cell && typeof cell.freight === 'number') ? +cell.freight.toFixed(4) : null);
-        _fdFrFreightKeyCandidates(origId, destId).forEach(k => {
-          next[k] = arr;
-          written += 1;
-        });
-      });
-    });
-    cpSet('cp_freight', next);
+    localStorage.setItem('cp_freight', JSON.stringify(payload));
     localStorage.setItem('cp_freight_feed_ts', new Date().toISOString());
-    if(typeof CP !== 'undefined' && CP){ CP.freight = next; }
-    alert('LNG Global Netback updated with ' + written + ' route/month series.\nReturn to Physical Trading → LNG Global Netback to see the new physical diffs.');
-    _fdFrRefreshStatus();
+    saved = true;
   } catch(e){
-    alert('Feed failed: ' + e.message);
-    console.error(e);
+    // Still over quota — retry after more aggressive cleanup
+    console.warn('Quota hit on feed, attempting aggressive cleanup', e);
+    try { localStorage.removeItem('f_blng'); } catch(_){}
+    try { localStorage.removeItem('f_snaps'); } catch(_){}
+    try { localStorage.removeItem('f_hist_curves'); } catch(_){}
+    try {
+      localStorage.setItem('cp_freight', JSON.stringify(payload));
+      localStorage.setItem('cp_freight_feed_ts', new Date().toISOString());
+      saved = true;
+    } catch(e2){
+      alert('Feed failed: localStorage quota exceeded even after cleanup.\n\nOpen DevTools → Application → Storage → Clear site data, then retry.\n\nError: ' + e2.message);
+      console.error(e2);
+      return;
+    }
   }
+  if(typeof CP !== 'undefined' && CP){ CP.freight = payload; }
+  alert('LNG Global Netback updated with ' + written + ' route/month series.\nReturn to Physical Trading → LNG Global Netback to see the new physical diffs.');
+  _fdFrRefreshStatus();
 };
 
 function _fdFrRefreshStatus(){
@@ -4502,11 +4541,17 @@ function renderFoundationFreight(c){
       .fdfr-tab{padding:11px 22px;background:none;border:none;color:var(--td);font-family:inherit;font-size:10px;letter-spacing:.12em;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500}
       .fdfr-tab:hover{color:var(--tx)}
       .fdfr-tab.active{color:var(--th);border-bottom-color:var(--b)}
-      /* Tighter alignment for the embedded BLNG curves table — overrides .f-tbl */
-      #fd-fr-body .f-tbl th, #fd-fr-body .f-tbl td{padding:4px 6px}
-      #fd-fr-body .f-tbl input.f-inp{width:74px;padding:3px 6px;font-size:10.5px}
-      #fd-fr-body .f-tbl input[style*="width:56px"]{width:52px!important}
-      #fd-fr-body .f-tbl input[style*="width:88px"]{width:78px!important}
+      /* Embedded BLNG curves table — align headers with input columns */
+      #fd-fr-body .f-tbl{table-layout:fixed;border-collapse:collapse}
+      #fd-fr-body .f-tbl th,#fd-fr-body .f-tbl td{padding:4px 6px;text-align:center}
+      #fd-fr-body .f-tbl th:first-child,#fd-fr-body .f-tbl td:first-child{text-align:left;width:74px}
+      /* Sub-columns — each BLNG curve has 3 sub-columns in this order: $/day, Pos%, Repo% */
+      #fd-fr-body .f-tbl colgroup col.c-dpd{width:100px}
+      #fd-fr-body .f-tbl colgroup col.c-pct{width:70px}
+      /* Inputs: center them in their cell and remove odd inline widths that break alignment */
+      #fd-fr-body .f-tbl input.f-inp{display:inline-block;margin:0 auto;text-align:right}
+      #fd-fr-body .f-tbl input[style*="width:88px"]{width:84px!important;max-width:84px!important}
+      #fd-fr-body .f-tbl input[style*="width:56px"]{width:56px!important;max-width:56px!important}
       #fd-fr-body .f-tbl th[colspan="3"]{padding-top:8px;padding-bottom:4px}
       #fd-fr-body .f-tbl tr:nth-child(even) td{background:rgba(77,158,245,.02)}
       #fd-fr-body .f-sec{letter-spacing:.12em;color:var(--b);font-size:10px;margin-top:14px}
@@ -4572,15 +4617,24 @@ function _fdPhysRefresh(){
 })();
 
 function renderFoundationPhysical(c){
-  // Initialise CP state if it hasn't been touched yet (Netback module not visited)
-  if(typeof CP === 'undefined' || !CP || !CP.phys){
-    // cpInit is inside initCargo scope, and initCargo creates the DOM too — use a
-    // lightweight bootstrap instead so we don't tangle with Physical Trading's DOM.
-    if(typeof CP !== 'undefined' && CP){
-      CP.fp    = CP.fp    || cpGet('cp_fp',    JSON.parse(JSON.stringify(CP_SEED_PRICES)));
-      CP.phys  = CP.phys  || cpGet('cp_phys',  JSON.parse(JSON.stringify(CP_SEED_PHYS)));
-      CP.freight = CP.freight || cpGet('cp_freight', JSON.parse(JSON.stringify(CP_SEED_FR)));
-      CP.egyptPremium = CP.egyptPremium ?? cpGet('cp_egypt_prem', 0.50);
+  // Bootstrap CP state if Physical Trading → LNG Global Netback hasn't been visited.
+  // cpDerived() needs: fp, phys, freight, liqFee, hhSlope, egyptPremium.
+  // initCargo populates all of them; we call it here if CP.phys is still null.
+  // initCargo() also calls renderCargo() which just returns if #cargo-wrap isn't in
+  // the DOM (safe — Foundation doesn't have that element).
+  if(typeof CP !== 'undefined' && CP && !CP.phys){
+    try {
+      initCargo();
+    } catch(e){
+      // Fallback: manually populate the fields cpDerived needs
+      console.warn('initCargo from Foundation failed, bootstrapping manually', e);
+      CP.fp       = cpGet('cp_fp',       JSON.parse(JSON.stringify(CP_SEED_PRICES)));
+      CP.phys     = cpGet('cp_phys',     JSON.parse(JSON.stringify(CP_SEED_PHYS)));
+      CP.freight  = cpGet('cp_freight',  JSON.parse(JSON.stringify(CP_SEED_FR)));
+      CP.liqFee   = cpGet('cp_liqfee',   Array(24).fill(0));
+      CP.hhSlope  = cpGet('cp_hh_slope', 1.15);
+      CP.egyptPremium = cpGet('cp_egypt_prem', 0.50);
+      CP.histSnaps = CP.histSnaps || [];
     }
   }
   c.innerHTML = `
