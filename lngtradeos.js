@@ -4051,7 +4051,7 @@ function fdReadiness(){
     {key:'portcost',  label:'Port Cost',        status: (typeof PORT_DB !== 'undefined' && PORT_DB.length) ? 'ok' : 'pending'},
     {key:'nm',        label:'Nautical Miles',   status: (typeof NM !== 'undefined' && Object.keys(NM).length) ? 'ok' : 'pending'},
     {key:'freight',   label:'Freight Curves',   status: (typeof F !== 'undefined' && F.blng && F.blng.BLNG1) ? 'ok' : 'warn'},
-    {key:'physical',  label:'Physical Curves',  status:'pending'},
+    {key:'physical',  label:'Physical Curves',  status: (typeof CP !== 'undefined' && CP && CP.phys && Array.isArray(CP.phys.nwe)) ? 'ok' : 'pending'},
   ];
   const ok = items.every(i => i.status === 'ok');
   return {ok, items};
@@ -4084,6 +4084,7 @@ function fdTab(tab){
   if(tab === 'nm')       { renderFoundationNM(c);       window.scrollTo(0,0); return; }
   if(tab === 'portcost') { renderFoundationPortCost(c); window.scrollTo(0,0); return; }
   if(tab === 'freight')  { renderFoundationFreight(c);  window.scrollTo(0,0); return; }
+  if(tab === 'physical') { renderFoundationPhysical(c); window.scrollTo(0,0); return; }
   // Other sub-tabs — still placeholders until their phases land.
   c.innerHTML = `
     <div style="padding:38px 28px;max-width:880px">
@@ -4532,6 +4533,87 @@ function renderFoundationFreight(c){
   const host = document.getElementById('fd-fr-body');
   if(host) _fdFrRenderBody(host);
   _fdFrRefreshStatus();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// FOUNDATION · A.4 — PHYSICAL CURVES
+//
+// Mirrors Physical Trading → LNG Global Netback → PHYS DIFFERENTIALS.
+// Editable anchors (persist via cpSetPhys): DES NWE · Iberia · UK · DES JKTC.
+// Derived rows (from freight deltas via cpDerived): Italy, Rev, KRK, Ain Sukhna,
+// Aliaga, Swinoujscie, Klaipeda, Inkoo, MEI, Thailand + Egypt Premium input.
+// Edits flow into CP.phys / cp_phys_ov localStorage and feed every downstream
+// physical pricing calculation.
+// ══════════════════════════════════════════════════════════════════════════
+function _fdPhysRefresh(){
+  const body = document.getElementById('fd-phys-body');
+  if(!body) return;
+  try {
+    const d = cpDerived();
+    body.innerHTML = cpPhysDiff(d);
+  } catch(e){ console.warn('fd-phys refresh failed', e); }
+}
+
+// Monkey-patch renderCargoTab so Foundation's view stays live when CP.phys
+// edits happen from inside Foundation. (The original still updates #cp-body
+// inside Physical Trading when that section is the one rendered.)
+(function _patchRenderCargoTab(){
+  if(typeof renderCargoTab !== 'function' || renderCargoTab._fdPatched) return;
+  const orig = renderCargoTab;
+  window.renderCargoTab = function(){
+    const r = orig.apply(this, arguments);
+    const fdActive = document.getElementById('section-foundation');
+    if(fdActive && fdActive.classList.contains('active') && document.getElementById('fd-phys-body')){
+      _fdPhysRefresh();
+    }
+    return r;
+  };
+  window.renderCargoTab._fdPatched = true;
+})();
+
+function renderFoundationPhysical(c){
+  // Initialise CP state if it hasn't been touched yet (Netback module not visited)
+  if(typeof CP === 'undefined' || !CP || !CP.phys){
+    // cpInit is inside initCargo scope, and initCargo creates the DOM too — use a
+    // lightweight bootstrap instead so we don't tangle with Physical Trading's DOM.
+    if(typeof CP !== 'undefined' && CP){
+      CP.fp    = CP.fp    || cpGet('cp_fp',    JSON.parse(JSON.stringify(CP_SEED_PRICES)));
+      CP.phys  = CP.phys  || cpGet('cp_phys',  JSON.parse(JSON.stringify(CP_SEED_PHYS)));
+      CP.freight = CP.freight || cpGet('cp_freight', JSON.parse(JSON.stringify(CP_SEED_FR)));
+      CP.egyptPremium = CP.egyptPremium ?? cpGet('cp_egypt_prem', 0.50);
+    }
+  }
+  c.innerHTML = `
+    <style>
+      .fdph-wrap{padding:18px 22px 40px;color:var(--tx);font-family:inherit}
+      .fdph-hdr{border-bottom:1px solid var(--bl);padding-bottom:12px;margin-bottom:12px}
+      .fdph-hdr-ttl{font-size:16px;color:var(--th);letter-spacing:.03em}
+      .fdph-hdr-sub{font-size:10px;color:var(--td);letter-spacing:.05em;line-height:1.6;max-width:880px;margin-top:4px}
+      .fdph-legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 14px;font-size:10px;color:var(--td)}
+      .fdph-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-right:6px}
+      /* Scope the embedded netback table so it inherits our layout */
+      #fd-phys-body .f-sec{letter-spacing:.12em;color:var(--b);font-size:11px;margin:0 0 10px}
+      #fd-phys-body .f-tbl th,#fd-phys-body .f-tbl td{padding:3px 6px}
+      #fd-phys-body .f-tbl input.f-inp{font-size:10.5px}
+    </style>
+    <div class="fdph-wrap">
+      <div class="fdph-hdr">
+        <div class="fdph-hdr-ttl">PHYSICAL CURVES — Physical Price Differentials</div>
+        <div class="fdph-hdr-sub">Mirror of Physical Trading → LNG Global Netback → PHYS DIFFERENTIALS. Also feeds the <b>EU Regas Model</b> and every downstream physical-pricing calculation.
+        <b>Editable anchors</b> (blue): DES NWE · Iberia (TVB) · UK · DES JKTC. Egypt Premium is a single input.
+        <b>Derived rows</b> (green): Italy, Rev, KRK, Ain Sukhna, Aliaga, Swino, Klaipeda, Inkoo, DES MEI, DES Thailand + <b>Guanabara (Brazil)</b> and <b>Escobar (Argentina)</b> via FOB-netback from USGC.
+        Per-cell override turns green → amber. All edits persist live.</div>
+      </div>
+      <div class="fdph-legend">
+        <span><span class="dot" style="background:#4fc3f7"></span>ANCHOR (editable)</span>
+        <span><span class="dot" style="background:#81c784"></span>DERIVED (auto)</span>
+        <span><span class="dot" style="background:#ffb74d"></span>MANUAL OVERRIDE</span>
+        <span style="color:var(--b);font-weight:600">·&nbsp;&nbsp;NATURAL TRADING WINDOW: <b style="color:var(--th)">${ML[0]} → ${ML[ML.length-1]}</b> (front month = calendar month + 1; rolls as soon as we enter the next month — once we are in May, the front month becomes Jun-26)</span>
+      </div>
+      <div id="fd-phys-body"></div>
+    </div>
+  `;
+  _fdPhysRefresh();
 }
 
 function tbTab(tab){
@@ -5558,7 +5640,8 @@ const BASE_D=[
   {id:'guanabara',name:'Guanabara',euEts:false,dischCost:135240,region:'Americas'},
   {id:'quintero',name:'Quintero',euEts:false,dischCost:358634,region:'Americas'},
   {id:'manzanillo',name:'Manzanillo',euEts:false,dischCost:248440,region:'Americas'},
-  {id:'bahiablanca',name:'Bahia Blanca',euEts:false,dischCost:345241,region:'Americas'}
+  {id:'bahiablanca',name:'Bahia Blanca',euEts:false,dischCost:345241,region:'Americas'},
+  {id:'escobar',name:'Escobar (Argentina)',euEts:false,dischCost:300000,region:'Americas'},
 ];
 // ── Port coordinates (lat, lon) — used for great-circle NM + CoGH sanity check ──
 const PORT_COORDS = {
@@ -5578,6 +5661,8 @@ const PORT_COORDS = {
   aqaba:[29.50,34.95], maagp:[29.08,48.14], cochin:[9.96,76.24], dabhol:[17.59,73.17],
   caofeidian:[39.07,118.55], dapeng:[22.58,114.55], qingdao:[36.05,120.30], rudong:[32.33,121.42],
   taichung:[24.28,120.50], melaka:[2.20,102.25], yungan:[22.82,120.20],
+  // South America — added for Phase A.4 FOB-netback derivation
+  escobar:[-34.35,-58.79],
 };
 // Routing waypoints — no Panama Canal in this model.
 const COGH_WAYPOINT      = [-34.36, 18.47];   // Cape of Good Hope
@@ -5619,7 +5704,7 @@ function directGCNM(origKey, destKey){
 //   FE_SEA : Far East + SE Asia + Oceania origins
 const NM_REGIONS = {
   ATL   : new Set(['angola','nigeria','trinidad','sabine',
-                   'bahiablanca','guanabara','zeebrugge','rotterdam','huelva','southhook']),
+                   'bahiablanca','guanabara','escobar','zeebrugge','rotterdam','huelva','southhook']),
   MED   : new Set(['panigaglia','livorno','rovigo','piombino','revithoussa','aliaga','krk','ravenna',
                    'inkoo','klaipeda','swinoujscie']),
   RED   : new Set(['ainsukhna','aqaba']),
@@ -5685,6 +5770,15 @@ const NM={
   sabine      :{bahiablanca:4478, guanabara:4305, quintero:6727, manzanillo:10204, zeebrugge:4282, rotterdam:4298, huelva:4224, southhook:3988, jebelali:11546, ainsukhna:6316, dahej:11981, portqasim:11929, tianjin:14459, tokyo:15379, gwangyang:14809, singapore:12629, maptaphut:12893, panigaglia:5171, livorno:5174, rovigo:5303, piombino:5168, revithoussa:5704, inkoo:6151, klaipeda:5923, swinoujscie:5672, aliaga:5867, krk:5381, ravenna:5275, aqaba:6389, maagp:11581, cochin:11642, dabhol:11829, caofeidian:14495, dapeng:13859, qingdao:14500, rudong:14458, taichung:14195, melaka:12587, yungan:14137},
   trinidad    :{bahiablanca:2940, guanabara:2263, quintero:5386, manzanillo:8863, zeebrugge:3991, rotterdam:4034, huelva:3363, southhook:3704, jebelali:9398, ainsukhna:5411, dahej:9833, portqasim:9780, tianjin:12311, tokyo:13231, gwangyang:12661, singapore:10481, maptaphut:10744, panigaglia:4185, livorno:4201, rovigo:4306, piombino:4209, revithoussa:4799, inkoo:4746, klaipeda:4657, swinoujscie:4414, aliaga:4959, krk:4389, ravenna:4291, aqaba:5484, maagp:9433, cochin:9493, dabhol:9681, caofeidian:12347, dapeng:11711, qingdao:12351, rudong:12309, taichung:12046, melaka:10439, yungan:11989},
 };
+// Seed Escobar (Argentina) for every origin via the routing engine (Phase A.4).
+(function seedEscobar(){
+  Object.keys(NM).forEach(o => {
+    if(NM[o].escobar == null){
+      const rt = nmRoute(o, 'escobar');
+      if(rt && rt.nm != null) NM[o].escobar = Math.round(rt.nm);
+    }
+  });
+})();
 // Merge user overrides (persisted in localStorage) on top of the defaults.
 (function applyNmOverrides(){
   try {
@@ -8185,6 +8279,39 @@ function cpDerived(){
   const phyAin     =ML.map((_,i)=>withOv('ain',     termFr('ain',i)+(CP.egyptPremium??0.50),i));
   const phyAli     =ML.map((_,i)=>withOv('ali',     termFr('ali',i),     i)); // no premium — Turkish terminal
   const phySwino   =ML.map((_,i)=>withOv('swino',   termFr('swinoujscie',i)+0.02,i)); // +$0.02: ice/pilotage premium
+  // ── South America (Brazil + Argentina) — FOB-netback from USGC ──────────────
+  // For each month: compute FOB netback (vs TTF) from Sabine Pass across all known
+  // TTF-linked destinations, take the best, then add the Sabine→destination freight.
+  // Formula: phyDest = best_USGC_netback_vs_TTF + freight.sabine_<dest>
+  // Fallback if sabine_guanabara / sabine_escobar absent in CP.freight: use angola_dahej
+  // ratio as coarse proxy. User can always override per cell.
+  function _usgcBestNetbackVsTtf(i){
+    const cands = [
+      phys.nwe[i]       - (freight.sabine_rotterdam?.[i]      ?? 0),
+      phys.iberia[i]    - (freight.sabine_iberia?.[i]         ?? freight.sabine_rotterdam?.[i] ?? 0),
+      phyItaly[i]       - (freight.sabine_rovigo?.[i]         ?? freight.sabine_rotterdam?.[i] * 1.10 ?? 0),
+      phyRev[i]         - (freight.sabine_rev?.[i]            ?? freight.sabine_rotterdam?.[i] * 1.15 ?? 0),
+      phyKrk[i]         - (freight.sabine_krk?.[i]            ?? freight.sabine_rotterdam?.[i] * 1.14 ?? 0),
+      phyAin[i]         - (freight.sabine_ain?.[i]            ?? freight.sabine_rotterdam?.[i] * 1.34 ?? 0),
+      phyAli[i]         - (freight.sabine_ali?.[i]            ?? freight.sabine_rotterdam?.[i] * 1.28 ?? 0),
+      phyKlaipeda[i]    - (freight.sabine_klaipeda?.[i]       ?? freight.sabine_rotterdam?.[i] * 1.17 ?? 0),
+      phyInkoo[i]       - (freight.sabine_inkoo?.[i]          ?? freight.sabine_rotterdam?.[i] * 1.21 ?? 0),
+      phySwino[i]       - (freight.sabine_swinoujscie?.[i]    ?? freight.sabine_rotterdam?.[i] * 1.13 ?? 0),
+    ].filter(v => v != null && !isNaN(v));
+    return cands.length ? Math.max.apply(null, cands) : null;
+  }
+  const phyBrazil = ML.map((_,i) => {
+    const nb = _usgcBestNetbackVsTtf(i);
+    const fr = freight.sabine_guanabara?.[i];
+    if(nb == null || fr == null) return withOv('brazil', null, i);
+    return withOv('brazil', +(nb + fr).toFixed(3), i);
+  });
+  const phyArgentina = ML.map((_,i) => {
+    const nb = _usgcBestNetbackVsTtf(i);
+    const fr = freight.sabine_escobar?.[i];
+    if(nb == null || fr == null) return withOv('argentina', null, i);
+    return withOv('argentina', +(nb + fr).toFixed(3), i);
+  });
   // ── DES absolute prices ────────────────────────────────────────────────────
   const des={
     nwe:     ML.map((_,i)=>fp.TTF[i]+phys.nwe[i]),
@@ -8254,7 +8381,7 @@ function cpDerived(){
   const arbOpen   =ML.map((_,i)=>jkmTtf[i]>frDiff[i]);// Asia arb open when spread > extra freight
   const profEur   =sabNbNwe;
   const profAsia  =sabNbJktc;
-  return{des,freight,phyItaly,phyKlaipeda,phyInkoo,phyRev,phyKrk,phyAin,phyAli,phySwino,phyMei,phyThailand,usgcFob,
+  return{des,freight,phyItaly,phyKlaipeda,phyInkoo,phyRev,phyKrk,phyAin,phyAli,phySwino,phyMei,phyThailand,phyBrazil,phyArgentina,usgcFob,
     sabNbNwe,sabNbJktc,sabNbMei,sabNbAin,
     triNbNwe,triNbJktc,triNbMei,triNbAin,
     angNbNwe,angNbJktc,angNbMei,angNbAin,
@@ -8369,7 +8496,8 @@ function cpPhysDiff(d){
   const GRP={nwe:'#4fc3f7',iberia:'#4fc3f7',uk:'#4fc3f7',
     italy:'#ffb74d',rev:'#ffb74d',krk:'#ffb74d',ain:'#ffb74d',ali:'#ffb74d',
     swino:'#80cbc4',klaipeda:'#26c6da',inkoo:'#26c6da',
-    mei:'#ab47bc',jktc:'#ef9a9a',thailand:'#ff9800'};
+    mei:'#ab47bc',jktc:'#ef9a9a',thailand:'#ff9800',
+    brazil:'#66bb6a',argentina:'#66bb6a'};
   const rows=[
     {k:'nwe',      label:'DES NWE',      hub:'TTF',data:CP.phys.nwe,       editable:true, physKey:'nwe',      grp:'NWE TERMINALS'},
     {k:'iberia',   label:'Iberia (TVB)', hub:'PVB',data:CP.phys.iberia,    editable:true, physKey:'iberia'},
@@ -8389,8 +8517,10 @@ function cpPhysDiff(d){
     {k:'mei',      label:'DES MEI',      hub:'JKM',data:d.phyMei,          computed:true, ovKey:'mei',        grp:'ASIA'},
     {k:'jktc',     label:'DES JKTC',     hub:'JKM',data:CP.phys.jktc,      editable:true, physKey:'jktc'},
     {k:'thailand', label:'DES Thailand', hub:'JKM',data:d.phyThailand,     computed:true, ovKey:'thailand'},
+    {k:'brazil',   label:'DES Guanabara (Brazil)',   hub:'TTF',data:d.phyBrazil,    computed:true, ovKey:'brazil',    grp:'SOUTH AMERICA'},
+    {k:'argentina',label:'DES Escobar (Argentina)',  hub:'TTF',data:d.phyArgentina, computed:true, ovKey:'argentina'},
   ];
-  const GRP_COL={'NWE TERMINALS':'#4fc3f7','MED TERMINALS':'#ffb74d','POLAND':'#80cbc4','BALTIC TERMINALS':'#26c6da','ASIA':'#ab47bc'};
+  const GRP_COL={'NWE TERMINALS':'#4fc3f7','MED TERMINALS':'#ffb74d','POLAND':'#80cbc4','BALTIC TERMINALS':'#26c6da','ASIA':'#ab47bc','SOUTH AMERICA':'#66bb6a'};
   let tbody='';let lastGrp='';
   rows.forEach(row=>{
     if(row.grp&&row.grp!==lastGrp){
