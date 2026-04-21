@@ -10256,6 +10256,21 @@ async function syncEEX(){
 }
 window.syncEEX=syncEEX;
 
+// One-time cache invalidation — bump this tag when EEX_HUBS or parsing logic
+// changes so existing viewers force a fresh XLSX parse instead of trusting
+// their stale localStorage (which was cached before the new hub was added).
+(function invalidateStaleEEX(){
+  try{
+    const TAG='lngtradeos_eex_cache_tag';
+    const EXPECTED='v2-ztp-included';
+    if(localStorage.getItem(TAG)!==EXPECTED){
+      localStorage.removeItem('eex_v1');
+      localStorage.removeItem('lngtradeos_eex_xlsx_ts');
+      localStorage.setItem(TAG,EXPECTED);
+    }
+  }catch(e){}
+})();
+
 // Fire once per session (before modules init) — if we get fresh data, reload
 // so every IIFE reads the new values from localStorage.
 (function boot(){
@@ -11365,7 +11380,7 @@ function updSpread(){
   const slc=$id('spLegsChart');if(slc)spLegsChart=new Chart(slc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:[{label:lbl1,data:aligned.map(d=>+d.v1.toFixed(4)),borderColor:'#2d7cff',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:'y'},{label:lbl2,data:aligned.map(d=>+d.v2.toFixed(4)),borderColor:'#f59e0b',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:dualL?'y1':'y'}]},options:{...CD,scales:sL}});
 }
 function exportToExcel(){if(!sDates.length){alert('No data.');return;}const wb=XLSX.utils.book_new(),ik=INSTS.map(i=>i.k),headers=['Date',...ik.map(k=>INST[k].label+' M+1')],rows=[headers];sDates.forEach(ds=>{const{date,rows:dr}=aD[ds],m1=rPK(date,1),row=[date.toLocaleDateString('en-GB')];ik.forEach(k=>{const r=dr.find(r=>r.pk===m1);row.push(r&&r[k]!=null?r[k]:'');});rows.push(row);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Historical M+1');XLSX.writeFile(wb,'LNG_TradeOS_'+new Date().toLocaleDateString('en-GB').replace(/\//g,'.')+'.xlsx');}
-function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');const fl=$id('sbar-foundation-link');if(fl)fl.style.display=(id==='historical')?'none':'';setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart,eexChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')cInit();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard'){buildGasSnapshot();buildEuHubChart();}if(id==='options')optRender();},60);}
+function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart,eexChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')cInit();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard'){buildGasSnapshot();buildEuHubChart();}if(id==='options')optRender();},60);}
 function showAnalyticsUI(){const fd=$id('fin-dropzone'),fa=$id('fin-analytics');if(fd)fd.style.display='none';if(fa)fa.style.display='block';finLoaded=true;setTimeout(()=>{if(window.gaUpdatePriceBoxes)window.gaUpdatePriceBoxes();},200);}
 
 // ══ EU REGAS MODULE v2 ══

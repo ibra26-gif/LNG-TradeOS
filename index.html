@@ -9,8 +9,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="lngtradeos.css?v=20260421d">
-<script src="lngtradeos.js?v=20260421d" defer></script>
+<link rel="stylesheet" href="lngtradeos.css?v=20260421e">
+<script src="lngtradeos.js?v=20260421e" defer></script>
 </head>
 <body>
 <nav class="topnav">
@@ -123,7 +123,6 @@
   <div id="fin-dropzone">
     <div id="dz-auto" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:0">
       <div class="prog-wrap" style="width:480px;max-width:80vw"><div class="prog-bar"><div class="prog-fill" id="progfill"></div></div><div class="prog-txt" id="progtxt" style="text-align:center;margin-top:8px"></div></div>
-      <button class="dz-btn" id="fallback-btn" style="display:none;margin-top:24px" onclick="showManualDrop()">LOAD FILES MANUALLY</button>
     </div>
     <div id="dz-manual" style="display:none;flex-direction:column;align-items:center;gap:16px">
       <div class="dz" id="dz">
@@ -148,8 +147,7 @@
     </div>
     <div class="sbar" id="sbar">
       <span class="sdot"></span><span id="stext"></span>
-      <span id="sbar-foundation-link" style="margin-left:auto;color:#3d5070;font-size:9px;letter-spacing:.08em">Data management in <a onclick="shellNav('foundation','financial')" style="color:#4fc3f7;cursor:pointer;text-decoration:underline">Foundation → Financial Curves</a></span>
-      <button class="sbtn" onclick="exportToExcel()" style="color:#22c55e">↓ EXPORT XLSX</button>
+      <button class="sbtn" style="margin-left:auto;color:#22c55e" onclick="exportToExcel()">↓ EXPORT XLSX</button>
       <input type="file" id="fileInput2" multiple accept=".xlsx,.xls" style="display:none">
     </div>
     <div class="amin">
