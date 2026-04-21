@@ -36,6 +36,8 @@ function parseCSV(text) {
     sub: headers.indexOf('id_subsistema'),
     date: headers.indexOf('ear_data'),
     pct: headers.indexOf('ear_verif_subsistema_percentual'),
+    max: headers.indexOf('ear_max_subsistema'),
+    mwmes: headers.indexOf('ear_verif_subsistema_mwmes'),
   };
   if (idx.sub < 0 || idx.date < 0 || idx.pct < 0) {
     throw new Error(`Unexpected columns: ${headers.join(',')}`);
@@ -46,8 +48,10 @@ function parseCSV(text) {
     const sub = parts[idx.sub];
     const date = parts[idx.date];
     const pct = parseFloat(parts[idx.pct]);
+    const max = idx.max >= 0 ? parseFloat(parts[idx.max]) : NaN;
+    const mwmes = idx.mwmes >= 0 ? parseFloat(parts[idx.mwmes]) : NaN;
     if (!sub || !date || isNaN(pct)) continue;
-    rows.push({ sub, date, pct });
+    rows.push({ sub, date, pct, max, mwmes });
   }
   return rows;
 }
@@ -63,6 +67,10 @@ function buildSubsystems(rows) {
   }
   const out = {};
   let latestDate = '';
+  // For SIN aggregate: sum of MWmes / sum of max across the 4 subsystems.
+  // We grab the latest-date row per subsystem and the 7d-prior row.
+  let aggLatestMw = 0, aggLatestMax = 0;
+  let aggPriorMw = 0, aggPriorMax = 0;
 
   for (const [onsKey, dashKey] of Object.entries(KEY_MAP)) {
     const series = (bySub[onsKey] || []).sort((a, b) => a.date.localeCompare(b.date));
@@ -77,7 +85,6 @@ function buildSubsystems(rows) {
 
     let prior = series.find(r => r.date === targetStr);
     if (!prior) {
-      // fallback: closest date in window [last-10, last-5]
       const win = series.filter(r => {
         const d = new Date(r.date);
         const diff = (new Date(last.date) - d) / 86400000;
@@ -91,9 +98,30 @@ function buildSubsystems(rows) {
       wow: prior ? +(last.pct - prior.pct).toFixed(2) : 0,
       asOf: last.date,
     };
+
+    if (!isNaN(last.mwmes) && !isNaN(last.max) && last.max > 0) {
+      aggLatestMw  += last.mwmes;
+      aggLatestMax += last.max;
+    }
+    if (prior && !isNaN(prior.mwmes) && !isNaN(prior.max) && prior.max > 0) {
+      aggPriorMw  += prior.mwmes;
+      aggPriorMax += prior.max;
+    }
   }
 
-  return { subsystems: out, latestDate };
+  // SIN aggregate — weighted by max capacity so SE/CO dominates (as it should).
+  let aggregate = null;
+  if (aggLatestMax > 0) {
+    const curr = (aggLatestMw / aggLatestMax) * 100;
+    const prio = aggPriorMax > 0 ? (aggPriorMw / aggPriorMax) * 100 : null;
+    aggregate = {
+      current: +curr.toFixed(2),
+      wow: prio != null ? +(curr - prio).toFixed(2) : 0,
+      asOf: latestDate,
+    };
+  }
+
+  return { subsystems: out, aggregate, latestDate };
 }
 
 export default async function handler(req, res) {
@@ -115,7 +143,7 @@ export default async function handler(req, res) {
       } catch (_) { /* ignore */ }
     }
 
-    const { subsystems, latestDate } = buildSubsystems(rows);
+    const { subsystems, aggregate, latestDate } = buildSubsystems(rows);
     if (!Object.keys(subsystems).length) {
       return res.status(502).json({ ok: false, error: 'No subsystem data parsed' });
     }
@@ -123,6 +151,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       subsystems,
+      aggregate,
       updatedAt: latestDate,
       source: `ONS EAR Diário por Subsistema (${year})`,
     });
