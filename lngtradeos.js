@@ -10237,6 +10237,27 @@ window.syncPublicState=syncPublicState;
 // curves update whenever the scraper laptop pushes a new xlsx to the repo.
 // Uses HEAD + Last-Modified to skip re-parse when the file hasn't changed.
 const EEX_XLSX_URL='data/EEX_Gas_Curves.xlsx';
+
+// Wait for the LNG EOD cache (aD / sDates) to be populated before EEX
+// parsing runs — parseEEXFile needs aD for EUR/USD conversion via
+// getEURUSD(). If aD is empty, the 1.09 hardcoded fallback kicks in and
+// every EEX USD value gets cached with the wrong FX rate.
+async function _waitForAD(timeoutMs=3000){
+  const start=Date.now();
+  while(Date.now()-start<timeoutMs){
+    if(typeof sDates!=='undefined'&&sDates.length>0&&typeof aD!=='undefined'){
+      // Also require at least one row with a valid EURUSD, else getEURUSD
+      // will still return the 1.09 fallback.
+      for(let i=sDates.length-1;i>=0;i--){
+        const r=aD[sDates[i]]?.rows?.[0];
+        if(r?.EURUSD>0.5)return true;
+      }
+    }
+    await new Promise(r=>setTimeout(r,100));
+  }
+  return false;
+}
+
 async function syncEEX(){
   try{
     // Cheap freshness check first — avoid downloading 500KB if unchanged
@@ -10251,9 +10272,14 @@ async function syncEEX(){
     if(!res.ok)return false;
     const buf=await res.arrayBuffer();
     if(typeof XLSX==='undefined'||typeof parseEEXFile!=='function')return false;
+    // Wait for aD to have real EURUSD data — otherwise conversions are wrong
+    const adReady=await _waitForAD(3000);
+    if(!adReady){
+      console.warn('[LNG TradeOS] aD not populated after 3s — EEX conversion may use fallback EUR/USD');
+    }
     const added=parseEEXFile(buf);
     localStorage.setItem('lngtradeos_eex_xlsx_ts',remoteTs);
-    console.log('[LNG TradeOS] Synced EEX XLSX — '+added+' new dates, remoteTs='+remoteTs);
+    console.log('[LNG TradeOS] Synced EEX XLSX — '+added+' new dates, remoteTs='+remoteTs+', aD.ready='+adReady);
     return added>0;
   }catch(e){console.warn('[LNG TradeOS] EEX auto-fetch failed:',e.message);return false;}
 }
@@ -10268,7 +10294,7 @@ window.syncEEX=syncEEX;
     // Bump this tag whenever the EEX parser, EEX_HUBS list, or
     // PUBLIC_STATE_KEYS membership changes, so existing viewers force a
     // fresh XLSX fetch instead of trusting a stale localStorage cache.
-    const EXPECTED='v3-ztp-noclobber';
+    const EXPECTED='v4-eurusd-race-fix';
     if(localStorage.getItem(TAG)!==EXPECTED){
       localStorage.removeItem('eex_v1');
       localStorage.removeItem('lngtradeos_eex_xlsx_ts');
