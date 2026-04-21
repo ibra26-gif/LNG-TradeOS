@@ -10739,7 +10739,111 @@ function updHist(){
   const hc=$id('hChart');if(hc)hChart=new Chart(hc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales}});
   bStats(t1);
 }
-function bStats(tv){const st=$id('stats-title');if(st)st.textContent='STATISTICS — '+tvL(tv);let html=`<thead><tr><th>Instrument</th><th>Current</th><th>Mean</th><th>Std Dev</th><th>Min</th><th>Max</th><th>N</th><th>Unit</th></tr></thead><tbody>`;INSTS.forEach(inst=>{const s=gS(inst.k,tv);if(!s.length){html+=`<tr><td>${inst.label}</td><td colspan="7" style="color:#3d5070">No data</td></tr>`;return;}const vals=s.map(d=>d.value),cur=vals[vals.length-1],mn=vals.reduce((a,b)=>a+b,0)/vals.length,std=Math.sqrt(vals.reduce((s,v)=>s+(v-mn)**2,0)/vals.length),dp=inst.unit==='$/bbl'?2:3;html+=`<tr><td>${inst.label}</td><td style="color:#c8cfe0">${cur.toFixed(dp)}</td><td>${mn.toFixed(dp)}</td><td>${std.toFixed(dp)}</td><td>${Math.min(...vals).toFixed(dp)}</td><td>${Math.max(...vals).toFixed(dp)}</td><td style="color:#3d5070">${vals.length}</td><td style="color:#3d5070;font-size:9px">${inst.unit}</td></tr>`;});const st2=$id('statsTable');if(st2)st2.innerHTML=html+'</tbody>';}
+// Percentile via linear interpolation between closest ranks.
+// p in [0,100]. Assumes `sorted` is ascending.
+function _pctile(sorted, p){
+  const n = sorted.length;
+  if (!n) return NaN;
+  const idx = (p / 100) * (n - 1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+function bStats(tv){
+  const st = $id('stats-title');
+  if (st) st.textContent = 'STATISTICS — ' + tvL(tv);
+
+  let html = `<thead><tr>
+    <th>Instrument</th><th>Current</th><th>Mean</th><th>Median</th>
+    <th>Std Dev</th><th>Ann.Vol</th><th>Min</th><th>P5</th>
+    <th>P95</th><th>Max</th><th>Skew</th><th>Kurt</th>
+    <th>Z</th><th>N</th><th>Unit</th>
+  </tr></thead><tbody>`;
+
+  INSTS.forEach(inst => {
+    const s = gS(inst.k, tv);
+    if (!s.length){
+      html += `<tr><td>${inst.label}</td><td colspan="14" style="color:#3d5070">No data</td></tr>`;
+      return;
+    }
+    const vals = s.map(d => d.value).filter(v => v != null && !isNaN(v));
+    const n = vals.length;
+    if (!n){
+      html += `<tr><td>${inst.label}</td><td colspan="14" style="color:#3d5070">No data</td></tr>`;
+      return;
+    }
+    const cur = vals[n - 1];
+    const mn  = vals.reduce((a,b) => a + b, 0) / n;
+    const variance = vals.reduce((s,v) => s + (v - mn) ** 2, 0) / n;
+    const std  = Math.sqrt(variance);
+
+    // Percentile stats (need a sorted copy)
+    const sorted = [...vals].sort((a,b) => a - b);
+    const median = _pctile(sorted, 50);
+    const p5     = _pctile(sorted,  5);
+    const p95    = _pctile(sorted, 95);
+    const minV   = sorted[0];
+    const maxV   = sorted[n - 1];
+
+    // Skewness (Fisher-Pearson) + Excess Kurtosis
+    // skew = m3 / s^3, kurt = m4 / s^4 − 3 (population moments)
+    let skew = 0, kurt = 0;
+    if (std > 0 && n >= 3) {
+      const m3 = vals.reduce((s,v) => s + (v - mn) ** 3, 0) / n;
+      const m4 = vals.reduce((s,v) => s + (v - mn) ** 4, 0) / n;
+      skew = m3 / Math.pow(std, 3);
+      kurt = m4 / Math.pow(std, 4) - 3;
+    }
+
+    // Z-score of today vs the window's distribution
+    const z = std > 0 ? (cur - mn) / std : 0;
+
+    // Annualized vol from daily LOG returns (std × √252), expressed as %.
+    // Skip null/non-positive prices so log() stays defined.
+    let annVol = null;
+    if (n >= 2) {
+      const rets = [];
+      for (let i = 1; i < n; i++){
+        const a = vals[i-1], b = vals[i];
+        if (a > 0 && b > 0) rets.push(Math.log(b / a));
+      }
+      if (rets.length >= 2) {
+        const rmn = rets.reduce((a,b) => a + b, 0) / rets.length;
+        const rv  = rets.reduce((s,v) => s + (v - rmn) ** 2, 0) / rets.length;
+        annVol = Math.sqrt(rv) * Math.sqrt(252) * 100;
+      }
+    }
+
+    // Number formatting — bbls tend to be 2dp, everything else 3dp
+    const dp = inst.unit === '$/bbl' ? 2 : 3;
+
+    // Highlight extreme values
+    const zColor    = Math.abs(z) >= 2   ? (z >= 0 ? '#ef4444' : '#22c55e') : '#c8cfe0';
+    const skewColor = Math.abs(skew) > 1 ? '#fbbf24' : '#8a9bb5';
+    const kurtColor = kurt > 3           ? '#fbbf24' : '#8a9bb5';
+
+    html += `<tr>
+      <td>${inst.label}</td>
+      <td style="color:#c8cfe0">${cur.toFixed(dp)}</td>
+      <td>${mn.toFixed(dp)}</td>
+      <td>${median.toFixed(dp)}</td>
+      <td>${std.toFixed(dp)}</td>
+      <td>${annVol != null ? annVol.toFixed(1) + '%' : '—'}</td>
+      <td>${minV.toFixed(dp)}</td>
+      <td>${p5.toFixed(dp)}</td>
+      <td>${p95.toFixed(dp)}</td>
+      <td>${maxV.toFixed(dp)}</td>
+      <td style="color:${skewColor}">${skew.toFixed(2)}</td>
+      <td style="color:${kurtColor}">${kurt.toFixed(2)}</td>
+      <td style="color:${zColor}">${z.toFixed(2)}</td>
+      <td style="color:#3d5070">${n}</td>
+      <td style="color:#3d5070;font-size:9px">${inst.unit}</td>
+    </tr>`;
+  });
+
+  const st2 = $id('statsTable');
+  if (st2) st2.innerHTML = html + '</tbody>';
+}
 
 const CD={responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#5a6882',font:{size:10,family:'IBM Plex Mono'},boxWidth:12,padding:12}},tooltip:{backgroundColor:'#0c1120',borderColor:'#1e2d45',borderWidth:1,titleColor:'#c8cfe0',bodyColor:'#8a9bb5',padding:10,titleFont:{family:'IBM Plex Mono',size:11},bodyFont:{family:'IBM Plex Mono',size:10}}},scales:{x:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{color:'#0f1824'}},y:{ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}};
 window.CD=CD;
@@ -11241,7 +11345,7 @@ function updSpread(){
   const slc=$id('spLegsChart');if(slc)spLegsChart=new Chart(slc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:[{label:lbl1,data:aligned.map(d=>+d.v1.toFixed(4)),borderColor:'#2d7cff',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:'y'},{label:lbl2,data:aligned.map(d=>+d.v2.toFixed(4)),borderColor:'#f59e0b',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:dualL?'y1':'y'}]},options:{...CD,scales:sL}});
 }
 function exportToExcel(){if(!sDates.length){alert('No data.');return;}const wb=XLSX.utils.book_new(),ik=INSTS.map(i=>i.k),headers=['Date',...ik.map(k=>INST[k].label+' M+1')],rows=[headers];sDates.forEach(ds=>{const{date,rows:dr}=aD[ds],m1=rPK(date,1),row=[date.toLocaleDateString('en-GB')];ik.forEach(k=>{const r=dr.find(r=>r.pk===m1);row.push(r&&r[k]!=null?r[k]:'');});rows.push(row);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Historical M+1');XLSX.writeFile(wb,'LNG_TradeOS_'+new Date().toLocaleDateString('en-GB').replace(/\//g,'.')+'.xlsx');}
-function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart,eexChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')cInit();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard'){buildGasSnapshot();buildEuHubChart();}if(id==='options')optRender();},60);}
+function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');const fl=$id('sbar-foundation-link');if(fl)fl.style.display=(id==='historical')?'none':'';setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart,eexChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')cInit();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard'){buildGasSnapshot();buildEuHubChart();}if(id==='options')optRender();},60);}
 function showAnalyticsUI(){const fd=$id('fin-dropzone'),fa=$id('fin-analytics');if(fd)fd.style.display='none';if(fa)fa.style.display='block';finLoaded=true;setTimeout(()=>{if(window.gaUpdatePriceBoxes)window.gaUpdatePriceBoxes();},200);}
 
 // ══ EU REGAS MODULE v2 ══
