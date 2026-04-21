@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260421s">
-<script src="lngtradeos.js?v=20260421u" defer></script>
+<script src="lngtradeos.js?v=20260421v" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -536,8 +536,12 @@
           </select>
         </div>
         <div class="cs-ctrl-grp">
-          <div class="cs-ctrl-lbl">USD/CNY</div>
-          <input type="number" id="cs-usdcny" value="7.25" step="0.01" style="width:80px" onchange="csT1Update();csT2Update();csT3Update();csT4Update()">
+          <div class="cs-ctrl-lbl">USD/CNY <span style="color:#3d5070;font-size:9px">· live ECB</span></div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="hidden" id="cs-usdcny" value="7.25">
+            <span id="cs-usdcny-display" style="font-size:14px;font-weight:600;color:#c8d6e5;min-width:60px">7.25</span>
+            <span id="cs-usdcny-asof" style="font-size:8px;color:#3d5070"></span>
+          </div>
         </div>
         <div class="cs-ctrl-grp">
           <div class="cs-ctrl-lbl">HAUL DISTANCE (KM) — <span id="cs-dist-val">300</span></div>

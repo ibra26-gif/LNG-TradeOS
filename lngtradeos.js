@@ -1,3 +1,35 @@
+/* ─── Auto USD/CNY ─────────────────────────────────────────────────────
+   Fetches the latest USD/CNY daily rate from /api/fx-cny on page load,
+   writes it into the hidden #cs-usdcny input, updates the display span,
+   and re-triggers any China-page recalcs that depend on it.
+   All downstream code keeps reading from #cs-usdcny.value so no other
+   changes are needed. Falls back silently to the default 7.25 if the
+   fetch fails. */
+(async function _loadFxCny(){
+  try{
+    const r = await fetch('/api/fx-cny');
+    if(!r.ok) return;
+    const j = await r.json();
+    if(!j.ok || typeof j.rate !== 'number') return;
+    const apply = () => {
+      const inp = document.getElementById('cs-usdcny');
+      const disp = document.getElementById('cs-usdcny-display');
+      const asof = document.getElementById('cs-usdcny-asof');
+      if(inp) inp.value = j.rate;
+      if(disp) disp.textContent = j.rate.toFixed(4);
+      if(asof) asof.textContent = j.asOf ? '· ' + j.asOf.slice(0,10) : '';
+      // Re-run China page recalcs that usually fire on input change
+      ['csT1Update','csT2Update','csT3Update','csT4Update','csPricesUpdate']
+        .forEach(fn => { try{ if(typeof window[fn] === 'function') window[fn](); }catch(e){} });
+    };
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', apply);
+    } else {
+      apply();
+    }
+  }catch(e){ /* silent fallback to hidden default 7.25 */ }
+})();
+
 /* ─── Block 1: China Signposts module (was inline at v194 line 763) ─── */
   (function(){
     /* ═══════════════════════════════════════════════
@@ -904,7 +936,8 @@ function csPricesUpdate(){
     <span style="font-size:9px;color:#546e7a">RANGE</span>
     ${['3M','6M','1Y','2Y'].map(r=>`<button class="f-btn sm${rng===r?' on':''}" onclick="window._cnPrRange='${r}';csPricesUpdate()">${r}</button>`).join('')}
     <span style="font-size:9px;color:#546e7a;margin-left:8px">FX USD/CNY:</span>
-    <input type="number" id="cs-usdcny-pr" value="${fx}" step="0.01" style="width:60px;font-size:9px;padding:3px 6px;background:#0a1628;border:1px solid #1e3a5f;color:#c8d6e5" oninput="document.getElementById('cs-usdcny').value=this.value;csPricesUpdate()">
+    <span style="font-size:11px;color:#c8d6e5;font-weight:600">${fx.toFixed(4)}</span>
+    <span style="font-size:8px;color:#3d5070">· live ECB</span>
     <span style="font-size:8px;color:#3d5070;margin-left:auto">★ Indicative — pipeline prices not publicly disclosed</span>
   </div>
   <div style="display:grid;grid-template-columns:42% 58%;gap:12px">
