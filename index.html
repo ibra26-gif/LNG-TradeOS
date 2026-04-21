@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260421s">
-<script src="lngtradeos.js?v=20260421v" defer></script>
+<script src="lngtradeos.js?v=20260421w" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -600,35 +600,35 @@
 <style>
 #lngbal-sam{font-family:'IBM Plex Mono',ui-monospace,monospace;color:#f0f4ff;font-size:13px}
 #lngbal-sam .sam-hdr{font-size:9px;letter-spacing:.15em;color:#6b7a99;margin-bottom:18px}
-#lngbal-sam .sam-ctabs{display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px}
-#lngbal-sam .sam-ct{font-family:inherit;font-size:11px;padding:10px 22px;background:transparent;border:none;color:#8a9bb5;cursor:pointer;letter-spacing:1.5px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px}
-#lngbal-sam .sam-ct:hover{color:#f0f4ff}
+#lngbal-sam .sam-ctabs{display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px;overflow-x:auto}
+#lngbal-sam .sam-ct{font-family:inherit;font-size:10px;padding:10px 18px;background:transparent;border:none;color:#6b7a99;cursor:pointer;letter-spacing:.1em;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all .2s}
+#lngbal-sam .sam-ct:hover{color:#dde4f0}
 #lngbal-sam .sam-ct.act{color:#4d9ef5;border-bottom-color:#4d9ef5}
 #lngbal-sam .sam-cpane{display:none}
 #lngbal-sam .sam-cpane.act{display:block}
-#lngbal-sam .sam-tabs{display:flex;gap:4px;margin:0 0 18px}
-#lngbal-sam .sam-tb{font-family:inherit;font-size:11px;padding:8px 16px;background:transparent;border:1px solid rgba(77,158,245,0.12);color:#8a9bb5;cursor:pointer;letter-spacing:1.2px;border-radius:3px}
-#lngbal-sam .sam-tb:hover{background:#151829;color:#f0f4ff}
-#lngbal-sam .sam-tb.act{background:#4d9ef5;color:#fff;border-color:#4d9ef5}
+#lngbal-sam .sam-tabs{display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.07);margin:0 0 16px;overflow-x:auto}
+#lngbal-sam .sam-tb{font-family:inherit;font-size:10px;padding:9px 16px;background:transparent;border:none;color:#6b7a99;cursor:pointer;letter-spacing:.1em;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all .2s}
+#lngbal-sam .sam-tb:hover{color:#dde4f0}
+#lngbal-sam .sam-tb.act{color:#4d9ef5;border-bottom-color:#4d9ef5}
 #lngbal-sam .sam-pane{display:none}
 #lngbal-sam .sam-pane.act{display:block}
-#lngbal-sam .sam-topbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 18px}
-#lngbal-sam .sam-fresh{font-size:10px;color:#6b7a99;letter-spacing:1px}
+#lngbal-sam .sam-topbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 14px}
+#lngbal-sam .sam-fresh{font-size:9px;color:#6b7a99;letter-spacing:.1em}
 #lngbal-sam .sam-fresh .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#10b981;margin-right:6px;vertical-align:middle}
-#lngbal-sam .sam-utog{display:flex;border:1px solid rgba(77,158,245,0.12);border-radius:3px;overflow:hidden}
-#lngbal-sam .sam-tgl{font-family:inherit;font-size:11px;padding:6px 14px;background:transparent;border:none;color:#8a9bb5;cursor:pointer;letter-spacing:1px}
+#lngbal-sam .sam-utog{display:flex;border:1px solid rgba(77,158,245,0.12);border-radius:2px;overflow:hidden}
+#lngbal-sam .sam-tgl{font-family:inherit;font-size:10px;padding:5px 12px;background:transparent;border:none;color:#6b7a99;cursor:pointer;letter-spacing:.1em}
 #lngbal-sam .sam-tgl.act{background:#4d9ef5;color:#fff}
-#lngbal-sam .sam-tgl:hover:not(.act){background:#151829;color:#f0f4ff}
-#lngbal-sam .sam-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:0 0 22px}
-#lngbal-sam .sam-kc{background:#0f1221;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:14px 16px}
-#lngbal-sam .sam-kl{font-size:9px;color:#6b7a99;margin-bottom:10px;letter-spacing:1.5px}
-#lngbal-sam .sam-kv{font-size:24px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1}
-#lngbal-sam .sam-ku{font-size:10px;color:#6b7a99;margin-left:4px}
-#lngbal-sam .sam-ks{font-size:10px;margin-top:8px;letter-spacing:.5px}
-#lngbal-sam .sam-ks.up{color:#10b981}
-#lngbal-sam .sam-ks.dn{color:#ef4444}
-#lngbal-sam .sam-sect{background:#0f1221;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:16px;margin-bottom:18px}
-#lngbal-sam .sam-stt{font-size:10px;letter-spacing:1.5px;color:#4d9ef5;font-weight:500;margin-bottom:12px}
+#lngbal-sam .sam-tgl:hover:not(.act){background:#151829;color:#dde4f0}
+#lngbal-sam .sam-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0 0 18px}
+#lngbal-sam .sam-kc{background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:11px 13px}
+#lngbal-sam .sam-kl{font-size:9px;color:#6b7a99;margin-bottom:5px;letter-spacing:.1em}
+#lngbal-sam .sam-kv{font-size:18px;font-weight:500;color:#f0f4ff;font-variant-numeric:tabular-nums;line-height:1.1}
+#lngbal-sam .sam-ku{font-size:9px;color:#6b7a99;margin-left:4px}
+#lngbal-sam .sam-ks{font-size:9px;margin-top:3px;color:#6b7a99}
+#lngbal-sam .sam-ks.up{color:#34d399}
+#lngbal-sam .sam-ks.dn{color:#f87171}
+#lngbal-sam .sam-sect{margin-bottom:22px}
+#lngbal-sam .sam-stt{font-size:9px;letter-spacing:.15em;color:#4b5a72;margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid rgba(77,158,245,0.07);font-weight:normal;text-transform:uppercase}
 #lngbal-sam .sam-bt{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
 #lngbal-sam .sam-bt th{text-align:right;padding:8px 7px;font-weight:500;color:#8a9bb5;border-bottom:1px solid rgba(77,158,245,0.12);font-size:10px;letter-spacing:.5px;white-space:nowrap}
 #lngbal-sam .sam-bt th:first-child,#lngbal-sam .sam-bt td:first-child{text-align:left}
@@ -640,27 +640,27 @@
 #lngbal-sam .sam-bt tr.exp td:first-child{color:#fbbf24}
 #lngbal-sam .sam-bt tr.bal td{color:#ef4444}
 #lngbal-sam .sam-bt tr.bal td:first-child{color:#ef4444;font-weight:500;padding-top:12px;border-top:1px dashed rgba(239,68,68,0.3)}
-#lngbal-sam .sam-chg{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px;margin:0 0 18px}
-#lngbal-sam .sam-cb{background:#0f1221;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:16px}
-#lngbal-sam .sam-cw{height:240px;position:relative}
-#lngbal-sam .sam-notes{background:#0f1221;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:14px 16px;font-size:11px;color:#6b7a99;line-height:1.7}
-#lngbal-sam .sam-nt{font-size:10px;letter-spacing:1.5px;color:#4d9ef5;font-weight:500;margin-bottom:8px}
+#lngbal-sam .sam-chg{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px;margin:0 0 22px}
+#lngbal-sam .sam-cb{background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:14px}
+#lngbal-sam .sam-cw{height:220px;position:relative}
+#lngbal-sam .sam-notes{background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:12px 14px;font-size:11px;color:#6b7a99;line-height:1.7}
+#lngbal-sam .sam-nt{font-size:9px;letter-spacing:.15em;color:#4b5a72;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(77,158,245,0.07);font-weight:normal;text-transform:uppercase}
 #lngbal-sam .sam-notes code{background:#151829;padding:1px 5px;border-radius:2px;font-size:10px;color:#fbbf24}
-#lngbal-sam .sam-hst{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:0 0 22px}
-#lngbal-sam .sam-hc{background:#0f1221;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:14px 16px}
-#lngbal-sam .sam-hl{font-size:10px;color:#6b7a99;margin-bottom:10px;letter-spacing:1.2px}
+#lngbal-sam .sam-hst{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:0 0 18px}
+#lngbal-sam .sam-hc{background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:11px 13px}
+#lngbal-sam .sam-hl{font-size:9px;color:#6b7a99;margin-bottom:6px;letter-spacing:.1em}
 #lngbal-sam .sam-hm{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
-#lngbal-sam .sam-hv{font-size:26px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1}
-#lngbal-sam .sam-hp{font-size:11px;color:#6b7a99}
-#lngbal-sam .sam-hd{font-size:10px;margin-left:6px;letter-spacing:.5px}
-#lngbal-sam .sam-hb{height:4px;background:#151829;border-radius:2px;overflow:hidden;margin-top:8px}
+#lngbal-sam .sam-hv{font-size:18px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.1}
+#lngbal-sam .sam-hp{font-size:10px;color:#6b7a99}
+#lngbal-sam .sam-hd{font-size:9px;margin-left:6px;letter-spacing:.3px}
+#lngbal-sam .sam-hb{height:3px;background:#151829;border-radius:2px;overflow:hidden;margin-top:6px}
 #lngbal-sam .sam-hb>div{height:100%;border-radius:2px}
 #lngbal-sam .sam-ss-ctrl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-#lngbal-sam .sam-ss-lab{font-size:10px;color:#6b7a99;letter-spacing:1px}
-#lngbal-sam .sam-ss-sel{background:#151829;border:1px solid rgba(77,158,245,0.12);border-radius:3px;padding:5px 10px;color:#f0f4ff;font-family:inherit;font-size:11px;outline:none;cursor:pointer}
+#lngbal-sam .sam-ss-lab{font-size:9px;color:#6b7a99;letter-spacing:.1em}
+#lngbal-sam .sam-ss-sel{background:#0f1221;border:1px solid rgba(77,158,245,0.15);color:#dde4f0;font-family:inherit;font-size:10px;padding:5px 8px;outline:none;cursor:pointer}
 #lngbal-sam .sam-ss-sel:focus{border-color:#4d9ef5}
-#lngbal-sam .sam-yr-group{display:flex;border:1px solid rgba(77,158,245,0.12);border-radius:3px;overflow:hidden}
-#lngbal-sam .sam-yr-btn{font-family:inherit;font-size:10px;padding:5px 10px;background:transparent;border:none;color:#8a9bb5;cursor:pointer;letter-spacing:.5px;border-right:1px solid rgba(77,158,245,0.12)}
+#lngbal-sam .sam-yr-group{display:flex;border:1px solid rgba(77,158,245,0.12);border-radius:2px;overflow:hidden}
+#lngbal-sam .sam-yr-btn{font-family:inherit;font-size:10px;padding:5px 10px;background:transparent;border:none;color:#6b7a99;cursor:pointer;letter-spacing:.1em;border-right:1px solid rgba(77,158,245,0.12)}
 #lngbal-sam .sam-yr-btn:last-child{border-right:none}
 #lngbal-sam .sam-yr-btn.act{background:#4d9ef5;color:#fff}
 #lngbal-sam .sam-yr-btn:hover:not(.act){background:#151829}

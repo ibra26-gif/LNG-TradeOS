@@ -5,6 +5,7 @@
     }
   },
   "crons": [
-    { "path": "/api/brazil-ons-hydro", "schedule": "5 15,22 * * *" }
+    { "path": "/api/brazil-ons-hydro", "schedule": "5 15,22 * * *" },
+    { "path": "/api/colombia-xm-hydro", "schedule": "10 10 * * *" }
   ]
 }

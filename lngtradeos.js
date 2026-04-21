@@ -17782,6 +17782,50 @@ async function samLoadColombia() {
   }
 }
 
+async function samLoadColombiaHydro() {
+  try {
+    const r = await fetch('/api/colombia-xm-hydro');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+    if (!j.reservoirs) return;
+    const map = {
+      agregado: 'EMBALSE AGREGADO (SIN)',
+      penol:    'PEÑOL-GUATAPÉ (EPM)',
+      guavio:   'GUAVIO (ENEL)',
+      punchina: 'PUNCHINÁ (ISAGEN)',
+    };
+    const thresholds = (pct) => pct >= 70 ? '#10b981' : pct >= 55 ? '#fbbf24' : '#ef4444';
+
+    const hst = document.querySelector('#sam-cph .sam-hst');
+    if (!hst) return;
+    hst.innerHTML = '';
+    for (const key of Object.keys(map)) {
+      const d = j.reservoirs[key];
+      const hc = document.createElement('div');
+      hc.className = 'sam-hc';
+      if (!d) {
+        hc.innerHTML = `<div class="sam-hl">${map[key]}</div><div class="sam-hm"><span class="sam-hv" style="color:#6b7a99">—</span></div>`;
+      } else {
+        const color = thresholds(d.current);
+        const wowColor = d.wow >= 0 ? '#10b981' : '#ef4444';
+        const wowStr = (d.wow >= 0 ? '+' : '') + d.wow.toFixed(1) + ' pp W/W';
+        hc.innerHTML = `
+          <div class="sam-hl">${map[key]}</div>
+          <div class="sam-hm">
+            <span class="sam-hv" style="color:${color}">${d.current.toFixed(2)}</span>
+            <span class="sam-hp">%</span>
+            <span class="sam-hd" style="color:${wowColor}">${wowStr}</span>
+          </div>
+          <div class="sam-hb"><div style="width:${d.current}%;background:${color}"></div></div>`;
+      }
+      hst.appendChild(hc);
+    }
+    console.log('[SAM] Colombia hydro loaded', j.updatedAt);
+  } catch (err) {
+    console.warn('[SAM] Colombia hydro fetch failed:', err.message);
+  }
+}
+
 // Monkey-patch SAM.init so live-load runs right after initial placeholder render.
 // This preserves the existing init() and simply appends async data loading.
 const _origInit = SAM.init;
@@ -17791,6 +17835,7 @@ SAM.init = function() {
   samLoadBrazilHydro();
   samLoadArgentina();
   samLoadColombia();
+  samLoadColombiaHydro();
 };
 
 })();
