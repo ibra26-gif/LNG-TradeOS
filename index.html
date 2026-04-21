@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260421s">
-<script src="lngtradeos.js?v=20260421s" defer></script>
+<script src="lngtradeos.js?v=20260421t" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -721,10 +721,6 @@
     <div class="sam-hc"><div class="sam-hl">NE SUBSYSTEM</div><div class="sam-hm"><span class="sam-hv" style="color:#10b981">95.31</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#10b981">+0.5 pp W/W</span></div><div class="sam-hb"><div style="width:95.31%;background:#10b981"></div></div></div>
     <div class="sam-hc"><div class="sam-hl">N SUBSYSTEM</div><div class="sam-hm"><span class="sam-hv" style="color:#10b981">96.07</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#10b981">+0.3 pp W/W</span></div><div class="sam-hb"><div style="width:96.07%;background:#10b981"></div></div></div>
   </div>
-  <div class="sam-notes">
-    <div class="sam-nt">HYDRO DATA MODEL NOTES</div>
-    Source: ONS Open Data CSV <code>EAR_DIARIO_SUBSISTEMA_2026.csv</code>. Latest EAR% reading per subsystema, fetched weekly (Monday 08:00 UTC / 05:00 BRT) via Vercel cron. EAR = Energia Armazenada (stored energy vs max capacity). Thresholds: green &gt;70% (bearish LNG), amber 30–70%, red &lt;30% (bullish LNG · gas-fired backfill likely).
-  </div>
 </div>
 
 </div>
@@ -850,10 +846,6 @@
     <div class="sam-hc"><div class="sam-hl">PEÑOL-GUATAPÉ (EPM)</div><div class="sam-hm"><span class="sam-hv" style="color:#fbbf24">62.15</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#ef4444">-1.2 pp W/W</span></div><div class="sam-hb"><div style="width:62.15%;background:#fbbf24"></div></div></div>
     <div class="sam-hc"><div class="sam-hl">GUAVIO (ENEL)</div><div class="sam-hm"><span class="sam-hv" style="color:#ef4444">45.80</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#ef4444">-1.8 pp W/W</span></div><div class="sam-hb"><div style="width:45.8%;background:#ef4444"></div></div></div>
     <div class="sam-hc"><div class="sam-hl">PUNCHINÁ (ISAGEN)</div><div class="sam-hm"><span class="sam-hv" style="color:#10b981">71.30</span><span class="sam-hp">%</span><span class="sam-hd" style="color:#10b981">+0.4 pp W/W</span></div><div class="sam-hb"><div style="width:71.3%;background:#10b981"></div></div></div>
-  </div>
-  <div class="sam-notes">
-    <div class="sam-nt">HYDRO DATA MODEL NOTES</div>
-    Source: XM <em>Sinergox</em> API (<code>portalbissrs.xm.com.co</code>) — latest <code>Volumen Útil Diario por Embalse</code> reading per reservoir, fetched daily at 06:00 UTC (01:00 COT) via Vercel cron. Aggregated SIN level = weighted by capacity across Peñol-Guatapé, Guavio, Punchiná, Riogrande II + smaller reservoirs. Thresholds: green &gt;70% (bearish LNG), amber 30–70%, red &lt;30% (bullish LNG · thermal ramp, Cartagena FSRU reactivation likely). El Niño cycles create sustained deficits Dec–May; ONI index &lt; -0.5 triggers CREG thermal firm-capacity auctions.
   </div>
 </div>
 
