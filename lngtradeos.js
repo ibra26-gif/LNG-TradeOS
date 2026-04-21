@@ -10300,7 +10300,7 @@ window.syncEEX=syncEEX;
     // Bump this tag whenever the EEX parser, EEX_HUBS list, or
     // PUBLIC_STATE_KEYS membership changes, so existing viewers force a
     // fresh XLSX fetch instead of trusting a stale localStorage cache.
-    const EXPECTED='v5-always-refetch';
+    const EXPECTED='v6-merge-not-replace';
     if(localStorage.getItem(TAG)!==EXPECTED){
       localStorage.removeItem('eex_v1');
       localStorage.removeItem('lngtradeos_eex_xlsx_ts');
@@ -10527,18 +10527,38 @@ function parseEEXFile(buf){
     }
   });
 
+  const sortRows=arr=>arr.sort((a,b)=>{
+    // Sort: monthly YYYY-MM first, then seasonals W:/S:/C:
+    const aM=a.pk.match(/^\d{4}-\d{2}$/),bM=b.pk.match(/^\d{4}-\d{2}$/);
+    if(aM&&bM) return a.pk.localeCompare(b.pk);
+    if(aM) return -1; if(bM) return 1;
+    return a.pk.localeCompare(b.pk);
+  });
   let added=0;
   Object.entries(hubData).forEach(([ds,{date,pkMap}])=>{
-    const rows=Object.entries(pkMap).map(([pk,hubs])=>({pk,...hubs})).sort((a,b)=>{
-      // Sort: monthly YYYY-MM first, then seasonals W:/S:/C:
-      const aM=a.pk.match(/^\d{4}-\d{2}$/),bM=b.pk.match(/^\d{4}-\d{2}$/);
-      if(aM&&bM) return a.pk.localeCompare(b.pk);
-      if(aM) return -1; if(bM) return 1;
-      return a.pk.localeCompare(b.pk);
+    const newRows=Object.entries(pkMap).map(([pk,hubs])=>({pk,...hubs}));
+    if(!newRows.length) return;
+    if(!eexD[ds]){
+      added++;
+      eexD[ds]={date,rows:sortRows(newRows)};
+      return;
+    }
+    // MERGE per (pk, hub). Existing values win — a partial XLSX (e.g. old
+    // Drive file missing a hub or later dates) must never clobber fresh
+    // values from a more complete source like the repo XLSX fetched by
+    // syncEEX(). Only fill in keys that don't already exist.
+    const existing=eexD[ds].rows;
+    newRows.forEach(nr=>{
+      const match=existing.find(r=>r.pk===nr.pk);
+      if(match){
+        for(const k in nr){
+          if(k!=='pk' && match[k]==null && nr[k]!=null) match[k]=nr[k];
+        }
+      }else{
+        existing.push(nr);
+      }
     });
-    if(!rows.length) return;
-    if(!eexD[ds]) added++;
-    eexD[ds]={date,rows};
+    eexD[ds]={date,rows:sortRows(existing)};
   });
   eexDates=Object.keys(eexD).sort();
   eex_sCache();
