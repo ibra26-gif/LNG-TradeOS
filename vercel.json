@@ -2,6 +2,10 @@
   "functions": {
     "api/*.js": {
       "maxDuration": 30
+    },
+    "api/china-gas-balance.js": {
+      "maxDuration": 30,
+      "includeFiles": "data/china_gas_balance.csv"
     }
   },
   "crons": [
