@@ -9,7 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="lngtradeos.css?v=20260421i">
+<link rel="stylesheet" href="lngtradeos.css?v=20260421l">
 <script src="lngtradeos.js?v=20260421h" defer></script>
 </head>
 <body>
@@ -24,7 +24,7 @@
       <button type="button" onclick="publicScroll('public-workflows')">Workflows</button>
       <button type="button" onclick="publicScroll('public-intelligence')">Intelligence</button>
       <button type="button" onclick="publicScroll('public-methodology')">Methodology</button>
-      <button type="button" data-public-nav="theme" onclick="publicGo('theme')">Theme</button>
+      <button type="button" id="public-theme-toggle" onclick="togglePublicTheme()">Theme B</button>
       <button type="button" data-public-nav="disclaimer" onclick="publicGo('disclaimer')">Disclaimer</button>
     </div>
     <button class="public-access" type="button" onclick="openAccessModal()">Access</button>
@@ -107,15 +107,27 @@
     <section class="public-page" id="public-page-theme">
       <section class="public-legal public-theme-page">
         <div class="public-kicker">Theme</div>
-        <h1>Premium dark intelligence platform</h1>
-        <p>The public interface keeps the current LNG TradeOS™ dark identity, but uses a cleaner, more spacious enterprise layout.</p>
-        <div class="theme-spec-grid">
-          <div><span>Background</span><b>#0B0D16</b><small>Graphite black</small></div>
-          <div><span>Panels</span><b>#0F1221</b><small>Charcoal surfaces</small></div>
-          <div><span>Accent</span><b>#4D9EF5</b><small>LNG blue</small></div>
-          <div><span>Text</span><b>#F0F4FF</b><small>Cool white</small></div>
+        <h1>Choose the public website identity</h1>
+        <p>Switch between the final dark LNG TradeOS™ identity and the earlier Premium Light Identity for comparison.</p>
+        <div class="theme-switcher" role="group" aria-label="Website theme switcher">
+          <button class="theme-choice active" id="theme-choice-dark" type="button" onclick="setPublicTheme('dark')">
+            <span class="theme-preview dark-preview"><i></i><i></i><i></i></span>
+            <b>Theme A Colors</b>
+            <small>Dark LNG TradeOS™ identity with the cleaner premium layout.</small>
+          </button>
+          <button class="theme-choice" id="theme-choice-light" type="button" onclick="setPublicTheme('light')">
+            <span class="theme-preview light-preview"><i></i><i></i><i></i></span>
+            <b>Theme B — Premium Light Identity</b>
+            <small>Off-white enterprise analytics style with the same logo and blue accent.</small>
+          </button>
         </div>
-        <div class="public-theme-note">Use this theme for the public website. Keep the logged-in app denser and more workstation-like.</div>
+        <div class="theme-spec-grid">
+          <div><span>Current</span><b id="theme-current-name">Dark Premium</b><small id="theme-current-note">Recommended final public interface.</small></div>
+          <div><span>Logo</span><b>LNG TradeOS™</b><small>Blue triangle preserved in both themes.</small></div>
+          <div><span>Layout</span><b>Theme B</b><small>Spacious, premium, product-led composition.</small></div>
+          <div><span>Access</span><b>Gated App</b><small>Access opens your existing platform.</small></div>
+        </div>
+        <div class="public-theme-note">This switch only changes the public website face. The logged-in LNG TradeOS™ platform keeps its existing dark workstation interface.</div>
       </section>
     </section>
 
@@ -1001,6 +1013,52 @@
 <script>
 (function(){
   const ACCESS_PASSWORD='@Moustapha1';
+  function ensurePublicLightStyles(){
+    if(document.getElementById('public-light-theme-style'))return;
+    const style=document.createElement('style');
+    style.id='public-light-theme-style';
+    style.textContent=`
+      body.public-theme-light{background:#f5f7fb!important;color:#102033!important}
+      body.public-theme-light #public-site{background:radial-gradient(circle at 76% 12%,rgba(77,158,245,.16),transparent 30%),#f5f7fb!important;color:#102033!important}
+      body.public-theme-light .public-nav{background:rgba(245,247,251,.94)!important;border-bottom-color:rgba(34,72,112,.16)!important}
+      body.public-theme-light .public-logo-text,body.public-theme-light .public-hero h1,body.public-theme-light .public-legal h1,body.public-theme-light .public-section-head h2,body.public-theme-light .public-split h2,body.public-theme-light .public-workflow-grid b,body.public-theme-light .public-module-list b,body.public-theme-light .theme-choice b{color:#102033!important}
+      body.public-theme-light .public-links button,body.public-theme-light .public-footer,body.public-theme-light .public-footer button,body.public-theme-light .public-hero p,body.public-theme-light .public-legal>p,body.public-theme-light .public-wide-copy,body.public-theme-light .public-workflow-grid p,body.public-theme-light .public-module-list small,body.public-theme-light .legal-block p,body.public-theme-light .public-theme-note,body.public-theme-light .theme-choice small{color:#64748b!important}
+      body.public-theme-light .public-links button:hover,body.public-theme-light .public-links button.active{color:#102033!important}
+      body.public-theme-light .public-access,body.public-theme-light .public-secondary{color:#102033!important;border-color:rgba(34,72,112,.18)!important;background:rgba(255,255,255,.72)!important}
+      body.public-theme-light .public-product{background:linear-gradient(145deg,#ffffff,#edf3f9)!important;border-color:rgba(34,72,112,.16)!important;box-shadow:0 30px 70px rgba(31,54,82,.14)!important}
+      body.public-theme-light .public-product-top span,body.public-theme-light .public-product-grid>div,body.public-theme-light .public-workflow-grid article,body.public-theme-light .public-module-list div,body.public-theme-light .theme-spec-grid div,body.public-theme-light .theme-choice{background:#fff!important;border-color:rgba(34,72,112,.16)!important}
+      body.public-theme-light .public-product-top b,body.public-theme-light .theme-spec-grid b{color:#102033!important}
+      body.public-theme-light .public-hero,body.public-theme-light .public-band,body.public-theme-light .public-split,body.public-theme-light .public-footer,body.public-theme-light .legal-block{border-color:rgba(34,72,112,.16)!important}
+      body.public-theme-light .public-map{background:linear-gradient(135deg,rgba(77,158,245,.08),transparent),repeating-linear-gradient(0deg,transparent,transparent 31px,rgba(34,72,112,.08) 32px),repeating-linear-gradient(90deg,transparent,transparent 31px,rgba(34,72,112,.08) 32px)!important}
+    `;
+    document.head.appendChild(style);
+  }
+  window.setPublicTheme=function(theme){
+    ensurePublicLightStyles();
+    const site=document.getElementById('public-site');
+    const next=theme==='light'?'light':'dark';
+    if(site){
+      site.dataset.publicTheme=next;
+      site.classList.toggle('public-theme-light',next==='light');
+      site.classList.toggle('public-theme-dark',next==='dark');
+    }
+    document.body.classList.toggle('public-theme-light',next==='light');
+    document.body.classList.toggle('public-theme-dark',next==='dark');
+    try{localStorage.setItem('lng_public_theme',next);}catch{}
+    document.getElementById('theme-choice-dark')?.classList.toggle('active',next==='dark');
+    document.getElementById('theme-choice-light')?.classList.toggle('active',next==='light');
+    const toggle=document.getElementById('public-theme-toggle');
+    if(toggle)toggle.textContent=next==='light'?'Theme A':'Theme B';
+    const name=document.getElementById('theme-current-name');
+    const note=document.getElementById('theme-current-note');
+    if(name)name.textContent=next==='light'?'Premium Light':'Dark Premium';
+    if(note)note.textContent=next==='light'?'Earlier Theme B public identity.':'Recommended final public interface.';
+  };
+  window.togglePublicTheme=function(){
+    const site=document.getElementById('public-site');
+    const current=site?.dataset.publicTheme||'dark';
+    setPublicTheme(current==='light'?'dark':'light');
+  };
   window.publicGo=function(page){
     document.querySelectorAll('.public-page').forEach(el=>el.classList.remove('active'));
     const target=document.getElementById('public-page-'+page)||document.getElementById('public-page-home');
@@ -1033,6 +1091,7 @@
       const err=document.getElementById('access-error');if(err)err.style.display='block';
     }
   };
+  try{setPublicTheme(localStorage.getItem('lng_public_theme')||'dark');}catch{setPublicTheme('dark');}
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAccessModal();});
 })();
 </script>
