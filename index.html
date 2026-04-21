@@ -9,7 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="lngtradeos.css?v=20260421l">
+<link rel="stylesheet" href="lngtradeos.css?v=20260421m">
 <script src="lngtradeos.js?v=20260421h" defer></script>
 </head>
 <body>
@@ -24,7 +24,7 @@
       <button type="button" onclick="publicScroll('public-workflows')">Workflows</button>
       <button type="button" onclick="publicScroll('public-intelligence')">Intelligence</button>
       <button type="button" onclick="publicScroll('public-methodology')">Methodology</button>
-      <button type="button" id="public-theme-toggle" onclick="togglePublicTheme()">Theme B</button>
+      <button type="button" id="public-theme-toggle" onclick="togglePublicTheme()">Theme</button>
       <button type="button" data-public-nav="disclaimer" onclick="publicGo('disclaimer')">Disclaimer</button>
     </div>
     <button class="public-access" type="button" onclick="openAccessModal()">Access</button>
@@ -108,26 +108,26 @@
       <section class="public-legal public-theme-page">
         <div class="public-kicker">Theme</div>
         <h1>Choose the public website identity</h1>
-        <p>Switch between the final dark LNG TradeOS™ identity and the earlier Premium Light Identity for comparison.</p>
+        <p>Switch the public website and platform between the dark LNG TradeOS™ identity and a Premium Light identity.</p>
         <div class="theme-switcher" role="group" aria-label="Website theme switcher">
           <button class="theme-choice active" id="theme-choice-dark" type="button" onclick="setPublicTheme('dark')">
             <span class="theme-preview dark-preview"><i></i><i></i><i></i></span>
-            <b>Theme A Colors</b>
+            <b>Dark</b>
             <small>Dark LNG TradeOS™ identity with the cleaner premium layout.</small>
           </button>
           <button class="theme-choice" id="theme-choice-light" type="button" onclick="setPublicTheme('light')">
             <span class="theme-preview light-preview"><i></i><i></i><i></i></span>
-            <b>Theme B — Premium Light Identity</b>
+            <b>Premium Light</b>
             <small>Off-white enterprise analytics style with the same logo and blue accent.</small>
           </button>
         </div>
         <div class="theme-spec-grid">
           <div><span>Current</span><b id="theme-current-name">Dark Premium</b><small id="theme-current-note">Recommended final public interface.</small></div>
           <div><span>Logo</span><b>LNG TradeOS™</b><small>Blue triangle preserved in both themes.</small></div>
-          <div><span>Layout</span><b>Theme B</b><small>Spacious, premium, product-led composition.</small></div>
+          <div><span>Layout</span><b>Premium</b><small>Spacious, product-led composition.</small></div>
           <div><span>Access</span><b>Gated App</b><small>Access opens your existing platform.</small></div>
         </div>
-        <div class="public-theme-note">This switch only changes the public website face. The logged-in LNG TradeOS™ platform keeps its existing dark workstation interface.</div>
+        <div class="public-theme-note">This switch applies to the public website and carries into the logged-in LNG TradeOS™ platform after access.</div>
       </section>
     </section>
 
@@ -177,7 +177,7 @@
     <div class="nav-tab"        id="tab-toolbox"      onclick="shellNav('toolbox')">LNG TOOLBOX</div>
     <div class="nav-tab"        id="tab-disclaimer"   onclick="shellNav('disclaimer')">DISCLAIMER</div>
   </div>
-  
+  <button class="app-theme-toggle" type="button" onclick="togglePublicTheme()">THEME</button>
 </nav>
 
 <!-- HOME -->
@@ -1048,11 +1048,11 @@
     document.getElementById('theme-choice-dark')?.classList.toggle('active',next==='dark');
     document.getElementById('theme-choice-light')?.classList.toggle('active',next==='light');
     const toggle=document.getElementById('public-theme-toggle');
-    if(toggle)toggle.textContent=next==='light'?'Theme A':'Theme B';
+    if(toggle)toggle.textContent='Theme';
     const name=document.getElementById('theme-current-name');
     const note=document.getElementById('theme-current-note');
     if(name)name.textContent=next==='light'?'Premium Light':'Dark Premium';
-    if(note)note.textContent=next==='light'?'Earlier Theme B public identity.':'Recommended final public interface.';
+    if(note)note.textContent=next==='light'?'Premium Light identity active.':'Dark LNG TradeOS identity active.';
   };
   window.togglePublicTheme=function(){
     const site=document.getElementById('public-site');
