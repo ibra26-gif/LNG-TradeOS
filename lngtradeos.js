@@ -10927,7 +10927,10 @@ function _pctile(sorted, p){
 
 function bStats(tv){
   const st = $id('stats-title');
-  if (st) st.textContent = 'STATISTICS — ' + tvL(tv);
+  const rLbl = {all:'ALL',ytd:'YTD','1m':'1M','3m':'3M','6m':'6M','1y':'1Y'}[_histRange] || _histRange.toUpperCase();
+  if (st) st.textContent = 'STATISTICS — ' + tvL(tv) + ' · ' + rLbl;
+
+  const cut = rangeStart(_histRange);
 
   let html = `<thead><tr>
     <th>Instrument</th><th>Current</th><th>Mean</th><th>Median</th>
@@ -10937,7 +10940,8 @@ function bStats(tv){
   </tr></thead><tbody>`;
 
   INSTS.forEach(inst => {
-    const s = gS(inst.k, tv);
+    let s = gS(inst.k, tv);
+    if (cut) s = s.filter(d => d.date >= cut);
     if (!s.length){
       html += `<tr><td>${inst.label}</td><td colspan="14" style="color:#3d5070">No data</td></tr>`;
       return;
