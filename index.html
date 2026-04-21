@@ -9,11 +9,148 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="lngtradeos.css?v=20260421h">
+<link rel="stylesheet" href="lngtradeos.css?v=20260421i">
 <script src="lngtradeos.js?v=20260421h" defer></script>
 </head>
 <body>
-<nav class="topnav">
+<div id="public-site">
+  <nav class="public-nav">
+    <button class="public-logo" type="button" onclick="publicGo('home')" aria-label="LNG TradeOS home">
+      <span class="logo-tri"></span>
+      <span class="public-logo-text">LNG <span>TradeOS<sup>™</sup></span></span>
+    </button>
+    <div class="public-links" aria-label="Public navigation">
+      <button type="button" data-public-nav="home" class="active" onclick="publicGo('home')">Product</button>
+      <button type="button" onclick="publicScroll('public-workflows')">Workflows</button>
+      <button type="button" onclick="publicScroll('public-intelligence')">Intelligence</button>
+      <button type="button" onclick="publicScroll('public-methodology')">Methodology</button>
+      <button type="button" data-public-nav="theme" onclick="publicGo('theme')">Theme</button>
+      <button type="button" data-public-nav="disclaimer" onclick="publicGo('disclaimer')">Disclaimer</button>
+    </div>
+    <button class="public-access" type="button" onclick="openAccessModal()">Access</button>
+  </nav>
+
+  <main>
+    <section class="public-page active" id="public-page-home">
+      <section class="public-hero">
+        <div class="public-hero-copy">
+          <div class="public-kicker">LNG TradeOS™</div>
+          <h1>LNG market intelligence, built for trading decisions</h1>
+          <p>Unify cargo economics, forward curves, gas fundamentals, regas capacity, and portfolio valuation in one clear workspace.</p>
+          <div class="public-actions">
+            <button class="public-primary" type="button" onclick="openAccessModal()">Access Platform</button>
+            <button class="public-secondary" type="button" onclick="publicScroll('public-workflows')">Explore Workflows</button>
+          </div>
+        </div>
+        <div class="public-product" aria-label="LNG TradeOS platform preview">
+          <div class="public-product-top">
+            <span>JKM <b>$10.84</b></span><span>TTF <b>€31.20</b></span><span>HH <b>$2.91</b></span><span>BRENT <b>$87.40</b></span>
+          </div>
+          <div class="public-product-grid">
+            <div class="public-map-panel">
+              <div class="public-panel-label">GLOBAL ROUTES</div>
+              <div class="public-map">
+                <span class="route r1"></span><span class="route r2"></span><span class="route r3"></span>
+                <i class="node n1"></i><i class="node n2"></i><i class="node n3"></i><i class="node n4"></i>
+              </div>
+            </div>
+            <div class="public-curve-panel">
+              <div class="public-panel-label">FORWARD CURVE</div>
+              <svg viewBox="0 0 260 120" role="img" aria-label="Forward curve chart">
+                <path d="M8 94 C45 62, 78 68, 112 45 S176 62, 246 24" fill="none" stroke="#4d9ef5" stroke-width="3"/>
+                <path d="M8 102 L246 102 M8 76 L246 76 M8 50 L246 50 M8 24 L246 24" stroke="rgba(77,158,245,.12)" stroke-width="1"/>
+              </svg>
+            </div>
+            <div class="public-table-panel">
+              <div class="public-panel-label">NETBACK RANKING</div>
+              <div class="public-row"><span>USGC → Europe</span><b class="good">+0.61</b></div>
+              <div class="public-row"><span>Qatar → NE Asia</span><b>+0.34</b></div>
+              <div class="public-row"><span>WAF → Europe</span><b class="bad">-0.12</b></div>
+            </div>
+            <div class="public-signal-panel">
+              <div class="public-panel-label">SIGNALS</div>
+              <span class="signal good">ARB OPEN</span>
+              <span class="signal">JKM-TTF WIDENING</span>
+              <span class="signal amber">REGAS TIGHT</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="public-band" id="public-workflows">
+        <div class="public-section-head"><span>01</span><h2>Five workflows, one operating system</h2></div>
+        <div class="public-workflow-grid">
+          <article><b>Cargo Pricing</b><p>Freight, DES/FOB economics, netbacks, and regas costs.</p></article>
+          <article><b>Market Curves</b><p>Forward curves, spreads, correlations, and seasonality.</p></article>
+          <article><b>Fundamentals</b><p>Storage, balances, LNG arrivals, pipeline flows, and regas utilization.</p></article>
+          <article><b>Optionality</b><p>Single cargoes, strips, portfolio exposure, and embedded value.</p></article>
+          <article><b>Signals</b><p>Arbitrage, market structure, regional signposts, and decision flags.</p></article>
+        </div>
+      </section>
+
+      <section class="public-split" id="public-intelligence">
+        <div><span class="public-kicker">Intelligence Modules</span><h2>From physical economics to portfolio view</h2></div>
+        <div class="public-module-list">
+          <div><span>01</span><b>Physical Trading</b><small>Voyage economics, netbacks, market structure, EU regas.</small></div>
+          <div><span>02</span><b>Financial Trading</b><small>Dashboard, historical prices, spreads, correlations, curves.</small></div>
+          <div><span>03</span><b>Gas &amp; LNG Analytics</b><small>EU gas balance, storage, LNG flows, market signposts.</small></div>
+          <div><span>04</span><b>Portfolio Valuation</b><small>Single deals, strips, exposure, optionality, portfolio P&amp;L.</small></div>
+        </div>
+      </section>
+
+      <section class="public-band compact" id="public-methodology">
+        <div class="public-section-head"><span>02</span><h2>Transparent methodology for professional users</h2></div>
+        <p class="public-wide-copy">LNG TradeOS™ is designed around explicit assumptions, traceable inputs, and practical commercial workflows so users can validate data, calculations, and outputs before making decisions.</p>
+      </section>
+    </section>
+
+    <section class="public-page" id="public-page-theme">
+      <section class="public-legal public-theme-page">
+        <div class="public-kicker">Theme</div>
+        <h1>Premium dark intelligence platform</h1>
+        <p>The public interface keeps the current LNG TradeOS™ dark identity, but uses a cleaner, more spacious enterprise layout.</p>
+        <div class="theme-spec-grid">
+          <div><span>Background</span><b>#0B0D16</b><small>Graphite black</small></div>
+          <div><span>Panels</span><b>#0F1221</b><small>Charcoal surfaces</small></div>
+          <div><span>Accent</span><b>#4D9EF5</b><small>LNG blue</small></div>
+          <div><span>Text</span><b>#F0F4FF</b><small>Cool white</small></div>
+        </div>
+        <div class="public-theme-note">Use this theme for the public website. Keep the logged-in app denser and more workstation-like.</div>
+      </section>
+    </section>
+
+    <section class="public-page" id="public-page-disclaimer">
+      <section class="public-legal">
+        <div class="public-kicker">Legal Notice</div>
+        <h1>DISCLAIMER — LNG TradeOS™</h1>
+        <div class="legal-block"><h2>TRADEMARK &amp; INTELLECTUAL PROPERTY</h2><p>LNG TradeOS™ is a trademark of Ibrahim Mar. The name, logo, platform architecture, and all associated visual and functional elements are the exclusive intellectual property of their creator. Unauthorized reproduction, redistribution, or commercial use is strictly prohibited without prior written consent.</p></div>
+        <div class="legal-block"><h2>NO FINANCIAL OR TRADING ADVICE</h2><p>All tools, models, calculations, and analytics are for informational and educational purposes only. Nothing constitutes financial advice or a recommendation to buy, sell, or trade any commodity or financial instrument. All outputs are indicative only.</p></div>
+        <div class="legal-block"><h2>ACCURACY &amp; LIMITATION OF LIABILITY</h2><p>LNG TradeOS makes no warranties regarding completeness or reliability of any information provided. To the fullest extent permitted by law, Ibrahim Mar and LNG TradeOS shall not be liable for any loss or damage arising from use of this platform.</p></div>
+        <div class="legal-block"><h2>CONFIDENTIALITY</h2><p>This platform and its underlying methodologies constitute confidential and proprietary information. Any reverse engineering, replication, or disclosure to third parties without written authorisation is prohibited.</p></div>
+        <div class="public-copyline">© 2026 Ibrahim Mar — LNG TradeOS™. All rights reserved.</div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="public-footer">
+    <span>© 2026 Ibrahim Mar — LNG TradeOS™</span>
+    <button type="button" onclick="publicGo('disclaimer')">Disclaimer</button>
+  </footer>
+</div>
+
+<div class="access-modal" id="access-modal" aria-hidden="true">
+  <form class="access-box" onsubmit="enterPlatform(event)">
+    <button class="access-close" type="button" onclick="closeAccessModal()" aria-label="Close access modal">×</button>
+    <div class="public-logo modal-logo"><span class="logo-tri"></span><span class="public-logo-text">LNG <span>TradeOS<sup>™</sup></span></span></div>
+    <h2>Platform Access</h2>
+    <p>Enter your access password to open the LNG TradeOS™ workspace.</p>
+    <input id="public-access-password" type="password" autocomplete="current-password" placeholder="Access password">
+    <button class="public-primary" type="submit">Enter Platform</button>
+    <div class="access-error" id="access-error">Incorrect access password.</div>
+  </form>
+</div>
+
+<nav class="topnav app-topnav">
   <div class="logo" onclick="shellNav('home')">
     <div class="logo-tri"></div>
     <div class="logo-text">LNG <span class="ac">TradeOS<span class="tm">™</span></span></div>
@@ -861,5 +998,44 @@
 </div>
 
 </div>
+<script>
+(function(){
+  const ACCESS_PASSWORD='@Moustapha1';
+  window.publicGo=function(page){
+    document.querySelectorAll('.public-page').forEach(el=>el.classList.remove('active'));
+    const target=document.getElementById('public-page-'+page)||document.getElementById('public-page-home');
+    target.classList.add('active');
+    document.querySelectorAll('[data-public-nav]').forEach(btn=>btn.classList.toggle('active',btn.dataset.publicNav===page));
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
+  window.publicScroll=function(id){
+    publicGo('home');
+    requestAnimationFrame(()=>document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'}));
+  };
+  window.openAccessModal=function(){
+    const modal=document.getElementById('access-modal');
+    modal.classList.add('open');modal.setAttribute('aria-hidden','false');
+    setTimeout(()=>document.getElementById('public-access-password')?.focus(),50);
+  };
+  window.closeAccessModal=function(){
+    const modal=document.getElementById('access-modal');
+    modal.classList.remove('open');modal.setAttribute('aria-hidden','true');
+    const err=document.getElementById('access-error');if(err)err.style.display='none';
+  };
+  window.enterPlatform=function(e){
+    e.preventDefault();
+    const input=document.getElementById('public-access-password');
+    if(input && input.value===ACCESS_PASSWORD){
+      document.body.classList.add('app-unlocked');
+      closeAccessModal();
+      if(typeof shellNav==='function')shellNav('home');
+    }else{
+      const err=document.getElementById('access-error');if(err)err.style.display='block';
+    }
+  };
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAccessModal();});
+})();
+</script>
+
 </body>
 </html>
