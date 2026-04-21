@@ -13774,7 +13774,6 @@ async function renderGaDashboard(){
             <span id="gf-brz-hydro-wow" style="font-size:10px;color:#6b7a99;margin-left:6px"></span>
           </div>
           <div id="gf-brz-hydro-sub" style="font-size:9px;color:#3d5070;margin-top:4px">ONS EAR · SIN aggregate (SE/CO + NE + S + N subsystems)</div>
-          <div style="font-size:9px;color:#8a9bb5;margin-top:6px;line-height:1.4">High hydro → Petrobras keeps spot LNG demand low</div>
         </div>
 
       </div>
@@ -13903,8 +13902,9 @@ async function _loadBrzHydroCard(){
     }
     if(sub && j.subsystems){
       const s = j.subsystems;
-      const fmtSub=(k,lbl)=>s[k]?`${lbl} ${s[k].current.toFixed(0)}%`:`${lbl} —`;
-      sub.textContent = `ONS EAR · ${j.updatedAt||''} · ${fmtSub('seco','SE/CO')} · ${fmtSub('s','S')} · ${fmtSub('ne','NE')} · ${fmtSub('n','N')}`;
+      const col=v=>v>=70?'#4ade80':v>=30?'#fbbf24':'#f87171';
+      const fmtSub=(k,lbl)=>s[k]?`${lbl} <span style="color:${col(s[k].current)}">${s[k].current.toFixed(0)}%</span>`:`${lbl} —`;
+      sub.innerHTML = `ONS EAR · ${j.updatedAt||''} · ${fmtSub('seco','SE/CO')} · ${fmtSub('s','S')} · ${fmtSub('ne','NE')} · ${fmtSub('n','N')}`;
     }
   }catch(e){ console.warn('[GF] Brazil hydro:', e.message); }
 }
