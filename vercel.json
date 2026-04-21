@@ -3,5 +3,8 @@
     "api/*.js": {
       "maxDuration": 30
     }
-  }
+  },
+  "crons": [
+    { "path": "/api/brazil-ons-hydro", "schedule": "5 15,22 * * *" }
+  ]
 }
