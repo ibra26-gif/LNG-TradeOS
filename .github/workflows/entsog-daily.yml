@@ -3,7 +3,7 @@ name: Fetch ENTSOG Pipeline Data
 on:
   schedule:
     # Three times daily UTC: 06:00 (morning), 12:00 (midday), 18:00 (D-1 finalised)
-    - cron: '0 6,12,18 * * *'
+       - cron: '0 */3 * * *'
   workflow_dispatch:
 
 jobs:
