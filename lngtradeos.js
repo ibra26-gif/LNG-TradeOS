@@ -10148,8 +10148,11 @@ const CK='lngTradeOS_v5';
 // ══════════════════════════════════════════════════════════════════════════
 const PUBLIC_STATE_URL='data/public_state.json';
 const PUBLIC_STATE_KEYS=[
-  // EOD curve caches
-  'lngTradeOS_v5','eex_v1',
+  // EOD curve caches — eex_v1 is intentionally NOT synced here; it is
+  // managed exclusively by syncEEX() which fetches the fresh XLSX on every
+  // load. Including eex_v1 here caused a race where an older snapshot in
+  // public_state.json would clobber the freshly-parsed EEX data.
+  'lngTradeOS_v5',
   // Scraped / uploaded sheets
   'lng_shpgx_v1','lng_china_gb_v1','lng_india_gb_v1',
   // Freight + physical + prices
@@ -10262,10 +10265,16 @@ window.syncEEX=syncEEX;
 (function invalidateStaleEEX(){
   try{
     const TAG='lngtradeos_eex_cache_tag';
-    const EXPECTED='v2-ztp-included';
+    // Bump this tag whenever the EEX parser, EEX_HUBS list, or
+    // PUBLIC_STATE_KEYS membership changes, so existing viewers force a
+    // fresh XLSX fetch instead of trusting a stale localStorage cache.
+    const EXPECTED='v3-ztp-noclobber';
     if(localStorage.getItem(TAG)!==EXPECTED){
       localStorage.removeItem('eex_v1');
       localStorage.removeItem('lngtradeos_eex_xlsx_ts');
+      // Also invalidate the public_state timestamp so any lingering stale
+      // eex_v1 baked into an old public_state.json doesn't re-clobber.
+      localStorage.removeItem('lngtradeos_public_state_ts');
       localStorage.setItem(TAG,EXPECTED);
     }
   }catch(e){}
