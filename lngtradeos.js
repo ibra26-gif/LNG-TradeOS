@@ -13763,16 +13763,17 @@ async function renderGaDashboard(){
           <div style="font-size:9px;color:#8a9bb5;margin-top:6px;line-height:1.4">KOGAS incremental LNG call sensitive to fleet availability</div>
         </div>
 
-        <div style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
+        <div id="gf-brz-hydro" style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid rgba(77,158,245,0.06)">
             <div style="color:#f0f4ff;font-size:10px;letter-spacing:1px;font-weight:500">BRAZIL · HYDRO RESERVOIRS</div>
-            <div style="font-size:8px;letter-spacing:1px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:1px 5px;border-radius:2px">PLACEHOLDER</div>
+            <div id="gf-brz-hydro-badge" style="font-size:8px;letter-spacing:1px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:1px 5px;border-radius:2px">LOADING…</div>
           </div>
           <div style="display:flex;align-items:baseline;gap:4px;padding:3px 0">
-            <span style="font-size:22px;font-weight:600;color:#8a9bb5;line-height:1">—</span>
+            <span id="gf-brz-hydro-val" style="font-size:22px;font-weight:600;color:#8a9bb5;line-height:1">—</span>
             <span style="font-size:10px;color:#6b7a99;margin-left:4px">%</span>
+            <span id="gf-brz-hydro-wow" style="font-size:10px;color:#6b7a99;margin-left:6px"></span>
           </div>
-          <div style="font-size:9px;color:#3d5070;margin-top:4px">ONS D-1 publication · scraper pending · SE/CO + NE + S + N subsystems</div>
+          <div id="gf-brz-hydro-sub" style="font-size:9px;color:#3d5070;margin-top:4px">ONS EAR · SIN aggregate (SE/CO + NE + S + N subsystems)</div>
           <div style="font-size:9px;color:#8a9bb5;margin-top:6px;line-height:1.4">High hydro → Petrobras keeps spot LNG demand low</div>
         </div>
 
@@ -13871,7 +13872,41 @@ async function renderGaDashboard(){
     gaUpdateStatusDots();
     _drawDbMiniCharts();
     _loadFrNuclear();
+    _loadBrzHydroCard();
   },120);
+}
+
+// Fills the Brazil hydro placeholder in Global Fundamentals using the same
+// ONS EAR endpoint that populates the South America → Brazil hydro pane.
+async function _loadBrzHydroCard(){
+  const el = document.getElementById('gf-brz-hydro');
+  if(!el) return;
+  try{
+    const r = await fetch('/api/brazil-ons-hydro');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j = await r.json();
+    const agg = j.aggregate;
+    if(!agg || agg.current==null) return;
+    const badge = document.getElementById('gf-brz-hydro-badge');
+    const val   = document.getElementById('gf-brz-hydro-val');
+    const wow   = document.getElementById('gf-brz-hydro-wow');
+    const sub   = document.getElementById('gf-brz-hydro-sub');
+    if(badge){ badge.textContent='LIVE'; badge.style.color='#4ade80'; badge.style.background='rgba(74,222,128,0.1)'; }
+    if(val){
+      val.textContent = agg.current.toFixed(1);
+      val.style.color = agg.current>=70?'#4ade80':agg.current>=30?'#fbbf24':'#f87171';
+    }
+    if(wow){
+      const s = (agg.wow>=0?'+':'')+agg.wow.toFixed(1)+' pp W/W';
+      wow.textContent = s;
+      wow.style.color = agg.wow>=0?'#4ade80':'#f87171';
+    }
+    if(sub && j.subsystems){
+      const s = j.subsystems;
+      const fmtSub=(k,lbl)=>s[k]?`${lbl} ${s[k].current.toFixed(0)}%`:`${lbl} —`;
+      sub.textContent = `ONS EAR · ${j.updatedAt||''} · ${fmtSub('seco','SE/CO')} · ${fmtSub('s','S')} · ${fmtSub('ne','NE')} · ${fmtSub('n','N')}`;
+    }
+  }catch(e){ console.warn('[GF] Brazil hydro:', e.message); }
 }
 
 function _drawDbMiniCharts(){
