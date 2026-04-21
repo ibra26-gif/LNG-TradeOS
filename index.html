@@ -9,7 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="lngtradeos.css?v=20260421m">
+<link rel="stylesheet" href="lngtradeos.css?v=20260421n">
 <script src="lngtradeos.js?v=20260421h" defer></script>
 </head>
 <body>
@@ -108,21 +108,21 @@
       <section class="public-legal public-theme-page">
         <div class="public-kicker">Theme</div>
         <h1>Choose the public website identity</h1>
-        <p>Switch the public website and platform between the dark LNG TradeOS™ identity and a Premium Light identity.</p>
+        <p>Switch the public website and platform between Graphite Command and Steel Light.</p>
         <div class="theme-switcher" role="group" aria-label="Website theme switcher">
           <button class="theme-choice active" id="theme-choice-dark" type="button" onclick="setPublicTheme('dark')">
             <span class="theme-preview dark-preview"><i></i><i></i><i></i></span>
-            <b>Dark</b>
-            <small>Dark LNG TradeOS™ identity with the cleaner premium layout.</small>
+            <b>Graphite Command</b>
+            <small>Layered graphite surfaces, cool white text, and LNG blue accents.</small>
           </button>
           <button class="theme-choice" id="theme-choice-light" type="button" onclick="setPublicTheme('light')">
             <span class="theme-preview light-preview"><i></i><i></i><i></i></span>
-            <b>Premium Light</b>
-            <small>Off-white enterprise analytics style with the same logo and blue accent.</small>
+            <b>Steel Light</b>
+            <small>Soft steel background, white panels, deep navy text, and LNG blue accents.</small>
           </button>
         </div>
         <div class="theme-spec-grid">
-          <div><span>Current</span><b id="theme-current-name">Dark Premium</b><small id="theme-current-note">Recommended final public interface.</small></div>
+          <div><span>Current</span><b id="theme-current-name">Graphite Command</b><small id="theme-current-note">Dark workspace identity active.</small></div>
           <div><span>Logo</span><b>LNG TradeOS™</b><small>Blue triangle preserved in both themes.</small></div>
           <div><span>Layout</span><b>Premium</b><small>Spacious, product-led composition.</small></div>
           <div><span>Access</span><b>Gated App</b><small>Access opens your existing platform.</small></div>
@@ -1018,17 +1018,17 @@
     const style=document.createElement('style');
     style.id='public-light-theme-style';
     style.textContent=`
-      body.public-theme-light{background:#f5f7fb!important;color:#102033!important}
-      body.public-theme-light #public-site{background:radial-gradient(circle at 76% 12%,rgba(77,158,245,.16),transparent 30%),#f5f7fb!important;color:#102033!important}
-      body.public-theme-light .public-nav{background:rgba(245,247,251,.94)!important;border-bottom-color:rgba(34,72,112,.16)!important}
+      body.public-theme-light{background:#e9eef5!important;color:#102033!important}
+      body.public-theme-light #public-site{background:radial-gradient(circle at 76% 12%,rgba(77,158,245,.16),transparent 30%),#e9eef5!important;color:#102033!important}
+      body.public-theme-light .public-nav{background:rgba(255,255,255,.78)!important;border-bottom-color:#d6e1ec!important}
       body.public-theme-light .public-logo-text,body.public-theme-light .public-hero h1,body.public-theme-light .public-legal h1,body.public-theme-light .public-section-head h2,body.public-theme-light .public-split h2,body.public-theme-light .public-workflow-grid b,body.public-theme-light .public-module-list b,body.public-theme-light .theme-choice b{color:#102033!important}
       body.public-theme-light .public-links button,body.public-theme-light .public-footer,body.public-theme-light .public-footer button,body.public-theme-light .public-hero p,body.public-theme-light .public-legal>p,body.public-theme-light .public-wide-copy,body.public-theme-light .public-workflow-grid p,body.public-theme-light .public-module-list small,body.public-theme-light .legal-block p,body.public-theme-light .public-theme-note,body.public-theme-light .theme-choice small{color:#64748b!important}
       body.public-theme-light .public-links button:hover,body.public-theme-light .public-links button.active{color:#102033!important}
-      body.public-theme-light .public-access,body.public-theme-light .public-secondary{color:#102033!important;border-color:rgba(34,72,112,.18)!important;background:rgba(255,255,255,.72)!important}
-      body.public-theme-light .public-product{background:linear-gradient(145deg,#ffffff,#edf3f9)!important;border-color:rgba(34,72,112,.16)!important;box-shadow:0 30px 70px rgba(31,54,82,.14)!important}
-      body.public-theme-light .public-product-top span,body.public-theme-light .public-product-grid>div,body.public-theme-light .public-workflow-grid article,body.public-theme-light .public-module-list div,body.public-theme-light .theme-spec-grid div,body.public-theme-light .theme-choice{background:#fff!important;border-color:rgba(34,72,112,.16)!important}
+      body.public-theme-light .public-access,body.public-theme-light .public-secondary{color:#102033!important;border-color:#d6e1ec!important;background:rgba(255,255,255,.78)!important}
+      body.public-theme-light .public-product{background:linear-gradient(145deg,#ffffff,#f5f8fc)!important;border-color:#d6e1ec!important;box-shadow:0 30px 70px rgba(31,54,82,.14)!important}
+      body.public-theme-light .public-product-top span,body.public-theme-light .public-product-grid>div,body.public-theme-light .public-workflow-grid article,body.public-theme-light .public-module-list div,body.public-theme-light .theme-spec-grid div,body.public-theme-light .theme-choice{background:#fff!important;border-color:#d6e1ec!important}
       body.public-theme-light .public-product-top b,body.public-theme-light .theme-spec-grid b{color:#102033!important}
-      body.public-theme-light .public-hero,body.public-theme-light .public-band,body.public-theme-light .public-split,body.public-theme-light .public-footer,body.public-theme-light .legal-block{border-color:rgba(34,72,112,.16)!important}
+      body.public-theme-light .public-hero,body.public-theme-light .public-band,body.public-theme-light .public-split,body.public-theme-light .public-footer,body.public-theme-light .legal-block{border-color:#d6e1ec!important}
       body.public-theme-light .public-map{background:linear-gradient(135deg,rgba(77,158,245,.08),transparent),repeating-linear-gradient(0deg,transparent,transparent 31px,rgba(34,72,112,.08) 32px),repeating-linear-gradient(90deg,transparent,transparent 31px,rgba(34,72,112,.08) 32px)!important}
     `;
     document.head.appendChild(style);
@@ -1051,8 +1051,8 @@
     if(toggle)toggle.textContent='Theme';
     const name=document.getElementById('theme-current-name');
     const note=document.getElementById('theme-current-note');
-    if(name)name.textContent=next==='light'?'Premium Light':'Dark Premium';
-    if(note)note.textContent=next==='light'?'Premium Light identity active.':'Dark LNG TradeOS identity active.';
+    if(name)name.textContent=next==='light'?'Steel Light':'Graphite Command';
+    if(note)note.textContent=next==='light'?'Steel Light identity active.':'Graphite Command identity active.';
   };
   window.togglePublicTheme=function(){
     const site=document.getElementById('public-site');
