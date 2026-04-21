@@ -10568,22 +10568,26 @@ function buildDash(){
     return `<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;
   }
   // ── Helper: EEX hub card ───────────────────────────────────────────────
+  // PSV / PVB / ZTP are less liquid and often miss a settlement on any given
+  // trade date (including the latest). To avoid blank tiles, we collect the
+  // full history of M+1 values for this hub and take the last two available.
+  // The tile then shows "last observable change" — standard trading-desk
+  // convention when D-1 has no trade.
   function mcEEX(k){
     const inst=INST[k];
-    const hasEex=eexDates.length>=2;
+    const hasEex=eexDates.length>=1;
     const eld=hasEex?eexDates[eexDates.length-1]:null;
     const em1=hasEex?rPK(eexD[eld].date,1):null;
-    const lv=hasEex?(eexD[eld].rows.find(r=>r.pk===em1)?.[k]??null):null;
-    // Walk back through available dates to find the most recent prior
-    // settlement — PSV/PVB/ZTP are less liquid, so D-1 can be null. Using
-    // "last observable change" avoids blank delta on partial data.
-    let pv=null;
-    if(hasEex&&lv!=null){
-      for(let i=eexDates.length-2;i>=0;i--){
-        const v=eexD[eexDates[i]].rows.find(r=>r.pk===em1)?.[k];
-        if(v!=null){pv=v;break;}
+    // Collect non-null M+1 values in chronological order
+    const vals=[];
+    if(hasEex&&em1){
+      for(const d of eexDates){
+        const v=eexD[d].rows.find(r=>r.pk===em1)?.[k];
+        if(v!=null)vals.push(v);
       }
     }
+    const lv=vals.length>=1?vals[vals.length-1]:null;
+    const pv=vals.length>=2?vals[vals.length-2]:null;
     const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null;
     const pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null;
     const cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼';
@@ -10592,25 +10596,23 @@ function buildDash(){
     return `<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor" style="${!hasEex?'color:#f59e0b':''}">${tenorStr}</div><div class="mc-val" style="${!hasEex?'color:#3d5070;font-size:18px':''}">${valStr}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(3):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">$/MMBtu</span></div></div>`;
   }
   // ── Helper: EEX hub vs TTF spread card ────────────────────────────────
+  // Same "last observable change" pattern as mcEEX. Collect all dates where
+  // BOTH hub and TTF have M+1 values, compute the spread series, take last
+  // two. Avoids blank tiles for less-liquid hubs (PSV/ZTP).
   function mcEEXvsTTF(hubK, spreadLabel){
-    const hasEex=eexDates.length>=2;
+    const hasEex=eexDates.length>=1;
     if(!hasEex) return `<div class="mc"><div class="mc-name">${spreadLabel}</div><div class="mc-tenor" style="color:#f59e0b">Add EEX file</div><div class="mc-val" style="color:#3d5070;font-size:18px">—</div><div class="mc-row"><span class="mc-unit">$/MMBtu</span></div></div>`;
     const eld=eexDates[eexDates.length-1];
     const em1=rPK(eexD[eld].date,1);
-    const hubLv=eexD[eld].rows.find(r=>r.pk===em1)?.[hubK]??null;
-    const ttfLv=aDval('TTF',eld);
-    const lv=(hubLv!=null&&ttfLv!=null)?+(hubLv-ttfLv).toFixed(3):null;
-    // Walk back to find the most recent prior date where BOTH hub and TTF
-    // have the M+1 value — handles illiquid tenor gaps consistently.
-    let pv=null;
-    if(lv!=null){
-      for(let i=eexDates.length-2;i>=0;i--){
-        const d=eexDates[i];
-        const hv=eexD[d].rows.find(r=>r.pk===em1)?.[hubK];
-        const tv=aDval('TTF',d);
-        if(hv!=null&&tv!=null){pv=+(hv-tv).toFixed(3);break;}
-      }
+    // Build spread series across dates where both sides exist
+    const spreads=[];
+    for(const d of eexDates){
+      const hv=eexD[d].rows.find(r=>r.pk===em1)?.[hubK];
+      const tv=aDval('TTF',d);
+      if(hv!=null&&tv!=null)spreads.push(+(hv-tv).toFixed(3));
     }
+    const lv=spreads.length>=1?spreads[spreads.length-1]:null;
+    const pv=spreads.length>=2?spreads[spreads.length-2]:null;
     const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null;
     const pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(1):null;
     const cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼';
