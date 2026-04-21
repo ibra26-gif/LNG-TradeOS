@@ -10259,29 +10259,35 @@ async function _waitForAD(timeoutMs=3000){
 }
 
 async function syncEEX(){
+  // Always re-fetch and re-parse on every page load. Bypasses all caching
+  // to guarantee no stale data after user pushes a new XLSX. Extra ~500KB
+  // per load is worth the reliability guarantee.
+  console.log('[EEX] syncEEX start');
   try{
-    // Cheap freshness check first — avoid downloading 500KB if unchanged
-    const head=await fetch(EEX_XLSX_URL+'?t='+Date.now(),{method:'HEAD',cache:'no-cache'});
-    if(!head.ok)return false;
-    const remoteTs=head.headers.get('Last-Modified')||head.headers.get('ETag')||'';
-    if(!remoteTs)return false;
-    const localTs=localStorage.getItem('lngtradeos_eex_xlsx_ts')||'';
-    if(localTs===remoteTs)return false;
-    // File is new — download and parse
-    const res=await fetch(EEX_XLSX_URL+'?t='+Date.now(),{cache:'no-cache'});
-    if(!res.ok)return false;
+    const url=EEX_XLSX_URL+'?t='+Date.now();
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok){console.warn('[EEX] fetch failed:',res.status);return false;}
     const buf=await res.arrayBuffer();
-    if(typeof XLSX==='undefined'||typeof parseEEXFile!=='function')return false;
-    // Wait for aD to have real EURUSD data — otherwise conversions are wrong
-    const adReady=await _waitForAD(3000);
+    console.log('[EEX] XLSX downloaded:',buf.byteLength,'bytes');
+    if(typeof XLSX==='undefined'){console.warn('[EEX] XLSX lib not loaded yet');return false;}
+    if(typeof parseEEXFile!=='function'){console.warn('[EEX] parseEEXFile not defined yet');return false;}
+    // Wait for aD to have real EURUSD data — otherwise conversions use the
+    // 1.09 hardcoded fallback, which silently corrupts all USD values.
+    const adReady=await _waitForAD(4000);
+    console.log('[EEX] aD ready:',adReady,'sDates.length:',sDates.length);
     if(!adReady){
-      console.warn('[LNG TradeOS] aD not populated after 3s — EEX conversion may use fallback EUR/USD');
+      console.error('[EEX] aD not populated after 4s — ABORTING parse (would use wrong EUR/USD). Try reloading.');
+      return false;
     }
+    // Wipe any stale cache before re-parsing so we don't merge with old data
+    localStorage.removeItem('eex_v1');
+    Object.keys(eexD).forEach(k=>delete eexD[k]);
+    eexDates=[];
     const added=parseEEXFile(buf);
-    localStorage.setItem('lngtradeos_eex_xlsx_ts',remoteTs);
-    console.log('[LNG TradeOS] Synced EEX XLSX — '+added+' new dates, remoteTs='+remoteTs+', aD.ready='+adReady);
-    return added>0;
-  }catch(e){console.warn('[LNG TradeOS] EEX auto-fetch failed:',e.message);return false;}
+    const latest=eexDates[eexDates.length-1]||'n/a';
+    console.log('[EEX] Parsed OK — '+eexDates.length+' dates, latest='+latest+', EUR/USD used='+getEURUSD(latest));
+    return true;
+  }catch(e){console.warn('[EEX] auto-fetch failed:',e.message);return false;}
 }
 window.syncEEX=syncEEX;
 
@@ -10294,7 +10300,7 @@ window.syncEEX=syncEEX;
     // Bump this tag whenever the EEX parser, EEX_HUBS list, or
     // PUBLIC_STATE_KEYS membership changes, so existing viewers force a
     // fresh XLSX fetch instead of trusting a stale localStorage cache.
-    const EXPECTED='v4-eurusd-race-fix';
+    const EXPECTED='v5-always-refetch';
     if(localStorage.getItem(TAG)!==EXPECTED){
       localStorage.removeItem('eex_v1');
       localStorage.removeItem('lngtradeos_eex_xlsx_ts');
@@ -10306,18 +10312,42 @@ window.syncEEX=syncEEX;
   }catch(e){}
 })();
 
-// Fire once per session (before modules init) — if we get fresh data, reload
-// so every IIFE reads the new values from localStorage.
-(function boot(){
+// Two-stage boot with independent session flags:
+//   Stage 1 (pstate): syncPublicState. If the remote snapshot differs from
+//     what's cached locally, reload so modules re-initialise aD from the
+//     fresh lngTradeOS_v5 in localStorage. This ensures EUR/USD is real.
+//   Stage 2 (eex): syncEEX. Runs AFTER aD is fresh so parseEEXFile's
+//     EUR→USD conversion uses the real FX rate, not the 1.09 fallback.
+//     Re-renders the dashboard tiles in-place without a full reload.
+(async function boot(){
   try{
-    if(sessionStorage.getItem('lngtradeos_synced')==='1')return;
-    sessionStorage.setItem('lngtradeos_synced','1');
-    // Fire and forget; initial module init uses stale data for ~1s then reloads
-    Promise.all([
-      syncPublicState(),
-      syncEEX(),
-    ]).then(changed=>{ if(changed.some(Boolean)) location.reload(); });
-  }catch(e){}
+    // Stage 1 — sync public state
+    if(sessionStorage.getItem('lngtradeos_pstate_done')!=='1'){
+      sessionStorage.setItem('lngtradeos_pstate_done','1');
+      console.log('[Boot] Stage 1: syncPublicState');
+      const pubChanged=await syncPublicState();
+      console.log('[Boot] publicChanged='+pubChanged);
+      if(pubChanged){
+        console.log('[Boot] Reloading so aD refreshes from fresh localStorage');
+        location.reload();
+        return;
+      }
+    }
+    // Stage 2 — sync EEX (aD is now either freshly loaded or unchanged)
+    if(sessionStorage.getItem('lngtradeos_eex_done')!=='1'){
+      sessionStorage.setItem('lngtradeos_eex_done','1');
+      console.log('[Boot] Stage 2: syncEEX');
+      const eexChanged=await syncEEX();
+      console.log('[Boot] eexChanged='+eexChanged);
+      if(eexChanged){
+        // Re-render dashboard tiles + EU hub chart with fresh EEX data —
+        // no full reload needed since we only touched in-memory eexD.
+        console.log('[Boot] Re-rendering dashboard UI with fresh EEX data');
+        if(typeof buildDash==='function')buildDash();
+        if(typeof buildEuHubChart==='function')buildEuHubChart();
+      }
+    }
+  }catch(e){console.warn('[Boot] error:',e);}
 })();
 const INSTS=[{k:'JKM',label:'JKM',unit:'$/MMBtu'},{k:'TTF',label:'TTF',unit:'$/MMBtu'},{k:'HH',label:'HH',unit:'$/MMBtu'},{k:'NBP',label:'NBP',unit:'$/MMBtu'},{k:'Brent',label:'Brent',unit:'$/bbl'},{k:'Dated',label:'Dated Brent',unit:'$/bbl'},{k:'Slope',label:'Slope',unit:'%'},{k:'SP_JT',label:'JKM/TTF Spread',unit:'$/MMBtu'},{k:'SP_JH',label:'JKM/HH Spread',unit:'$/MMBtu'},{k:'SP_TH',label:'TTF/HH Spread',unit:'$/MMBtu'},{k:'SP_JN',label:'JKM/NBP Spread',unit:'$/MMBtu'},{k:'SP_HN',label:'HH/NBP Spread',unit:'$/MMBtu'},{k:'SP_TN',label:'TTF/NBP Spread',unit:'$/MMBtu'},
   {k:'THE',label:'THE (Germany)',unit:'$/MMBtu'},{k:'PEG',label:'PEG (France)',unit:'$/MMBtu'},{k:'PVB',label:'PVB (Spain)',unit:'$/MMBtu'},{k:'PSV',label:'PSV (Italy)',unit:'$/MMBtu'},{k:'ZTP',label:'ZTP (Belgium)',unit:'$/MMBtu'}];
