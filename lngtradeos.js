@@ -10253,12 +10253,25 @@ async function syncPublicState(){
     if(!remoteTs)return false;
     const localTs=localStorage.getItem('lngtradeos_public_state_ts')||'';
     if(localTs===remoteTs)return false;
+
+    // Safari's ~5MB localStorage quota can be exhausted by other keys. A
+    // silent setItem failure on lngTradeOS_v5 combined with writing the ts
+    // flag anyway caused the "NO DATA LOADED" stuck state. If any key fails
+    // (typically QuotaExceeded on the big ones), bail WITHOUT setting the ts
+    // flag so the next load retries — and log loudly so the issue is visible.
     let applied=0;
+    const failures=[];
     PUBLIC_STATE_KEYS.forEach(k=>{
       if(state[k]!=null){
-        try{localStorage.setItem(k,state[k]);applied++;}catch(e){}
+        try{localStorage.setItem(k,state[k]);applied++;}
+        catch(e){failures.push({k,err:e.name||e.message});}
       }
     });
+    if(failures.length){
+      console.error('[syncPublicState] setItem failed for '+failures.length+' key(s):',failures);
+      console.error('[syncPublicState] Keeping ts flag unset so next load retries. Free localStorage space (Storage → Local Storage in DevTools) and reload.');
+      return false;
+    }
     localStorage.setItem('lngtradeos_public_state_ts',remoteTs);
     console.log('[LNG TradeOS] Synced '+applied+' keys from public_state.json (exported '+remoteTs+')');
     return true;
@@ -10613,7 +10626,17 @@ function eexGS(inst,tv){
 function clearCache(){
   const pw=prompt('Enter password to clear cache:');
   if(pw===null)return; // cancelled
-  if(pw==='@Moustapha1'){localStorage.removeItem(CK);location.reload();}
+  if(pw==='@Moustapha1'){
+    // Full wipe: EOD cache + EEX cache + public-state sync flag + boot session flags.
+    // Without clearing the ts flag, syncPublicState next load would see
+    // localTs===remoteTs and skip re-hydrating — leaving the app empty.
+    localStorage.removeItem(CK);
+    localStorage.removeItem(EEX_CK);
+    localStorage.removeItem('lngtradeos_public_state_ts');
+    sessionStorage.removeItem('lngtradeos_pstate_done');
+    sessionStorage.removeItem('lngtradeos_eex_done');
+    location.reload();
+  }
   else alert('Incorrect password.');
 }
 function setupDrop(){
