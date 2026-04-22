@@ -15607,24 +15607,19 @@ function usRender(){
       <div><span class="us-kv" style="color:#c8d6e5">${dates.length}</span><span class="us-ku">days</span></div>
       <div class="us-ks">${dates[0]} → ${dates[dates.length-1]}</div></div>`;
 
-  // Chart — stacked area, one dataset per terminal. Mirrors the Tableau
-  // "NG Pipeline Flow" LNG Pipelines layout (stacked area with terminal
-  // end-value labels on the right edge).
+  // Chart — multi-line per terminal. Daily Bcf/d, not stacked, so each
+  // terminal's curve is comparable at a glance.
   if (typeof Chart === 'undefined') { setTimeout(usRender, 150); return; }
   if (US_LNG_STATE.chart) { US_LNG_STATE.chart.destroy(); US_LNG_STATE.chart = null; }
-  const hexToRgba = (hex, a) => {
-    const m = hex.replace('#',''); const r = parseInt(m.slice(0,2),16), g = parseInt(m.slice(2,4),16), b = parseInt(m.slice(4,6),16);
-    return `rgba(${r},${g},${b},${a})`;
-  };
   const datasets = tids.map(tid => ({
     label: d.terminals[tid].name.replace(' LNG',''),
     data: (d.series[tid] || []).slice(startIdx),
-    backgroundColor: hexToRgba(d.terminals[tid].color, 0.55),
     borderColor: d.terminals[tid].color,
-    borderWidth: 1,
+    backgroundColor: d.terminals[tid].color,
+    borderWidth: 1.6,
     pointRadius: 0,
     pointHoverRadius: 3,
-    fill: true,
+    fill: false,
     tension: 0.25,
   }));
   // End-label plugin: draw the latest Bcf/d value for each terminal at the right edge.
@@ -15637,16 +15632,13 @@ function usRender(){
       ctx.font = '10px IBM Plex Mono, ui-monospace, monospace';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      // Walk datasets bottom-up to anchor each label at the top of its stacked band.
       const n = chart.data.labels.length;
-      let stackY = 0;
-      chart.data.datasets.forEach((ds, di) => {
-        const v = ds.data[n-1] || 0;
-        stackY += v;
-        const y = scales.y.getPixelForValue(stackY) + (v > 0 ? (scales.y.getPixelForValue(stackY - v) - scales.y.getPixelForValue(stackY))/2 : 0);
-        if (v < 0.05) return;
+      chart.data.datasets.forEach(ds => {
+        const v = ds.data[n-1];
+        if (v == null || v < 0.01) return;
+        const y = scales.y.getPixelForValue(v);
         ctx.fillStyle = ds.borderColor;
-        ctx.fillText(`${v.toFixed(2)}`, chartArea.right + 4, y);
+        ctx.fillText(v.toFixed(2), chartArea.right + 4, y);
       });
       ctx.restore();
     }
@@ -15676,7 +15668,7 @@ function usRender(){
         },
         scales: {
           x: { grid: { display: false }, ticks: { color: '#3d5070', maxRotation: 0, autoSkip: true, maxTicksLimit: 12, font: { size: 9, family: 'IBM Plex Mono, ui-monospace, monospace' } } },
-          y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(77,158,245,0.07)' }, ticks: { color: '#3d5070', font: { size: 9, family: 'IBM Plex Mono, ui-monospace, monospace' } }, title: { display: true, text: 'Bcf/d', color: '#3d5070', font: { size: 9 } } },
+          y: { beginAtZero: true, grid: { color: 'rgba(77,158,245,0.07)' }, ticks: { color: '#3d5070', font: { size: 9, family: 'IBM Plex Mono, ui-monospace, monospace' } }, title: { display: true, text: 'Bcf/d', color: '#3d5070', font: { size: 9 } } },
         },
       },
       plugins: [endLabelPlugin],
