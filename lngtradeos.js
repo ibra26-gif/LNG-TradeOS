@@ -17029,54 +17029,62 @@ function rgDashboard(){
 
 
 // ── ALSI Terminal Database (verified from alsi.gie.eu) ─────────────────────
+// ALSI terminal registry — sourced from https://alsi.gie.eu/api/about?show=listing
+// (2026-04-22). Each terminal needs BOTH company (LSO EIC) AND facility EIC to
+// query the per-terminal endpoint (see GIE API docs v006 §7).
 const ALSI_TERMINAL_DB = {
-  be: [{name:'Zeebrugge (Fluxys LNG)',   eic:'21X-BE-A-A0A0B-K'}],
-  fr: [
-    {name:'Fos Cavaou',   eic:'21X-FR-A-A0A0A-R', fac:'FR-TSO-0003'},
-    {name:'Fos Tonkin',   eic:'21X-FR-A-A0A0A-R', fac:'FR-TSO-0004'},
-    {name:'Montoir',      eic:'21X-FR-A-A0A0A-R', fac:'FR-TSO-0001'},
-    {name:'Dunkerque',    eic:'21X0000000013791',  fac:'FR-TSO-0005'},
-  ],
+  be: [{name:'Zeebrugge LNG (Fluxys)', company:'21X000000001006T', facility:'21W0000000001245'}],
   de: [
-    {name:'Brunsbuttel (RWE/DET)',     eic:'21X-DE-A-A0A0A-H'},
-    {name:'Wilhelmshaven 1 (Uniper)',  eic:'21X-DE-B-A0A0A-K'},
-    {name:'Wilhelmshaven 2 (TES)',     eic:'21X-DE-C-A0A0A-N'},
-    {name:'Lubmin (Deutsche ReGas)',   eic:'21X-DE-D-A0A0A-B'},
-    {name:'Stade (DET)',               eic:'21X-DE-E-A0A0A-5'},
+    {name:'Wilhelmshaven 1 (DET · FSRU Hoegh Esperanza)',   company:'21X000000001403J', facility:'21W000000000129W'},
+    {name:'Brunsbuettel (DET · FSRU Hoegh Gannet)',         company:'21X000000001403J', facility:'37W000000000107A'},
+    {name:'Stade (DET · FSRU Energos Force)',               company:'21X000000001403J', facility:'37W000000000110L'},
+    {name:'Wilhelmshaven 2 (DET · FSRU Excelerate)',        company:'21X000000001403J', facility:'37W000000000111J'},
+    {name:'Lubmin (Deutsche ReGas · FSRU Neptune)',         company:'37X000000000265F', facility:'37W000000000106C'},
+    {name:'Mukran (Deutsche ReGas · FSRU Neptune/Energos)', company:'37X000000000265F', facility:'37W000000000114D'},
   ],
   es: [
-    {name:'Barcelona (Enagas)',  eic:'21X-ES-A-A0A0A-8'},
-    {name:'Cartagena (Enagas)', eic:'21X-ES-B-A0A0A-L'},
-    {name:'Huelva (Enagas)',    eic:'21X-ES-C-A0A0A-G'},
-    {name:'Sagunto (Saggas)',   eic:'21X-ES-D-A0A0A-C'},
-    {name:'Mugardos (Reganosa)',eic:'21X-ES-E-A0A0A-X'},
-    {name:'Bilbao (BBG)',       eic:'21X-ES-F-A0A0A-R'},
-    {name:'El Musel (Enagas)',  eic:'21X-ES-G-A0A0A-M'},
+    {name:'Barcelona (Enagás)', company:'21X000000001254A', facility:'21W000000000039X'},
+    {name:'Cartagena (Enagás)', company:'21X000000001254A', facility:'21W000000000038Z'},
+    {name:'Huelva (Enagás)',    company:'21X000000001254A', facility:'21W0000000000370'},
+    {name:'El Musel (Musel E-Hub)', company:'21X000000000134P', facility:'21W0000000000346'},
+    {name:'Sagunto (Saggas)',   company:'18XTGPRS-12345-G', facility:'21W0000000000354'},
+    {name:'Mugardos (Reganosa)',company:'18XRGNSA-12345-V', facility:'21W0000000000338'},
+    {name:'Bilbao (BBG)',       company:'21X000000001352A', facility:'21W0000000000362'},
+  ],
+  fr: [
+    {name:'Fos Cavaou (Fosmax LNG)',    company:'21X000000001070K', facility:'63W943693783886F'},
+    {name:'Fos Tonkin (Elengy)',        company:'21X0000000010679', facility:'63W179356656691A'},
+    {name:'Montoir (Elengy)',           company:'21X0000000010679', facility:'63W631527814486R'},
+    {name:'Dunkerque (Dunkerque LNG)',  company:'21X000000001331I', facility:'21W0000000000451'},
+    {name:'Le Havre (TELSF · FSRU Cape Ann)', company:'63X218318139939Y', facility:'63W835858561887S'},
   ],
   it: [
-    {name:'Panigaglia (Snam)',   eic:'21X-IT-A-A0A0A-D'},
-    {name:'Adriatic LNG (ADGAS)',eic:'21X0000000013821'},
-    {name:'OLT Toscana',         eic:'21X0000000013813'},
-    {name:'Ravenna (Ionio Gas)', eic:'21X0000000013805'},
+    {name:'OLT Toscana (FSRU)',                 company:'21X000000001109G', facility:'21W0000000000443'},
+    {name:'Piombino (SNAM · FSRU Golar Tundra)',company:'59XFSRUITALIASTY', facility:'59WFSRUGOLARTUNH'},
+    {name:'Ravenna (SNAM · FSRU BW Singapore)', company:'59XFSRUITALIASTY', facility:'59WBWSINGAPORERX'},
+    {name:'Panigaglia (SNAM)',                  company:'59XFSRUITALIASTY', facility:'59W0000000000011'},
+    {name:'Rovigo — Adriatic LNG',              company:'21X000000001360B', facility:'21W000000000082W'},
   ],
   gb: [
-    {name:'South Hook (QATARGAS UK)', eic:'55XSOUTHHOOKLNG1'},
-    {name:'Dragon LNG',               eic:'55XDRAGONLNGTERM5'},
-    {name:'Isle of Grain (KGaL)',     eic:'55XKGALISLEOFGR2'},
+    {name:'Isle of Grain (National Grid)', company:'21X-GB-A-A0A0A-7', facility:'21W000000000099F'},
+    {name:'South Hook (QATARGAS UK)',      company:'21X0000000013554', facility:'21W0000000000419'},
   ],
-  nl: [{name:'Gate Terminal',       eic:'21X-NL-A-A0A0A-3'}],
-  gr: [{name:'Revithoussa (DESFA)', eic:'21X-GR-A-A0A0A-N'}],
-  pl: [{name:'Swinoujscie (Gaz-System)', eic:'53XPL000000GAZ-K'}],
-  pt: [{name:'Sines (REN Atlantico)',    eic:'21X-PT-A-A0A0A-M'}],
-  lt: [{name:'Klaipeda (Amber Grid)',    eic:'21X-LT-A-A0A0A-I'}],
-  fi: [{name:'Inkoo (Gasgrid)',          eic:'21X-FI-A-A0A0A-V'}],
-  hr: [{name:'KRK FSRU (LNG Croatia)',   eic:'31X-LNG-HR-----5'}],
-  mt: [{name:'Marsaxlokk (Enemalta)',    eic:'21X-MT-A-A0A0A-E'}],
-  tr: [
-    {name:'Marmara Ereglisi (Botas)',  eic:'21X-TR-A-A0A0A-A'},
-    {name:'Aliaga EGEGAZ',             eic:'21X-TR-B-A0A0A-5'},
-    {name:'Dortyol (Botas)',           eic:'21X-TR-C-A0A0A-Y'},
+  nl: [
+    {name:'Rotterdam Gate Terminal', company:'21X000000001063H', facility:'21W0000000000079'},
+    {name:'EemsEnergy (FSRU)',       company:'52X000000000088H', facility:'52W000000000001W'},
   ],
+  gr: [
+    {name:'Revithoussa (DESFA)',                 company:'21X-GR-A-A0A0A-G', facility:'21W000000000040B'},
+    {name:'Alexandroupolis (Gastrade · FSRU)',   company:'21X738265265081N', facility:'21W0000000001318'},
+  ],
+  pl: [{name:'Świnoujście (GAZ-SYSTEM)', company:'21X-PL-A-A0A0A-B', facility:'21W000000000096L'}],
+  pt: [{name:'Sines (REN Atlântico)',    company:'21X0000000013619', facility:'16WTGNL01------O'}],
+  lt: [{name:'Klaipėda (KN Energies · FSRU)', company:'21X0000000013740', facility:'21W0000000001253'}],
+  fi: [
+    {name:'Inkoo (FSRU Exemplar)',  company:'66X000000000027Z', facility:'21W000000000130A'},
+    {name:'Hamina (Hamina LNG)',    company:'66X-00000000024H', facility:'66W000000000001U'},
+  ],
+  hr: [{name:'Krk (FSRU LNG Croatia)', company:'31X-LNG-HR-----7', facility:'31W-0000-G-000-Z'}],
 };
 // ── LNG Regas: ALSI terminal discovery ───────────────────────────────────────
 // Cache for terminal lists per country: {code: [{name,company,send,dtrs,inventory},...]}
@@ -17086,38 +17094,37 @@ const GD_ALSI_TERM_DATA = {}; // {code+company: {YYYY-MM: {sendGWh,dtrsGWh,invGW
 async function alsiLoadTerminals(ctryCode){
   // Use static DB first — avoids rate limiting and gives correct terminal names
   if(ALSI_TERMINAL_DB[ctryCode]) {
-    GD_ALSI_TERMS[ctryCode] = ALSI_TERMINAL_DB[ctryCode].map(t=>({name:t.name, company:t.eic}));
+    // Terminals identified by facility EIC (the unique key per GIE listing).
+    // company EIC is the LSO operator — carried alongside for the API call.
+    GD_ALSI_TERMS[ctryCode] = ALSI_TERMINAL_DB[ctryCode].map(t=>({
+      name: t.name,
+      company: t.facility,   // used as dropdown value + cache key (unique per terminal)
+      facilityEic: t.facility,
+      companyEic: t.company,
+    }));
     return;
   }
   if(GD_ALSI_TERMS[ctryCode]) return;
-  // Fallback: try API for countries not in DB
-  try {
-    const today = new Date().toISOString().slice(0,10);
-    const from = `${new Date().getFullYear()}-01-01`;
-    const rows = await aggiPaginated(`country=${ctryCode}&from=${from}&to=${today}&size=300`);
-    const byCompany = {};
-    rows.forEach(d => {
-      const key = d.name || d.code || ctryCode;
-      if(!byCompany[key]) byCompany[key] = {name:key, company:d.eicCode||d.code||key};
-    });
-    GD_ALSI_TERMS[ctryCode] = Object.values(byCompany);
-  } catch(e) {
-    console.warn('ALSI terminals load:', e.message);
-    GD_ALSI_TERMS[ctryCode] = [];
-  }
+  GD_ALSI_TERMS[ctryCode] = [];
 }
 
-async function alsiLoadTerminalHistory(ctryCode, company){
-  const cacheKey = ctryCode + '_' + company;
+async function alsiLoadTerminalHistory(ctryCode, termKey){
+  // termKey is the facility EIC (what the dropdown stores). Look up the
+  // parent company EIC from the static DB to satisfy GIE's API requirement
+  // that terminal-level queries include BOTH country + company + facility.
+  const cacheKey = ctryCode + '_' + termKey;
   if(GD_ALSI_TERM_DATA[cacheKey]) return GD_ALSI_TERM_DATA[cacheKey];
+  const term = (ALSI_TERMINAL_DB[ctryCode]||[]).find(t => t.facility === termKey);
   const today = new Date().toISOString().slice(0,10);
   const from5y = new Date(); from5y.setFullYear(from5y.getFullYear()-5);
   const from = from5y.toISOString().slice(0,10);
-  const rows = await aggiPaginated(
-    company === '_all_'
-      ? `country=${ctryCode}&from=${from}&to=${today}`
-      : `country=${ctryCode}&company=${encodeURIComponent(company)}&from=${from}&to=${today}`
-  );
+  let q;
+  if(termKey === '_all_' || !term){
+    q = `country=${ctryCode}&from=${from}&to=${today}`;
+  } else {
+    q = `country=${ctryCode}&company=${encodeURIComponent(term.company)}&facility=${encodeURIComponent(term.facility)}&from=${from}&to=${today}`;
+  }
+  const rows = await aggiPaginated(q);
   const byMonth = {};
   rows.forEach(d => {
     const date = d.gasDayStart||d.gas_day||'';
