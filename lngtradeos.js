@@ -17846,6 +17846,22 @@ async function samLoadColombia() {
     const j = await r.json();
     if (j.rows && j.rows.length) {
       CO_D.rows = j.rows;
+      // Update the table header to match the months returned by the API
+      // (frontend was hardcoded FEB 25 → JAN 26; API returns rolling last-12).
+      if (Array.isArray(j.months) && j.months.length === 12) {
+        const ESM = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+        const labels = j.months.map(ym => {
+          const [y, m] = ym.split('-');
+          return ESM[parseInt(m, 10) - 1] + ' ' + y.slice(2);
+        });
+        const hd = document.getElementById('sam-co-bthd');
+        if (hd) hd.innerHTML = '<th></th>' + labels.map(l => `<th>${l}</th>`).join('');
+        // Override the chart MONTHS sequence so co_c1 / co_c2 stacked bars
+        // also use the rolling-12 labels.
+        if (typeof MONTHS !== 'undefined') {
+          try { MONTHS.length = 0; labels.forEach(l => MONTHS.push(l)); } catch(e) {}
+        }
+      }
       if (typeof coRenderTbl === 'function') coRenderTbl();
       if (typeof coRenderKpis === 'function') coRenderKpis();
       if (typeof coRenderCharts === 'function') coRenderCharts();
