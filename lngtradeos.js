@@ -13437,14 +13437,11 @@ async function gdLoadLNG(from, to){
       GD.lngTotal[mo].dtrsGWh += dtrs;
       GD.lngTotal[mo].statusGWh += status;
       GD.lngTotal[mo].invGWh += status;
-      // Store daily data for recent years (current + previous)
-      const yr=+date.slice(0,4);
-      if(yr>=curY-1){
-        if(!GD.lngDaily[date]) GD.lngDaily[date]={sendGWh:0,dtrsGWh:0,statusGWh:0};
-        GD.lngDaily[date].sendGWh += send;
-        GD.lngDaily[date].dtrsGWh += dtrs;
-        GD.lngDaily[date].statusGWh += status;
-      }
+      // Store daily for ALL years in the window — seasonal chart needs it.
+      if(!GD.lngDaily[date]) GD.lngDaily[date]={sendGWh:0,dtrsGWh:0,statusGWh:0};
+      GD.lngDaily[date].sendGWh += send;
+      GD.lngDaily[date].dtrsGWh += dtrs;
+      GD.lngDaily[date].statusGWh += status;
     });
     if(Object.keys(GD.lngTotal).length) GD.ok.lng=true;
     console.log(`ALSI EU: ${Object.keys(GD.lngTotal).length} months`);
@@ -13463,6 +13460,8 @@ async function gdLoadLNGCountries(from, to){
       if(series.length) gdCacheSet(cacheKey, series, isCurMo?6:0); // current month=6h, historical=permanent
       }
       if(!GD.lngByCtry[code]) GD.lngByCtry[code]={};
+      if(!GD.lngDailyByCtry) GD.lngDailyByCtry={};
+      if(!GD.lngDailyByCtry[code]) GD.lngDailyByCtry[code]={};
       series.forEach(d=>{
         const date=d.gasDayStart||d.gas_day||'';
         const mo=date.slice(0,7);
@@ -13475,6 +13474,8 @@ async function gdLoadLNGCountries(from, to){
         GD.lngByCtry[code][mo].dtrsGWh += dtrs;
         GD.lngByCtry[code][mo].statusGWh += status;
         GD.lngByCtry[code][mo].invGWh += status;
+        // Store daily too — seasonal chart needs day-level resolution.
+        GD.lngDailyByCtry[code][date] = {sendGWh:send, dtrsGWh:dtrs, statusGWh:status, invGWh:status};
       });
     }catch(e){ console.warn(`ALSI ${code}:`,e.message); }
     await new Promise(r=>setTimeout(r,300));
@@ -13644,7 +13645,7 @@ async function gaRefreshAll(){
   }).forEach(k=>localStorage.removeItem(k));
   // Reset in-memory store but reload from localStorage cache immediately
   Object.keys(GD.pipeline).forEach(r=>{ GD.pipeline[r]={}; GD.pipeDaily[r]={}; });
-  GD.storage={}; GD.storDaily={}; GD.storByCtry={}; GD.lngTotal={}; GD.lngByCtry={}; GD.lngDaily={};
+  GD.storage={}; GD.storDaily={}; GD.storByCtry={}; GD.lngTotal={}; GD.lngByCtry={}; GD.lngDaily={}; GD.lngDailyByCtry={};
   GD.ok.pipeline=false; GD.ok.storage=false; GD.ok.lng=false;
   window.gaInitDone=false;
   gaInitAll();
@@ -17089,7 +17090,8 @@ const ALSI_TERMINAL_DB = {
 // ── LNG Regas: ALSI terminal discovery ───────────────────────────────────────
 // Cache for terminal lists per country: {code: [{name,company,send,dtrs,inventory},...]}
 const GD_ALSI_TERMS = {};
-const GD_ALSI_TERM_DATA = {}; // {code+company: {YYYY-MM: {sendGWh,dtrsGWh,invGWh}}}
+const GD_ALSI_TERM_DATA = {};  // {code+company: {YYYY-MM: {sendGWh,dtrsGWh,invGWh}}}
+const GD_ALSI_TERM_DAILY = {}; // {code+company: {YYYY-MM-DD: {sendGWh,dtrsGWh,invGWh}}}
 
 async function alsiLoadTerminals(ctryCode){
   // Use static DB first — avoids rate limiting and gives correct terminal names
@@ -17126,6 +17128,7 @@ async function alsiLoadTerminalHistory(ctryCode, termKey){
   }
   const rows = await aggiPaginated(q);
   const byMonth = {};
+  const byDay = {};
   rows.forEach(d => {
     const date = d.gasDayStart||d.gas_day||'';
     const mo = date.slice(0,7);
@@ -17138,8 +17141,10 @@ async function alsiLoadTerminalHistory(ctryCode, termKey){
     byMonth[mo].dtrsGWh += dtrs;
     byMonth[mo].invGWh  += inv;
     byMonth[mo].days++;
+    byDay[date] = {sendGWh:send, dtrsGWh:dtrs, invGWh:inv};
   });
-  GD_ALSI_TERM_DATA[cacheKey] = byMonth;
+  GD_ALSI_TERM_DATA[cacheKey]  = byMonth;
+  GD_ALSI_TERM_DAILY[cacheKey] = byDay;
   return byMonth;
 }
 
@@ -17149,6 +17154,11 @@ function buildRegasCtrlBar(mode, curCtry, curTerm, terms){
     `<option value="${code}"${code===curCtry?' selected':''}>${name}</option>`).join('');
   const termOpts = `<option value="_all_"${curTerm==='_all_'?' selected':''}>All Terminals</option>`
     + (terms||[]).map(t => `<option value="${t.company}"${t.company===curTerm?' selected':''}>${t.name}</option>`).join('');
+  // Only the seasonal views (send / inv) get the years selector — the util
+  // view share state with send.
+  const curYears = mode==='send' ? _regasSendYears : _regasInvYears;
+  const yearOpts = [1,2,3,4].map(n =>
+    `<option value="${n}"${n===curYears?' selected':''}>${n}Y</option>`).join('');
   return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(77,158,245,.1)">
     <span style="color:#546e7a;font-size:8px">COUNTRY</span>
     <select class="gsel" onchange="gaRegasSetCtry('${mode}',this.value)">
@@ -17157,12 +17167,14 @@ function buildRegasCtrlBar(mode, curCtry, curTerm, terms){
     </select>
     <span style="color:#546e7a;font-size:8px">TERMINAL</span>
     <select class="gsel" id="regas-term-sel" onchange="gaRegasSetTerm('${mode}',this.value)">${termOpts}</select>
+    <span style="color:#546e7a;font-size:8px">YEARS</span>
+    <select class="gsel" onchange="gaRegasSetYears('${mode}',this.value)">${yearOpts}</select>
     <span style="color:${GD.ok.lng?'#34d399':'#f59e0b'};font-size:8px;margin-left:auto">${GD.ok.lng?'🟢 ALSI live':'🟡 loading'}</span>
   </div>`;
 }
 
-let _regasSendCtry='eu', _regasSendTerm='_all_';
-let _regasInvCtry='eu',  _regasInvTerm='_all_';
+let _regasSendCtry='eu', _regasSendTerm='_all_', _regasSendYears=3;
+let _regasInvCtry='eu',  _regasInvTerm='_all_',  _regasInvYears=3;
 
 async function gaRegasSetCtry(mode, val){
   if(mode==='send'){ _regasSendCtry=val; _regasSendTerm='_all_'; }
@@ -17186,10 +17198,49 @@ async function gaRegasSetTerm(mode, val){
   else              renderRegasLngStorage(pane);
 }
 
+function gaRegasSetYears(mode, val){
+  const n = Math.max(1, Math.min(4, +val||3));
+  if(mode==='send') _regasSendYears = n;
+  else              _regasInvYears  = n;
+  const pane=document.getElementById('ga-regas-pane');
+  if(mode==='send') renderRegasSendoutNew(pane);
+  else              renderRegasLngStorage(pane);
+}
+window.gaRegasSetYears = gaRegasSetYears;
+
 function _alsiGetMonthly(ctry, term){
   if(ctry==='eu') return GD.lngTotal;
   if(term==='_all_') return GD.lngByCtry[ctry]||{};
   return GD_ALSI_TERM_DATA[ctry+'_'+term]||{};
+}
+
+// Daily equivalent — returns {YYYY-MM-DD: {sendGWh,dtrsGWh,invGWh}} for the
+// selected country/terminal. Used by the seasonal day-of-year chart.
+function _alsiGetDaily(ctry, term){
+  if(ctry==='eu') return GD.lngDaily||{};
+  if(term==='_all_') return (GD.lngDailyByCtry && GD.lngDailyByCtry[ctry])||{};
+  return GD_ALSI_TERM_DAILY[ctry+'_'+term]||{};
+}
+
+// Stable calendar for seasonal chart — 366 positions keyed by "MM-DD".
+// Leap-year calendar chosen so Feb 29 has a dedicated slot; non-leap years
+// leave that position null (Chart.js spanGaps:false keeps the gap visible).
+const _SEAS_MMDD = (()=>{ const out=[]; for(let m=0;m<12;m++){ const n=new Date(2024,m+1,0).getDate(); for(let d=1;d<=n;d++) out.push(`${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`); } return out; })();
+const _SEAS_MONTH_TICK_IDX = [0,31,60,91,121,152,182,213,244,274,305,335]; // "MM-01" positions
+const _SEAS_MONTH_LABELS   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// For a given year, map a daily {YYYY-MM-DD: row} into a 366-long array
+// indexed by day-of-leap-year. Selector picks which field to read/convert.
+function _seasSeriesFromDaily(daily, yr, pick){
+  const arr = new Array(_SEAS_MMDD.length).fill(null);
+  for(const date in daily){
+    if(!date.startsWith(yr+'-')) continue;
+    const idx = _SEAS_MMDD.indexOf(date.slice(5));
+    if(idx < 0) continue;
+    const v = pick(daily[date]);
+    if(v != null && !isNaN(v)) arr[idx] = +v.toFixed(2);
+  }
+  return arr;
 }
 
 function _alsiChart(canvasId, ctry, term, field, title, unit, curY){
@@ -17240,26 +17291,47 @@ function renderRegasSendoutNew(pane){
   </div>`;
 
   setTimeout(()=>{
-    const data=_alsiGetMonthly(ctry,term);
-    const GWH_MCM=1/10.55;
-    const seasYrs=[curY,curY-1,curY-2];
-    // Sendout seasonal
-    const sendDs=seasYrs.map((yr,i)=>({
+    const daily = _alsiGetDaily(ctry,term);
+    const GWH_MCM = 1/10.55; // GIE reports sendOut in GWh/d — convert to mcm/d.
+    const nYears = _regasSendYears;
+    const seasYrs = Array.from({length:nYears},(_,i)=>curY-i);
+    // Sendout: sendGWh → mcm/d per calendar day
+    const sendDs = seasYrs.map((yr,i)=>({
       label:String(yr),
-      data:Array.from({length:12},(_,m)=>{const mo=`${yr}-${String(m+1).padStart(2,'0')}`;const d=data[mo];if(!d)return null;const days=new Date(yr,m+1,0).getDate();return d.sendGWh?+(d.sendGWh*GWH_MCM/days).toFixed(2):null;}),
-      borderColor:GA_COLS[i],backgroundColor:GA_COLS[i]+(i===0?'22':'00'),
-      borderWidth:i===0?2.5:1.5,pointRadius:2,tension:.3,borderDash:i>0?[5,3]:undefined,spanGaps:true,
+      data:_seasSeriesFromDaily(daily, yr, r => r.sendGWh ? r.sendGWh*GWH_MCM : null),
+      borderColor:GA_COLS[i], backgroundColor:GA_COLS[i]+(i===0?'22':'00'),
+      borderWidth:i===0?2:1.2, pointRadius:0, pointHoverRadius:3,
+      tension:0.15, borderDash:i>0?[5,3]:undefined, spanGaps:false,
     }));
-    // Utilisation seasonal
-    const utilDs=seasYrs.map((yr,i)=>({
+    // Utilisation: sendGWh / dtrsGWh × 100 per day
+    const utilDs = seasYrs.map((yr,i)=>({
       label:String(yr),
-      data:Array.from({length:12},(_,m)=>{const mo=`${yr}-${String(m+1).padStart(2,'0')}`;const d=data[mo];if(!d||!d.dtrsGWh)return null;return+(d.sendGWh/d.dtrsGWh*100).toFixed(1);}),
-      borderColor:GA_COLS[i],backgroundColor:'transparent',
-      borderWidth:i===0?2.5:1.5,pointRadius:2,tension:.3,borderDash:i>0?[5,3]:undefined,spanGaps:true,
+      data:_seasSeriesFromDaily(daily, yr, r => (r.dtrsGWh && r.sendGWh) ? (r.sendGWh/r.dtrsGWh*100) : null),
+      borderColor:GA_COLS[i], backgroundColor:'transparent',
+      borderWidth:i===0?2:1.2, pointRadius:0, pointHoverRadius:3,
+      tension:0.15, borderDash:i>0?[5,3]:undefined, spanGaps:false,
     }));
-    const sc={x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y}};
-    gaMakeChart('regas-send-seas','line',{labels:GA_MO,datasets:sendDs},{scales:{...sc,y:{...GCD.scales.y,title:{display:true,text:'mcm/d',color:'#3d5070',font:{size:9}}}}});
-    gaMakeChart('regas-util-seas','line',{labels:GA_MO,datasets:utilDs},{scales:{...sc,y:{...GCD.scales.y,min:0,max:100,title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}}});
+    // Shared x-axis config: 366-day calendar, month-aligned tick labels
+    const xTicks = {
+      color:'#3d5070', font:{size:9,family:'IBM Plex Mono, ui-monospace, monospace'},
+      autoSkip:false, maxRotation:0,
+      callback: function(v){ const i=_SEAS_MONTH_TICK_IDX.indexOf(v); return i>=0 ? _SEAS_MONTH_LABELS[i] : ''; },
+    };
+    const scX = {...GCD.scales.x, ticks:xTicks};
+    const tooltipCb = {
+      callbacks:{
+        title: items => { const i=items[0]?.dataIndex; return i!=null ? _SEAS_MMDD[i] : ''; },
+        label: c => `${c.dataset.label}: ${c.raw==null?'—':c.raw.toFixed(2)}`,
+      }
+    };
+    gaMakeChart('regas-send-seas','line',{labels:_SEAS_MMDD,datasets:sendDs},{
+      plugins:{tooltip:tooltipCb},
+      scales:{x:scX, y:{...GCD.scales.y, title:{display:true,text:'mcm/d',color:'#3d5070',font:{size:9}}}}
+    });
+    gaMakeChart('regas-util-seas','line',{labels:_SEAS_MMDD,datasets:utilDs},{
+      plugins:{tooltip:tooltipCb},
+      scales:{x:scX, y:{...GCD.scales.y, min:0, max:100, title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}}
+    });
   },80);
 }
 
