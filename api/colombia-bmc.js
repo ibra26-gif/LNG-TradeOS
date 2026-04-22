@@ -90,11 +90,11 @@ export default function handler(req, res) {
     const last12 = lastNMonths(months, 12);
 
     const rows = [];
-    // Supply rows
+    // Supply rows — null for months with no breakdown (frontend renders as —)
     for (const [coId, def] of Object.entries(SUPPLY_MAP)) {
       const v = last12.map(m => {
         const g = aggGbtud(byKey, m, 'supply', def.ids);
-        return g == null ? 0 : +(g * GBTUD_TO_MCMD).toFixed(2);
+        return g == null ? null : +(g * GBTUD_TO_MCMD).toFixed(2);
       });
       rows.push({ id: coId, lbl: def.lbl, s: 'sup', v });
     }
@@ -102,7 +102,7 @@ export default function handler(req, res) {
     for (const [coId, def] of Object.entries(DEMAND_MAP)) {
       const v = last12.map(m => {
         const g = aggGbtud(byKey, m, 'demand', def.ids);
-        return g == null ? 0 : +(g * GBTUD_TO_MCMD).toFixed(2);
+        return g == null ? null : +(g * GBTUD_TO_MCMD).toFixed(2);
       });
       rows.push({ id: coId, lbl: def.lbl, s: 'dem', v });
     }

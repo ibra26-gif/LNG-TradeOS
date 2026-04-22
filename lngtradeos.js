@@ -17563,30 +17563,48 @@ var co_currentComp = 'pow';
 var co_activeYears = new Set([2024,2025,2026]);
 var co_c1, co_c2, co_sc;
 
-function coSumS(s, i) { var t=0; CO_D.rows.forEach(function(r){ if (r.s===s) t+=r.v[i]; }); return t; }
+// Aggregates skip null so "no data" months don't pollute totals with 0s.
+function coSumS(s, i) {
+  var t = null;
+  CO_D.rows.forEach(function(r){
+    if (r.s !== s) return;
+    var v = r.v[i];
+    if (v == null) return;
+    if (t == null) t = 0;
+    t += v;
+  });
+  return t;
+}
 function coSupT(i) { return coSumS('sup', i); }
 function coDemT(i) { return coSumS('dem', i); }
-function coBal(i)  { return coSupT(i) - coDemT(i); }
+function coBal(i)  { var s = coSupT(i), d = coDemT(i); return (s == null || d == null) ? null : s - d; }
+
+// Renders a cell value: null -> "—", else formatted via fmt/fmtS.
+function coCell(v, i, signed) {
+  if (v == null || v === '') return '<td style="color:#3d5070">—</td>';
+  var fn = signed ? fmtS : fmt;
+  return '<td>' + fn(conv(v, i, U), U) + '</td>';
+}
 
 function coRenderTbl() {
   var h = '<tr class="sec"><td colspan="13">SUPPLY</td></tr>';
   CO_D.rows.filter(function(r){return r.s==='sup';}).forEach(function(r){
     h += '<tr><td>' + r.lbl + '</td>';
-    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    r.v.forEach(function(v,i){ h += coCell(v, i, false); });
     h += '</tr>';
   });
   h += '<tr class="tot"><td>Total supply</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(coSupT(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += coCell(coSupT(i), i, false);
   h += '</tr><tr class="sec"><td colspan="13">DEMAND</td></tr>';
   CO_D.rows.filter(function(r){return r.s==='dem';}).forEach(function(r){
     h += '<tr><td>' + r.lbl + '</td>';
-    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    r.v.forEach(function(v,i){ h += coCell(v, i, false); });
     h += '</tr>';
   });
   h += '<tr class="tot"><td>Total demand</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(coDemT(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += coCell(coDemT(i), i, false);
   h += '</tr><tr class="bal"><td>Pipeline fuel / losses / imbalance</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmtS(conv(coBal(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += coCell(coBal(i), i, true);
   h += '</tr>';
   document.getElementById('sam-co-btb').innerHTML = h;
 }
