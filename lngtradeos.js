@@ -17607,9 +17607,12 @@ function coRenderCharts() {
   var seqSum = function(ids) { return MONTHS.map(function(_,i){ return ids.reduce(function(a,id){ return a + conv(CO_D.rows.find(function(r){return r.id===id;}).v[i],i,U); }, 0); }); };
   if (co_c1) co_c1.destroy();
   if (co_c2) co_c2.destroy();
+  // Use API-provided rolling-12 labels when present; fall back to the shared
+  // MONTHS constant (original hardcoded Feb 25 → Jan 26) otherwise.
+  var co_labels = (window.CO_MONTH_LABELS && window.CO_MONTH_LABELS.length === 12) ? window.CO_MONTH_LABELS : MONTHS;
   co_c1 = new Chart(document.getElementById('sam-co-ch1'), {
     type: 'bar',
-    data: { labels: MONTHS, datasets: [
+    data: { labels: co_labels, datasets: [
       { label: 'La Guajira offshore', data: seq('prod_guaj'), backgroundColor: '#4d9ef5' },
       { label: 'Cusiana / Cupiagua', data: seq('prod_llan'), backgroundColor: '#10b981' },
       { label: 'Other onshore', data: seq('prod_oth'), backgroundColor: '#8b5cf6' },
@@ -17618,7 +17621,7 @@ function coRenderCharts() {
   });
   co_c2 = new Chart(document.getElementById('sam-co-ch2'), {
     type: 'bar',
-    data: { labels: MONTHS, datasets: [
+    data: { labels: co_labels, datasets: [
       { label: 'Residential + Commercial + GNV + Other', data: seqSum(['res','com','gnv','oth']), backgroundColor: '#10b981' },
       { label: 'Industrial', data: seq('ind'), backgroundColor: '#8b5cf6' },
       { label: 'Refineries', data: seq('ref'), backgroundColor: '#4d9ef5' },
@@ -17846,8 +17849,11 @@ async function samLoadColombia() {
     const j = await r.json();
     if (j.rows && j.rows.length) {
       CO_D.rows = j.rows;
-      // Update the table header to match the months returned by the API
-      // (frontend was hardcoded FEB 25 → JAN 26; API returns rolling last-12).
+      // Rewrite ONLY the Colombia table header (#sam-co-bthd) with the months
+      // returned by the API. Do NOT mutate the shared global MONTHS — it is
+      // used by Brazil, Argentina, and elsewhere; overwriting it leaks
+      // rolling-12 labels into their charts and, on Safari, can interact
+      // with later init code to blank the India pane.
       if (Array.isArray(j.months) && j.months.length === 12) {
         const ESM = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
         const labels = j.months.map(ym => {
@@ -17856,11 +17862,9 @@ async function samLoadColombia() {
         });
         const hd = document.getElementById('sam-co-bthd');
         if (hd) hd.innerHTML = '<th></th>' + labels.map(l => `<th>${l}</th>`).join('');
-        // Override the chart MONTHS sequence so co_c1 / co_c2 stacked bars
-        // also use the rolling-12 labels.
-        if (typeof MONTHS !== 'undefined') {
-          try { MONTHS.length = 0; labels.forEach(l => MONTHS.push(l)); } catch(e) {}
-        }
+        // Pass the labels into coRenderCharts via a local override variable
+        // that coRenderCharts reads (no mutation of the global MONTHS).
+        window.CO_MONTH_LABELS = labels;
       }
       if (typeof coRenderTbl === 'function') coRenderTbl();
       if (typeof coRenderKpis === 'function') coRenderKpis();
