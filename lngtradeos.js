@@ -15010,21 +15010,42 @@ function renderStorInject(pane){
   const today=new Date(); const curY=today.getFullYear();
   if(!GD.ok.storage){ gdErr('ga-stor-pane','Storage data not loaded — hit ↺ REFRESH ALL'); return; }
 
+  const yearPills = GA_AVAIL_YEARS.map(y =>
+    `<button class="ga-stab${_storYears.includes(y)?' active':''}" onclick="gdToggleStorYear(${y},this);renderStorInject(document.getElementById('ga-stor-pane'))">${y}</button>`
+  ).join('');
+
   pane.innerHTML=`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
+      <span class="ctrl-lbl">YEARS</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${yearPills}</div>
+      <span style="font-size:9px;margin-left:auto;color:${GD.ok.storage?'#34d399':'#f59e0b'}">${GD.ok.storage?'🟢 AGSI+ live':'🟡 Loading...'}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div class="ga-card">
         <div class="ga-sec">INJECTIONS &amp; WITHDRAWAL — ${curY} <span class="ga-tag ga-tag-live">GIE AGSI+</span></div>
         <div class="ga-ch-wrap" style="height:300px"><canvas id="stor-inject-cur-chart"></canvas></div>
-        <div class="ga-source">GIE AGSI+ · GWh/d · ${new Date().toLocaleDateString('en-GB')}</div>
+        <div class="ga-source">GIE AGSI+ · GWh/d · Green = injection (up) · Red = withdrawal (down)</div>
       </div>
       <div class="ga-card">
-        <div class="ga-sec">HISTORICAL — LAST 3 YEARS SEASONAL <span class="ga-tag">GIE AGSI+</span></div>
+        <div class="ga-sec">NET (INJ − WDR) — ${curY} <span class="ga-tag ga-tag-live">GIE AGSI+</span></div>
+        <div class="ga-ch-wrap" style="height:300px"><canvas id="stor-inject-net-bar"></canvas></div>
+        <div class="ga-source">GIE AGSI+ · GWh/d net · + filling / − draining</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="ga-card">
+        <div class="ga-sec">NET SEASONAL — MONTHLY <span class="ga-tag">GIE AGSI+</span></div>
         <div class="ga-ch-wrap" style="height:300px"><canvas id="stor-inject-hist-chart"></canvas></div>
-        <div class="ga-source">GIE AGSI+ · Monthly injection & withdrawal (TWh/d) · ${new Date().toLocaleDateString('en-GB')}</div>
+        <div class="ga-source">GIE AGSI+ · Monthly sum of net (inj − wdr) in GWh</div>
+      </div>
+      <div class="ga-card">
+        <div class="ga-sec">NET SEASONAL — DAILY <span class="ga-tag">GIE AGSI+</span></div>
+        <div class="ga-ch-wrap" style="height:300px"><canvas id="stor-inject-seas-day"></canvas></div>
+        <div class="ga-source">GIE AGSI+ · Daily net (inj − wdr) in GWh/d · year overlay</div>
       </div>
     </div>`;
 
-  // ── Left chart: 2026 daily injection & withdrawal ──
+  // ── Top-left: current year daily injection & withdrawal (stacked) ──
   const dailyKeys=Object.keys(GD.storDaily||{}).filter(d=>d.startsWith(String(curY))).sort();
   const dlbls=dailyKeys.map(d=>{ const dt=new Date(d+'T12:00:00'); return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); });
   gaMakeChart('stor-inject-cur-chart','bar',{
@@ -15038,39 +15059,83 @@ function renderStorInject(pane){
   },{
     scales:{
       x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:20}},
-      y:{...GCD.scales.y,title:{display:true,text:'GWh/d',color:'#3d5070',font:{size:9}},
-        grid:{color:'#0d1a2e'}},
+      y:{...GCD.scales.y,title:{display:true,text:'GWh/d',color:'#3d5070',font:{size:9}},grid:{color:'#0d1a2e'}},
     }
   });
 
-  // ── Right chart: last 3 years monthly net withdrawal seasonal ──
-  const histYears=[curY-1,curY-2,curY-3];
-  const histColors=['#f59e0b','#22c55e','#3b82f6'];
-  // Also add current year
-  const allHist=[curY,...histYears];
-  const allColors=['#ef4444',...histColors];
-  const histDatasets=allHist.map((yr,i)=>({
-    label:`${yr}`,
-    data:GA_MO.map((_,m)=>{
-      // Sum daily net withdrawal for this month
-      const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
-      const days=Object.keys(GD.storDaily||{}).filter(d=>d.startsWith(mo));
+  // ── Top-right: current year daily NET bar (signed) ──
+  const netVals = dailyKeys.map(d => {
+    const r = GD.storDaily[d];
+    return r ? +((r.inj||0) - (r.wdr||0)).toFixed(1) : 0;
+  });
+  gaMakeChart('stor-inject-net-bar','bar',{
+    labels:dlbls,
+    datasets:[{
+      label:'Net (GWh/d)',
+      data:netVals,
+      backgroundColor: ctx => {
+        const v = ctx.raw;
+        return v >= 0 ? 'rgba(52,211,153,0.65)' : 'rgba(248,113,113,0.65)';
+      },
+      borderWidth:0,
+    }]
+  },{
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:20}},
+      y:{...GCD.scales.y,title:{display:true,text:'GWh/d net',color:'#3d5070',font:{size:9}},grid:{color:'#0d1a2e'}},
+    }
+  });
+
+  // ── Bottom-left: monthly net seasonal across selected years ──
+  const selYears = _storYears.slice().sort((a,b)=>b-a);
+  const histDatasets = selYears.map((yr,i) => ({
+    label: `${yr}`,
+    data: GA_MO.map((_,m) => {
+      const mo = `${yr}-${String(m+1).padStart(2,'0')}`;
+      const days = Object.keys(GD.storDaily||{}).filter(d => d.startsWith(mo));
       if(!days.length) return null;
-      // net: positive = net injection (storage filling), negative = net withdrawal
-      const netInj=days.reduce((s,d)=>{
-        const row=GD.storDaily[d];
-        return s + ((row?.inj||0)-(row?.wdr||0));
-      },0);
-      return +netInj.toFixed(0);
+      const net = days.reduce((s,d) => s + ((GD.storDaily[d]?.inj||0) - (GD.storDaily[d]?.wdr||0)), 0);
+      return +net.toFixed(0);
     }),
-    borderColor:allColors[i],backgroundColor:'transparent',
-    borderWidth:yr===curY?2.5:1.5,borderDash:yr!==curY?[5,3]:undefined,
-    pointRadius:2,tension:.3,spanGaps:false,fill:false,
+    borderColor: GA_COLS[i], backgroundColor:'transparent',
+    borderWidth: yr===curY ? 2.5 : 1.5,
+    borderDash: yr!==curY ? [5,3] : undefined,
+    pointRadius: 2, tension:.3, spanGaps:false, fill:false,
   }));
   gaMakeChart('stor-inject-hist-chart','line',{labels:GA_MO,datasets:histDatasets},{
     scales:{
       x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},
-      y:{...GCD.scales.y,title:{display:true,text:'GWh net (+ inject / - withdraw)',color:'#3d5070',font:{size:9}}},
+      y:{...GCD.scales.y,title:{display:true,text:'GWh net',color:'#3d5070',font:{size:9}}},
+    }
+  });
+
+  // ── Bottom-right: daily net seasonal (366-day calendar, year overlay) ──
+  // Reuses the same MMDD infrastructure as the Regas daily seasonal.
+  const dailySeasDs = selYears.map((yr,i) => ({
+    label: `${yr}`,
+    data: _seasSeriesFromDaily(GD.storDaily||{}, yr, r => ((r.inj||0) - (r.wdr||0))),
+    borderColor: GA_COLS[i],
+    backgroundColor: GA_COLS[i]+(yr===curY?'22':'00'),
+    borderWidth: yr===curY ? 2 : 1.2,
+    pointRadius: 0, pointHoverRadius: 3,
+    tension: 0.15,
+    borderDash: yr!==curY ? [5,3] : undefined,
+    spanGaps: false, fill: false,
+  }));
+  const dailyXTicks = {
+    color:'#3d5070', font:{size:9,family:'IBM Plex Mono, ui-monospace, monospace'},
+    autoSkip:false, maxRotation:0,
+    callback: function(v){ const i=_SEAS_MONTH_TICK_IDX.indexOf(v); return i>=0 ? _SEAS_MONTH_LABELS[i] : ''; },
+  };
+  gaMakeChart('stor-inject-seas-day','line',{labels:_SEAS_MMDD,datasets:dailySeasDs},{
+    plugins:{tooltip:{callbacks:{
+      title: items => { const i=items[0]?.dataIndex; return i!=null ? _SEAS_MMDD[i] : ''; },
+      label: c => `${c.dataset.label}: ${c.raw==null?'—':c.raw.toFixed(1)}`,
+    }}},
+    scales:{
+      x:{...GCD.scales.x,ticks:dailyXTicks},
+      y:{...GCD.scales.y,title:{display:true,text:'GWh/d net',color:'#3d5070',font:{size:9}}},
     }
   });
 }
