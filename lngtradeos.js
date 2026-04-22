@@ -10914,6 +10914,113 @@ function updHist(){
   if(hChart)hChart.destroy();
   const hc=$id('hChart');if(hc)hChart=new Chart(hc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:ds},options:{...CD,scales}});
   bStats(t1);
+  renderHistBox(i1,t1);
+}
+
+// Horizontal boxplot for Series 1 over the active range.
+// P5 → P95 whiskers, P25 → P75 box, median tick, red line for current value.
+function renderHistBox(i1,tv){
+  const canvas=$id('hBoxChart'); if(!canvas) return;
+  const parent=canvas.parentElement;
+  const W=parent?parent.clientWidth:canvas.width;
+  const H=parent?parent.clientHeight:canvas.height;
+  const dpr=window.devicePixelRatio||1;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  const ctx=canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  const inst=INST[i1]||{label:i1,unit:''};
+  const rLbl={all:'ALL',ytd:'YTD','1m':'1M','3m':'3M','6m':'6M','1y':'1Y'}[_histRange]||_histRange.toUpperCase();
+  const titleEl=$id('box-title');
+  if(titleEl) titleEl.textContent=`DISTRIBUTION — ${inst.label} ${tvL(tv)} · ${rLbl} · ${inst.unit}`;
+
+  let s=gS(i1,tv);
+  const cut=rangeStart(_histRange);
+  if(cut) s=s.filter(d=>d.date>=cut);
+  const vals=s.map(d=>d.value).filter(v=>v!=null&&!isNaN(v));
+  if(vals.length<2){
+    ctx.fillStyle='#3d5070'; ctx.font='11px IBM Plex Mono'; ctx.textAlign='center';
+    ctx.fillText('No data',W/2,H/2);
+    return;
+  }
+
+  const sorted=[...vals].sort((a,b)=>a-b);
+  const minV=sorted[0], maxV=sorted[sorted.length-1];
+  const p5=_pctile(sorted,5), p25=_pctile(sorted,25), median=_pctile(sorted,50);
+  const p75=_pctile(sorted,75), p95=_pctile(sorted,95);
+  const cur=vals[vals.length-1];
+  const dp=inst.unit==='$/bbl'?2:3;
+  const fmt=v=>v.toFixed(dp);
+
+  const mL=40, mR=40, mT=24, mB=36;
+  const plotW=W-mL-mR;
+  const yBox=mT+(H-mT-mB)/2;
+  const span=maxV-minV;
+  const pad=span>0?span*0.05:Math.max(Math.abs(maxV)*0.05,0.1);
+  const xMin=minV-pad, xMax=maxV+pad;
+  const xs=v=>mL+(v-xMin)/(xMax-xMin)*plotW;
+
+  // Axis line
+  ctx.strokeStyle='#1e2d45'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(mL,H-mB); ctx.lineTo(W-mR,H-mB); ctx.stroke();
+
+  // Axis: Min / Max ticks
+  ctx.font='9px IBM Plex Mono'; ctx.textAlign='center';
+  [{v:minV,l:'MIN'},{v:maxV,l:'MAX'}].forEach(t=>{
+    const x=xs(t.v);
+    ctx.strokeStyle='#1e2d45';
+    ctx.beginPath(); ctx.moveTo(x,H-mB); ctx.lineTo(x,H-mB+4); ctx.stroke();
+    ctx.fillStyle='#5a6882'; ctx.fillText(fmt(t.v),x,H-mB+14);
+    ctx.fillStyle='#3d5070'; ctx.fillText(t.l,x,H-mB+24);
+  });
+
+  // Whiskers P5 ↔ P95
+  const whiskerH=10;
+  ctx.strokeStyle='#3d5070'; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(xs(p5),yBox); ctx.lineTo(xs(p95),yBox);
+  ctx.moveTo(xs(p5),yBox-whiskerH); ctx.lineTo(xs(p5),yBox+whiskerH);
+  ctx.moveTo(xs(p95),yBox-whiskerH); ctx.lineTo(xs(p95),yBox+whiskerH);
+  ctx.stroke();
+
+  // Box P25 ↔ P75
+  const boxH=26;
+  ctx.fillStyle='rgba(45,124,255,.18)';
+  ctx.fillRect(xs(p25),yBox-boxH/2,xs(p75)-xs(p25),boxH);
+  ctx.strokeStyle='#2d7cff'; ctx.lineWidth=1.5;
+  ctx.strokeRect(xs(p25),yBox-boxH/2,xs(p75)-xs(p25),boxH);
+
+  // Median tick inside the box
+  ctx.strokeStyle='#4fc3f7'; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(xs(median),yBox-boxH/2); ctx.lineTo(xs(median),yBox+boxH/2);
+  ctx.stroke();
+
+  // Top labels: P5, P25, Med, P75, P95 (skip when too close)
+  ctx.font='8px IBM Plex Mono'; ctx.textAlign='center';
+  const topTicks=[{v:p5,l:'P5'},{v:p25,l:'P25'},{v:median,l:'MED'},{v:p75,l:'P75'},{v:p95,l:'P95'}];
+  let lastX=-Infinity;
+  topTicks.forEach(t=>{
+    const x=xs(t.v);
+    if(x-lastX<32) return;
+    lastX=x;
+    ctx.fillStyle='#8a9bb5'; ctx.fillText(fmt(t.v),x,mT-4);
+    ctx.fillStyle='#3d5070'; ctx.fillText(t.l,x,mT-14);
+  });
+
+  // Current value — thick red line + NOW label
+  const xCur=xs(cur);
+  ctx.strokeStyle='#ef4444'; ctx.lineWidth=2.5;
+  ctx.beginPath();
+  ctx.moveTo(xCur,yBox-boxH/2-6); ctx.lineTo(xCur,yBox+boxH/2+6);
+  ctx.stroke();
+  ctx.fillStyle='#ef4444'; ctx.font='bold 10px IBM Plex Mono'; ctx.textAlign='center';
+  const nowLbl=`● ${fmt(cur)}`;
+  // Keep label inside plot bounds
+  const labelX=Math.max(mL+18,Math.min(W-mR-18,xCur));
+  ctx.fillText(nowLbl,labelX,yBox+boxH/2+18);
 }
 // Percentile via linear interpolation between closest ranks.
 // p in [0,100]. Assumes `sorted` is ascending.
