@@ -17162,11 +17162,11 @@ function buildRegasCtrlBar(mode, curCtry, curTerm, terms){
     `<option value="${code}"${code===curCtry?' selected':''}>${name}</option>`).join('');
   const termOpts = `<option value="_all_"${curTerm==='_all_'?' selected':''}>All Terminals</option>`
     + (terms||[]).map(t => `<option value="${t.company}"${t.company===curTerm?' selected':''}>${t.name}</option>`).join('');
-  // Only the seasonal views (send / inv) get the years selector — the util
-  // view share state with send.
+  // Year pills (individual-toggle style, matching EU Storage UX).
   const curYears = mode==='send' ? _regasSendYears : _regasInvYears;
-  const yearOpts = [1,2,3,4].map(n =>
-    `<option value="${n}"${n===curYears?' selected':''}>${n}Y</option>`).join('');
+  const yearPills = GA_AVAIL_YEARS.map(y =>
+    `<button class="ga-stab${curYears.includes(y)?' active':''}" onclick="gaRegasSetYears('${mode}',${y},this)">${y}</button>`
+  ).join('');
   return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(77,158,245,.1)">
     <span style="color:#546e7a;font-size:8px">COUNTRY</span>
     <select class="gsel" onchange="gaRegasSetCtry('${mode}',this.value)">
@@ -17176,13 +17176,16 @@ function buildRegasCtrlBar(mode, curCtry, curTerm, terms){
     <span style="color:#546e7a;font-size:8px">TERMINAL</span>
     <select class="gsel" id="regas-term-sel" onchange="gaRegasSetTerm('${mode}',this.value)">${termOpts}</select>
     <span style="color:#546e7a;font-size:8px">YEARS</span>
-    <select class="gsel" onchange="gaRegasSetYears('${mode}',this.value)">${yearOpts}</select>
+    <div style="display:flex;gap:4px;flex-wrap:wrap">${yearPills}</div>
     <span style="color:${GD.ok.lng?'#34d399':'#f59e0b'};font-size:8px;margin-left:auto">${GD.ok.lng?'🟢 ALSI live':'🟡 loading'}</span>
   </div>`;
 }
 
-let _regasSendCtry='eu', _regasSendTerm='_all_', _regasSendYears=3;
-let _regasInvCtry='eu',  _regasInvTerm='_all_',  _regasInvYears=3;
+// Default year sets — current + 2 prior. Computed at module load; the user
+// can toggle pills to add/remove years up to GA_AVAIL_YEARS (5 total).
+function _regasDefaultYears(){ const y=new Date().getFullYear(); return [y,y-1,y-2]; }
+let _regasSendCtry='eu', _regasSendTerm='_all_', _regasSendYears=_regasDefaultYears();
+let _regasInvCtry='eu',  _regasInvTerm='_all_',  _regasInvYears=_regasDefaultYears();
 
 async function gaRegasSetCtry(mode, val){
   if(mode==='send'){ _regasSendCtry=val; _regasSendTerm='_all_'; }
@@ -17206,10 +17209,16 @@ async function gaRegasSetTerm(mode, val){
   else              renderRegasLngStorage(pane);
 }
 
-function gaRegasSetYears(mode, val){
-  const n = Math.max(1, Math.min(4, +val||3));
-  if(mode==='send') _regasSendYears = n;
-  else              _regasInvYears  = n;
+function gaRegasSetYears(mode, year, btn){
+  const y = +year;
+  const key = mode==='send' ? '_regasSendYears' : '_regasInvYears';
+  const arr = mode==='send' ? _regasSendYears : _regasInvYears;
+  let next = arr.includes(y) ? arr.filter(v=>v!==y) : [...arr, y];
+  if(!next.length) next = [y]; // keep at least one year selected
+  next.sort((a,b)=>b-a);
+  if(mode==='send') _regasSendYears = next;
+  else              _regasInvYears  = next;
+  if(btn) btn.classList.toggle('active', next.includes(y));
   const pane=document.getElementById('ga-regas-pane');
   if(mode==='send') renderRegasSendoutNew(pane);
   else              renderRegasLngStorage(pane);
@@ -17302,8 +17311,9 @@ function renderRegasSendoutNew(pane){
     const daily   = _alsiGetDaily(ctry,term);
     const monthly = _alsiGetMonthly(ctry,term);
     const GWH_MCM = 1/10.55; // GIE reports sendOut in GWh/d — convert to mcm/d.
-    const nYears  = _regasSendYears;
-    const seasYrs = Array.from({length:nYears},(_,i)=>curY-i);
+    // Years are an explicit array now (individual pill selection). Sort
+    // newest-first so the current year is drawn on top with bold stroke.
+    const seasYrs = _regasSendYears.slice().sort((a,b)=>b-a);
 
     // Sendout seasonal — DAILY (calendar day resolution, partial current year
     // just stops at today, no phantom month-end cliffs).
