@@ -15,79 +15,70 @@
  * Source: https://aegis.acer.europa.eu/terminal/price_assessments
  */
 
-export const config = { runtime: 'edge' };
-
+// Use the Node.js serverless runtime — the edge runtime was returning 502s
+// when proxying ACER (likely TLS/bot-detection differences on edge IPs).
 const BASE = 'https://aegis.acer.europa.eu/terminal/price_assessments';
 const CSV_URL = `${BASE}/historical_data`;
 
 const UPSTREAM_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (compatible; LNGTradeOS/1.0)',
-  'Accept': '*/*',
+  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept': 'text/csv,*/*;q=0.9',
+  'Accept-Language': 'en-US,en;q=0.9',
 };
 
-export default async function handler(req) {
-  const { searchParams } = new URL(req.url);
-  const action = searchParams.get('action') || 'csv';
+export default async function handler(req, res) {
+  const action = (req.query?.action) || 'csv';
+  res.setHeader('Access-Control-Allow-Origin', '*');
 
   try {
     if (action === 'csv') {
-      const res = await fetch(CSV_URL, { headers: UPSTREAM_HEADERS });
-      if (!res.ok) {
-        return new Response(`ACER CSV fetch failed: ${res.status}`, { status: res.status });
+      const upstream = await fetch(CSV_URL, { headers: UPSTREAM_HEADERS });
+      if (!upstream.ok) {
+        res.status(upstream.status).send(`ACER CSV fetch failed: ${upstream.status}`);
+        return;
       }
-      const text = await res.text();
-      return new Response(text, {
-        headers: {
-          'Content-Type': 'text/csv; charset=utf-8',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=7200',
-        },
-      });
+      const text = await upstream.text();
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=7200');
+      res.status(200).send(text);
+      return;
     }
 
     if (action === 'list') {
-      const res = await fetch(BASE, { headers: UPSTREAM_HEADERS });
-      if (!res.ok) {
-        return new Response(`ACER index fetch failed: ${res.status}`, { status: res.status });
+      const upstream = await fetch(BASE, { headers: UPSTREAM_HEADERS });
+      if (!upstream.ok) {
+        res.status(upstream.status).send(`ACER index fetch failed: ${upstream.status}`);
+        return;
       }
-      const html = await res.text();
+      const html = await upstream.text();
       const matches = [...html.matchAll(/\/terminal\/price_assessments\/file\/(\d+)/g)];
       const ids = [...new Set(matches.map(m => parseInt(m[1], 10)))].sort((a, b) => b - a);
-      return new Response(JSON.stringify({ files: ids.map(id => ({ id })), total: ids.length }), {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, max-age=3600',
-        },
-      });
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.status(200).json({ files: ids.map(id => ({ id })), total: ids.length });
+      return;
     }
 
     if (action === 'pdf') {
-      const id = searchParams.get('id');
-      if (!id || !/^\d+$/.test(id)) {
-        return new Response('Invalid id', { status: 400 });
+      const id = req.query?.id;
+      if (!id || !/^\d+$/.test(String(id))) {
+        res.status(400).send('Invalid id');
+        return;
       }
-      const res = await fetch(`${BASE}/file/${id}`, { headers: UPSTREAM_HEADERS });
-      if (!res.ok) {
-        return new Response(`ACER PDF fetch failed: ${res.status}`, { status: res.status });
+      const upstream = await fetch(`${BASE}/file/${id}`, { headers: UPSTREAM_HEADERS });
+      if (!upstream.ok) {
+        res.status(upstream.status).send(`ACER PDF fetch failed: ${upstream.status}`);
+        return;
       }
-      return new Response(res.body, {
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, max-age=86400',
-        },
-      });
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.status(200).send(buf);
+      return;
     }
 
-    return new Response('Unknown action. Use: csv | list | pdf&id=N', { status: 400 });
+    res.status(400).send('Unknown action. Use: csv | list | pdf&id=N');
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 502,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
+    res.status(502).json({ error: err.message });
   }
 }
