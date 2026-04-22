@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260422a">
-<script src="lngtradeos.js?v=20260422n" defer></script>
+<script src="lngtradeos.js?v=20260422k" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -516,7 +516,6 @@
       <button id="lngbal-btn-asia" class="cty-tab active" onclick="lngbalCountry('asia',this)">ASIA</button>
       <button id="lngbal-btn-india" class="cty-tab" onclick="lngbalCountry('india',this)">INDIA</button>
       <button id="lngbal-btn-sam" class="cty-tab" onclick="samShow(this)">SOUTH AMERICA</button>
-      <button id="lngbal-btn-us" class="cty-tab" onclick="lngbalCountry('us',this)">US LNG</button>
     </div>
     <div id="lngbal-asia">
       <!-- Asia sub-country selector -->
@@ -624,66 +623,6 @@
       <div style="font-size:11px;color:#546e7a;line-height:1.7;max-width:640px;margin:0 auto">Planned sources: PTT monthly LNG imports (Map Ta Phut terminals 1 &amp; 2 · Nong Fab) · EGAT gas-for-power · Gulf of Thailand &amp; Myanmar pipeline imports · Department of Mineral Fuels production statistics.</div>
     </div>
     </div><!-- end lngbal-asia -->
-
-    <div id="lngbal-us" style="display:none">
-<style>
-#lngbal-us{font-family:inherit;color:inherit;font-size:inherit}
-#lngbal-us .us-hdr{font-size:9px;letter-spacing:.15em;color:#6b7a99;margin-bottom:14px}
-#lngbal-us .us-topbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 14px}
-#lngbal-us .us-fresh{font-size:9px;color:#6b7a99;letter-spacing:.1em}
-#lngbal-us .us-fresh .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#10b981;margin-right:6px;vertical-align:middle}
-#lngbal-us .us-rng{display:flex;border:1px solid rgba(77,158,245,0.12);border-radius:2px;overflow:hidden}
-#lngbal-us .us-rb{font-family:inherit;font-size:10px;padding:5px 12px;background:transparent;border:none;color:#6b7a99;cursor:pointer;letter-spacing:.1em}
-#lngbal-us .us-rb.act{background:#4d9ef5;color:#fff}
-#lngbal-us .us-rb:hover:not(.act){background:#151829;color:#dde4f0}
-#lngbal-us .us-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:0 0 18px}
-#lngbal-us .us-kc{background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:11px 13px}
-#lngbal-us .us-kl{font-size:9px;color:#6b7a99;margin-bottom:5px;letter-spacing:.1em}
-#lngbal-us .us-kv{font-size:18px;font-weight:500;color:#f0f4ff;font-variant-numeric:tabular-nums;line-height:1.1}
-#lngbal-us .us-ku{font-size:9px;color:#6b7a99;margin-left:4px}
-#lngbal-us .us-ks{font-size:9px;margin-top:3px;color:#6b7a99}
-#lngbal-us .us-sect{margin-bottom:22px}
-#lngbal-us .us-stt{font-size:9px;letter-spacing:.15em;color:#4b5a72;margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid rgba(77,158,245,0.07);font-weight:normal;text-transform:uppercase}
-#lngbal-us .us-bt{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
-#lngbal-us .us-bt th{text-align:right;padding:8px 7px;font-weight:500;color:#8a9bb5;border-bottom:1px solid rgba(77,158,245,0.12);font-size:10px;letter-spacing:.5px;white-space:nowrap}
-#lngbal-us .us-bt th:first-child,#lngbal-us .us-bt td:first-child{text-align:left}
-#lngbal-us .us-bt td{text-align:right;padding:5px 7px;color:#8a9bb5;white-space:nowrap}
-#lngbal-us .us-bt tr.tot td{font-weight:500;color:#f0f4ff;border-top:1px solid rgba(77,158,245,0.12);padding-top:8px;padding-bottom:8px;background:rgba(77,158,245,0.04)}
-#lngbal-us .us-bt td .us-pill{display:inline-block;background:#151829;color:#8a9bb5;padding:1px 7px;border-radius:2px;font-size:9px;margin-left:6px;letter-spacing:.05em}
-#lngbal-us .us-cw{height:340px;position:relative}
-#lngbal-us .us-notes{background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:12px 14px;font-size:11px;color:#6b7a99;line-height:1.7}
-#lngbal-us .us-nt{font-size:9px;letter-spacing:.15em;color:#4b5a72;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(77,158,245,0.07);font-weight:normal;text-transform:uppercase}
-#lngbal-us .us-notes code{background:#151829;padding:1px 5px;border-radius:2px;font-size:10px;color:#fbbf24}
-</style>
-      <div class="us-hdr">⬡ GAS &amp; LNG ANALYTICS · US LNG FEEDGAS</div>
-      <div class="us-topbar">
-        <div class="us-fresh" id="us-fresh-badge"><span class="dot"></span><span id="us-fresh-text">Loading…</span></div>
-        <div class="us-rng" id="us-rng">
-          <button class="us-rb" data-rng="30d" onclick="usSetRange('30d',this)">30D</button>
-          <button class="us-rb act" data-rng="90d" onclick="usSetRange('90d',this)">90D</button>
-          <button class="us-rb" data-rng="1y" onclick="usSetRange('1y',this)">1Y</button>
-        </div>
-      </div>
-      <div class="us-kpis" id="us-kpis"></div>
-      <div class="us-sect">
-        <div class="us-stt">DAILY FEEDGAS BY TERMINAL · Bcf/d</div>
-        <div class="us-cw"><canvas id="us-stack-chart"></canvas></div>
-      </div>
-      <div class="us-sect">
-        <div class="us-stt">TERMINAL DETAIL · LATEST DAY</div>
-        <div style="overflow-x:auto">
-          <table class="us-bt" id="us-tbl">
-            <thead><tr><th>Terminal</th><th>Location</th><th>Capacity (Bcf/d)</th><th>Feedgas (Bcf/d)</th><th>Utilisation</th><th>Pipelines</th></tr></thead>
-            <tbody id="us-tbl-body"></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="us-notes">
-        <div class="us-nt">DATA MODEL NOTES</div>
-        <strong>Source:</strong> <span id="us-source-text">seeded baseline (EIA-aligned)</span> · latest <span id="us-latest-date">—</span>. Values are delivered-gas volumes at each terminal&rsquo;s interconnect meter, in <code>Bcf/d</code>. Pipeline legs shown for the latest day only — full history per-pipeline lives in the backend project (<code>lng-backend</code>) awaiting live EBB scraper wiring.<br><br>
-        <strong>Live data roadmap:</strong> Kinder Morgan EBB (plain <code>?f=x</code> GET) already produces real Dth/d for Sabine Pass (KMLP · NGPL · TGPD) and Elba Island (EEC · SLNG) — the HTTP scraper at <code>scrapers.js</code> is confirmed working. Cheniere (Corpus Christi · Sabine Pass CTPL leg), Quorum portals (Freeport · Cameron · Plaquemines), BHEGTS (Cove Point), and Energy Transfer (Golden Pass) require Playwright XHR interception. Next step: run <code>browser-scraper.js --discover</code> locally, pin the XHR paths in <code>scrapers.js</code>, then push daily snapshots into <code>data/us_lng_feedgas.json</code> via crontab.
-      </div>
-    </div>
 
     <div id="lngbal-india" style="display:none">
       <div id="ind-container"></div>
