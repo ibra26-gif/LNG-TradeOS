@@ -14734,16 +14734,11 @@ let _storBand = '2023-2025'; // fixed band
 function renderStorEU(pane){
   const bandSel = '2023-2025';
   _storBand = bandSel;
-  // Derive N from the current _storYears length so the dropdown mirrors state.
-  const curYearsN = Math.max(1, Math.min(5, _storYears.length || 4));
-  const yearOpts = [1,2,3,4,5].map(n =>
-    `<option value="${n}"${n===curYearsN?' selected':''}>${n}Y</option>`).join('');
   pane.innerHTML=`
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
-      <span class="ctrl-lbl">OVERLAY</span>
-      <select class="gsel" onchange="gdSetStorYears(this.value)">${yearOpts}</select>
-      <span style="color:#546e7a;font-size:9px;margin-left:4px">most recent years</span>
-      <span style="color:#3d5070;font-size:9px;margin-left:8px">· Band: 2023-2025</span>
+      <span class="ctrl-lbl">YEARS</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${GA_AVAIL_YEARS.map(y=>`<button class="ga-stab${_storYears.includes(y)?' active':''}" onclick="gdToggleStorYear(${y},this)">${y}</button>`).join('')}</div>
+      <span style="font-size:9px;color:#3d5070;margin-left:8px">BAND: 2023-2025</span>
       <span style="font-size:9px;margin-left:auto;color:${GD.ok.storage?'#34d399':'#f59e0b'}">${GD.ok.storage?'🟢 AGSI+ live':'🟡 Loading...'}</span>
     </div>
     <div class="ga-gauto" id="stor-kpis" style="margin-bottom:12px"></div>
