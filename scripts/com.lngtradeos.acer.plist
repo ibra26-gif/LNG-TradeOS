@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.lngtradeos.acer.plist — daily ACER CSV refresh
+  Runs scripts/acer_fetch.py at 19:00 local time (after ACER publishes ~18:30 CET).
+  Install:
+    cp scripts/com.lngtradeos.acer.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.lngtradeos.acer.plist
+  Test now:
+    launchctl start com.lngtradeos.acer
+  Inspect logs:
+    tail -f /tmp/lngtradeos_acer.log /tmp/lngtradeos_acer.err
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.lngtradeos.acer</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/iboumar/Desktop/lngtradeos-fix/scripts/acer_fetch.py</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/iboumar/Desktop/lngtradeos-fix</string>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>19</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/lngtradeos_acer.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/lngtradeos_acer.err</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
