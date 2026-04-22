@@ -13431,17 +13431,27 @@ async function gdLoadLNG(from, to){
       if(!mo||!date) return;
       const send=parseFloat(d.sendOut||d.sendout||0)||0;
       const dtrs=parseFloat(d.dtrs||0)||0;
-      const status=parseFloat(d.status||0)||0;
-      if(!GD.lngTotal[mo]) GD.lngTotal[mo]={sendGWh:0,dtrsGWh:0,statusGWh:0,invGWh:0};
+      // ALSI inventory lives under d.inventory.gwh (energy) / d.inventory.lng
+      // (thousand m³ LNG). The top-level `status` field is a letter code
+      // (C/E/N) — NOT a numeric value. Reading it as a number (parseFloat)
+      // yielded NaN→0 and left LNG STORAGE tab silently empty for months.
+      const inv=parseFloat((d.inventory && d.inventory.gwh) || d.gasInStorage || 0)||0;
+      if(!GD.lngTotal[mo]) GD.lngTotal[mo]={sendGWh:0,dtrsGWh:0,statusGWh:0,invGWh:0,_lastDay:''};
       GD.lngTotal[mo].sendGWh += send;
       GD.lngTotal[mo].dtrsGWh += dtrs;
-      GD.lngTotal[mo].statusGWh += status;
-      GD.lngTotal[mo].invGWh += status;
+      // Inventory is a STOCK (end-of-day GWh) not a flow — take the latest
+      // day within the month rather than summing, so the KPI shows a real
+      // inventory number instead of 30× reality.
+      if(date >= GD.lngTotal[mo]._lastDay){
+        GD.lngTotal[mo].statusGWh = inv;
+        GD.lngTotal[mo].invGWh    = inv;
+        GD.lngTotal[mo]._lastDay  = date;
+      }
       // Store daily for ALL years in the window — seasonal chart needs it.
       if(!GD.lngDaily[date]) GD.lngDaily[date]={sendGWh:0,dtrsGWh:0,statusGWh:0};
       GD.lngDaily[date].sendGWh += send;
       GD.lngDaily[date].dtrsGWh += dtrs;
-      GD.lngDaily[date].statusGWh += status;
+      GD.lngDaily[date].statusGWh += inv;
     });
     if(Object.keys(GD.lngTotal).length) GD.ok.lng=true;
     console.log(`ALSI EU: ${Object.keys(GD.lngTotal).length} months`);
@@ -13468,14 +13478,20 @@ async function gdLoadLNGCountries(from, to){
         if(!mo) return;
         const send=parseFloat(d.sendOut||d.sendout||0)||0;
         const dtrs=parseFloat(d.dtrs||0)||0;
-        const status=parseFloat(d.status||0)||0;
-        if(!GD.lngByCtry[code][mo]) GD.lngByCtry[code][mo]={sendGWh:0,dtrsGWh:0,statusGWh:0,invGWh:0};
+        // ALSI inventory: d.inventory.gwh (energy). Top-level d.status is a
+        // letter code (C/E/N), not a number — fixed 2026-04-22.
+        const inv=parseFloat((d.inventory && d.inventory.gwh) || d.gasInStorage || 0)||0;
+        if(!GD.lngByCtry[code][mo]) GD.lngByCtry[code][mo]={sendGWh:0,dtrsGWh:0,statusGWh:0,invGWh:0,_lastDay:''};
         GD.lngByCtry[code][mo].sendGWh += send;
         GD.lngByCtry[code][mo].dtrsGWh += dtrs;
-        GD.lngByCtry[code][mo].statusGWh += status;
-        GD.lngByCtry[code][mo].invGWh += status;
+        // Inventory = end-of-day stock; keep latest day's value per month.
+        if(date >= GD.lngByCtry[code][mo]._lastDay){
+          GD.lngByCtry[code][mo].statusGWh = inv;
+          GD.lngByCtry[code][mo].invGWh    = inv;
+          GD.lngByCtry[code][mo]._lastDay  = date;
+        }
         // Store daily too — seasonal chart needs day-level resolution.
-        GD.lngDailyByCtry[code][date] = {sendGWh:send, dtrsGWh:dtrs, statusGWh:status, invGWh:status};
+        GD.lngDailyByCtry[code][date] = {sendGWh:send, dtrsGWh:dtrs, statusGWh:inv, invGWh:inv};
       });
     }catch(e){ console.warn(`ALSI ${code}:`,e.message); }
     await new Promise(r=>setTimeout(r,300));
@@ -17143,12 +17159,19 @@ async function alsiLoadTerminalHistory(ctryCode, termKey){
     if(!mo) return;
     const send = parseFloat(d.sendOut||d.sendout||0)||0;
     const dtrs = parseFloat(d.dtrs||0)||0;
-    const inv  = parseFloat(d.gasInStorage||d.status||0)||0;
-    if(!byMonth[mo]) byMonth[mo]={sendGWh:0,dtrsGWh:0,invGWh:0,days:0};
+    // ALSI inventory is under d.inventory.gwh (energy) — d.status is a
+    // letter code (C/E/N), not numeric. gasInStorage is the AGSI field
+    // name, kept as a fallback for defensive parsing.
+    const inv  = parseFloat((d.inventory && d.inventory.gwh) || d.gasInStorage || 0)||0;
+    if(!byMonth[mo]) byMonth[mo]={sendGWh:0,dtrsGWh:0,invGWh:0,days:0,_lastDay:''};
     byMonth[mo].sendGWh += send;
     byMonth[mo].dtrsGWh += dtrs;
-    byMonth[mo].invGWh  += inv;
     byMonth[mo].days++;
+    // Inventory = stock, not flow — keep the latest day within the month.
+    if(date >= byMonth[mo]._lastDay){
+      byMonth[mo].invGWh   = inv;
+      byMonth[mo]._lastDay = date;
+    }
     byDay[date] = {sendGWh:send, dtrsGWh:dtrs, invGWh:inv};
   });
   GD_ALSI_TERM_DATA[cacheKey]  = byMonth;
