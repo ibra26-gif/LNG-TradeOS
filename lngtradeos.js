@@ -14734,11 +14734,16 @@ let _storBand = '2023-2025'; // fixed band
 function renderStorEU(pane){
   const bandSel = '2023-2025';
   _storBand = bandSel;
+  // Derive N from the current _storYears length so the dropdown mirrors state.
+  const curYearsN = Math.max(1, Math.min(5, _storYears.length || 4));
+  const yearOpts = [1,2,3,4,5].map(n =>
+    `<option value="${n}"${n===curYearsN?' selected':''}>${n}Y</option>`).join('');
   pane.innerHTML=`
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
-      <span class="ctrl-lbl">YEARS</span>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">${GA_AVAIL_YEARS.map(y=>`<button class="ga-stab${_storYears.includes(y)?' active':''}" onclick="gdToggleStorYear(${y},this)">${y}</button>`).join('')}</div>
-      <span style="font-size:9px;color:#3d5070;margin-left:8px">BAND: 2023-2025</span>
+      <span class="ctrl-lbl">OVERLAY</span>
+      <select class="gsel" onchange="gdSetStorYears(this.value)">${yearOpts}</select>
+      <span style="color:#546e7a;font-size:9px;margin-left:4px">most recent years</span>
+      <span style="color:#3d5070;font-size:9px;margin-left:8px">· Band: 2023-2025</span>
       <span style="font-size:9px;margin-left:auto;color:${GD.ok.storage?'#34d399':'#f59e0b'}">${GD.ok.storage?'🟢 AGSI+ live':'🟡 Loading...'}</span>
     </div>
     <div class="ga-gauto" id="stor-kpis" style="margin-bottom:12px"></div>
@@ -14791,6 +14796,14 @@ window.gdToggleStorYear=function(y,btn){
   else _storYears=[..._storYears,y];
   btn.classList.toggle('active',_storYears.includes(y));
   // Load historical data if needed
+  gdEnsureStorageYears(_storBand).then(()=>drawStorEU());
+};
+
+// Dropdown-style "overlay last N years" — matches the regas YEARS UX.
+// Sets _storYears to the N most recent years in GA_AVAIL_YEARS.
+window.gdSetStorYears = function(n){
+  const N = Math.max(1, Math.min(GA_AVAIL_YEARS.length, +n||3));
+  _storYears = GA_AVAIL_YEARS.slice(0, N);
   gdEnsureStorageYears(_storBand).then(()=>drawStorEU());
 };
 
@@ -17291,11 +17304,14 @@ function renderRegasSendoutNew(pane){
   </div>`;
 
   setTimeout(()=>{
-    const daily = _alsiGetDaily(ctry,term);
+    const daily   = _alsiGetDaily(ctry,term);
+    const monthly = _alsiGetMonthly(ctry,term);
     const GWH_MCM = 1/10.55; // GIE reports sendOut in GWh/d — convert to mcm/d.
-    const nYears = _regasSendYears;
+    const nYears  = _regasSendYears;
     const seasYrs = Array.from({length:nYears},(_,i)=>curY-i);
-    // Sendout: sendGWh → mcm/d per calendar day
+
+    // Sendout seasonal — DAILY (calendar day resolution, partial current year
+    // just stops at today, no phantom month-end cliffs).
     const sendDs = seasYrs.map((yr,i)=>({
       label:String(yr),
       data:_seasSeriesFromDaily(daily, yr, r => r.sendGWh ? r.sendGWh*GWH_MCM : null),
@@ -17303,34 +17319,42 @@ function renderRegasSendoutNew(pane){
       borderWidth:i===0?2:1.2, pointRadius:0, pointHoverRadius:3,
       tension:0.15, borderDash:i>0?[5,3]:undefined, spanGaps:false,
     }));
-    // Utilisation: sendGWh / dtrsGWh × 100 per day
+
+    // Utilisation seasonal — MONTHLY (daily utilisation is too noisy to be
+    // useful; user requested the smooth 12-point view). One point per month.
     const utilDs = seasYrs.map((yr,i)=>({
       label:String(yr),
-      data:_seasSeriesFromDaily(daily, yr, r => (r.dtrsGWh && r.sendGWh) ? (r.sendGWh/r.dtrsGWh*100) : null),
+      data:Array.from({length:12},(_,m)=>{
+        const mo = `${yr}-${String(m+1).padStart(2,'0')}`;
+        const d  = monthly[mo];
+        if(!d || !d.dtrsGWh) return null;
+        return +(d.sendGWh/d.dtrsGWh*100).toFixed(1);
+      }),
       borderColor:GA_COLS[i], backgroundColor:'transparent',
-      borderWidth:i===0?2:1.2, pointRadius:0, pointHoverRadius:3,
-      tension:0.15, borderDash:i>0?[5,3]:undefined, spanGaps:false,
+      borderWidth:i===0?2.5:1.5, pointRadius:2, tension:0.3,
+      borderDash:i>0?[5,3]:undefined, spanGaps:true,
     }));
-    // Shared x-axis config: 366-day calendar, month-aligned tick labels
-    const xTicks = {
+
+    // Shared x-axis config for the DAILY sendout chart (366-day calendar).
+    const dailyXTicks = {
       color:'#3d5070', font:{size:9,family:'IBM Plex Mono, ui-monospace, monospace'},
       autoSkip:false, maxRotation:0,
       callback: function(v){ const i=_SEAS_MONTH_TICK_IDX.indexOf(v); return i>=0 ? _SEAS_MONTH_LABELS[i] : ''; },
     };
-    const scX = {...GCD.scales.x, ticks:xTicks};
-    const tooltipCb = {
-      callbacks:{
-        title: items => { const i=items[0]?.dataIndex; return i!=null ? _SEAS_MMDD[i] : ''; },
-        label: c => `${c.dataset.label}: ${c.raw==null?'—':c.raw.toFixed(2)}`,
-      }
-    };
+    const dailyScX = {...GCD.scales.x, ticks:dailyXTicks};
+    const dailyTooltip = { callbacks:{
+      title: items => { const i=items[0]?.dataIndex; return i!=null ? _SEAS_MMDD[i] : ''; },
+      label: c => `${c.dataset.label}: ${c.raw==null?'—':c.raw.toFixed(2)}`,
+    }};
+    // Monthly x-axis for utilisation (12 tick labels — Jan..Dec)
+    const monthlyScX = {...GCD.scales.x, ticks:{...GCD.scales.x.ticks, autoSkip:false, maxTicksLimit:12}};
+
     gaMakeChart('regas-send-seas','line',{labels:_SEAS_MMDD,datasets:sendDs},{
-      plugins:{tooltip:tooltipCb},
-      scales:{x:scX, y:{...GCD.scales.y, title:{display:true,text:'mcm/d',color:'#3d5070',font:{size:9}}}}
+      plugins:{tooltip:dailyTooltip},
+      scales:{x:dailyScX, y:{...GCD.scales.y, title:{display:true,text:'mcm/d',color:'#3d5070',font:{size:9}}}}
     });
-    gaMakeChart('regas-util-seas','line',{labels:_SEAS_MMDD,datasets:utilDs},{
-      plugins:{tooltip:tooltipCb},
-      scales:{x:scX, y:{...GCD.scales.y, min:0, max:100, title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}}
+    gaMakeChart('regas-util-seas','line',{labels:GA_MO,datasets:utilDs},{
+      scales:{x:monthlyScX, y:{...GCD.scales.y, min:0, max:100, title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}}
     });
   },80);
 }
