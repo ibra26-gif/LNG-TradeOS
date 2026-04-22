@@ -326,6 +326,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#080c14;color:#c8d6e5;fo
       /* Country bar — separate class to avoid conflict with csTab() */
       .cty-tab{padding:10px 18px;font-size:10px;letter-spacing:.1em;color:#6b7a99;cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;white-space:nowrap;transition:all .2s}
       .cty-tab:hover{color:#dde4f0}.cty-tab.active{color:#4d9ef5;border-bottom-color:#4d9ef5}
+      /* Asia sub-country selector */
+      .asia-tab{padding:8px 14px;font-size:9px;letter-spacing:.12em;color:#5a6882;cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;white-space:nowrap;transition:all .2s}
+      .asia-tab:hover{color:#c8d6e5}.asia-tab.act{color:#4d9ef5;border-bottom-color:#4d9ef5}
 
 
 /* Public website layer — Premium Dark Intelligence Platform */

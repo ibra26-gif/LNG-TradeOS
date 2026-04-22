@@ -9,8 +9,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="lngtradeos.css?v=20260421s">
-<script src="lngtradeos.js?v=20260422j" defer></script>
+<link rel="stylesheet" href="lngtradeos.css?v=20260422a">
+<script src="lngtradeos.js?v=20260422k" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -513,11 +513,20 @@
 
     <!-- Country selector -->
     <div id="lngbal-cty-bar" style="display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px">
-      <button id="lngbal-btn-china" class="cty-tab active" onclick="lngbalCountry('china',this)">CHINA</button>
+      <button id="lngbal-btn-asia" class="cty-tab active" onclick="lngbalCountry('asia',this)">ASIA</button>
       <button id="lngbal-btn-india" class="cty-tab" onclick="lngbalCountry('india',this)">INDIA</button>
       <button id="lngbal-btn-sam" class="cty-tab" onclick="samShow(this)">SOUTH AMERICA</button>
     </div>
-    <div id="lngbal-china">
+    <div id="lngbal-asia">
+      <!-- Asia sub-country selector -->
+      <div style="display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.08);margin-bottom:18px;overflow-x:auto">
+        <button id="lngbal-asia-btn-china" class="asia-tab act" onclick="asiaShow('china',this)">CHINA</button>
+        <button id="lngbal-asia-btn-japan" class="asia-tab" onclick="asiaShow('japan',this)">JAPAN</button>
+        <button id="lngbal-asia-btn-korea" class="asia-tab" onclick="asiaShow('korea',this)">KOREA</button>
+        <button id="lngbal-asia-btn-taiwan" class="asia-tab" onclick="asiaShow('taiwan',this)">TAIWAN</button>
+        <button id="lngbal-asia-btn-thailand" class="asia-tab" onclick="asiaShow('thailand',this)">THAILAND</button>
+      </div>
+    <div id="lngbal-asia-china">
     <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS &amp; LNG ANALYTICS · CHINA SIGNPOSTS</div>
     <div class="cs-tabs">
       <button class="cs-tab active" onclick="csTab('gb',this)">CHINA GAS BALANCE</button>
@@ -591,7 +600,29 @@
       </div>
     </div>
 
-    </div><!-- end lngbal-china -->
+    </div><!-- end lngbal-asia-china -->
+
+    <div id="lngbal-asia-japan" style="display:none;padding:60px 20px;text-align:center">
+      <div style="font-size:10px;letter-spacing:.15em;color:#6b7a99;margin-bottom:12px">⬡ GAS &amp; LNG ANALYTICS · JAPAN SIGNPOSTS</div>
+      <div style="font-size:14px;color:#c8d6e5;margin-bottom:8px">Japan gas balance — coming soon</div>
+      <div style="font-size:11px;color:#546e7a;line-height:1.7;max-width:640px;margin:0 auto">Planned sources: METI monthly LNG import statistics · JOGMEC inventory &amp; receiving-terminal tank stocks · TEPCO / KEPCO / CEPCO gas-for-power consumption · JERA and Osaka Gas sendout.</div>
+    </div>
+    <div id="lngbal-asia-korea" style="display:none;padding:60px 20px;text-align:center">
+      <div style="font-size:10px;letter-spacing:.15em;color:#6b7a99;margin-bottom:12px">⬡ GAS &amp; LNG ANALYTICS · KOREA SIGNPOSTS</div>
+      <div style="font-size:14px;color:#c8d6e5;margin-bottom:8px">Korea gas balance — coming soon</div>
+      <div style="font-size:11px;color:#546e7a;line-height:1.7;max-width:640px;margin:0 auto">Planned sources: KOGAS monthly LNG imports &amp; terminal tank stocks (Incheon · Pyeongtaek · Tongyeong · Samcheok · Boryeong) · KEPCO thermal gas burn · POSCO / private power IPPs.</div>
+    </div>
+    <div id="lngbal-asia-taiwan" style="display:none;padding:60px 20px;text-align:center">
+      <div style="font-size:10px;letter-spacing:.15em;color:#6b7a99;margin-bottom:12px">⬡ GAS &amp; LNG ANALYTICS · TAIWAN SIGNPOSTS</div>
+      <div style="font-size:14px;color:#c8d6e5;margin-bottom:8px">Taiwan gas balance — coming soon</div>
+      <div style="font-size:11px;color:#546e7a;line-height:1.7;max-width:640px;margin:0 auto">Planned sources: CPC Corp monthly LNG import statistics · Yung-An &amp; Taichung &amp; Taoyuan (Kuanyin) FSRU tank stocks · Taipower gas-fired generation (Tongsiao · Datan · Xingda · Tunghsiao).</div>
+    </div>
+    <div id="lngbal-asia-thailand" style="display:none;padding:60px 20px;text-align:center">
+      <div style="font-size:10px;letter-spacing:.15em;color:#6b7a99;margin-bottom:12px">⬡ GAS &amp; LNG ANALYTICS · THAILAND SIGNPOSTS</div>
+      <div style="font-size:14px;color:#c8d6e5;margin-bottom:8px">Thailand gas balance — coming soon</div>
+      <div style="font-size:11px;color:#546e7a;line-height:1.7;max-width:640px;margin:0 auto">Planned sources: PTT monthly LNG imports (Map Ta Phut terminals 1 &amp; 2 · Nong Fab) · EGAT gas-for-power · Gulf of Thailand &amp; Myanmar pipeline imports · Department of Mineral Fuels production statistics.</div>
+    </div>
+    </div><!-- end lngbal-asia -->
 
     <div id="lngbal-india" style="display:none">
       <div id="ind-container"></div>

@@ -2112,7 +2112,7 @@ function shellNav(sec,sub){
     else{if(sub)showSec(sub);else setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart].forEach(c=>c&&c.resize());},80);}
     if(!finLoaded) _pendingFinSub=sub||null;
   }
-  if(sec==='gasanalytics') gaTab(sub||'lngbal');
+  if(sec==='gasanalytics') gaTab(sub||'dashboard');
   if(sec==='portfolio') pvTab(sub||'morning');
   if(sec==='toolbox') tbTab(sub||'converter');
   window.scrollTo(0,0);
@@ -15515,15 +15515,35 @@ function indGetData(){
 function lngbalCountry(cty,btn){
   document.querySelectorAll('#lngbal-cty-bar .cty-tab').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
-  document.getElementById('lngbal-china').style.display=cty==='china'?'':'none';
-  document.getElementById('lngbal-india').style.display=cty==='india'?'':'none';
+  const asia=document.getElementById('lngbal-asia');
+  const india=document.getElementById('lngbal-india');
+  if(asia) asia.style.display=cty==='asia'?'':'none';
+  if(india) india.style.display=cty==='india'?'':'none';
   if(cty==='india'){
     indInit();
-  } else {
+  } else if(cty==='asia'){
+    // Default to China on first entry; csInit is idempotent.
+    const active=document.querySelector('#lngbal-asia .asia-tab.act');
+    if(!active){
+      const chinaBtn=document.getElementById('lngbal-asia-btn-china');
+      if(chinaBtn) chinaBtn.classList.add('act');
+    }
     if(typeof csInit==='function') setTimeout(csInit,80);
   }
 }
 window.lngbalCountry=lngbalCountry;
+
+// Asia sub-country toggle. Only China is data-wired; the rest are placeholders.
+function asiaShow(country,btn){
+  document.querySelectorAll('#lngbal-asia .asia-tab').forEach(b=>b.classList.remove('act'));
+  if(btn) btn.classList.add('act');
+  ['china','japan','korea','taiwan','thailand'].forEach(c=>{
+    const el=document.getElementById('lngbal-asia-'+c);
+    if(el) el.style.display=(c===country)?'':'none';
+  });
+  if(country==='china' && typeof csInit==='function') setTimeout(csInit,80);
+}
+window.asiaShow=asiaShow;
 
 function indInit(){
   const container=document.getElementById('ind-container');
@@ -17292,10 +17312,10 @@ function renderRegasLngStorage(pane){
    calls samShow() directly, and we hook CHINA/INDIA on DOMContentLoaded
    (which fires after defer scripts) to hide SAM when they're clicked. */
 window.samShow = function(btn) {
-  var chinaEl = document.getElementById('lngbal-china');
+  var asiaEl  = document.getElementById('lngbal-asia');
   var indiaEl = document.getElementById('lngbal-india');
   var samEl   = document.getElementById('lngbal-sam');
-  if (chinaEl) chinaEl.style.display = 'none';
+  if (asiaEl)  asiaEl.style.display  = 'none';
   if (indiaEl) indiaEl.style.display = 'none';
   if (samEl)   samEl.style.display   = '';
   document.querySelectorAll('#lngbal-cty-bar .cty-tab').forEach(function(b){ b.classList.remove('active'); });
