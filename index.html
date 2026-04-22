@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260421s">
-<script src="lngtradeos.js?v=20260422i" defer></script>
+<script src="lngtradeos.js?v=20260422j" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -838,6 +838,7 @@
   <div class="sam-notes">
     <div class="sam-nt">DATA MODEL NOTES</div>
     BMC monthly reports (<code>informes-mensuales</code>) + UPME <em>Balance de Gas Natural</em> + Ecopetrol production + Naturgas aggregates. Supply: La Guajira offshore (Chuchupa + Ballena, steep decline as fields mature) + Cusiana / Cupiagua / Piedemonte (Ecopetrol onshore Llanos, steady) + other onshore (Gibraltar, Nelson, Clarinete) + LNG imports at <strong>SPEC Cartagena FSRU</strong> (2.5 MTPA capacity, seasonal winter + El Niño reactivation). Demand: residential + commercial distribution + industrial + thermal power (CENIT + TEBSA + Termocandelaria) + GNV vehicles + Ecopetrol refineries (Barrancabermeja + Cartagena). Density: <code>0.78 kg/Sm³</code>.<br><br>
+    <strong style="color:#fbbf24">BMC coverage timeline</strong> — the em-dashes in older months reflect BMC's own publishing history, not a scraper gap: national <code>supply_total</code> is complete since Jun 2024 (and drives the <em>Total supply</em> row); supply breakdown has 4 fields from Jan 2025, 5 from May 2025, and full 12-field detail only from Jan 2026; <strong>demand breakdown starts Sep 2025</strong> — earlier BMC PDFs don't include a demand page. Backfill beyond this requires alternate sources: ANH <em>Producción Fiscalizada por Campo</em> XLSX gives field-level supply back to 2013 (future scraper), and XM Sinergox covers the thermal-power demand slice only.<br><br>
     Balance residual: mostly pipeline fuel (compressor stations burning ~1–2% of throughput) + measurement imbalance across BMC / TGI / Promigas / Ecopetrol. Colombia has no strategic underground storage — near-zero balance expected; large residuals trigger review. Thermal is <strong>hydro-linked</strong>: during El Niño dry spells (Dec–Apr typical) with embalse agregado &lt; 60%, thermal ramps hard → LNG demand spikes at Cartagena.
   </div>
 </div>

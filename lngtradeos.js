@@ -17628,7 +17628,11 @@ function arRenderCharts() {
 }
 
 function arHistorical(id, year) {
-  if (id === 'sup_total') return CAL_MONTHS.map(function(_,m){ return arHistorical('prod',year)[m] + arHistorical('bol',year)[m] + arHistorical('lng',year)[m]; });
+  // Bolivia pipeline (YABOG) and Escobar FSRU LNG imports aren't published
+  // in the ENARGAS sheets and we don't have an alternative live source yet.
+  // Render empty so the seasonal chart stops disagreeing with the main table.
+  if (id === 'bol' || id === 'lng') return CAL_MONTHS.map(function(){ return null; });
+  if (id === 'sup_total') return CAL_MONTHS.map(function(_,m){ return arHistorical('prod',year)[m]; });
   if (id === 'dem_total') {
     var ids = ['res','com','ind','pow','gnc','oth','excl','exot'];
     return CAL_MONTHS.map(function(_,m){ return ids.reduce(function(a,k){ return a + arHistorical(k,year)[m]; }, 0); });
