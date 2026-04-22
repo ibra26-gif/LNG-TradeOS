@@ -14733,13 +14733,13 @@ let _storYears=[2026,2025,2024,2023];
 function storTab(sub, btn){
   document.querySelectorAll('#ga-stor-subtabs .ga-stab').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  else { const map={'eu':0,'country':1,'map':2,'inject':3,'lng':4}; const btns=document.querySelectorAll('#ga-stor-subtabs .ga-stab'); const b=btns[map[sub]??0]; if(b)b.classList.add('active'); }
+  else { const map={'eu':0,'country':1,'map':2,'inject':3,'terminals':4}; const btns=document.querySelectorAll('#ga-stor-subtabs .ga-stab'); const b=btns[map[sub]??0]; if(b)b.classList.add('active'); }
   const pane=document.getElementById('ga-stor-pane');if(!pane)return;
-  if(sub==='eu')           renderStorEU(pane);
-  else if(sub==='country') renderStorCountry(pane);
-  else if(sub==='map')     renderStorMap(pane);
-  else if(sub==='inject')  renderStorInject(pane);
-  else if(sub==='lng')     renderStorLNG(pane);
+  if(sub==='eu')             renderStorEU(pane);
+  else if(sub==='country')   renderStorCountry(pane);
+  else if(sub==='map')       renderStorMap(pane);
+  else if(sub==='inject')    renderStorInject(pane);
+  else if(sub==='terminals') renderStorTerminalsHeatmap(pane);
 }
 
 // ── EU Aggregate Storage — reference-style seasonal chart ─────────────────
@@ -15074,6 +15074,128 @@ function renderStorInject(pane){
     }
   });
 }
+
+// ── Terminal Heatmap ─────────────────────────────────────────────────────────
+// Per-terminal daily regas utilisation (sendOut ÷ dtrs × 100). Loads the last
+// N days for every ALSI terminal, fills the table cells progressively so the
+// user sees rows populate as fetches complete. Rate-limit friendly (400 ms
+// between terminal fetches — well under GIE's 60/min cap).
+let _stTermPeriod = 'd14';
+
+async function renderStorTerminalsHeatmap(pane){
+  const daysBack = _stTermPeriod === 'd30' ? 30 : 14;
+  const today = new Date();
+  const dayStrs = [];
+  for(let i=daysBack-1; i>=0; i--){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    dayStrs.push(d.toISOString().slice(0,10));
+  }
+  const terms = [];
+  for(const c of Object.keys(ALSI_TERMINAL_DB)){
+    for(const t of ALSI_TERMINAL_DB[c]) terms.push({...t, ctry:c});
+  }
+  const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dayLabels = dayStrs.map(d => { const p=d.split('-'); return `${p[2]} ${MO[+p[1]-1]}`; });
+
+  // Shell
+  let rows = '';
+  for(const t of terms){
+    const cells = dayStrs.map(d => `<td class="st-term-cell" data-term="${t.ctry}_${t.facility}" data-day="${d}" style="text-align:center;padding:3px 4px;color:#3d5070;font-variant-numeric:tabular-nums">…</td>`).join('');
+    rows += `<tr>
+      <td style="position:sticky;left:0;background:var(--bg2);padding:4px 8px;color:#c8d6e5;font-size:10px;white-space:nowrap;border-right:1px solid rgba(77,158,245,.1)">${t.name}</td>
+      <td style="padding:4px 8px;color:#6b7a99;font-size:9px;letter-spacing:.05em">${t.ctry.toUpperCase()}</td>
+      ${cells}
+    </tr>`;
+  }
+  pane.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
+      <span class="ctrl-lbl">PERIOD</span>
+      <select class="gsel" onchange="gaSetStorTermPeriod(this.value)">
+        <option value="d14"${_stTermPeriod==='d14'?' selected':''}>Daily — Last 14 days</option>
+        <option value="d30"${_stTermPeriod==='d30'?' selected':''}>Daily — Last 30 days</option>
+      </select>
+      <span style="font-size:8px;color:#546e7a;margin-left:8px">sendOut ÷ dtrs × 100 · 🔴 ≥100% · 🟠 75–99% · 🟡 50–74% · 🟢 25–49% · ⚪ &lt;25%</span>
+      <span id="st-term-progress" style="font-size:9px;color:#4fc3f7;margin-left:auto">Loading 0 / ${terms.length}…</span>
+    </div>
+    <div class="ga-card">
+      <div class="ga-sec">REGAS UTILISATION — % OF NAMEPLATE <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
+      <div style="overflow:auto;max-height:640px">
+        <table style="border-collapse:collapse;font-size:9px;width:100%;min-width:${220+40+dayStrs.length*55}px">
+          <thead><tr>
+            <th style="position:sticky;left:0;top:0;z-index:3;background:var(--bg2);text-align:left;padding:6px 8px;color:var(--td);min-width:220px;font-weight:400;border-bottom:1px solid rgba(77,158,245,.12)">Terminal</th>
+            <th style="position:sticky;top:0;z-index:2;background:var(--bg2);text-align:left;padding:6px 8px;color:var(--td);min-width:40px;font-weight:400;border-bottom:1px solid rgba(77,158,245,.12)">Reg</th>
+            ${dayLabels.map(l => `<th style="position:sticky;top:0;z-index:2;background:var(--bg2);text-align:center;padding:6px 4px;color:var(--td);min-width:55px;font-weight:400;border-bottom:1px solid rgba(77,158,245,.12)">${l}</th>`).join('')}
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="ga-source">Source: GIE ALSI · Daily Technical Reference Sendout (dtrs) · ${new Date().toLocaleDateString('en-GB')}</div>
+    </div>`;
+
+  // Progressive fetch + fill
+  const fromStr = dayStrs[0];
+  const toStr   = dayStrs[dayStrs.length-1];
+  let done = 0;
+  for(const t of terms){
+    const key = t.ctry + '_' + t.facility;
+    let daily = GD_ALSI_TERM_DAILY[key];
+    const haveAll = daily && dayStrs.every(d => d in daily);
+    if(!haveAll){
+      try{
+        const rows = await aggiPaginated(`country=${t.ctry}&company=${encodeURIComponent(t.company)}&facility=${encodeURIComponent(t.facility)}&from=${fromStr}&to=${toStr}`);
+        if(!GD_ALSI_TERM_DAILY[key]) GD_ALSI_TERM_DAILY[key] = {};
+        rows.forEach(d => {
+          const date = d.gasDayStart || d.gas_day || '';
+          if(!date) return;
+          GD_ALSI_TERM_DAILY[key][date] = {
+            sendGWh: parseFloat(d.sendOut||0)||0,
+            dtrsGWh: parseFloat(d.dtrs||0)||0,
+            invGWh:  parseFloat((d.inventory && d.inventory.gwh) || 0)||0,
+          };
+        });
+        daily = GD_ALSI_TERM_DAILY[key];
+      }catch(e){
+        console.warn('[heatmap]', key, e.message);
+      }
+    }
+    _stTermFillRow(key, t, daily||{}, dayStrs);
+    done++;
+    const p = document.getElementById('st-term-progress');
+    if(p) p.textContent = done < terms.length ? `Loading ${done} / ${terms.length}…` : `✓ ${terms.length} terminals loaded`;
+    if(!haveAll) await new Promise(r => setTimeout(r, 400));
+  }
+}
+
+function _stTermFillRow(termKey, terminal, daily, dayStrs){
+  const cells = document.querySelectorAll(`[data-term="${termKey}"]`);
+  cells.forEach(cell => {
+    const day = cell.getAttribute('data-day');
+    const d = daily[day];
+    if(!d || !d.dtrsGWh){
+      cell.textContent = '';
+      cell.style.background = '';
+      cell.style.color = '#3d5070';
+      cell.title = '';
+      return;
+    }
+    const util = Math.max(0, d.sendGWh / d.dtrsGWh * 100);
+    const col = util >= 100 ? 'rgba(239,68,68,0.75)' :
+                util >=  75 ? 'rgba(234,88,12,0.55)' :
+                util >=  50 ? 'rgba(234,179,8,0.45)' :
+                util >=  25 ? 'rgba(163,230,53,0.30)' :
+                              'rgba(148,163,184,0.15)';
+    cell.style.background = col;
+    cell.style.color = util >= 50 ? '#f0f4ff' : '#c8d6e5';
+    cell.textContent = util.toFixed(0) + '%';
+    cell.title = `${terminal.name} · ${day} · sendOut ${d.sendGWh.toFixed(0)} GWh/d · dtrs ${d.dtrsGWh.toFixed(0)} · util ${util.toFixed(1)}%`;
+  });
+}
+
+window.gaSetStorTermPeriod = function(val){
+  _stTermPeriod = val === 'd30' ? 'd30' : 'd14';
+  const pane = document.getElementById('ga-stor-pane');
+  if(pane) renderStorTerminalsHeatmap(pane);
+};
 
 function renderStorLNG(pane){
   const curY=new Date().getFullYear();
