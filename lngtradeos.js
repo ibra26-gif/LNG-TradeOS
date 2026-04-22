@@ -17508,16 +17508,27 @@ function arSupT(i) { return arSumS('sup', i); }
 function arDemT(i) { return arSumS('dem_all', i); }
 function arBal(i)  { var s = arSupT(i), d = arDemT(i); return (s == null || d == null) ? null : s - d; }
 function arNetTrade(i) {
-  var ids = ['excl','exot','bol','lng'];
-  var got = {};
-  for (var k=0;k<ids.length;k++){
-    var row = AR_D.rows.find(function(r){return r.id===ids[k];});
-    if (!row) return null;
-    var v = row.v[i];
+  // Exports are authoritative (ENARGAS Exportaciones); imports (Bolivia
+  // pipeline, Escobar FSRU LNG) aren't in the ENARGAS sheets and may be
+  // null — treat missing imports as 0 rather than nulling out the whole KPI.
+  var expIds = ['excl','exot'], impIds = ['bol','lng'];
+  var exp = 0, haveExp = false;
+  for (var k=0;k<expIds.length;k++){
+    var r = AR_D.rows.find(function(x){return x.id===expIds[k];});
+    if (!r) return null;
+    var v = r.v[i];
     if (v == null) return null;
-    got[ids[k]] = v;
+    exp += v; haveExp = true;
   }
-  return got.excl + got.exot - got.bol - got.lng;
+  if (!haveExp) return null;
+  var imp = 0;
+  for (var k=0;k<impIds.length;k++){
+    var r = AR_D.rows.find(function(x){return x.id===impIds[k];});
+    if (!r) continue;
+    var v = r.v[i];
+    if (v != null) imp += v;
+  }
+  return exp - imp;
 }
 
 function arCell(v, i, signed) {
@@ -17565,14 +17576,21 @@ function arRenderKpis() {
   document.getElementById('sam-ar-k2').textContent = fmt(conv(arDemT(11),11,U),U);
   document.getElementById('sam-ar-k2u').textContent = uL;
   var np = arNetTrade(11);
-  var npConv = conv(np, 11, U);
   var k3 = document.getElementById('sam-ar-k3');
   var k3s = document.getElementById('sam-ar-k3s');
-  k3.textContent = fmtS(npConv, U);
-  k3.style.color = np >= 0 ? '#10b981' : '#ef4444';
   document.getElementById('sam-ar-k3u').textContent = uL;
-  k3s.textContent = np >= 0 ? 'Net exporter · Exports − Imports' : 'Net importer · Exports − Imports';
-  k3s.className = 'sam-ks ' + (np >= 0 ? 'up' : 'dn');
+  if (np == null) {
+    k3.textContent = '—';
+    k3.style.color = '#6b7a99';
+    k3s.textContent = 'Exports data not available for latest month';
+    k3s.className = 'sam-ks';
+  } else {
+    var npConv = conv(np, 11, U);
+    k3.textContent = fmtS(npConv, U);
+    k3.style.color = np >= 0 ? '#10b981' : '#ef4444';
+    k3s.textContent = np >= 0 ? 'Net exporter · Exports − Imports' : 'Net importer · Exports − Imports';
+    k3s.className = 'sam-ks ' + (np >= 0 ? 'up' : 'dn');
+  }
 }
 function arRenderCharts() {
   if (typeof Chart === 'undefined') { setTimeout(arRenderCharts, 100); return; }
