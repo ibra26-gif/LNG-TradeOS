@@ -17595,13 +17595,14 @@ function arRenderKpis() {
 function arRenderCharts() {
   if (typeof Chart === 'undefined') { setTimeout(arRenderCharts, 100); return; }
   cDefaults();
+  var labels = (window.AR_MONTH_LABELS && window.AR_MONTH_LABELS.length === 12) ? window.AR_MONTH_LABELS : MONTHS;
   var seq = function(id) { return AR_D.rows.find(function(r){return r.id===id;}).v.map(function(v,i){return conv(v,i,U);}); };
-  var seqSum = function(ids) { return MONTHS.map(function(_,i){ return ids.reduce(function(a,id){ return a + conv(AR_D.rows.find(function(r){return r.id===id;}).v[i],i,U); }, 0); }); };
+  var seqSum = function(ids) { return labels.map(function(_,i){ return ids.reduce(function(a,id){ return a + conv(AR_D.rows.find(function(r){return r.id===id;}).v[i],i,U); }, 0); }); };
   if (ar_c1) ar_c1.destroy();
   if (ar_c2) ar_c2.destroy();
   ar_c1 = new Chart(document.getElementById('sam-ar-ch1'), {
     type: 'bar',
-    data: { labels: MONTHS, datasets: [
+    data: { labels: labels, datasets: [
       { label: 'Domestic production', data: seq('prod'), backgroundColor: '#10b981' },
       { label: 'Bolivia pipeline', data: seq('bol'), backgroundColor: '#4d9ef5' },
       { label: 'LNG imports (Escobar)', data: seq('lng'), backgroundColor: '#fbbf24' }
@@ -17609,7 +17610,7 @@ function arRenderCharts() {
   });
   ar_c2 = new Chart(document.getElementById('sam-ar-ch2'), {
     type: 'bar',
-    data: { labels: MONTHS, datasets: [
+    data: { labels: labels, datasets: [
       { label: 'Residential + Commercial + GNC + Other', data: seqSum(['res','com','gnc','oth']), backgroundColor: '#10b981' },
       { label: 'Industrial', data: seq('ind'), backgroundColor: '#8b5cf6' },
       { label: 'Power generation', data: seq('pow'), backgroundColor: '#ef4444' },
@@ -18017,6 +18018,27 @@ async function samLoadArgentina() {
     const j = await r.json();
     if (j.rows && j.rows.length) {
       AR_D.rows = j.rows;
+      // Sync column labels to the API's actual months — otherwise the
+      // hardcoded HTML thead would slide the data one month forward.
+      if (Array.isArray(j.months) && j.months.length === 12) {
+        const ESM = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+        const labels = j.months.map(ym => {
+          const [y, m] = ym.split('-');
+          return ESM[parseInt(m, 10) - 1] + ' ' + y.slice(2);
+        });
+        const hd = document.getElementById('sam-ar-bthd');
+        if (hd) hd.innerHTML = '<th></th>' + labels.map(l => `<th>${l}</th>`).join('');
+        const latest = labels[labels.length - 1];
+        const setLbl = (id, prefix) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = `${prefix} · ${latest}`;
+        };
+        setLbl('sam-ar-k1l', 'TOTAL SUPPLY');
+        setLbl('sam-ar-k2l', 'TOTAL DEMAND');
+        setLbl('sam-ar-k3l', 'NET TRADE');
+        setLbl('sam-ar-k4l', 'PRODUCTION YoY');
+        window.AR_MONTH_LABELS = labels;
+      }
       if (typeof arRenderTbl === 'function') arRenderTbl();
       if (typeof arRenderKpis === 'function') arRenderKpis();
       if (typeof arRenderCharts === 'function') arRenderCharts();
