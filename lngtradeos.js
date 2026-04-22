@@ -15533,9 +15533,179 @@ function lngbalCountry(cty,btn){
       if(chinaBtn) chinaBtn.classList.add('act');
     }
     if(typeof csInit==='function') setTimeout(csInit,80);
+  } else if(cty==='us'){
+    if(typeof usInit==='function') setTimeout(usInit,80);
   }
 }
 window.lngbalCountry=lngbalCountry;
+
+// ── US LNG Feedgas dashboard ────────────────────────────────────────────────
+// Reads the lean /data/us_lng_feedgas.json seed and renders a stacked-by-
+// terminal daily Bcf/d chart + KPI row + latest-day terminal detail table.
+// Live scraper (lng-backend project) is a future task; this ships the seeded
+// baseline so the section is usable today.
+window.US_LNG_STATE = window.US_LNG_STATE || { data: null, chart: null, range: '90d' };
+
+async function usInit(){
+  const pane = document.getElementById('lngbal-us');
+  if (!pane) return;
+  if (US_LNG_STATE.data) { usRender(); return; }
+  try {
+    const r = await fetch('/data/us_lng_feedgas.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    US_LNG_STATE.data = await r.json();
+    usRender();
+  } catch (e) {
+    const el = document.getElementById('us-fresh-text');
+    if (el) el.textContent = 'Error loading feedgas data: ' + e.message;
+  }
+}
+window.usInit = usInit;
+
+function usSetRange(r, btn){
+  US_LNG_STATE.range = r;
+  document.querySelectorAll('#us-rng .us-rb').forEach(b => b.classList.remove('act'));
+  if (btn) btn.classList.add('act');
+  usRender();
+}
+window.usSetRange = usSetRange;
+
+function usRender(){
+  const d = US_LNG_STATE.data;
+  if (!d) return;
+  const N = US_LNG_STATE.range === '30d' ? 30 : US_LNG_STATE.range === '1y' ? 365 : 90;
+  const allDates = d.dates || [];
+  const dates = allDates.slice(-N);
+  const startIdx = Math.max(0, allDates.length - N);
+  const tids = Object.keys(d.terminals || {});
+
+  // Freshness badge
+  const fresh = document.getElementById('us-fresh-text');
+  if (fresh) fresh.textContent = `${d.meta.source} · ${allDates.length} days ending ${d.meta.latestDate}`;
+  const latestEl = document.getElementById('us-latest-date');
+  if (latestEl) latestEl.textContent = d.meta.latestDate;
+  const srcEl = document.getElementById('us-source-text');
+  if (srcEl) srcEl.textContent = d.meta.source;
+
+  // KPIs
+  const totalToday = d.meta.totalTodayBcfd || 0;
+  const utilVals = tids.map(t => (d.today[t] && d.today[t].utilizationPct) || 0).filter(v => v > 0);
+  const avgUtil = utilVals.length ? Math.round(utilVals.reduce((a,b) => a+b, 0) / utilVals.length) : 0;
+  const online = tids.filter(t => d.today[t] && (d.today[t].bcfd || 0) > 0.01).length;
+  const totalCapacity = tids.reduce((a,t) => a + (d.terminals[t] && d.terminals[t].capacity || 0), 0);
+  document.getElementById('us-kpis').innerHTML = `
+    <div class="us-kc"><div class="us-kl">TOTAL FEEDGAS · ${d.meta.latestDate}</div>
+      <div><span class="us-kv" style="color:#4d9ef5">${totalToday.toFixed(2)}</span><span class="us-ku">Bcf/d</span></div>
+      <div class="us-ks">Across ${online} of ${tids.length} terminals</div></div>
+    <div class="us-kc"><div class="us-kl">AGGREGATE CAPACITY</div>
+      <div><span class="us-kv" style="color:#8a9bb5">${totalCapacity.toFixed(1)}</span><span class="us-ku">Bcf/d nameplate</span></div>
+      <div class="us-ks">System-wide utilisation ${((totalToday/totalCapacity)*100).toFixed(0)}%</div></div>
+    <div class="us-kc"><div class="us-kl">AVG TERMINAL UTILISATION</div>
+      <div><span class="us-kv" style="color:${avgUtil >= 85 ? '#10b981' : avgUtil >= 65 ? '#fbbf24' : '#ef4444'}">${avgUtil}</span><span class="us-ku">%</span></div>
+      <div class="us-ks">Simple average across ${utilVals.length} reporting terminals</div></div>
+    <div class="us-kc"><div class="us-kl">WINDOW</div>
+      <div><span class="us-kv" style="color:#c8d6e5">${dates.length}</span><span class="us-ku">days</span></div>
+      <div class="us-ks">${dates[0]} → ${dates[dates.length-1]}</div></div>`;
+
+  // Chart — stacked area, one dataset per terminal. Mirrors the Tableau
+  // "NG Pipeline Flow" LNG Pipelines layout (stacked area with terminal
+  // end-value labels on the right edge).
+  if (typeof Chart === 'undefined') { setTimeout(usRender, 150); return; }
+  if (US_LNG_STATE.chart) { US_LNG_STATE.chart.destroy(); US_LNG_STATE.chart = null; }
+  const hexToRgba = (hex, a) => {
+    const m = hex.replace('#',''); const r = parseInt(m.slice(0,2),16), g = parseInt(m.slice(2,4),16), b = parseInt(m.slice(4,6),16);
+    return `rgba(${r},${g},${b},${a})`;
+  };
+  const datasets = tids.map(tid => ({
+    label: d.terminals[tid].name.replace(' LNG',''),
+    data: (d.series[tid] || []).slice(startIdx),
+    backgroundColor: hexToRgba(d.terminals[tid].color, 0.55),
+    borderColor: d.terminals[tid].color,
+    borderWidth: 1,
+    pointRadius: 0,
+    pointHoverRadius: 3,
+    fill: true,
+    tension: 0.25,
+  }));
+  // End-label plugin: draw the latest Bcf/d value for each terminal at the right edge.
+  const endLabelPlugin = {
+    id: 'usEndLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea) return;
+      ctx.save();
+      ctx.font = '10px IBM Plex Mono, ui-monospace, monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      // Walk datasets bottom-up to anchor each label at the top of its stacked band.
+      const n = chart.data.labels.length;
+      let stackY = 0;
+      chart.data.datasets.forEach((ds, di) => {
+        const v = ds.data[n-1] || 0;
+        stackY += v;
+        const y = scales.y.getPixelForValue(stackY) + (v > 0 ? (scales.y.getPixelForValue(stackY - v) - scales.y.getPixelForValue(stackY))/2 : 0);
+        if (v < 0.05) return;
+        ctx.fillStyle = ds.borderColor;
+        ctx.fillText(`${v.toFixed(2)}`, chartArea.right + 4, y);
+      });
+      ctx.restore();
+    }
+  };
+  const canvas = document.getElementById('us-stack-chart');
+  if (canvas) {
+    US_LNG_STATE.chart = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: { labels: dates, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        layout: { padding: { right: 44 } },
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#8a9bb5', boxWidth: 10, padding: 10, font: { size: 10, family: 'IBM Plex Mono, ui-monospace, monospace' } } },
+          tooltip: {
+            backgroundColor: '#0c1120', borderColor: '#1e2d45', borderWidth: 1,
+            titleColor: '#c8cfe0', bodyColor: '#8a9bb5', padding: 10,
+            callbacks: {
+              label: c => `${c.dataset.label}: ${(c.raw || 0).toFixed(2)} Bcf/d`,
+              footer: items => {
+                const total = items.reduce((a,i) => a + (i.raw || 0), 0);
+                return `TOTAL: ${total.toFixed(2)} Bcf/d`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#3d5070', maxRotation: 0, autoSkip: true, maxTicksLimit: 12, font: { size: 9, family: 'IBM Plex Mono, ui-monospace, monospace' } } },
+          y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(77,158,245,0.07)' }, ticks: { color: '#3d5070', font: { size: 9, family: 'IBM Plex Mono, ui-monospace, monospace' } }, title: { display: true, text: 'Bcf/d', color: '#3d5070', font: { size: 9 } } },
+        },
+      },
+      plugins: [endLabelPlugin],
+    });
+  }
+
+  // Terminal table
+  const tbody = document.getElementById('us-tbl-body');
+  if (tbody) {
+    let totalBcfd = 0, totalCap = 0;
+    const rows = tids.map(tid => {
+      const meta = d.terminals[tid], t = d.today[tid];
+      totalBcfd += t.bcfd || 0;
+      totalCap += meta.capacity || 0;
+      const pipes = (t.pipelines || []).map(p => `${p.name} <span class="us-pill">${(p.mmcfd/1000).toFixed(2)}</span>`).join(' · ') || '—';
+      const utilColor = t.utilizationPct >= 85 ? '#10b981' : t.utilizationPct >= 65 ? '#fbbf24' : '#ef4444';
+      return `<tr>
+        <td style="color:${meta.color};font-weight:500">${meta.name}</td>
+        <td>${meta.location}</td>
+        <td>${(meta.capacity || 0).toFixed(2)}</td>
+        <td style="color:#c8d6e5">${(t.bcfd || 0).toFixed(2)}</td>
+        <td style="color:${utilColor}">${t.utilizationPct || 0}%</td>
+        <td style="font-size:10px">${pipes}</td>
+      </tr>`;
+    }).join('');
+    tbody.innerHTML = rows + `<tr class="tot"><td>TOTAL</td><td></td><td>${totalCap.toFixed(2)}</td><td>${totalBcfd.toFixed(2)}</td><td>${totalCap > 0 ? Math.round((totalBcfd/totalCap)*100) : 0}%</td><td></td></tr>`;
+  }
+}
+window.usRender = usRender;
 
 // Asia sub-country toggle. Only China is data-wired; the rest are placeholders.
 function asiaShow(country,btn){
