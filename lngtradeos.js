@@ -16580,7 +16580,54 @@ function acer_init(){
   const hSel=document.getElementById('acer-hPer');
   if(hSel&&!hSel.options.length)acer_buildDD(hSel);
   acer_renderHist();
+  acer_loadLive();
 }
+
+// Pulls fresh ACER TERMINAL CSV (DATE,NWE,SE,EU,BENCHMARK in EUR/MWh) via
+// the serverless proxy. Converts each row to the (region - TTF_ref) USD/MMBtu
+// spreads used by the UI, where TTF_ref = NWE - BENCHMARK and EURUSD comes
+// from the LNG EOD daily cache (getEURUSD). Replaces ACER_D in place and
+// re-renders if the tab is mounted.
+async function acer_loadLive(){
+  try{
+    const r = await fetch('/api/acer?action=csv',{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const text = await r.text();
+    const lines = text.trim().split(/\r?\n/).slice(1);
+    const CONV = 0.293071;
+    const rows = [];
+    for(const line of lines){
+      const m = line.match(/^"([^"]+)","([^"]*)","([^"]*)","([^"]*)","([^"]*)"$/);
+      if(!m) continue;
+      const d = m[1];
+      const nweF = parseFloat(m[2]);
+      const seF  = parseFloat(m[3]);
+      const euF  = parseFloat(m[4]);
+      const bench = parseFloat(m[5]);
+      if(isNaN(nweF)||isNaN(bench)) continue;
+      const eurUsd = (typeof getEURUSD==='function') ? getEURUSD(d) : 1.07;
+      const ttfRef = nweF - bench;
+      rows.push({
+        d,
+        nwe: +((nweF - ttfRef) * CONV * eurUsd).toFixed(4),
+        se:  isNaN(seF) ? null : +((seF - ttfRef) * CONV * eurUsd).toFixed(4),
+        eu:  isNaN(euF) ? null : +((euF - ttfRef) * CONV * eurUsd).toFixed(4),
+      });
+    }
+    if(rows.length >= 100){
+      rows.sort((a,b)=>a.d.localeCompare(b.d));
+      ACER_D = rows;
+      const latest = rows[rows.length-1].d;
+      console.log('[ACER] live loaded — '+rows.length+' rows · latest '+latest);
+      if(document.getElementById('acer-histChart') && typeof acer_renderHist==='function'){
+        acer_renderHist();
+      }
+    }
+  }catch(e){
+    console.warn('[ACER] live fetch failed, keeping seeded data:',e.message);
+  }
+}
+window.acer_loadLive = acer_loadLive;
 
 
 
