@@ -32,6 +32,10 @@ Default (latest only):
   python3 colombia_bmc_fetch.py
 """
 
+# Use postponed annotation evaluation so newer typing syntax (X | Y, list[T])
+# works on the system python (Apple's /usr/bin/python3 is 3.9).
+from __future__ import annotations
+
 import argparse
 import re
 import subprocess
