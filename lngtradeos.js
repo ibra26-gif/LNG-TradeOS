@@ -15517,8 +15517,12 @@ function lngbalCountry(cty,btn){
   if(btn)btn.classList.add('active');
   const asia=document.getElementById('lngbal-asia');
   const india=document.getElementById('lngbal-india');
+  const us=document.getElementById('lngbal-us');
+  const sam=document.getElementById('lngbal-sam');
   if(asia) asia.style.display=cty==='asia'?'':'none';
   if(india) india.style.display=cty==='india'?'':'none';
+  if(us) us.style.display=cty==='us'?'':'none';
+  if(sam && cty!=='sam') sam.style.display='none';
   if(cty==='india'){
     indInit();
   } else if(cty==='asia'){
@@ -17314,9 +17318,11 @@ function renderRegasLngStorage(pane){
 window.samShow = function(btn) {
   var asiaEl  = document.getElementById('lngbal-asia');
   var indiaEl = document.getElementById('lngbal-india');
+  var usEl    = document.getElementById('lngbal-us');
   var samEl   = document.getElementById('lngbal-sam');
   if (asiaEl)  asiaEl.style.display  = 'none';
   if (indiaEl) indiaEl.style.display = 'none';
+  if (usEl)    usEl.style.display    = 'none';
   if (samEl)   samEl.style.display   = '';
   document.querySelectorAll('#lngbal-cty-bar .cty-tab').forEach(function(b){ b.classList.remove('active'); });
   if (btn) btn.classList.add('active');

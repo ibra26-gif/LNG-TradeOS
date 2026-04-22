@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260422a">
-<script src="lngtradeos.js?v=20260422k" defer></script>
+<script src="lngtradeos.js?v=20260422l" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -516,6 +516,7 @@
       <button id="lngbal-btn-asia" class="cty-tab active" onclick="lngbalCountry('asia',this)">ASIA</button>
       <button id="lngbal-btn-india" class="cty-tab" onclick="lngbalCountry('india',this)">INDIA</button>
       <button id="lngbal-btn-sam" class="cty-tab" onclick="samShow(this)">SOUTH AMERICA</button>
+      <button id="lngbal-btn-us" class="cty-tab" onclick="lngbalCountry('us',this)">US LNG</button>
     </div>
     <div id="lngbal-asia">
       <!-- Asia sub-country selector -->
@@ -623,6 +624,12 @@
       <div style="font-size:11px;color:#546e7a;line-height:1.7;max-width:640px;margin:0 auto">Planned sources: PTT monthly LNG imports (Map Ta Phut terminals 1 &amp; 2 · Nong Fab) · EGAT gas-for-power · Gulf of Thailand &amp; Myanmar pipeline imports · Department of Mineral Fuels production statistics.</div>
     </div>
     </div><!-- end lngbal-asia -->
+
+    <div id="lngbal-us" style="display:none;padding:60px 20px;text-align:center">
+      <div style="font-size:10px;letter-spacing:.15em;color:#6b7a99;margin-bottom:12px">⬡ GAS &amp; LNG ANALYTICS · US LNG SIGNPOSTS</div>
+      <div style="font-size:14px;color:#c8d6e5;margin-bottom:8px">US LNG exports &amp; feedgas — coming soon</div>
+      <div style="font-size:11px;color:#546e7a;line-height:1.7;max-width:720px;margin:0 auto">Planned sources: EIA weekly feedgas pipeline flows by terminal (Sabine Pass · Corpus Christi · Freeport · Cameron · Cove Point · Elba Island · Calcasieu Pass · Plaquemines · Rio Grande · Port Arthur) · DOE FE monthly LNG export statistics (by destination and contract type) · terminal-level cargo scheduling (Kpler / Vortexa) · Henry Hub vs basin-specific feedgas prices · utilisation heatmap and sendout seasonality mirroring the EU ALSI view.</div>
+    </div>
 
     <div id="lngbal-india" style="display:none">
       <div id="ind-container"></div>
