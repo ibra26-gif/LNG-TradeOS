@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260421s">
-<script src="lngtradeos.js?v=20260421x" defer></script>
+<script src="lngtradeos.js?v=20260422e" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -598,7 +598,7 @@
 
     <div id="lngbal-sam" style="display:none">
 <style>
-#lngbal-sam{font-family:'IBM Plex Mono',ui-monospace,monospace;color:#f0f4ff;font-size:13px}
+#lngbal-sam{font-family:inherit;color:inherit;font-size:inherit}
 #lngbal-sam .sam-hdr{font-size:9px;letter-spacing:.15em;color:#6b7a99;margin-bottom:18px}
 #lngbal-sam .sam-ctabs{display:flex;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:20px;overflow-x:auto}
 #lngbal-sam .sam-ct{font-family:inherit;font-size:10px;padding:10px 18px;background:transparent;border:none;color:#6b7a99;cursor:pointer;letter-spacing:.1em;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all .2s}
@@ -690,9 +690,9 @@
     </div>
   </div>
   <div class="sam-kpis">
-    <div class="sam-kc"><div class="sam-kl">TOTAL SUPPLY · JAN 26</div><div><span class="sam-kv" id="sam-br-k1">2,021</span><span class="sam-ku" id="sam-br-k1u">MCM/D</span></div><div class="sam-ks up">YoY +5.2%</div></div>
-    <div class="sam-kc"><div class="sam-kl">TOTAL DEMAND · JAN 26</div><div><span class="sam-kv" id="sam-br-k2">1,745</span><span class="sam-ku" id="sam-br-k2u">MCM/D</span></div><div class="sam-ks up">YoY +4.3%</div></div>
-    <div class="sam-kc"><div class="sam-kl">LNG IMPORTS · JAN 26</div><div><span class="sam-kv" id="sam-br-k3">223</span><span class="sam-ku" id="sam-br-k3u">MCM/D</span></div><div class="sam-ks up">YoY +44%</div></div>
+    <div class="sam-kc"><div class="sam-kl">TOTAL SUPPLY · JAN 26</div><div><span class="sam-kv" id="sam-br-k1" style="color:#4d9ef5">2,021</span><span class="sam-ku" id="sam-br-k1u">MCM/D</span></div><div class="sam-ks up">YoY +5.2%</div></div>
+    <div class="sam-kc"><div class="sam-kl">TOTAL DEMAND · JAN 26</div><div><span class="sam-kv" id="sam-br-k2" style="color:#fbbf24">1,745</span><span class="sam-ku" id="sam-br-k2u">MCM/D</span></div><div class="sam-ks up">YoY +4.3%</div></div>
+    <div class="sam-kc"><div class="sam-kl">LNG IMPORTS · JAN 26</div><div><span class="sam-kv" id="sam-br-k3" style="color:#10b981">223</span><span class="sam-ku" id="sam-br-k3u">MCM/D</span></div><div class="sam-ks up">YoY +44%</div></div>
     <div class="sam-kc"><div class="sam-kl">THERMAL YoY · JAN 26</div><div><span class="sam-kv" style="color:#ef4444">+12.1%</span></div><div class="sam-ks dn">LNG-bullish · hydro stress</div></div>
   </div>
   <div class="sam-sect">
@@ -738,8 +738,8 @@
     </div>
   </div>
   <div class="sam-kpis">
-    <div class="sam-kc"><div class="sam-kl">TOTAL SUPPLY · JAN 26</div><div><span class="sam-kv" id="sam-ar-k1">4,464</span><span class="sam-ku" id="sam-ar-k1u">MCM/D</span></div><div class="sam-ks up">YoY +7.8%</div></div>
-    <div class="sam-kc"><div class="sam-kl">TOTAL DEMAND · JAN 26</div><div><span class="sam-kv" id="sam-ar-k2">4,153</span><span class="sam-ku" id="sam-ar-k2u">MCM/D</span></div><div class="sam-ks up">YoY +5.2%</div></div>
+    <div class="sam-kc"><div class="sam-kl">TOTAL SUPPLY · JAN 26</div><div><span class="sam-kv" id="sam-ar-k1" style="color:#4d9ef5">4,464</span><span class="sam-ku" id="sam-ar-k1u">MCM/D</span></div><div class="sam-ks up">YoY +7.8%</div></div>
+    <div class="sam-kc"><div class="sam-kl">TOTAL DEMAND · JAN 26</div><div><span class="sam-kv" id="sam-ar-k2" style="color:#fbbf24">4,153</span><span class="sam-ku" id="sam-ar-k2u">MCM/D</span></div><div class="sam-ks up">YoY +5.2%</div></div>
     <div class="sam-kc"><div class="sam-kl">NET TRADE · JAN 26</div><div><span class="sam-kv" id="sam-ar-k3" style="color:#10b981">+620</span><span class="sam-ku" id="sam-ar-k3u">MCM/D</span></div><div class="sam-ks up" id="sam-ar-k3s">Net exporter · Exports − Imports</div></div>
     <div class="sam-kc"><div class="sam-kl">PRODUCTION YoY · JAN 26</div><div><span class="sam-kv" style="color:#10b981">+11.7%</span></div><div class="sam-ks up">Vaca Muerta ramp</div></div>
   </div>
@@ -798,16 +798,16 @@
     </div>
   </div>
   <div class="sam-kpis">
-    <div class="sam-kc"><div class="sam-kl">TOTAL SUPPLY · JAN 26</div><div><span class="sam-kv" id="sam-co-k1">—</span><span class="sam-ku" id="sam-co-k1u">MCM/D</span></div><div class="sam-ks up">YoY −3.1%</div></div>
-    <div class="sam-kc"><div class="sam-kl">TOTAL DEMAND · JAN 26</div><div><span class="sam-kv" id="sam-co-k2">—</span><span class="sam-ku" id="sam-co-k2u">MCM/D</span></div><div class="sam-ks up">YoY +1.8%</div></div>
-    <div class="sam-kc"><div class="sam-kl">LNG IMPORTS · JAN 26</div><div><span class="sam-kv" id="sam-co-k3">—</span><span class="sam-ku" id="sam-co-k3u">MCM/D</span></div><div class="sam-ks up">SPEC Cartagena FSRU</div></div>
+    <div class="sam-kc"><div class="sam-kl">TOTAL SUPPLY · JAN 26</div><div><span class="sam-kv" id="sam-co-k1" style="color:#4d9ef5">—</span><span class="sam-ku" id="sam-co-k1u">MCM/D</span></div><div class="sam-ks up">YoY −3.1%</div></div>
+    <div class="sam-kc"><div class="sam-kl">TOTAL DEMAND · JAN 26</div><div><span class="sam-kv" id="sam-co-k2" style="color:#fbbf24">—</span><span class="sam-ku" id="sam-co-k2u">MCM/D</span></div><div class="sam-ks up">YoY +1.8%</div></div>
+    <div class="sam-kc"><div class="sam-kl">LNG IMPORTS · JAN 26</div><div><span class="sam-kv" id="sam-co-k3" style="color:#10b981">—</span><span class="sam-ku" id="sam-co-k3u">MCM/D</span></div><div class="sam-ks up">SPEC Cartagena FSRU</div></div>
     <div class="sam-kc"><div class="sam-kl">THERMAL YoY · JAN 26</div><div><span class="sam-kv" style="color:#ef4444">+8.4%</span></div><div class="sam-ks dn">Hydro below 65% · LNG bullish</div></div>
   </div>
   <div class="sam-sect">
     <div class="sam-stt">COLOMBIA GAS BALANCE · 12 MONTHS</div>
     <div style="overflow-x:auto">
       <table class="sam-bt">
-        <thead><tr><th></th><th>FEB 25</th><th>MAR 25</th><th>APR 25</th><th>MAY 25</th><th>JUN 25</th><th>JUL 25</th><th>AUG 25</th><th>SEP 25</th><th>OCT 25</th><th>NOV 25</th><th>DEC 25</th><th>JAN 26</th></tr></thead>
+        <thead><tr id="sam-co-bthd"><th></th><th>FEB 25</th><th>MAR 25</th><th>APR 25</th><th>MAY 25</th><th>JUN 25</th><th>JUL 25</th><th>AUG 25</th><th>SEP 25</th><th>OCT 25</th><th>NOV 25</th><th>DEC 25</th><th>JAN 26</th></tr></thead>
         <tbody id="sam-co-btb"></tbody>
       </table>
     </div>

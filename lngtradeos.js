@@ -10927,7 +10927,10 @@ function _pctile(sorted, p){
 
 function bStats(tv){
   const st = $id('stats-title');
-  if (st) st.textContent = 'STATISTICS — ' + tvL(tv);
+  const rLbl = {all:'ALL',ytd:'YTD','1m':'1M','3m':'3M','6m':'6M','1y':'1Y'}[_histRange] || _histRange.toUpperCase();
+  if (st) st.textContent = 'STATISTICS — ' + tvL(tv) + ' · ' + rLbl;
+
+  const cut = rangeStart(_histRange);
 
   let html = `<thead><tr>
     <th>Instrument</th><th>Current</th><th>Mean</th><th>Median</th>
@@ -10937,7 +10940,8 @@ function bStats(tv){
   </tr></thead><tbody>`;
 
   INSTS.forEach(inst => {
-    const s = gS(inst.k, tv);
+    let s = gS(inst.k, tv);
+    if (cut) s = s.filter(d => d.date >= cut);
     if (!s.length){
       html += `<tr><td>${inst.label}</td><td colspan="14" style="color:#3d5070">No data</td></tr>`;
       return;
@@ -16576,7 +16580,54 @@ function acer_init(){
   const hSel=document.getElementById('acer-hPer');
   if(hSel&&!hSel.options.length)acer_buildDD(hSel);
   acer_renderHist();
+  acer_loadLive();
 }
+
+// Pulls fresh ACER TERMINAL CSV (DATE,NWE,SE,EU,BENCHMARK in EUR/MWh) via
+// the serverless proxy. Converts each row to the (region - TTF_ref) USD/MMBtu
+// spreads used by the UI, where TTF_ref = NWE - BENCHMARK and EURUSD comes
+// from the LNG EOD daily cache (getEURUSD). Replaces ACER_D in place and
+// re-renders if the tab is mounted.
+async function acer_loadLive(){
+  try{
+    const r = await fetch('/api/acer?action=csv',{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const text = await r.text();
+    const lines = text.trim().split(/\r?\n/).slice(1);
+    const CONV = 0.293071;
+    const rows = [];
+    for(const line of lines){
+      const m = line.match(/^"([^"]+)","([^"]*)","([^"]*)","([^"]*)","([^"]*)"$/);
+      if(!m) continue;
+      const d = m[1];
+      const nweF = parseFloat(m[2]);
+      const seF  = parseFloat(m[3]);
+      const euF  = parseFloat(m[4]);
+      const bench = parseFloat(m[5]);
+      if(isNaN(nweF)||isNaN(bench)) continue;
+      const eurUsd = (typeof getEURUSD==='function') ? getEURUSD(d) : 1.07;
+      const ttfRef = nweF - bench;
+      rows.push({
+        d,
+        nwe: +((nweF - ttfRef) * CONV * eurUsd).toFixed(4),
+        se:  isNaN(seF) ? null : +((seF - ttfRef) * CONV * eurUsd).toFixed(4),
+        eu:  isNaN(euF) ? null : +((euF - ttfRef) * CONV * eurUsd).toFixed(4),
+      });
+    }
+    if(rows.length >= 100){
+      rows.sort((a,b)=>a.d.localeCompare(b.d));
+      ACER_D = rows;
+      const latest = rows[rows.length-1].d;
+      console.log('[ACER] live loaded — '+rows.length+' rows · latest '+latest);
+      if(document.getElementById('acer-histChart') && typeof acer_renderHist==='function'){
+        acer_renderHist();
+      }
+    }
+  }catch(e){
+    console.warn('[ACER] live fetch failed, keeping seeded data:',e.message);
+  }
+}
+window.acer_loadLive = acer_loadLive;
 
 
 
@@ -17252,30 +17303,48 @@ function chartOpts(stacked, unitSuffix) {
 }
 
 /* ========== BRAZIL ========== */
-function brSumS(s, i) { var t = 0; BR_D.rows.forEach(function(r){ if (r.s === s) t += r.v[i]; }); return t; }
+// Null-aware: skip missing values so totals aren't polluted by 0s, and
+// render "—" in dim gray for any empty cell (matches Colombia).
+function brSumS(s, i) {
+  var t = null;
+  BR_D.rows.forEach(function(r){
+    if (r.s !== s) return;
+    var v = r.v[i];
+    if (v == null) return;
+    if (t == null) t = 0;
+    t += v;
+  });
+  return t;
+}
 function brSupT(i) { return brSumS('sup', i); }
 function brDemT(i) { return brSumS('dem', i); }
-function brBal(i)  { return brSupT(i) - brDemT(i); }
+function brBal(i)  { var s = brSupT(i), d = brDemT(i); return (s == null || d == null) ? null : s - d; }
+
+function brCell(v, i, signed) {
+  if (v == null || v === '') return '<td style="color:#3d5070">—</td>';
+  var fn = signed ? fmtS : fmt;
+  return '<td>' + fn(conv(v, i, U), U) + '</td>';
+}
 
 function brRenderTbl() {
   var h = '<tr class="sec"><td colspan="13">SUPPLY</td></tr>';
   BR_D.rows.filter(function(r){return r.s==='sup';}).forEach(function(r){
     h += '<tr><td>' + r.lbl + '</td>';
-    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    r.v.forEach(function(v,i){ h += brCell(v, i, false); });
     h += '</tr>';
   });
   h += '<tr class="tot"><td>Total supply</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(brSupT(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += brCell(brSupT(i), i, false);
   h += '</tr><tr class="sec"><td colspan="13">DEMAND</td></tr>';
   BR_D.rows.filter(function(r){return r.s==='dem';}).forEach(function(r){
     h += '<tr><td>' + r.lbl + '</td>';
-    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    r.v.forEach(function(v,i){ h += brCell(v, i, false); });
     h += '</tr>';
   });
   h += '<tr class="tot"><td>Total demand</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(brDemT(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += brCell(brDemT(i), i, false);
   h += '</tr><tr class="bal"><td>Pipeline fuel / losses / imbalance</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(brBal(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += brCell(brBal(i), i, true);
   h += '</tr>';
   document.getElementById('sam-br-btb').innerHTML = h;
 }
@@ -17315,35 +17384,59 @@ function brRenderCharts() {
 }
 
 /* ========== ARGENTINA ========== */
-function arSumS(s, i) { var t = 0; AR_D.rows.forEach(function(r){ if (r.s === s || (s === 'dem_all' && r.s.indexOf('dem') === 0)) t += r.v[i]; }); return t; }
+// Null-aware aggregates + em-dash rendering for missing months.
+function arSumS(s, i) {
+  var t = null;
+  AR_D.rows.forEach(function(r){
+    var match = (r.s === s) || (s === 'dem_all' && r.s.indexOf('dem') === 0);
+    if (!match) return;
+    var v = r.v[i];
+    if (v == null) return;
+    if (t == null) t = 0;
+    t += v;
+  });
+  return t;
+}
 function arSupT(i) { return arSumS('sup', i); }
 function arDemT(i) { return arSumS('dem_all', i); }
-function arBal(i)  { return arSupT(i) - arDemT(i); }
+function arBal(i)  { var s = arSupT(i), d = arDemT(i); return (s == null || d == null) ? null : s - d; }
 function arNetTrade(i) {
-  return AR_D.rows.find(function(r){return r.id==='excl';}).v[i]
-       + AR_D.rows.find(function(r){return r.id==='exot';}).v[i]
-       - AR_D.rows.find(function(r){return r.id==='bol';}).v[i]
-       - AR_D.rows.find(function(r){return r.id==='lng';}).v[i];
+  var ids = ['excl','exot','bol','lng'];
+  var got = {};
+  for (var k=0;k<ids.length;k++){
+    var row = AR_D.rows.find(function(r){return r.id===ids[k];});
+    if (!row) return null;
+    var v = row.v[i];
+    if (v == null) return null;
+    got[ids[k]] = v;
+  }
+  return got.excl + got.exot - got.bol - got.lng;
+}
+
+function arCell(v, i, signed) {
+  if (v == null || v === '') return '<td style="color:#3d5070">—</td>';
+  var fn = signed ? fmtS : fmt;
+  return '<td>' + fn(conv(v, i, U), U) + '</td>';
 }
 
 function arRenderTbl() {
   var h = '<tr class="sec"><td colspan="13">SUPPLY</td></tr>';
   AR_D.rows.filter(function(r){return r.s==='sup';}).forEach(function(r){
     h += '<tr><td>' + r.lbl + '</td>';
-    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    r.v.forEach(function(v,i){ h += arCell(v, i, false); });
     h += '</tr>';
   });
   h += '<tr class="tot"><td>Total supply</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(arSupT(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += arCell(arSupT(i), i, false);
   h += '</tr><tr class="sec"><td colspan="13">DEMAND</td></tr>';
   AR_D.rows.filter(function(r){return r.s==='dem';}).forEach(function(r){
     h += '<tr><td>' + r.lbl + '</td>';
-    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    r.v.forEach(function(v,i){ h += arCell(v, i, false); });
     h += '</tr>';
   });
   AR_D.rows.filter(function(r){return r.s==='dem-exp';}).forEach(function(r){
     h += '<tr class="exp"><td>' + r.lbl + '</td>';
-    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    r.v.forEach(function(v,i){ h += arCell(v, i, false); });
     h += '</tr>';
   });
   AR_D.rows.filter(function(r){return r.s==='dem-fut';}).forEach(function(r){
@@ -17352,9 +17445,9 @@ function arRenderTbl() {
     h += '</tr>';
   });
   h += '<tr class="tot"><td>Total demand</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(arDemT(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += arCell(arDemT(i), i, false);
   h += '</tr><tr class="bal"><td>Storage injection / losses (Supply − Demand)</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmtS(conv(arBal(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += arCell(arBal(i), i, true);
   h += '</tr>';
   document.getElementById('sam-ar-btb').innerHTML = h;
 }
@@ -17512,30 +17605,48 @@ var co_currentComp = 'pow';
 var co_activeYears = new Set([2024,2025,2026]);
 var co_c1, co_c2, co_sc;
 
-function coSumS(s, i) { var t=0; CO_D.rows.forEach(function(r){ if (r.s===s) t+=r.v[i]; }); return t; }
+// Aggregates skip null so "no data" months don't pollute totals with 0s.
+function coSumS(s, i) {
+  var t = null;
+  CO_D.rows.forEach(function(r){
+    if (r.s !== s) return;
+    var v = r.v[i];
+    if (v == null) return;
+    if (t == null) t = 0;
+    t += v;
+  });
+  return t;
+}
 function coSupT(i) { return coSumS('sup', i); }
 function coDemT(i) { return coSumS('dem', i); }
-function coBal(i)  { return coSupT(i) - coDemT(i); }
+function coBal(i)  { var s = coSupT(i), d = coDemT(i); return (s == null || d == null) ? null : s - d; }
+
+// Renders a cell value: null -> "—", else formatted via fmt/fmtS.
+function coCell(v, i, signed) {
+  if (v == null || v === '') return '<td style="color:#3d5070">—</td>';
+  var fn = signed ? fmtS : fmt;
+  return '<td>' + fn(conv(v, i, U), U) + '</td>';
+}
 
 function coRenderTbl() {
   var h = '<tr class="sec"><td colspan="13">SUPPLY</td></tr>';
   CO_D.rows.filter(function(r){return r.s==='sup';}).forEach(function(r){
     h += '<tr><td>' + r.lbl + '</td>';
-    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    r.v.forEach(function(v,i){ h += coCell(v, i, false); });
     h += '</tr>';
   });
   h += '<tr class="tot"><td>Total supply</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(coSupT(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += coCell(coSupT(i), i, false);
   h += '</tr><tr class="sec"><td colspan="13">DEMAND</td></tr>';
   CO_D.rows.filter(function(r){return r.s==='dem';}).forEach(function(r){
     h += '<tr><td>' + r.lbl + '</td>';
-    r.v.forEach(function(v,i){ h += '<td>' + fmt(conv(v,i,U),U) + '</td>'; });
+    r.v.forEach(function(v,i){ h += coCell(v, i, false); });
     h += '</tr>';
   });
   h += '<tr class="tot"><td>Total demand</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmt(conv(coDemT(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += coCell(coDemT(i), i, false);
   h += '</tr><tr class="bal"><td>Pipeline fuel / losses / imbalance</td>';
-  for (var i=0;i<12;i++) h += '<td>' + fmtS(conv(coBal(i),i,U),U) + '</td>';
+  for (var i=0;i<12;i++) h += coCell(coBal(i), i, true);
   h += '</tr>';
   document.getElementById('sam-co-btb').innerHTML = h;
 }
@@ -17556,9 +17667,12 @@ function coRenderCharts() {
   var seqSum = function(ids) { return MONTHS.map(function(_,i){ return ids.reduce(function(a,id){ return a + conv(CO_D.rows.find(function(r){return r.id===id;}).v[i],i,U); }, 0); }); };
   if (co_c1) co_c1.destroy();
   if (co_c2) co_c2.destroy();
+  // Use API-provided rolling-12 labels when present; fall back to the shared
+  // MONTHS constant (original hardcoded Feb 25 → Jan 26) otherwise.
+  var co_labels = (window.CO_MONTH_LABELS && window.CO_MONTH_LABELS.length === 12) ? window.CO_MONTH_LABELS : MONTHS;
   co_c1 = new Chart(document.getElementById('sam-co-ch1'), {
     type: 'bar',
-    data: { labels: MONTHS, datasets: [
+    data: { labels: co_labels, datasets: [
       { label: 'La Guajira offshore', data: seq('prod_guaj'), backgroundColor: '#4d9ef5' },
       { label: 'Cusiana / Cupiagua', data: seq('prod_llan'), backgroundColor: '#10b981' },
       { label: 'Other onshore', data: seq('prod_oth'), backgroundColor: '#8b5cf6' },
@@ -17567,7 +17681,7 @@ function coRenderCharts() {
   });
   co_c2 = new Chart(document.getElementById('sam-co-ch2'), {
     type: 'bar',
-    data: { labels: MONTHS, datasets: [
+    data: { labels: co_labels, datasets: [
       { label: 'Residential + Commercial + GNV + Other', data: seqSum(['res','com','gnv','oth']), backgroundColor: '#10b981' },
       { label: 'Industrial', data: seq('ind'), backgroundColor: '#8b5cf6' },
       { label: 'Refineries', data: seq('ref'), backgroundColor: '#4d9ef5' },
@@ -17795,6 +17909,23 @@ async function samLoadColombia() {
     const j = await r.json();
     if (j.rows && j.rows.length) {
       CO_D.rows = j.rows;
+      // Rewrite ONLY the Colombia table header (#sam-co-bthd) with the months
+      // returned by the API. Do NOT mutate the shared global MONTHS — it is
+      // used by Brazil, Argentina, and elsewhere; overwriting it leaks
+      // rolling-12 labels into their charts and, on Safari, can interact
+      // with later init code to blank the India pane.
+      if (Array.isArray(j.months) && j.months.length === 12) {
+        const ESM = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+        const labels = j.months.map(ym => {
+          const [y, m] = ym.split('-');
+          return ESM[parseInt(m, 10) - 1] + ' ' + y.slice(2);
+        });
+        const hd = document.getElementById('sam-co-bthd');
+        if (hd) hd.innerHTML = '<th></th>' + labels.map(l => `<th>${l}</th>`).join('');
+        // Pass the labels into coRenderCharts via a local override variable
+        // that coRenderCharts reads (no mutation of the global MONTHS).
+        window.CO_MONTH_LABELS = labels;
+      }
       if (typeof coRenderTbl === 'function') coRenderTbl();
       if (typeof coRenderKpis === 'function') coRenderKpis();
       if (typeof coRenderCharts === 'function') coRenderCharts();
