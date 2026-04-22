@@ -107,10 +107,20 @@ export default function handler(req, res) {
       rows.push({ id: coId, lbl: def.lbl, s: 'dem', v });
     }
 
+    // National supply total — the BMC CSV carries this as kind=supply_total,
+    // id=national for every month, even when the breakdown is unpublished.
+    // The front-end uses this as the authoritative supply figure and falls
+    // back to summing the breakdown only when it's missing.
+    const supplyTotals = last12.map(m => {
+      const g = byKey.get(`${m}|supply_total|national`);
+      return g == null ? null : +(g * GBTUD_TO_MCMD).toFixed(2);
+    });
+
     return res.status(200).json({
       ok: true,
       rows,
       months: last12,
+      totals: { supply: supplyTotals },
       meta: {
         source: 'BMC monthly reports (Bolsa Mercantil de Colombia)',
         rowCount: rows.length,

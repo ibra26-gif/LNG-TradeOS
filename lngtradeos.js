@@ -1449,12 +1449,24 @@ window.csPricesUpdate=csPricesUpdate;
     // ── Fetch live data from /api/china-gas-balance ───────────
     window.csGBFetch = async function() {
       // status removed — 'Fetching live data from NBS & GACC...';
+      let cached = null;
+      try { cached = JSON.parse(localStorage.getItem(GB.cache_key)||'null'); } catch(e) {}
 
       try {
         const resp = await fetch('/api/china-gas-balance', {signal: AbortSignal.timeout(20000)});
         if (resp.ok) {
           const data = await resp.json();
           if (data.rows?.length) {
+            const apiLatest = data.rows[data.rows.length-1].m || '';
+            const cacheLatest = cached?.rows?.length ? (cached.rows[cached.rows.length-1].m || '') : '';
+            // Preserve a cache that is strictly ahead of the API (e.g. the
+            // user manually uploaded a CSV with newer months via the UI).
+            if (cacheLatest && cacheLatest > apiLatest) {
+              GB.data = cached.rows;
+              if (statusEl) statusEl.textContent = `✓ Using uploaded data · ${cached.rows.length} months · latest ${cacheLatest} · API is behind (${apiLatest})`;
+              csGBUpdate();
+              return;
+            }
             GB.data = data.rows;
             try { localStorage.setItem(GB.cache_key, JSON.stringify({ts: Date.now(), rows: data.rows})); } catch(e) {}
             if (statusEl) statusEl.textContent = `✓ LIVE — ${data.rows.length} months · ${data.source || 'NBS + GACC'} · updated ${new Date().toLocaleTimeString()}`;
@@ -1984,21 +1996,17 @@ window.csPricesUpdate=csPricesUpdate;
     window.csGBToggleYr=csGBToggleYr;
 window.csGBUpdate = csGBUpdate;
 
-    // ── Init: cache-first (no auto-expiry — user uploads persist) ───
-    // Previously the cache expired after 24h and triggered an API refetch,
-    // which silently overwrote user-uploaded CSVs if the API returned stale
-    // or empty data. Now cache persists indefinitely; user clicks Refresh to
-    // pull live data explicitly.
+    // ── Init: render cache immediately, then refresh from API in background ──
+    // csGBFetch compares the cache's latest month vs the API's: if the cache
+    // is ahead (user uploaded newer months via UI), it keeps the cache; if
+    // the API is same-or-newer, it overwrites. Previous cache-first behavior
+    // could leave users stuck on a stale snapshot when the repo CSV got an
+    // update they never picked up.
     function csGBInit() {
       try {
         const cached = JSON.parse(localStorage.getItem(GB.cache_key)||'null');
-        if (cached?.rows?.length) {
-          GB.data = cached.rows;
-          csGBUpdate();
-          return;
-        }
+        if (cached?.rows?.length) GB.data = cached.rows;
       } catch(e) {}
-      // No cache at all — show historical placeholder, try live once in background
       csGBUpdate();
       setTimeout(csGBFetch, 500);
     }
@@ -17743,7 +17751,16 @@ function coSumS(s, i) {
   });
   return t;
 }
-function coSupT(i) { return coSumS('sup', i); }
+function coSupT(i) {
+  // Prefer the authoritative BMC supply_total when present (older months
+  // have the total but not the breakdown — summing the breakdown alone
+  // under-reports national supply by an order of magnitude).
+  if (window.CO_TOTALS && Array.isArray(window.CO_TOTALS.supply)) {
+    var t = window.CO_TOTALS.supply[i];
+    if (t != null) return t;
+  }
+  return coSumS('sup', i);
+}
 function coDemT(i) { return coSumS('dem', i); }
 function coBal(i)  { var s = coSupT(i), d = coDemT(i); return (s == null || d == null) ? null : s - d; }
 
@@ -18056,6 +18073,10 @@ async function samLoadColombia() {
     const j = await r.json();
     if (j.rows && j.rows.length) {
       CO_D.rows = j.rows;
+      // Authoritative monthly supply_total from BMC (published even when
+      // the breakdown isn't). The table / KPI render functions prefer this
+      // over the sum of breakdown ids, which is too low for older months.
+      window.CO_TOTALS = j.totals || null;
       // Rewrite ONLY the Colombia table header (#sam-co-bthd) with the months
       // returned by the API. Do NOT mutate the shared global MONTHS — it is
       // used by Brazil, Argentina, and elsewhere; overwriting it leaks
@@ -18069,6 +18090,15 @@ async function samLoadColombia() {
         });
         const hd = document.getElementById('sam-co-bthd');
         if (hd) hd.innerHTML = '<th></th>' + labels.map(l => `<th>${l}</th>`).join('');
+        const latest = labels[labels.length - 1];
+        const setLbl = (id, prefix) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = `${prefix} · ${latest}`;
+        };
+        setLbl('sam-co-k1l', 'TOTAL SUPPLY');
+        setLbl('sam-co-k2l', 'TOTAL DEMAND');
+        setLbl('sam-co-k3l', 'LNG IMPORTS');
+        setLbl('sam-co-k4l', 'THERMAL YoY');
         // Pass the labels into coRenderCharts via a local override variable
         // that coRenderCharts reads (no mutation of the global MONTHS).
         window.CO_MONTH_LABELS = labels;
