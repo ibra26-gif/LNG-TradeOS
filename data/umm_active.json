@@ -2,16 +2,6 @@
   "active": [
     {
       "title": "Other unavailability · Planned",
-      "asset": "Troll",
-      "impact": "-92.9 mcm/d",
-      "from": "2026-04-21",
-      "to": "2026-04-22",
-      "type": "planned",
-      "published": "2026-04-20T10:57:53.597000",
-      "msg_id": "2026-56___________________015"
-    },
-    {
-      "title": "Other unavailability · Planned",
       "asset": "Kollsnes",
       "impact": "-40.0 mcm/d",
       "from": "2026-04-16",
@@ -42,6 +32,16 @@
     },
     {
       "title": "Other unavailability · Planned",
+      "asset": "Troll",
+      "impact": "-20.9 mcm/d",
+      "from": "2026-04-22",
+      "to": "2026-05-07",
+      "type": "planned",
+      "published": "2026-04-20T11:01:34.887000",
+      "msg_id": "2026-96___________________006"
+    },
+    {
+      "title": "Other unavailability · Planned",
       "asset": "St.Fergus",
       "impact": "-20.7 mcm/d",
       "from": "2026-04-17",
@@ -52,9 +52,9 @@
     }
   ],
   "_meta": {
-    "updated": "2026-04-21T23:21:22Z",
+    "updated": "2026-04-22T06:33:08Z",
     "source": "gassco xlexport",
-    "total_messages": 162,
+    "total_messages": 161,
     "active_count": 8
   }
 }
