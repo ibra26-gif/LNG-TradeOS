@@ -13474,10 +13474,14 @@ async function gdLoadLNG(from, to){
         GD.lngTotal[mo]._lastDay  = date;
       }
       // Store daily for ALL years in the window — seasonal chart needs it.
-      if(!GD.lngDaily[date]) GD.lngDaily[date]={sendGWh:0,dtrsGWh:0,statusGWh:0};
+      // Keep statusGWh (legacy) AND invGWh (matches country/terminal schema)
+      // so every cache level exposes the same field name for the inventory
+      // chart to read.
+      if(!GD.lngDaily[date]) GD.lngDaily[date]={sendGWh:0,dtrsGWh:0,statusGWh:0,invGWh:0};
       GD.lngDaily[date].sendGWh += send;
       GD.lngDaily[date].dtrsGWh += dtrs;
       GD.lngDaily[date].statusGWh += inv;
+      GD.lngDaily[date].invGWh   += inv;
     });
     if(Object.keys(GD.lngTotal).length) GD.ok.lng=true;
     console.log(`ALSI EU: ${Object.keys(GD.lngTotal).length} months`);
