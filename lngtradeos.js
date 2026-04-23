@@ -10290,7 +10290,7 @@ window.syncPublicState=syncPublicState;
 // Auto-fetch EEX Gas Curves XLSX — runs independently of public_state.json so
 // curves update whenever the scraper laptop pushes a new xlsx to the repo.
 // Uses HEAD + Last-Modified to skip re-parse when the file hasn't changed.
-const EEX_XLSX_URL='data/EEX_Gas_Curves_v2.xlsx';
+const EEX_XLSX_URL='data/EEX_Gas_Curves.xlsx';
 
 // Wait for the LNG EOD cache (aD / sDates) to be populated before EEX
 // parsing runs — parseEEXFile needs aD for EUR/USD conversion via
