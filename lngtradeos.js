@@ -14248,6 +14248,10 @@ function renderLngVC(){
     const d=c==='all'?GD.lngTotal[mo]:GD.lngByCtry[c]?.[mo];
     return d||null;
   }
+  function lngvcGetDaily(c){
+    if(c==='all') return GD.lngDaily || {};
+    return (GD.lngDailyByCtry && GD.lngDailyByCtry[c]) || {};
+  }
   function getStorPct(c,mo){return c==='all'?GD.storage[mo]?.pct??null:GD.storByCtry[c]?.[mo]?.pct??null;}
   function getInj(c,mo){
     if(c==='all'){let s=0,n=0;Object.entries(GD.storDaily||{}).forEach(([d,v])=>{if(d.slice(0,7)===mo){s+=v.inj||0;n++;}});return n?+(s/n/1000).toFixed(2):null;}
@@ -14350,9 +14354,9 @@ function renderLngVC(){
   </div>
   <!-- Row 1: LNG terminal charts -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
-    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">LNG TERMINAL UTILISATION <span class="ga-tag ga-tag-live">ALSI</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-util-c"></canvas></div><div class="ga-source">sendOut ÷ dtrs × 100% · ${selName}</div></div>
-    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">LNG TERMINAL SENDOUT <span class="ga-tag ga-tag-live">ALSI</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-send-c"></canvas></div><div class="ga-source">${uLbl()} · ${selName}</div></div>
-    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">LNG TERMINAL INVENTORY <span class="ga-tag ga-tag-live">ALSI</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-inv-c"></canvas></div><div class="ga-source">mcm avg · gasInStorage · ${selName}</div></div>
+    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">LNG TERMINAL UTILISATION <span class="ga-tag ga-tag-live">ALSI</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-util-c"></canvas></div><div class="ga-source">sendOut ÷ dtrs × 100% · monthly · ${selName}</div></div>
+    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">LNG TERMINAL SENDOUT <span class="ga-tag ga-tag-live">ALSI · daily</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-send-c"></canvas></div><div class="ga-source" id="lngvc-send-src">${uLbl()} · daily seasonal · ${selName}</div></div>
+    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">LNG TERMINAL INVENTORY <span class="ga-tag ga-tag-live">ALSI · daily</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-inv-c"></canvas></div><div class="ga-source" id="lngvc-inv-src">mcm stock · daily seasonal · ${selName}</div></div>
   </div>
   <!-- Row 2: Gas storage charts -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
@@ -14369,12 +14373,73 @@ function renderLngVC(){
       if(min!=null)ysc.min=min;if(max!=null)ysc.max=max;
       gaMakeChart(id,'line',{labels:GA_MO,datasets:ds},{plugins:{legend:leg},scales:{x:sc.x,y:ysc}});
     };
+    // Monthly seasonal charts (utilisation stays monthly — daily too noisy;
+    // storage fill / injections / withdrawals match the storage pane).
     mk('lngvc-util-c',seasDs(getUtil,'util'),'%',0,100);
-    mk('lngvc-send-c',seasDs(getSend,'send'),uLbl());
-    mk('lngvc-inv-c', seasDs(getInv,'inv'),'mcm avg');
     mk('lngvc-stor-c',seasDs(getStorPct,'stor'),'%',0,100);
     mk('lngvc-inj-c', seasDs(getInj,'inj'),'TWh/d');
     mk('lngvc-wdr-c', seasDs(getWdr,'wdr'),'TWh/d');
+
+    // Daily seasonal: LNG TERMINAL SENDOUT + INVENTORY — use day-of-year
+    // calendar so partial current year stops at today without creating a
+    // phantom month-end cliff. Calendar + helpers defined near the Regas
+    // daily seasonal.
+    const daily = lngvcGetDaily(code);
+    const latestDay = Object.keys(daily).sort().pop() || null;
+    const dailyXTicks = {
+      color:'#3d5070', font:{size:8,family:'IBM Plex Mono, ui-monospace, monospace'},
+      autoSkip:false, maxRotation:0,
+      callback: function(v){ const i=_SEAS_MONTH_TICK_IDX.indexOf(v); return i>=0 ? _SEAS_MONTH_LABELS[i] : ''; },
+    };
+    const dailyTooltip = { callbacks:{
+      title: items => { const i=items[0]?.dataIndex; return i!=null ? _SEAS_MMDD[i] : ''; },
+      label: c => `${c.dataset.label}: ${c.raw==null?'—':c.raw.toFixed(2)}`,
+    }};
+    const mkDaily = (id, ds, yTitle) => {
+      gaMakeChart(id, 'line', {labels:_SEAS_MMDD, datasets:ds}, {
+        plugins:{legend:leg, tooltip:dailyTooltip},
+        scales:{x:{...sc.x, ticks:dailyXTicks}, y:{...GCD.scales.y, title:{display:true,text:yTitle,color:'#3d5070',font:{size:8}}}}
+      });
+    };
+    // Sendout — use selected unit (mcm/d, GWh/d, mt/month). Per-day values.
+    const sendDaily = selYears.map((yr, i) => ({
+      label: String(yr),
+      data: _seasSeriesFromDaily(daily, yr, r => r.sendGWh ? conv(r.sendGWh) : null),
+      borderColor: GA_COLS[i % GA_COLS.length],
+      backgroundColor: GA_COLS[i % GA_COLS.length] + (i===0 ? '22' : '00'),
+      borderWidth: i===0 ? 2 : 1.2,
+      pointRadius: 0, pointHoverRadius: 3,
+      tension: 0.15,
+      borderDash: i>0 ? [5,3] : undefined,
+      spanGaps: false, fill: false,
+    }));
+    mkDaily('lngvc-send-c', sendDaily, uLbl());
+
+    // Inventory — end-of-day stock in GWh → mcm. Uses statusGWh (the nested
+    // inventory.gwh value from ALSI, fixed 2026-04-22).
+    const invDaily = selYears.map((yr, i) => ({
+      label: String(yr),
+      data: _seasSeriesFromDaily(daily, yr, r => r.statusGWh ? +(r.statusGWh * GWH_MCM).toFixed(1) : null),
+      borderColor: GA_COLS[i % GA_COLS.length],
+      backgroundColor: GA_COLS[i % GA_COLS.length] + (i===0 ? '22' : '00'),
+      borderWidth: i===0 ? 2 : 1.2,
+      pointRadius: 0, pointHoverRadius: 3,
+      tension: 0.15,
+      borderDash: i>0 ? [5,3] : undefined,
+      spanGaps: false, fill: false,
+    }));
+    mkDaily('lngvc-inv-c', invDaily, 'mcm stock');
+
+    // Freshness caption — show the newest gas day present in the daily
+    // data. GIE ALSI publishes T+1 at 19:30 CET so today - 2 days is normal
+    // before that publication window.
+    if(latestDay){
+      const sendSrc = document.getElementById('lngvc-send-src');
+      const invSrc  = document.getElementById('lngvc-inv-src');
+      const tag = ` · latest ${latestDay}`;
+      if(sendSrc) sendSrc.textContent = `${uLbl()} · daily seasonal · ${selName}${tag}`;
+      if(invSrc)  invSrc.textContent  = `mcm stock · daily seasonal · ${selName}${tag}`;
+    }
   },80);
 }
 
