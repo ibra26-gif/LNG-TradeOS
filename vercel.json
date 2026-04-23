@@ -5,6 +5,10 @@
       "includeFiles": "data/*.csv"
     }
   },
+  "rewrites": [
+    { "source": "/api/agsi", "destination": "/api/gie?src=agsi" },
+    { "source": "/api/aggi", "destination": "/api/gie?src=aggi" }
+  ],
   "headers": [
     {
       "source": "/data/(.*)",
