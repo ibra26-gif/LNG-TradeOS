@@ -9944,33 +9944,38 @@ function cpFobPricing(d){
   const omanIdx = CP.fobOmanIdx || 'TTF';
   const omanFixed = (CP.fobOmanFixed!=null && !isNaN(CP.fobOmanFixed)) ? CP.fobOmanFixed : 10.00;
 
-  // Returns the 24-month DES-destination price array for a given index choice.
-  // physArr = phys differential for that destination; applyPhys=false means Fixed.
-  const desPrice = (idx, physArr) => {
+  // Returns the 24-month array of the index to net out of the DES price.
+  // TTF / JKM / 115%HH = forward curves; FIXED = user-entered flat value.
+  const indexArr = (idx) => {
     if(idx==='FIXED') return ML.map(()=>omanFixed);
-    const base = idx==='TTF' ? fp.TTF
-               : idx==='JKM' ? fp.JKM
-               : ML.map((_,i)=>slope*fp.HH[i]);
-    return ML.map((_,i)=>base[i]+(physArr?physArr[i]:0));
+    if(idx==='TTF')   return fp.TTF;
+    if(idx==='JKM')   return fp.JKM;
+    return ML.map((_,i)=>slope*fp.HH[i]); // HH → 115% HH
   };
 
   // Build one pane's HTML given a spec.
+  // Formula per cell: FOB_spread = DES_destination − Freight_route − Index
+  //   DES_destination uses the destination's natural index (TTF for Europe,
+  //   JKM for Asia/India) plus its phys differential — already computed in
+  //   d.des. The toggle selects which index to subtract, giving the FOB
+  //   quoted as a premium/discount over that index.
   const renderPane = (title, originLabel, idxChoices, curIdx, setFn, routes, fixedInput) => {
     const idxBtns = idxChoices.map(x=>{
       const lbl = x==='HH' ? '115% HH' : x==='FIXED' ? 'Fixed' : x;
       return `<button class="f-btn sm${curIdx===x?' on':''}" onclick="${setFn}('${x}')">${lbl}</button>`;
     }).join('');
+    const idxVals = indexArr(curIdx);
     const rowHtml = routes.map(r=>{
-      const des = desPrice(curIdx, curIdx==='FIXED' ? null : r.physArr);
       const fob = ML.map((_,i)=>{
-        const frv = r.frArr?.[i];
-        if(des[i]==null || frv==null || isNaN(des[i]) || isNaN(frv)) return null;
-        return +(des[i]-frv).toFixed(3);
+        const dv = r.desArr?.[i], frv = r.frArr?.[i], iv = idxVals[i];
+        if(dv==null || frv==null || iv==null || isNaN(dv) || isNaN(frv) || isNaN(iv)) return null;
+        return +(dv-frv-iv).toFixed(3);
       });
       const cells = fob.slice(0,vN).map(v=>{
         if(v==null) return `<td class="tr" style="color:#3d5070;font-size:10px">-</td>`;
         const col = v>0 ? '#4ade80' : v<0 ? '#f87171' : '#c8d6e5';
-        return `<td class="tr" style="color:${col};font-size:10px;font-weight:500">${v.toFixed(3)}</td>`;
+        const sign = v>0 ? '+' : '';
+        return `<td class="tr" style="color:${col};font-size:10px;font-weight:500">${sign}${v.toFixed(3)}</td>`;
       }).join('');
       return `<tr>
         <td style="color:#c8d6e5;font-size:10px;padding:3px 8px;white-space:nowrap">${r.label}</td>
@@ -9980,7 +9985,7 @@ function cpFobPricing(d){
     }).join('');
 
     const fixedInputHtml = fixedInput ? `
-      <span style="color:#546e7a;font-size:9px;margin-left:10px">Fixed DES ($/MMBtu)</span>
+      <span style="color:#546e7a;font-size:9px;margin-left:10px">Fixed Price ($/MMBtu)</span>
       <input class="f-inp" type="number" step="0.05" style="width:80px;text-align:right;color:#d4e157"
         value="${omanFixed.toFixed(2)}"
         onchange="CP.fobOmanFixed=+this.value;cpSet('cp_fob_oman_fixed',CP.fobOmanFixed);renderCargoTab()">
@@ -10004,22 +10009,23 @@ function cpFobPricing(d){
   };
 
   // ─── US FOB pane (Sabine Pass) ─────────────────────────────────────────────
+  // desArr = destination's natural DES price (from cpDerived.des).
   const usRoutes = [
-    {label:'DES NWE',          freightLbl:'Sabine → Gate',        physArr:CP.phys.nwe,  frArr:fr.sabine_rotterdam},
-    {label:'DES MEI',          freightLbl:'Sabine → Dahej',       physArr:d.phyMei,     frArr:fr.sabine_dahej},
-    {label:'DES JKTC (COGH)',  freightLbl:'Sabine → JKTC · COGH', physArr:CP.phys.jktc, frArr:fr.sabine_tokyo},
-    {label:'DES JKTC (PC)',    freightLbl:'Sabine → JKTC · Panama', physArr:CP.phys.jktc, frArr:d.sabine_tokyo_pc},
+    {label:'DES NWE',          freightLbl:'Sabine → Gate',        desArr:d.des.nwe,  frArr:fr.sabine_rotterdam},
+    {label:'DES MEI',          freightLbl:'Sabine → Dahej',       desArr:d.des.mei,  frArr:fr.sabine_dahej},
+    {label:'DES JKTC (COGH)',  freightLbl:'Sabine → JKTC · COGH', desArr:d.des.jktc, frArr:fr.sabine_tokyo},
+    {label:'DES JKTC (PC)',    freightLbl:'Sabine → JKTC · Panama', desArr:d.des.jktc, frArr:d.sabine_tokyo_pc},
   ];
 
   // ─── Oman FOB pane (Oman) ──────────────────────────────────────────────────
   const omanRoutes = [
-    {label:'DES JKTC',  freightLbl:'Oman → Tokyo Bay',     physArr:CP.phys.jktc, frArr:fr.oman_tokyo},
-    {label:'DES Dahej', freightLbl:'Oman → Dahej',         physArr:d.phyMei,     frArr:fr.oman_dahej},
-    {label:'DES NWE',   freightLbl:'Oman → Gate · COGH',   physArr:CP.phys.nwe,  frArr:fr.oman_gate},
+    {label:'DES JKTC',  freightLbl:'Oman → Tokyo Bay',   desArr:d.des.jktc, frArr:fr.oman_tokyo},
+    {label:'DES Dahej', freightLbl:'Oman → Dahej',       desArr:d.des.mei,  frArr:fr.oman_dahej},
+    {label:'DES NWE',   freightLbl:'Oman → Gate · COGH', desArr:d.des.nwe,  frArr:fr.oman_gate},
   ];
 
   const usPane = renderPane(
-    'US FOB PRICING ($/MMBtu)',
+    'US FOB PRICING ($/MMBtu vs index)',
     'Sabine Pass',
     ['TTF','JKM','HH'],
     usIdx,
@@ -10028,7 +10034,7 @@ function cpFobPricing(d){
     false
   );
   const omanPane = renderPane(
-    'OMAN LNG FOB PRICING ($/MMBtu)',
+    'OMAN LNG FOB PRICING ($/MMBtu vs index)',
     'Oman',
     ['TTF','JKM','HH','FIXED'],
     omanIdx,
@@ -10038,8 +10044,7 @@ function cpFobPricing(d){
   );
 
   return `
-    <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:7px 14px;font-size:9px;color:#546e7a;letter-spacing:.05em;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <span>FOB = (Chosen Index + Phys Diff<sub>destination</sub>) − Freight. 115% HH uses slope ${slope.toFixed(2)}. Green = positive, red = negative.</span>
+    <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:7px 14px;font-size:9px;color:#546e7a;letter-spacing:.05em;display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:10px">
       <span>DISPLAY WINDOW: <b style="color:#4fc3f7">${ML[0]} → ${horizonLabel()}</b> (${vN}M · auto-rolls on expiry)</span>
     </div>
     ${usPane}
