@@ -35,6 +35,9 @@ PIPE_POINTS = {
         "Isaccea (RO) - Orlovka (UA) II",
     ],
     "uk_interconn": ["Zeebrugge IZT", "Bacton (BBL)"],
+    # Iberian VIPs (verified labels via ENTSOG API probe 2026-04-23):
+    "vip_pirineos": ["VIP PIRINEOS"],   # Spain <-> France
+    "vip_iberico":  ["VIP IBERICO"],    # Spain <-> Portugal
 }
 
 HEADERS = {

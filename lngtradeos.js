@@ -12720,7 +12720,7 @@ const ENTSOG_CORRIDOR_POINTS = {
 
 // ── GA_LIVE: single source of truth for all live data ────────────────────────
 const GA_LIVE = {
-  pipeline: {norway:{}, algeria_italy:{}, libya:{}, algeria_spain:{}, tap:{}, russia:{}, uk_interconn:{}, exits:{}},
+  pipeline: {norway:{}, algeria_italy:{}, libya:{}, algeria_spain:{}, tap:{}, russia:{}, uk_interconn:{}, vip_pirineos:{}, vip_iberico:{}, exits:{}},
   storage: {},
   lngTotal: {},
   lngByCtry: {},
@@ -12768,7 +12768,7 @@ async function gaLoadLiveData(){
     gaLoadDomProductionLive(from5y, today),
     // ENTSOG supply routes — current year only on page load
     // Historical years load lazily when user clicks year buttons
-    ...['norway','algeria_italy','libya','algeria_spain','tap','russia','uk_interconn'].map(route =>
+    ...['norway','algeria_italy','libya','algeria_spain','tap','russia','uk_interconn','vip_pirineos','vip_iberico'].map(route =>
       gaLoadENTSOGRoute(route, currentYearStart, today, true)
     ),
     // ENTSOG exits (exit direction)
@@ -12798,6 +12798,8 @@ function gaUpdateStatusDots(){
     {lbl:'TAP',ok:!!Object.keys(GA_LIVE.pipeline.tap).length,fbk:true,src:'ENTSOG'},
     {lbl:'Russia',ok:!!Object.keys(GA_LIVE.pipeline.russia).length,fbk:true,src:'ENTSOG'},
     {lbl:'UK ICs',ok:!!Object.keys(GA_LIVE.pipeline.uk_interconn).length,fbk:true,src:'ENTSOG'},
+    {lbl:'VIP Pirineos',ok:!!Object.keys(GA_LIVE.pipeline.vip_pirineos||{}).length,fbk:true,src:'ENTSOG'},
+    {lbl:'VIP Ibérico',ok:!!Object.keys(GA_LIVE.pipeline.vip_iberico||{}).length,fbk:true,src:'ENTSOG'},
     {lbl:'Dom.Prod',ok:GA_LIVE.ok.domestic,fbk:true,src:'ENTSOG Production'},
   ];
   sdEl.innerHTML=dots.map(d=>{
@@ -13099,7 +13101,7 @@ function guFmt(v,dp=2){ return v===null||isNaN(v)?'--':v.toFixed(dp); }
 // ── Live data store ───────────────────────────────────────────────────────────
 const GD = {
   // ENTSOG pipeline: {route: {YYYY-MM-DD: kWh}} → aggregated to {route: {YYYY-MM: MCM}}
-  pipeline: {norway:{}, algeria_italy:{}, libya:{}, algeria_spain:{}, tap:{}, russia:{}, uk_interconn:{}},
+  pipeline: {norway:{}, algeria_italy:{}, libya:{}, algeria_spain:{}, tap:{}, russia:{}, uk_interconn:{}, vip_pirineos:{}, vip_iberico:{}},
   storDaily: {},
   lngDaily: {}, // raw daily ALSI sendout keyed by YYYY-MM-DD
   // GIE AGSI+: {YYYY-MM: {pct, twh}}
@@ -13111,7 +13113,7 @@ const GD = {
   // ALSI by country: {code: {YYYY-MM: {sendGWh, dtrsGWh, statusGWh}}}
   lngByCtry: {},
   // Daily pipeline: {route: [{date, mcm}]} — last 90 days
-  pipeDaily: {norway:[], algeria_italy:[], libya:[], algeria_spain:[], tap:[], russia:[], uk_interconn:[]},
+  pipeDaily: {norway:[], algeria_italy:[], libya:[], algeria_spain:[], tap:[], russia:[], uk_interconn:[], vip_pirineos:[], vip_iberico:[]},
   ok: {pipeline:false, storage:false, lng:false},
   loading: {pipeline:false, storage:false, lng:false},
 };
@@ -13129,15 +13131,20 @@ const PIPE_POINTS = {
   russia:       ['Strandzha 2 (BG) / Malkoclar (TR)','Budince',
                  'Uzhhorod (UA) - Velke Kapusany (SK)','Isaccea (RO) - Orlovka (UA) II'],
   uk_interconn: ['Zeebrugge IZT','Bacton (BBL)'],
+  vip_pirineos: ['VIP PIRINEOS'],
+  vip_iberico:  ['VIP IBERICO'],
 };
 const PIPE_COLORS = {
   norway:'#4fc3f7', algeria_italy:'#81c784', libya:'#66bb6a', algeria_spain:'#a5d6a7',
-  tap:'#ffb74d', russia:'#f48fb1', uk_interconn:'#b0bec5'
+  tap:'#ffb74d', russia:'#f48fb1', uk_interconn:'#b0bec5',
+  vip_pirineos:'#ce93d8', vip_iberico:'#80cbc4',
 };
 const PIPE_LABELS = {
   norway:'Norway', algeria_italy:'Algeria → Italy', libya:'Libya (Greenstream)',
   algeria_spain:'Algeria → Spain', tap:'TAP (Caspian)', russia:'Russia (TurkStream residual)',
-  uk_interconn:'UK Interconnectors (IUK/BBL)'
+  uk_interconn:'UK Interconnectors (IUK/BBL)',
+  vip_pirineos:'VIP Pirineos (ES ↔ FR)',
+  vip_iberico: 'VIP Ibérico (ES ↔ PT)',
 };
 
 // ── AGSI storage countries ─────────────────────────────────────────────────────
@@ -13810,6 +13817,8 @@ async function renderGaDashboard(){
     {k:'tap',          lbl:'TAP (Caspian)',   sub:'Melendugno'},
     {k:'russia',       lbl:'Russia',          sub:'TurkStream residual'},
     {k:'uk_interconn', lbl:'UK Interconn.',   sub:'BBL + IUK (net)'},
+    {k:'vip_pirineos', lbl:'VIP Pirineos',    sub:'ES ↔ FR · Larrau + Biriatou'},
+    {k:'vip_iberico',  lbl:'VIP Ibérico',     sub:'ES ↔ PT · Badajoz + Tuy'},
   ];
   const pipeData=routes.map(r=>({...r,today:todayNom(r.k),yday:confirmedPipe(r.k)}));
   const totalToday=pipeData.reduce((s,r)=>s+(r.today?.mcm||0),0);
@@ -14797,10 +14806,18 @@ function buildBalTblHTML(yr, months){
   const ukicCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('uk_interconn',mo); return fmtV(v,guConvPipe); }).join('');
   rows.push(tr('UK Interconnectors (IUK/BBL)','UK↔BE/NL',ukicCells));
 
+  // VIP Pirineos (ES ↔ FR)
+  const pirCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('vip_pirineos',mo); return fmtV(v,guConvPipe); }).join('');
+  rows.push(tr('VIP Pirineos','ES ↔ FR',pirCells));
+
+  // VIP Ibérico (ES ↔ PT)
+  const ibeCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('vip_iberico',mo); return fmtV(v,guConvPipe); }).join('');
+  rows.push(tr('VIP Ibérico','ES ↔ PT',ibeCells));
+
   // Pipeline total
   const pipeTotCells=months.map((_,m)=>{
     const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
-    const vals=[['norway'],['algeria_italy'],['libya'],['algeria_spain'],['tap'],['russia'],['uk_interconn']].map(([r])=>gdGetPipeMCM(r,mo));
+    const vals=[['norway'],['algeria_italy'],['libya'],['algeria_spain'],['tap'],['russia'],['uk_interconn'],['vip_pirineos'],['vip_iberico']].map(([r])=>gdGetPipeMCM(r,mo));
     if(vals.every(v=>v===null)) return '<td class="tr" style="color:#3d5070">--</td>';
     const sum=vals.reduce((s,v)=>s+(v||0),0);
     return `<td class="tr" style="color:var(--b)">${guConvPipe(sum).toFixed(2)}</td>`;
