@@ -12998,31 +12998,19 @@ async function gaLoadDomProductionLive(from, to){
     IT:'italy', PL:'poland', FR:'france', ES:'spain', HU:'hungary',
     HR:'croatia', LV:'latvia', DK:'denmark',
   };
-  const cacheKey = `dom_prod_eu_v2_${from.slice(0,7)}_${to.slice(0,7)}`;
+  // Proxy through /api/entsog-prod — ENTSOG dropped CORS so direct browser
+  // fetches are silently blocked.
+  const cacheKey = `dom_prod_eu_v3_${from.slice(0,7)}_${to.slice(0,7)}`;
   let raw = gaCacheGet(cacheKey);
   if(!raw){
     try{
-      const fetchOne = async ptype => {
-        const paramStr = [
-          'indicator=Physical%20Flow',
-          `pointType=${encodeURIComponent(ptype)}`,
-          `from=${from}`, `to=${to}`,
-          'periodType=day', 'timeZone=WET', 'limit=3000',
-        ].join('&');
-        const url = `${ENTSOG_BASE}/operationalDatas?${paramStr}`;
-        const r = await fetch(url, {headers:{Accept:'application/json'}});
-        if(!r.ok) throw new Error(`ENTSOG ${r.status}`);
-        const j = await r.json();
-        return j?.operationalDatas || j?.operationaldatas || j?.data || [];
-      };
-      const [a, b] = await Promise.all([
-        fetchOne('Aggregated production point - TP'),
-        fetchOne('Aggregated production point - TP ExtEU'),
-      ]);
-      raw = { rows: [...a, ...b] };
+      const r = await fetch(`/api/entsog-prod?from=${from}&to=${to}`);
+      if(!r.ok) throw new Error(`proxy ${r.status}`);
+      const j = await r.json();
+      raw = { rows: j.rows || [] };
       gaCacheSet(cacheKey, raw, 24);
     } catch(e){
-      console.warn('Dom prod (EU query):', e.message, '— using static fallback');
+      console.warn('Dom prod (proxy):', e.message, '— using static fallback');
       return;
     }
   }
