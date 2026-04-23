@@ -15948,20 +15948,23 @@ function renderRegasHeatmap(pane){
     ${months.map(({lbl})=>`<th style="text-align:center;padding:4px 6px;color:var(--td);font-weight:400;min-width:60px">${lbl}</th>`).join('')}
     <th style="text-align:center;padding:4px 8px;color:var(--td);font-weight:400;min-width:84px;border-left:2px solid rgba(77,158,245,.28)">MoM sendOut</th>
     </tr></thead><tbody>`;
+  // Thin horizontal divider between country rows so the eye can track
+  // across many columns without losing the line.
+  const rowDiv='border-bottom:1px solid rgba(77,158,245,.12)';
   REGAS_COUNTRIES.forEach(({code,name})=>{
-    tbl+=`<tr><td style="position:sticky;left:0;background:var(--bg2);padding:4px 8px;color:var(--td)">${name}</td>`;
+    tbl+=`<tr><td style="${rowDiv};position:sticky;left:0;background:var(--bg2);padding:6px 8px;color:var(--td)">${name}</td>`;
     months.forEach(({mo})=>{
       const d=GD.lngByCtry[code]?.[mo];
-      if(!d){ tbl+=`<td style="text-align:center;padding:4px;color:#3d5070">--</td>`; return; }
+      if(!d){ tbl+=`<td style="${rowDiv};text-align:center;padding:6px 4px;color:#3d5070">--</td>`; return; }
       const util=d.dtrsGWh>0 ? Math.min(100,d.sendGWh/d.dtrsGWh*100) : null;
-      if(util===null){ tbl+=`<td style="text-align:center;padding:4px;color:#3d5070">${guConvLng(d.sendGWh).toFixed(1)}</td>`; return; }
+      if(util===null){ tbl+=`<td style="${rowDiv};text-align:center;padding:6px 4px;color:#3d5070">${guConvLng(d.sendGWh).toFixed(1)}</td>`; return; }
       const col=util<30?`rgba(248,113,113,0.5)`:util<60?`rgba(251,191,36,0.4)`:util<85?`rgba(79,195,247,0.4)`:`rgba(52,211,153,0.5)`;
-      tbl+=`<td style="text-align:center;padding:4px;background:${col};color:#f0f4ff" title="${name} ${mo}: sendOut=${d.sendGWh.toFixed(0)} GWh/d, util=${util.toFixed(0)}%">${util.toFixed(0)}%</td>`;
+      tbl+=`<td style="${rowDiv};text-align:center;padding:6px 4px;background:${col};color:#f0f4ff" title="${name} ${mo}: sendOut=${d.sendGWh.toFixed(0)} GWh/d, util=${util.toFixed(0)}%">${util.toFixed(0)}%</td>`;
     });
     // Month-on-Month — last completed month vs the one before, in % change
     // of average daily sendout. Uses the two most recent months that have
     // any data so a stale country still shows a reading.
-    let momCell = '<td style="text-align:center;padding:4px;color:#3d5070;border-left:2px solid rgba(77,158,245,.28)">—</td>';
+    let momCell = `<td style="${rowDiv};text-align:center;padding:6px 4px;color:#3d5070;border-left:2px solid rgba(77,158,245,.28)">—</td>`;
     const avail = months.map(({mo}) => ({mo, v: avgSend(code, mo)})).filter(x => x.v != null);
     if(avail.length >= 2){
       const cur = avail[avail.length-1], prev = avail[avail.length-2];
@@ -15972,7 +15975,7 @@ function renderRegasHeatmap(pane){
                   pct >= -10? 'rgba(248,113,113,0.25)' :
                               'rgba(248,113,113,0.55)';
         const arrow = pct >= 0 ? '▲' : '▼';
-        momCell = `<td style="text-align:center;padding:4px;background:${c};color:#f0f4ff;border-left:2px solid rgba(77,158,245,.28)" title="${name} · ${prev.mo} avg ${prev.v.toFixed(1)} GWh/d → ${cur.mo} avg ${cur.v.toFixed(1)} GWh/d">${arrow} ${pct>=0?'+':''}${pct.toFixed(1)}%</td>`;
+        momCell = `<td style="${rowDiv};text-align:center;padding:6px 4px;background:${c};color:#f0f4ff;border-left:2px solid rgba(77,158,245,.28)" title="${name} · ${prev.mo} avg ${prev.v.toFixed(1)} GWh/d → ${cur.mo} avg ${cur.v.toFixed(1)} GWh/d">${arrow} ${pct>=0?'+':''}${pct.toFixed(1)}%</td>`;
       }
     }
     tbl += momCell;
