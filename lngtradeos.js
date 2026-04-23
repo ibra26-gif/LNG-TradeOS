@@ -15658,9 +15658,19 @@ function renderRegasSendout(pane){
 function renderRegasHeatmap(pane){
   const today=new Date(); const curY=today.getFullYear();
   const months=Array.from({length:today.getMonth()+1},(_,m)=>({lbl:GA_MO[m],mo:`${curY}-${String(m+1).padStart(2,'0')}`}));
+  const daysIn=mo=>{const[y,m]=mo.split('-').map(Number);return new Date(y,m,0).getDate();};
+  // Average sendout in GWh/d for a (code, month). Divides the monthly sum
+  // by days-in-month so partial current months read on the same scale as
+  // full historical months.
+  const avgSend=(code,mo)=>{
+    const d=GD.lngByCtry[code]?.[mo];
+    if(!d || !d.sendGWh) return null;
+    return d.sendGWh / daysIn(mo);
+  };
   let tbl=`<table style="border-collapse:collapse;font-size:9px;width:100%"><thead><tr>
     <th style="text-align:left;padding:4px 8px;color:var(--td);font-weight:400;position:sticky;left:0;background:var(--bg2);min-width:130px">Country</th>
     ${months.map(({lbl})=>`<th style="text-align:center;padding:4px 6px;color:var(--td);font-weight:400;min-width:60px">${lbl}</th>`).join('')}
+    <th style="text-align:center;padding:4px 8px;color:var(--td);font-weight:400;min-width:84px;border-left:2px solid rgba(77,158,245,.28)">MoM sendOut</th>
     </tr></thead><tbody>`;
   REGAS_COUNTRIES.forEach(({code,name})=>{
     tbl+=`<tr><td style="position:sticky;left:0;background:var(--bg2);padding:4px 8px;color:var(--td)">${name}</td>`;
@@ -15672,11 +15682,29 @@ function renderRegasHeatmap(pane){
       const col=util<30?`rgba(248,113,113,0.5)`:util<60?`rgba(251,191,36,0.4)`:util<85?`rgba(79,195,247,0.4)`:`rgba(52,211,153,0.5)`;
       tbl+=`<td style="text-align:center;padding:4px;background:${col};color:#f0f4ff" title="${name} ${mo}: sendOut=${d.sendGWh.toFixed(0)} GWh/d, util=${util.toFixed(0)}%">${util.toFixed(0)}%</td>`;
     });
+    // Month-on-Month — last completed month vs the one before, in % change
+    // of average daily sendout. Uses the two most recent months that have
+    // any data so a stale country still shows a reading.
+    let momCell = '<td style="text-align:center;padding:4px;color:#3d5070;border-left:2px solid rgba(77,158,245,.28)">—</td>';
+    const avail = months.map(({mo}) => ({mo, v: avgSend(code, mo)})).filter(x => x.v != null);
+    if(avail.length >= 2){
+      const cur = avail[avail.length-1], prev = avail[avail.length-2];
+      const pct = prev.v > 0 ? (cur.v - prev.v) / prev.v * 100 : null;
+      if(pct != null){
+        const c = pct >= 10 ? 'rgba(52,211,153,0.55)' :
+                  pct >= 0  ? 'rgba(52,211,153,0.25)' :
+                  pct >= -10? 'rgba(248,113,113,0.25)' :
+                              'rgba(248,113,113,0.55)';
+        const arrow = pct >= 0 ? '▲' : '▼';
+        momCell = `<td style="text-align:center;padding:4px;background:${c};color:#f0f4ff;border-left:2px solid rgba(77,158,245,.28)" title="${name} · ${prev.mo} avg ${prev.v.toFixed(1)} GWh/d → ${cur.mo} avg ${cur.v.toFixed(1)} GWh/d">${arrow} ${pct>=0?'+':''}${pct.toFixed(1)}%</td>`;
+      }
+    }
+    tbl += momCell;
     tbl+='</tr>';
   });
   tbl+='</tbody></table>';
   pane.innerHTML=`<div class="ga-card"><div class="ga-sec">LNG SENDOUT UTILISATION HEATMAP — ${curY} <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
-    <div style="font-size:9px;color:#3d5070;margin-bottom:8px">sendOut ÷ dtrs × 100 — Red &lt;30% · Amber 30–60% · Blue 60–85% · Green &gt;85%</div>
+    <div style="font-size:9px;color:#3d5070;margin-bottom:8px">sendOut ÷ dtrs × 100 — Red &lt;30% · Amber 30–60% · Blue 60–85% · Green &gt;85% · MoM = % change in avg GWh/d vs prior month</div>
     <div style="overflow-x:auto">${tbl}</div>
     <div class="ga-source">Source: GIE ALSI (alsi.gie.eu) · Daily Technical Reference Sendout (dtrs) · ${new Date().toLocaleDateString('en-GB')}</div></div>`;
   if(!GD.ok.lng){
