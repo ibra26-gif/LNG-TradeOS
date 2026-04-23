@@ -13142,15 +13142,29 @@ const PIPE_LABELS = {
 
 // ── AGSI storage countries ─────────────────────────────────────────────────────
 // Countries that actively report underground gas storage to GIE AGSI+.
-// Dropped 2026-04-23: Greece (no storage facilities in AGSI) + UK (AGSI
-// returns "Pre-Brexit" placeholder rows with every field "-" since the
-// UK LSOs stopped feeding GIE REMIT post-Brexit). Candidates to add in
-// R3d country audit — cz, dk, hu, ie, lv, pt, ro, se, sk all active.
+// Aligned with https://agsi.gie.eu/api/about?show=listing on 2026-04-23.
+// Dropped: Greece (no facilities) + UK (Pre-Brexit placeholder only).
+// Added: cz, dk, hu, ie, lv, pt, ro, se, sk.
 const STOR_COUNTRIES = [
-  {code:'de',name:'Germany'}, {code:'fr',name:'France'}, {code:'it',name:'Italy'},
-  {code:'nl',name:'Netherlands'}, {code:'at',name:'Austria'}, {code:'be',name:'Belgium'},
-  {code:'es',name:'Spain'}, {code:'pl',name:'Poland'},
-  {code:'ua',name:'Ukraine'}, {code:'bg',name:'Bulgaria'},
+  {code:'at',name:'Austria'},
+  {code:'be',name:'Belgium'},
+  {code:'bg',name:'Bulgaria'},
+  {code:'cz',name:'Czech Republic'},
+  {code:'de',name:'Germany'},
+  {code:'dk',name:'Denmark'},
+  {code:'es',name:'Spain'},
+  {code:'fr',name:'France'},
+  {code:'hu',name:'Hungary'},
+  {code:'ie',name:'Ireland'},
+  {code:'it',name:'Italy'},
+  {code:'lv',name:'Latvia'},
+  {code:'nl',name:'Netherlands'},
+  {code:'pl',name:'Poland'},
+  {code:'pt',name:'Portugal'},
+  {code:'ro',name:'Romania'},
+  {code:'se',name:'Sweden'},
+  {code:'sk',name:'Slovakia'},
+  {code:'ua',name:'Ukraine'},
 ];
 
 // ── ALSI LNG countries ─────────────────────────────────────────────────────────
