@@ -13183,6 +13183,8 @@ const STOR_COUNTRIES = [
 ];
 
 // ── ALSI LNG countries ─────────────────────────────────────────────────────────
+// Aligned with GIE ALSI listing 2026-04-23 (13 active reporters).
+// Dropped: Malta (no LSO in ALSI) and Turkey (outside GIE perimeter).
 const REGAS_COUNTRIES = [
   {code:'be',name:'Belgium'},
   {code:'fr',name:'France'},
@@ -13192,12 +13194,10 @@ const REGAS_COUNTRIES = [
   {code:'it',name:'Italy'},
   {code:'fi',name:'Finland'},
   {code:'lt',name:'Lithuania'},
-  {code:'mt',name:'Malta'},
   {code:'nl',name:'Netherlands'},
   {code:'pl',name:'Poland'},
   {code:'pt',name:'Portugal'},
   {code:'es',name:'Spain'},
-  {code:'tr',name:'Turkey'},
   {code:'gb',name:'United Kingdom'},
 ];
 
@@ -17747,6 +17747,7 @@ function buildRegasCtrlBar(mode, curCtry, curTerm, terms){
   const yearPills = GA_AVAIL_YEARS.map(y =>
     `<button class="ga-stab${curYears.includes(y)?' active':''}" onclick="gaRegasSetYears('${mode}',${y},this)">${y}</button>`
   ).join('');
+  const curGran = _regasGranularity;
   return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(77,158,245,.1)">
     <span style="color:#546e7a;font-size:8px">COUNTRY</span>
     <select class="gsel" onchange="gaRegasSetCtry('${mode}',this.value)">
@@ -17755,6 +17756,12 @@ function buildRegasCtrlBar(mode, curCtry, curTerm, terms){
     </select>
     <span style="color:#546e7a;font-size:8px">TERMINAL</span>
     <select class="gsel" id="regas-term-sel" onchange="gaRegasSetTerm('${mode}',this.value)">${termOpts}</select>
+    <span style="color:#546e7a;font-size:8px">GRANULARITY</span>
+    <select class="gsel" onchange="gaRegasSetGran(this.value)">
+      <option value="daily"${curGran==='daily'?' selected':''}>Daily</option>
+      <option value="weekly"${curGran==='weekly'?' selected':''}>Weekly</option>
+      <option value="monthly"${curGran==='monthly'?' selected':''}>Monthly</option>
+    </select>
     <span style="color:#546e7a;font-size:8px">YEARS</span>
     <div style="display:flex;gap:4px;flex-wrap:wrap">${yearPills}</div>
     <span style="color:${GD.ok.lng?'#34d399':'#f59e0b'};font-size:8px;margin-left:auto">${GD.ok.lng?'🟢 ALSI live':'🟡 loading'}</span>
@@ -17766,6 +17773,13 @@ function buildRegasCtrlBar(mode, curCtry, curTerm, terms){
 function _regasDefaultYears(){ const y=new Date().getFullYear(); return [y,y-1,y-2]; }
 let _regasSendCtry='eu', _regasSendTerm='_all_', _regasSendYears=_regasDefaultYears();
 let _regasInvCtry='eu',  _regasInvTerm='_all_',  _regasInvYears=_regasDefaultYears();
+let _regasGranularity='daily';
+
+window.gaRegasSetGran = function(val){
+  _regasGranularity = (val==='weekly'||val==='monthly') ? val : 'daily';
+  const pane=document.getElementById('ga-regas-pane');
+  if(pane) renderRegasSendoutNew(pane);
+};
 
 async function gaRegasSetCtry(mode, val){
   if(mode==='send'){ _regasSendCtry=val; _regasSendTerm='_all_'; }
@@ -17840,6 +17854,39 @@ function _seasSeriesFromDaily(daily, yr, pick){
   return arr;
 }
 
+// Weekly averaging — 52 buckets of 7 consecutive days starting Jan 1 of the
+// given year. Day-366 in leap years overflows to week 51. Each week's value
+// is the arithmetic mean of non-null daily values in that bucket. Used by
+// the granularity toggle in the regas seasonal charts.
+const _SEAS_WEEK_MONTH_TICKS = [0,4,8,13,17,22,26,30,34,39,43,48]; // approx Mo-01 week indices
+function _seasSeriesWeekly(daily, yr, pick){
+  const buckets = Array.from({length:52}, () => []);
+  const jan1 = Date.UTC(yr,0,1);
+  for(const date in daily){
+    if(!date.startsWith(yr+'-')) continue;
+    const d = Date.UTC(+date.slice(0,4), +date.slice(5,7)-1, +date.slice(8,10));
+    const doy = Math.floor((d - jan1) / 86400000) + 1; // 1..366
+    const w = Math.min(51, Math.max(0, Math.floor((doy-1)/7)));
+    const v = pick(daily[date]);
+    if(v != null && !isNaN(v)) buckets[w].push(v);
+  }
+  return buckets.map(b => b.length ? +(b.reduce((s,v)=>s+v,0)/b.length).toFixed(2) : null);
+}
+
+// Monthly averaging — 12 buckets, each value is the mean of daily values in
+// that month of the year. Same pattern as weekly.
+function _seasSeriesFromDailyMonthly(daily, yr, pick){
+  const buckets = Array.from({length:12}, () => []);
+  for(const date in daily){
+    if(!date.startsWith(yr+'-')) continue;
+    const m = +date.slice(5,7) - 1;
+    if(m < 0 || m > 11) continue;
+    const v = pick(daily[date]);
+    if(v != null && !isNaN(v)) buckets[m].push(v);
+  }
+  return buckets.map(b => b.length ? +(b.reduce((s,v)=>s+v,0)/b.length).toFixed(2) : null);
+}
+
 function _alsiChart(canvasId, ctry, term, field, title, unit, curY){
   const data = _alsiGetMonthly(ctry, term);
   const seasYrs=[curY,curY-1,curY-2];
@@ -17901,67 +17948,80 @@ function renderRegasSendoutNew(pane){
     // newest-first so the current year is drawn on top with bold stroke.
     const seasYrs = _regasSendYears.slice().sort((a,b)=>b-a);
 
-    // Sendout seasonal — DAILY (calendar day resolution, partial current year
-    // just stops at today, no phantom month-end cliffs).
-    const sendDs = seasYrs.map((yr,i)=>({
-      label:String(yr),
-      data:_seasSeriesFromDaily(daily, yr, r => r.sendGWh ? r.sendGWh*GWH_MCM : null),
-      borderColor:GA_COLS[i], backgroundColor:GA_COLS[i]+(i===0?'22':'00'),
-      borderWidth:i===0?2:1.2, pointRadius:0, pointHoverRadius:3,
-      tension:0.15, borderDash:i>0?[5,3]:undefined, spanGaps:false,
-    }));
-
-    // Utilisation seasonal — MONTHLY (daily utilisation is too noisy to be
-    // useful; user requested the smooth 12-point view). One point per month.
-    const utilDs = seasYrs.map((yr,i)=>({
-      label:String(yr),
-      data:Array.from({length:12},(_,m)=>{
-        const mo = `${yr}-${String(m+1).padStart(2,'0')}`;
-        const d  = monthly[mo];
-        if(!d || !d.dtrsGWh) return null;
-        return +(d.sendGWh/d.dtrsGWh*100).toFixed(1);
-      }),
-      borderColor:GA_COLS[i], backgroundColor:'transparent',
-      borderWidth:i===0?2.5:1.5, pointRadius:2, tension:0.3,
-      borderDash:i>0?[5,3]:undefined, spanGaps:true,
-    }));
-
-    // Shared x-axis config for the DAILY sendout chart (366-day calendar).
-    const dailyXTicks = {
+    // Granularity dispatcher — pick the series builder + labels + x-axis
+    // config based on the user-selected granularity (daily / weekly / monthly).
+    const gran = _regasGranularity;
+    const buildSeries = gran==='weekly'  ? _seasSeriesWeekly
+                      : gran==='monthly' ? _seasSeriesFromDailyMonthly
+                      :                    _seasSeriesFromDaily;
+    const xLabels = gran==='weekly'  ? Array.from({length:52},(_,i)=>String(i+1))
+                  : gran==='monthly' ? GA_MO
+                  :                    _SEAS_MMDD;
+    const xTicksDaily = {
       color:'#3d5070', font:{size:9,family:'IBM Plex Mono, ui-monospace, monospace'},
       autoSkip:false, maxRotation:0,
       callback: function(v){ const i=_SEAS_MONTH_TICK_IDX.indexOf(v); return i>=0 ? _SEAS_MONTH_LABELS[i] : ''; },
     };
-    const dailyScX = {...GCD.scales.x, ticks:dailyXTicks};
-    const dailyTooltip = { callbacks:{
-      title: items => { const i=items[0]?.dataIndex; return i!=null ? _SEAS_MMDD[i] : ''; },
+    const xTicksWeekly = {
+      color:'#3d5070', font:{size:9,family:'IBM Plex Mono, ui-monospace, monospace'},
+      autoSkip:false, maxRotation:0,
+      callback: function(v){ const i=_SEAS_WEEK_MONTH_TICKS.indexOf(v); return i>=0 ? _SEAS_MONTH_LABELS[i] : ''; },
+    };
+    const xTicksMonthly = {...GCD.scales.x.ticks, autoSkip:false, maxTicksLimit:12};
+    const scX = gran==='weekly'  ? {...GCD.scales.x, ticks:xTicksWeekly}
+              : gran==='monthly' ? {...GCD.scales.x, ticks:xTicksMonthly}
+              :                    {...GCD.scales.x, ticks:xTicksDaily};
+    const tooltipTitle = gran==='weekly'  ? (i => `Week ${i+1}`)
+                       : gran==='monthly' ? (i => GA_MO[i])
+                       :                    (i => _SEAS_MMDD[i]);
+    const tooltipCb = { callbacks:{
+      title: items => { const i=items[0]?.dataIndex; return i!=null ? tooltipTitle(i) : ''; },
       label: c => `${c.dataset.label}: ${c.raw==null?'—':c.raw.toFixed(2)}`,
     }};
-    // Monthly x-axis for utilisation (12 tick labels — Jan..Dec)
-    const monthlyScX = {...GCD.scales.x, ticks:{...GCD.scales.x.ticks, autoSkip:false, maxTicksLimit:12}};
+    const pointRadius = gran==='daily' ? 0 : 2;
 
-    gaMakeChart('regas-send-seas','line',{labels:_SEAS_MMDD,datasets:sendDs},{
-      plugins:{tooltip:dailyTooltip},
-      scales:{x:dailyScX, y:{...GCD.scales.y, title:{display:true,text:'mcm/d',color:'#3d5070',font:{size:9}}}}
-    });
-    gaMakeChart('regas-util-seas','line',{labels:GA_MO,datasets:utilDs},{
-      scales:{x:monthlyScX, y:{...GCD.scales.y, min:0, max:100, title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}}
-    });
+    // Sendout seasonal — sendGWh converted to mcm/d via GWH_MCM, aggregated
+    // at the selected granularity.
+    const sendDs = seasYrs.map((yr,i)=>({
+      label:String(yr),
+      data:buildSeries(daily, yr, r => r.sendGWh ? r.sendGWh*GWH_MCM : null),
+      borderColor:GA_COLS[i], backgroundColor:GA_COLS[i]+(i===0?'22':'00'),
+      borderWidth:i===0?2:1.2, pointRadius, pointHoverRadius:3,
+      tension:0.15, borderDash:i>0?[5,3]:undefined, spanGaps:false,
+    }));
 
-    // Inventory seasonal — merged from the old LNG STORAGE tab. Daily stock
-    // (GWh → mcm via /10.55) overlaid on the 366-day calendar per selected
-    // year. Uses the same invGWh field the terminal loader populates.
+    // Utilisation seasonal — daily-derived at any granularity (mean of
+    // daily %s per bucket). Daily granularity is noisy but fine for short
+    // windows; weekly smooths it without losing too much detail.
+    const utilDs = seasYrs.map((yr,i)=>({
+      label:String(yr),
+      data:buildSeries(daily, yr, r => (r.dtrsGWh && r.sendGWh) ? r.sendGWh/r.dtrsGWh*100 : null),
+      borderColor:GA_COLS[i], backgroundColor:'transparent',
+      borderWidth:i===0?2.5:1.5, pointRadius, tension:0.3,
+      borderDash:i>0?[5,3]:undefined, spanGaps:true,
+    }));
+
+    // Inventory seasonal — end-of-day stock in GWh → mcm via /10.55.
     const invDs = seasYrs.map((yr,i)=>({
       label:String(yr),
-      data:_seasSeriesFromDaily(daily, yr, r => r.invGWh ? +(r.invGWh/10.55).toFixed(2) : null),
+      data:buildSeries(daily, yr, r => r.invGWh ? r.invGWh/10.55 : null),
       borderColor:GA_COLS[i], backgroundColor:GA_COLS[i]+(i===0?'22':'00'),
-      borderWidth:i===0?2:1.2, pointRadius:0, pointHoverRadius:3,
+      borderWidth:i===0?2:1.2, pointRadius, pointHoverRadius:3,
       tension:0.15, borderDash:i>0?[5,3]:undefined, spanGaps:false,
       fill:i===0,
     }));
-    gaMakeChart('regas-inv-seas','line',{labels:_SEAS_MMDD,datasets:invDs},{
-      plugins:{tooltip:dailyTooltip},
-      scales:{x:dailyScX, y:{...GCD.scales.y, title:{display:true,text:'mcm stock',color:'#3d5070',font:{size:9}}}}
+
+    gaMakeChart('regas-send-seas','line',{labels:xLabels,datasets:sendDs},{
+      plugins:{tooltip:tooltipCb},
+      scales:{x:scX, y:{...GCD.scales.y, title:{display:true,text:'mcm/d',color:'#3d5070',font:{size:9}}}}
+    });
+    gaMakeChart('regas-util-seas','line',{labels:xLabels,datasets:utilDs},{
+      plugins:{tooltip:tooltipCb},
+      scales:{x:scX, y:{...GCD.scales.y, min:0, max:100, title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}}
+    });
+    gaMakeChart('regas-inv-seas','line',{labels:xLabels,datasets:invDs},{
+      plugins:{tooltip:tooltipCb},
+      scales:{x:scX, y:{...GCD.scales.y, title:{display:true,text:'mcm stock',color:'#3d5070',font:{size:9}}}}
     });
   },80);
 }
