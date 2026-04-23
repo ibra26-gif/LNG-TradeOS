@@ -14531,13 +14531,27 @@ function gaUpdateStatusDots(){
 // GA_AVAIL_YEARS defined in main script block above
 let _pipeYears = [2026]; // starts with current year only
 
+// Domestic production country registry. Kept in sync with
+// ENTSOG_PRODUCTION_COUNTRIES + EIC_TO_LABEL upstream (those drive the live
+// GA_LIVE.domestic fetch). Order matches the gas-balance-by-producer view.
+const DOMPROD_COUNTRIES = [
+  {code:'NL', name:'Netherlands', label:'netherlands'},
+  {code:'GB', name:'United Kingdom', label:'uk'},
+  {code:'RO', name:'Romania', label:'romania'},
+  {code:'DE', name:'Germany', label:'germany'},
+  {code:'IT', name:'Italy', label:'italy'},
+  {code:'DK', name:'Denmark', label:'denmark'},
+  {code:'PL', name:'Poland', label:'poland'},
+];
+let _domYears = []; // default filled lazily to [curY, curY-1, curY-2]
+
 function eugasTab(sub, btn){
   document.querySelectorAll('#ga-eugas-subtabs .ga-stab').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  else { const map={'pipeline':0,'lngimp':1,'balance':2}; const btns=document.querySelectorAll('#ga-eugas-subtabs .ga-stab'); const b=btns[map[sub]??0]; if(b)b.classList.add('active'); }
+  else { const map={'pipeline':0,'domprod':1,'balance':2}; const btns=document.querySelectorAll('#ga-eugas-subtabs .ga-stab'); const b=btns[map[sub]??0]; if(b)b.classList.add('active'); }
   const pane=document.getElementById('ga-eugas-pane');if(!pane)return;
   if(sub==='pipeline') renderPipelinePane(pane);
-  else if(sub==='lngimp') renderLNGImpPane(pane);
+  else if(sub==='domprod') renderDomProductionPane(pane);
   else if(sub==='balance') renderBalanceTable(pane);
 }
 
@@ -14736,6 +14750,102 @@ function drawLNGCharts(){
   },{scales:{x:GCD.scales.x,y:{...GCD.scales.y,stacked:true,title:{display:true,text:guLbl(),color:'#3d5070',font:{size:9}}}}});
 }
 
+// ── DOMESTIC PRODUCTION ─────────────────────────────────────────────────────
+// Replaces the old LNG IMPORTS tab. Source: ENTSOG operationalDatas with
+// adjacentSystemTypeLabel=Production. Only 7 EU/UK producers report — rest
+// have no indigenous output or don't feed ENTSOG.
+function renderDomProductionPane(pane){
+  const curY = new Date().getFullYear();
+  if(!_domYears || !_domYears.length) _domYears = [curY, curY-1, curY-2];
+  const okDom = !!(window.GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic);
+  pane.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
+      <span class="ctrl-lbl">VIEW</span>
+      <select class="gsel" id="dom-view-sel" onchange="renderDomProductionPane(document.getElementById('ga-eugas-pane'))">
+        <option value="aggregate">EU+UK Aggregate (7 producers)</option>
+        <option value="country">By Country</option>
+      </select>
+      <span class="ctrl-lbl">YEARS</span>
+      <div id="dom-yr-btns" style="display:flex;gap:4px">${GA_AVAIL_YEARS.map(y=>`<button class="ga-stab${_domYears.includes(y)?' active':''}" onclick="gdToggleDomYear(${y},this)">${y}</button>`).join('')}</div>
+      <span style="font-size:9px;margin-left:auto;color:${okDom?'#34d399':'#f59e0b'}">${okDom?'🟢 ENTSOG live':'🟡 Loading...'}</span>
+    </div>
+    <div class="ga-card">
+      <div class="ga-sec">EU+UK DOMESTIC PRODUCTION — SEASONAL <span class="ga-tag ga-tag-live">ENTSOG</span></div>
+      <div class="ga-ch-wrap tall" style="height:340px"><canvas id="dom-sea-chart"></canvas></div>
+      <div class="ga-source">Source: ENTSOG Transparency Platform · adjacentSystemTypeLabel=Production · NL · UK · RO · DE · IT · DK · PL · ${new Date().toLocaleDateString('en-GB')}</div>
+    </div>
+    <div class="ga-card" style="margin-top:12px">
+      <div class="ga-sec">MONTHLY BREAKDOWN BY PRODUCER <span class="ga-tag ga-tag-live">ENTSOG</span></div>
+      <div class="ga-ch-wrap" style="height:260px"><canvas id="dom-ctry-chart"></canvas></div>
+    </div>`;
+  drawDomProductionCharts();
+}
+
+window.gdToggleDomYear = function(y, btn){
+  if(_domYears.includes(y)) _domYears = _domYears.filter(x=>x!==y);
+  else _domYears = [..._domYears, y];
+  if(!_domYears.length) _domYears = [y];
+  btn.classList.toggle('active', _domYears.includes(y));
+  drawDomProductionCharts();
+};
+
+function drawDomProductionCharts(){
+  const view = document.getElementById('dom-view-sel')?.value || 'aggregate';
+  const dom  = (window.GA_LIVE && GA_LIVE.domestic) || {};
+
+  // Seasonal chart: EU+UK total OR a specific producer (via view)
+  const seaDs = _domYears.slice().sort((a,b)=>b-a).map((yr, i) => ({
+    label: `${view==='aggregate'?'EU+UK Total':'By country'} ${yr}`,
+    data: GA_MO.map((_,m) => {
+      const mo = `${yr}-${String(m+1).padStart(2,'0')}`;
+      if(view === 'aggregate'){
+        let sum=0, found=false;
+        DOMPROD_COUNTRIES.forEach(({label})=>{ const v=dom[label]?.[mo]; if(v!=null){sum+=v;found=true;} });
+        return found ? +sum.toFixed(2) : null;
+      }
+      // "By country" view still plots a shared aggregate on this seasonal —
+      // the per-country detail lives in the stacked bar below.
+      let sum=0, found=false;
+      DOMPROD_COUNTRIES.forEach(({label})=>{ const v=dom[label]?.[mo]; if(v!=null){sum+=v;found=true;} });
+      return found ? +sum.toFixed(2) : null;
+    }),
+    borderColor: GA_COLS[i],
+    backgroundColor: i===0 ? GA_COLS[0]+'18' : 'transparent',
+    borderWidth: i===0 ? 2.5 : 1.5,
+    borderDash: i>0 ? [5,3] : undefined,
+    pointRadius: i===0 ? 3 : 0,
+    tension: 0.3,
+    fill: i===0,
+    spanGaps: false,
+  }));
+  gaMakeChart('dom-sea-chart', 'line', {labels: GA_MO, datasets: seaDs}, {
+    scales:{x:GCD.scales.x, y:{...GCD.scales.y, title:{display:true, text:'mcm/month', color:'#3d5070', font:{size:9}}}}
+  });
+
+  // Per-producer stacked bar — last 12 months
+  const today = new Date();
+  const months = Array.from({length:12}, (_,i) => {
+    const d = new Date(today); d.setMonth(d.getMonth()-11+i);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  });
+  const ctryDs = DOMPROD_COUNTRIES.map(({name, label}, i) => ({
+    label: name,
+    data: months.map(mo => { const v = dom[label]?.[mo]; return v!=null ? +v.toFixed(1) : null; }),
+    backgroundColor: GA_COLS[i % GA_COLS.length],
+    borderWidth: 0, stack: 's',
+  }));
+  gaMakeChart('dom-ctry-chart', 'bar', {
+    labels: months.map(m => new Date(m+'-15').toLocaleDateString('en-GB',{month:'short',year:'2-digit'})),
+    datasets: ctryDs,
+  }, {
+    scales:{x:GCD.scales.x, y:{...GCD.scales.y, stacked:true, title:{display:true, text:'mcm/month', color:'#3d5070', font:{size:9}}}}
+  });
+
+  if(!(window.GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic)){
+    gdErr('dom-sea-chart','ENTSOG production data not loaded — hit ↺ REFRESH ALL');
+  }
+}
+
 // ── GAS BALANCE TABLE ──────────────────────────────────────────────────────────
 function renderBalanceTable(pane){
   const today=new Date();
@@ -14828,9 +14938,17 @@ function buildBalTblHTML(yr, months){
   const lngCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const d=GD.lngTotal[mo]; return d?`<td class="tr">${guConvLng(d.sendGWh).toFixed(2)}</td>`:'<td class="tr" style="color:#3d5070">--</td>'; }).join('');
   rows.push(tr('LNG Imports (EU+UK, all terminals)','EU/UK',lngCells));
 
-  // Production placeholder
-  const prodRow=months.map(()=>fmtNA()).join('');
-  rows.push(tr('EU Domestic Production (excl. Norway)','EU · no real-time API',prodRow));
+  // Domestic production — real data from ENTSOG Production feed
+  const prodRow=months.map((_,m)=>{
+    const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
+    const dom=(window.GA_LIVE && GA_LIVE.domestic)||{};
+    let sum=0, any=false;
+    (typeof DOMPROD_COUNTRIES!=='undefined'?DOMPROD_COUNTRIES:[]).forEach(({label})=>{
+      const v=dom[label]?.[mo]; if(v!=null){sum+=v; any=true;}
+    });
+    return any ? `<td class="tr">${sum.toFixed(1)}</td>` : '<td class="tr" style="color:#3d5070">--</td>';
+  }).join('');
+  rows.push(tr('EU+UK Domestic Production','ENTSOG · NL+UK+RO+DE+IT+DK+PL',prodRow));
 
   // Storage end-of-month
   const storPctCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const d=GD.storage[mo]; return d?`<td class="tr" style="color:#4fc3f7">${d.pct.toFixed(1)}%</td>`:'<td class="tr" style="color:#3d5070">--</td>'; }).join('');
