@@ -14733,13 +14733,12 @@ let _storYears=[2026,2025,2024,2023];
 function storTab(sub, btn){
   document.querySelectorAll('#ga-stor-subtabs .ga-stab').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  else { const map={'eu':0,'country':1,'map':2,'inject':3,'terminals':4}; const btns=document.querySelectorAll('#ga-stor-subtabs .ga-stab'); const b=btns[map[sub]??0]; if(b)b.classList.add('active'); }
+  else { const map={'eu':0,'country':1,'map':2,'inject':3}; const btns=document.querySelectorAll('#ga-stor-subtabs .ga-stab'); const b=btns[map[sub]??0]; if(b)b.classList.add('active'); }
   const pane=document.getElementById('ga-stor-pane');if(!pane)return;
   if(sub==='eu')             renderStorEU(pane);
   else if(sub==='country')   renderStorCountry(pane);
   else if(sub==='map')       renderStorMap(pane);
   else if(sub==='inject')    renderStorInject(pane);
-  else if(sub==='terminals') renderStorTerminalsHeatmap(pane);
 }
 
 // ── EU Aggregate Storage — reference-style seasonal chart ─────────────────
@@ -15150,8 +15149,10 @@ function renderStorInject(pane){
 // user sees rows populate as fetches complete. Rate-limit friendly (400 ms
 // between terminal fetches — well under GIE's 60/min cap).
 let _stTermPeriod = 'd14';
+let _stTermPaneEl = null;
 
 async function renderStorTerminalsHeatmap(pane){
+  _stTermPaneEl = pane;
   const daysBack = _stTermPeriod === 'd30' ? 30 : 14;
   const today = new Date();
   const dayStrs = [];
@@ -15166,15 +15167,19 @@ async function renderStorTerminalsHeatmap(pane){
   const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const dayLabels = dayStrs.map(d => { const p=d.split('-'); return `${p[2]} ${MO[+p[1]-1]}`; });
 
-  // Shell
+  // Shell — heavier top border between country groups so you can scan by nation.
   let rows = '';
+  let prevCtry = '';
   for(const t of terms){
-    const cells = dayStrs.map(d => `<td class="st-term-cell" data-term="${t.ctry}_${t.facility}" data-day="${d}" style="text-align:center;padding:3px 4px;color:#3d5070;font-variant-numeric:tabular-nums">…</td>`).join('');
+    const isNewCtry = t.ctry !== prevCtry && prevCtry !== '';
+    const rowBorder = isNewCtry ? 'border-top:2px solid rgba(77,158,245,.28);' : '';
+    const cells = dayStrs.map(d => `<td class="st-term-cell" data-term="${t.ctry}_${t.facility}" data-day="${d}" style="${rowBorder}text-align:center;padding:3px 4px;color:#3d5070;font-variant-numeric:tabular-nums">…</td>`).join('');
     rows += `<tr>
-      <td style="position:sticky;left:0;background:var(--bg2);padding:4px 8px;color:#c8d6e5;font-size:10px;white-space:nowrap;border-right:1px solid rgba(77,158,245,.1)">${t.name}</td>
-      <td style="padding:4px 8px;color:#6b7a99;font-size:9px;letter-spacing:.05em">${t.ctry.toUpperCase()}</td>
+      <td style="${rowBorder}position:sticky;left:0;background:var(--bg2);padding:4px 8px;color:#c8d6e5;font-size:10px;white-space:nowrap;border-right:1px solid rgba(77,158,245,.1)">${t.name}</td>
+      <td style="${rowBorder}padding:4px 8px;color:#6b7a99;font-size:9px;letter-spacing:.05em">${t.ctry.toUpperCase()}</td>
       ${cells}
     </tr>`;
+    prevCtry = t.ctry;
   }
   pane.innerHTML = `
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
@@ -15184,7 +15189,8 @@ async function renderStorTerminalsHeatmap(pane){
         <option value="d30"${_stTermPeriod==='d30'?' selected':''}>Daily — Last 30 days</option>
       </select>
       <span style="font-size:8px;color:#546e7a;margin-left:8px">sendOut ÷ dtrs × 100 · 🔴 ≥100% · 🟠 75–99% · 🟡 50–74% · 🟢 25–49% · ⚪ &lt;25%</span>
-      <span id="st-term-progress" style="font-size:9px;color:#4fc3f7;margin-left:auto">Loading 0 / ${terms.length}…</span>
+      <button class="ga-stab" style="margin-left:auto" onclick="gaExportStorTermHeatmap()">↓ EXPORT CSV</button>
+      <span id="st-term-progress" style="font-size:9px;color:#4fc3f7">Loading 0 / ${terms.length}…</span>
     </div>
     <div class="ga-card">
       <div class="ga-sec">REGAS UTILISATION — % OF NAMEPLATE <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
@@ -15262,8 +15268,51 @@ function _stTermFillRow(termKey, terminal, daily, dayStrs){
 
 window.gaSetStorTermPeriod = function(val){
   _stTermPeriod = val === 'd30' ? 'd30' : 'd14';
-  const pane = document.getElementById('ga-stor-pane');
+  // Render back into the same pane the user is looking at (Regas or Storage).
+  const pane = _stTermPaneEl
+    || document.getElementById('ga-regas-pane')
+    || document.getElementById('ga-stor-pane');
   if(pane) renderStorTerminalsHeatmap(pane);
+};
+
+// Export the current terminal heatmap to CSV (opens cleanly in Excel).
+// Includes terminal, country, then one column per day of whichever period
+// (14d / 30d) is active. Values are utilisation %, blank where no data.
+window.gaExportStorTermHeatmap = function(){
+  const daysBack = _stTermPeriod === 'd30' ? 30 : 14;
+  const today = new Date();
+  const dayStrs = [];
+  for(let i=daysBack-1; i>=0; i--){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    dayStrs.push(d.toISOString().slice(0,10));
+  }
+  const lines = [];
+  lines.push(['Terminal','Country', ...dayStrs].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+  for(const c of Object.keys(ALSI_TERMINAL_DB)){
+    for(const t of ALSI_TERMINAL_DB[c]){
+      const key = c + '_' + t.facility;
+      const daily = GD_ALSI_TERM_DAILY[key] || {};
+      const row = [t.name, c.toUpperCase()];
+      for(const d of dayStrs){
+        const r = daily[d];
+        if(!r || !r.dtrsGWh){ row.push(''); continue; }
+        const util = r.sendGWh / r.dtrsGWh * 100;
+        row.push(util.toFixed(1));
+      }
+      lines.push(row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+    }
+  }
+  const csv = lines.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `lngtradeos-terminal-heatmap-${_stTermPeriod}-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
 function renderStorLNG(pane){
@@ -15505,12 +15554,13 @@ function regasTab(sub, btn){
   document.querySelectorAll('#ga-regas-subtabs .ga-stab').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   else {
-    const map={'heatmap':0,'sendout':1,'lngstorage':2};
+    const map={'heatmap':0,'terminals':1,'sendout':2,'lngstorage':3};
     const btns=document.querySelectorAll('#ga-regas-subtabs .ga-stab');
     const b=btns[map[sub]??0]; if(b)b.classList.add('active');
   }
   const pane=document.getElementById('ga-regas-pane');if(!pane)return;
-  if(sub==='heatmap')    renderRegasHeatmap(pane);
+  if(sub==='heatmap')         renderRegasHeatmap(pane);
+  else if(sub==='terminals')  renderStorTerminalsHeatmap(pane);
   else if(sub==='sendout')    renderRegasSendoutNew(pane);
   else if(sub==='lngstorage') renderRegasLngStorage(pane);
 }

@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260422a">
-<script src="lngtradeos.js?v=20260423a" defer></script>
+<script src="lngtradeos.js?v=20260423b" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -911,7 +911,6 @@
       <button class="ga-stab" onclick="storTab('country',this)">BY COUNTRY</button>
       <button class="ga-stab" onclick="storTab('map',this)">HEATMAP</button>
       <button class="ga-stab" onclick="storTab('inject',this)">INJECTIONS &amp; WITHDRAWAL</button>
-      <button class="ga-stab" onclick="storTab('terminals',this)">TERMINAL HEATMAP</button>
     </div>
     <div id="ga-stor-pane" style="margin-top:2px"></div>
   </div>
@@ -921,6 +920,7 @@
   <div id="ga-tab-regas" class="ga-tab-sec">
     <div class="ga-subtabs" id="ga-regas-subtabs">
       <button class="ga-stab active" onclick="regasTab('heatmap',this)">UTILISATION HEATMAP</button>
+      <button class="ga-stab" onclick="regasTab('terminals',this)">TERMINAL HEATMAP</button>
       <button class="ga-stab" onclick="regasTab('sendout',this)">SENDOUT</button>
       <button class="ga-stab" onclick="regasTab('lngstorage',this)">LNG STORAGE</button>
     </div>
