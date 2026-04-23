@@ -5898,10 +5898,12 @@ function filterPortDB(){
 
 // ══ FREIGHT DATA ══
 const BC={BLNG1:'#4fc3f7',BLNG2:'#81c784',BLNG3:'#ffb74d'};
+// Seed from OB FFA Rates assessed 22/04/2026 — M+1..M+24 relative to the
+// assessment month (Apr-26), i.e. aligned to ML[0]=May-26.
 const IB={
-  BLNG1:[83000,80000,68000,55000,53000,55000,63000,73000,80000,55000,45000,40000,35000,37000,40000,42000,42000,null,null,null,null,null,null,null],
-  BLNG2:[80000,70000,68000,66000,68000,70000,77000,83000,77000,60000,48000,39000,37000,37000,40000,42000,45000,58000,75000,85000,95000,null,null,null],
-  BLNG3:[95000,90000,85000,73000,62000,60000,70000,75000,70000,55000,42000,38000,35000,36000,38000,38000,null,null,null,null,null,null,null,null]
+  BLNG1:[75000,65000,55000,53000,55000,63000,73000,80000,55000,45000,40000,35000,37000,40000,42000,42000,null,null,null,null,null,null,null,null],
+  BLNG2:[83000,80000,75000,77000,80000,77000,85000,80000,60000,48000,39000,37000,37000,40000,42000,45000,58000,75000,85000,95000,null,null,null,null],
+  BLNG3:[100000,90000,75000,63000,62000,70000,75000,70000,55000,42000,38000,35000,36000,38000,38000,null,null,null,null,null,null,null,null,null]
 };
 const SUPPLY=[
   {id:'sabine',name:'Sabine Pass',curve:'BLNG2',loadCost:216342},
@@ -6240,16 +6242,15 @@ function initFreight(){
   F.posArr=fg('f_posArr',{BLNG1:z24(),BLNG2:z24(),BLNG3:z24()});
   // Industry standard: 100% repositioning (ballast leg) — default for all curves.
   F.repoArr=fg('f_repoArr',{BLNG1:h24(),BLNG2:h24(),BLNG3:h24()});
-  // One-time migration: if repoArr was previously all-zero, upgrade to 100%.
-  (function migrateRepoTo100(){
+  // Force repositioning = 100% for every month (industry standard: every voyage
+  // round-trips the ballast leg). Overwrites any non-100 values. Bump the flag
+  // suffix to re-run this for all existing users one more time.
+  (function migrateRepoTo100v2(){
     try {
-      if(localStorage.getItem('f_repo_100_migrated')==='1') return;
-      const allZero = ['BLNG1','BLNG2','BLNG3'].every(c=>Array.isArray(F.repoArr[c])&&F.repoArr[c].every(v=>!v));
-      if(allZero){
-        F.repoArr={BLNG1:h24(),BLNG2:h24(),BLNG3:h24()};
-        fs('f_repoArr',F.repoArr);
-      }
-      localStorage.setItem('f_repo_100_migrated','1');
+      if(localStorage.getItem('f_repo_100_migrated_v2')==='1') return;
+      F.repoArr={BLNG1:h24(),BLNG2:h24(),BLNG3:h24()};
+      fs('f_repoArr',F.repoArr);
+      localStorage.setItem('f_repo_100_migrated_v2','1');
     } catch(e){}
   })();
   // ── SV local state: independent copy, never written to matrix ──
@@ -8246,7 +8247,67 @@ function loadHistCurveIntoActive(){
   alert(`Loaded: ${snap.label}\nCurve is now active. Review and click UPDATE MATRIX to recompute.`);
 }
 function parseBLNGcsv(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const lines=e.target.result.split('\n').map(l=>l.split(/[,\t]/));const h=lines[0]||[];let b1=-1,b2=-1,b3=-1;h.forEach((x,i)=>{const t=x.trim().toUpperCase();if(t.includes('BLNG1'))b1=i;if(t.includes('BLNG2'))b2=i;if(t.includes('BLNG3'))b3=i;});const nb=JSON.parse(JSON.stringify(IB));lines.slice(1).forEach((row,ri)=>{if(ri>=24)return;const pv=ci=>{const v=parseFloat((row[ci]||'').replace(/[^0-9.]/g,''));return isNaN(v)?null:v;};if(b1>=0)nb.BLNG1[ri]=pv(b1);if(b2>=0)nb.BLNG2[ri]=pv(b2);if(b3>=0)nb.BLNG3[ri]=pv(b3);});fSaveBlng(nb);fMatTab(0);alert('Curves loaded.');};r.readAsText(f);el.value='';}
-function parseBLNGxls(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const h=(rows[0]||[]).map(x=>String(x).trim().toUpperCase());let b1=-1,b2=-1,b3=-1;h.forEach((x,i)=>{if(x.includes('BLNG1'))b1=i;if(x.includes('BLNG2'))b2=i;if(x.includes('BLNG3'))b3=i;});const nb=JSON.parse(JSON.stringify(IB));rows.slice(1).forEach((row,ri)=>{if(ri>=24)return;const pv=ci=>{const v=parseFloat(String(row[ci]||'').replace(/[^0-9.]/g,''));return isNaN(v)?null:v;};if(b1>=0)nb.BLNG1[ri]=pv(b1);if(b2>=0)nb.BLNG2[ri]=pv(b2);if(b3>=0)nb.BLNG3[ri]=pv(b3);});fSaveBlng(nb);fMatTab(0);alert('Curves loaded from Excel.');}catch(err){alert('Error reading Excel file: '+err.message);}};r.readAsArrayBuffer(f);el.value='';}
+function parseBLNGxls(el){
+  const f=el.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      // Prefer the "Monthly" sheet if present (OB format); else first sheet.
+      const sheetName=wb.SheetNames.find(n=>/monthly/i.test(n))||wb.SheetNames[0];
+      const ws=wb.Sheets[sheetName];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      // Scan first 15 rows for a header row containing BLNG1/2/3.
+      let hdrIdx=-1,b1=-1,b2=-1,b3=-1,mIdxCol=-1,dateCol=-1;
+      for(let ri=0;ri<Math.min(rows.length,15);ri++){
+        const h=(rows[ri]||[]).map(x=>String(x).trim().toUpperCase());
+        const x1=h.findIndex(c=>c.includes('BLNG1'));
+        const x2=h.findIndex(c=>c.includes('BLNG2'));
+        const x3=h.findIndex(c=>c.includes('BLNG3'));
+        if(x1>=0&&x2>=0&&x3>=0){
+          hdrIdx=ri;b1=x1;b2=x2;b3=x3;
+          mIdxCol=h.findIndex(c=>c==='M IDX'||c==='M');
+          dateCol=h.findIndex(c=>c==='DATE'||c==='MONTH');
+          break;
+        }
+      }
+      if(hdrIdx<0)throw new Error('Could not find BLNG1/2/3 header row.');
+      const nb={BLNG1:Array(24).fill(null),BLNG2:Array(24).fill(null),BLNG3:Array(24).fill(null)};
+      const pv=row=>ci=>{const v=parseFloat(String(row[ci]??'').replace(/[^0-9.-]/g,''));return isNaN(v)?null:v;};
+      // If M idx column exists, use it to align explicitly (OB M+0 = assessment
+      // month = one month before ML[0]; skip it so ML[0] ← M+1).
+      // Else fall back to positional ordering starting from ML[0].
+      const data=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!==''&&c!=null));
+      if(mIdxCol>=0){
+        data.forEach(row=>{
+          const mi=parseInt(row[mIdxCol]);
+          if(!isFinite(mi))return;
+          const outIdx=mi-1; // shift so M+1 → index 0 (ML[0])
+          if(outIdx<0||outIdx>=24)return;
+          const g=pv(row);
+          nb.BLNG1[outIdx]=g(b1);nb.BLNG2[outIdx]=g(b2);nb.BLNG3[outIdx]=g(b3);
+        });
+      } else {
+        data.slice(0,24).forEach((row,ri)=>{
+          const g=pv(row);
+          nb.BLNG1[ri]=g(b1);nb.BLNG2[ri]=g(b2);nb.BLNG3[ri]=g(b3);
+        });
+      }
+      fSaveBlng(nb);
+      // Industry standard after any fresh FFA upload: repositioning = 100% for every month.
+      const h100=()=>Array(24).fill(100);
+      F.repoArr={BLNG1:h100(),BLNG2:h100(),BLNG3:h100()};
+      fs('f_repoArr',F.repoArr);
+      // Re-render whichever host is currently mounted (standalone Freight module
+      // uses #f-mat-body via fMatTab; Foundation uses #fd-fr-body via _fdFrRenderBody).
+      if(document.getElementById('f-mat-body')) try{ fMatTab(0); }catch{}
+      const fdHost=document.getElementById('fd-fr-body');
+      if(fdHost) try{ _fdFrRenderBody(fdHost); }catch{}
+      alert(`Curves loaded from "${sheetName}". Repositioning reset to 100% for all months.`);
+    }catch(err){alert('Error reading Excel file: '+err.message);}
+  };
+  r.readAsArrayBuffer(f);el.value='';
+}
 function computeMatrix(){
   // Save current as previous before overwriting
   if(F.matrix)F.matPrevMatrix=JSON.parse(JSON.stringify(F.matrix));
@@ -8615,7 +8676,7 @@ const CP_SEED_FR={
   });
 })();
 
-const CP_TABS=['PHYS DIFFERENTIALS','DES PRICES','GLOBAL ARB','ATLANTIC BASIN','MEI','PACIFIC BASIN','FR DIFF vs BASIS'];
+const CP_TABS=['PHYS DIFFERENTIALS','DES PRICES','GLOBAL ARB','ATLANTIC BASIN','MEI','PACIFIC BASIN','FREIGHT DIFFERENTIAL vs BASIS','FOB PRICING'];
 let CP={fp:null,phys:null,freight:null,liqFee:null,histSnaps:null,tab:0,selMonth:0,indexMode:'TTF',hhSlope:1.15,coghMode:false,histSnapDate:new Date().toISOString().slice(0,10)};
 function cpGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
 function cpSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
@@ -8947,6 +9008,9 @@ function initCargo(){
   CP.hhSlope=cpGet('cp_hh_slope',1.15);
   CP.globalArbIdx=cpGet('cp_global_arb_idx','TTF');
   CP.coghMode=cpGet('cp_cogh_mode',false);
+  CP.fobUsIdx=cpGet('cp_fob_us_idx','TTF');
+  CP.fobOmanIdx=cpGet('cp_fob_oman_idx','TTF');
+  CP.fobOmanFixed=cpGet('cp_fob_oman_fixed',10.00);
   CP.tab=0;renderCargo();
 }
 function renderCargo(){
@@ -8973,7 +9037,7 @@ function renderCargo(){
     <button class="f-btn sm" onclick="cpSyncFreight()" title="Pull latest freight $/MMBtu from validated freight matrix">↺ SYNC FREIGHT</button>
     <button class="f-btn sm" onclick="cpForceReset()" title="Wipe ALL localStorage cache and reinitialise from seed" style="border-color:rgba(255,82,82,.3);color:#ef5350">⚠ RESET ALL</button>
   </div>
-  <div class="f-subnav">${CP_TABS.map((t,i)=>`<button class="f-tab${CP.tab===i?' active':''}" onclick="cpTab(${i})">${t}</button>`).join('')}</div>
+  <div class="f-subnav" style="flex-wrap:wrap;overflow-x:auto">${CP_TABS.map((t,i)=>`<button class="f-tab${CP.tab===i?' active':''}" onclick="cpTab(${i})">${t}</button>`).join('')}</div>
   <div class="f-body" id="cp-body"></div>`;
   renderCargoTab();
 }
@@ -8989,6 +9053,7 @@ function renderCargoTab(){const b=document.getElementById('cp-body');if(!b)retur
   else if(CP.tab===4)b.innerHTML=cpMEIArb(d);
   else if(CP.tab===5)b.innerHTML=cpPacificArb(d);
   else if(CP.tab===6)b.innerHTML=cpFrDiffBasis(d);
+  else if(CP.tab===7)b.innerHTML=cpFobPricing(d);
 }
 
 // ── Sync functions ─────────────────────────────────────────────────────────
@@ -9863,6 +9928,123 @@ function cpFrDiffBasis(d){
     {label:'Fr diff',data:frDiff12,borderColor:'#fb923c',borderWidth:2,tension:.3,pointRadius:2.5,fill:false,borderDash:[4,3]},
     {label:'Net signal',data:signal12,borderColor:'#4ade80',borderWidth:2.5,tension:.3,pointRadius:3,fill:true,backgroundColor:'rgba(74,222,128,0.07)',borderDash:[6,3]}
   );
+}
+
+// ── Tab 7: FOB Pricing ─────────────────────────────────────────────────────
+// Two panes: US FOB (Sabine Pass origin, 4 destinations) and Oman FOB (Oman
+// origin, 3 destinations). Per-pane index toggle: TTF / JKM / 115%HH (+ Fixed
+// for Oman). Formula per cell: FOB = (Index + PhysDiff_destination) − Freight.
+// For "115%HH": DES = hhSlope × HH (+ phys). For Fixed: DES = user-entered flat
+// value (no phys applied); FOB = fixed − freight.
+function cpFobPricing(d){
+  const fr=d.freight, fp=CP.fp;
+  const vN=horizonIdx(), vMLx=vML();
+  const slope=CP.hhSlope||1.15;
+  const usIdx   = CP.fobUsIdx   || 'TTF';
+  const omanIdx = CP.fobOmanIdx || 'TTF';
+  const omanFixed = (CP.fobOmanFixed!=null && !isNaN(CP.fobOmanFixed)) ? CP.fobOmanFixed : 10.00;
+
+  // Returns the 24-month DES-destination price array for a given index choice.
+  // physArr = phys differential for that destination; applyPhys=false means Fixed.
+  const desPrice = (idx, physArr) => {
+    if(idx==='FIXED') return ML.map(()=>omanFixed);
+    const base = idx==='TTF' ? fp.TTF
+               : idx==='JKM' ? fp.JKM
+               : ML.map((_,i)=>slope*fp.HH[i]);
+    return ML.map((_,i)=>base[i]+(physArr?physArr[i]:0));
+  };
+
+  // Build one pane's HTML given a spec.
+  const renderPane = (title, originLabel, idxChoices, curIdx, setFn, routes, fixedInput) => {
+    const idxBtns = idxChoices.map(x=>{
+      const lbl = x==='HH' ? '115% HH' : x==='FIXED' ? 'Fixed' : x;
+      return `<button class="f-btn sm${curIdx===x?' on':''}" onclick="${setFn}('${x}')">${lbl}</button>`;
+    }).join('');
+    const rowHtml = routes.map(r=>{
+      const des = desPrice(curIdx, curIdx==='FIXED' ? null : r.physArr);
+      const fob = ML.map((_,i)=>{
+        const frv = r.frArr?.[i];
+        if(des[i]==null || frv==null || isNaN(des[i]) || isNaN(frv)) return null;
+        return +(des[i]-frv).toFixed(3);
+      });
+      const cells = fob.slice(0,vN).map(v=>{
+        if(v==null) return `<td class="tr" style="color:#3d5070;font-size:10px">-</td>`;
+        const col = v>0 ? '#4ade80' : v<0 ? '#f87171' : '#c8d6e5';
+        return `<td class="tr" style="color:${col};font-size:10px;font-weight:500">${v.toFixed(3)}</td>`;
+      }).join('');
+      return `<tr>
+        <td style="color:#c8d6e5;font-size:10px;padding:3px 8px;white-space:nowrap">${r.label}</td>
+        <td style="color:#546e7a;font-size:9px;padding:3px 6px;white-space:nowrap">${r.freightLbl}</td>
+        ${cells}
+      </tr>`;
+    }).join('');
+
+    const fixedInputHtml = fixedInput ? `
+      <span style="color:#546e7a;font-size:9px;margin-left:10px">Fixed DES ($/MMBtu)</span>
+      <input class="f-inp" type="number" step="0.05" style="width:80px;text-align:right;color:#d4e157"
+        value="${omanFixed.toFixed(2)}"
+        onchange="CP.fobOmanFixed=+this.value;cpSet('cp_fob_oman_fixed',CP.fobOmanFixed);renderCargoTab()">
+    ` : '';
+
+    return `
+      <div class="f-sec" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>${title} <span style="color:#546e7a;font-size:9px;font-weight:400;margin-left:6px">Origin: ${originLabel}</span></span>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="color:#546e7a;font-size:9px;letter-spacing:1px">INDEX</span>
+          ${idxBtns}
+          ${fixedInputHtml}
+        </div>
+      </div>
+      <div style="overflow-x:auto;margin-bottom:18px"><table class="f-tbl"><thead><tr>
+        <th style="text-align:left;min-width:180px">ROUTE</th>
+        <th style="text-align:left;min-width:170px;color:#546e7a;font-size:9px">FREIGHT LEG</th>
+        ${vMLx.map(m=>`<th class="tr" style="min-width:62px">${m}</th>`).join('')}
+      </tr></thead><tbody>${rowHtml}</tbody></table></div>
+    `;
+  };
+
+  // ─── US FOB pane (Sabine Pass) ─────────────────────────────────────────────
+  const usRoutes = [
+    {label:'DES NWE',          freightLbl:'Sabine → Gate',        physArr:CP.phys.nwe,  frArr:fr.sabine_rotterdam},
+    {label:'DES MEI',          freightLbl:'Sabine → Dahej',       physArr:d.phyMei,     frArr:fr.sabine_dahej},
+    {label:'DES JKTC (COGH)',  freightLbl:'Sabine → JKTC · COGH', physArr:CP.phys.jktc, frArr:fr.sabine_tokyo},
+    {label:'DES JKTC (PC)',    freightLbl:'Sabine → JKTC · Panama', physArr:CP.phys.jktc, frArr:d.sabine_tokyo_pc},
+  ];
+
+  // ─── Oman FOB pane (Oman) ──────────────────────────────────────────────────
+  const omanRoutes = [
+    {label:'DES JKTC',  freightLbl:'Oman → Tokyo Bay',     physArr:CP.phys.jktc, frArr:fr.oman_tokyo},
+    {label:'DES Dahej', freightLbl:'Oman → Dahej',         physArr:d.phyMei,     frArr:fr.oman_dahej},
+    {label:'DES NWE',   freightLbl:'Oman → Gate · COGH',   physArr:CP.phys.nwe,  frArr:fr.oman_gate},
+  ];
+
+  const usPane = renderPane(
+    'US FOB PRICING ($/MMBtu)',
+    'Sabine Pass',
+    ['TTF','JKM','HH'],
+    usIdx,
+    "(x=>{CP.fobUsIdx=x;cpSet('cp_fob_us_idx',x);renderCargoTab()})",
+    usRoutes,
+    false
+  );
+  const omanPane = renderPane(
+    'OMAN LNG FOB PRICING ($/MMBtu)',
+    'Oman',
+    ['TTF','JKM','HH','FIXED'],
+    omanIdx,
+    "(x=>{CP.fobOmanIdx=x;cpSet('cp_fob_oman_idx',x);renderCargoTab()})",
+    omanRoutes,
+    omanIdx==='FIXED'
+  );
+
+  return `
+    <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:7px 14px;font-size:9px;color:#546e7a;letter-spacing:.05em;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <span>FOB = (Chosen Index + Phys Diff<sub>destination</sub>) − Freight. 115% HH uses slope ${slope.toFixed(2)}. Green = positive, red = negative.</span>
+      <span>DISPLAY WINDOW: <b style="color:#4fc3f7">${ML[0]} → ${horizonLabel()}</b> (${vN}M · auto-rolls on expiry)</span>
+    </div>
+    ${usPane}
+    ${omanPane}
+  `;
 }
 
 
