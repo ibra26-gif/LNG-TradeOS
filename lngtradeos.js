@@ -14233,8 +14233,13 @@ function renderLngVC(){
   const curY=new Date().getFullYear();
   const u=window._lngvcUnit||'mcm';
   const GWH_MCM=1/10.55;
+  // Flow-rate converter: values in GWh/d → selected unit.
   function conv(gwh){if(gwh==null||isNaN(gwh))return null;if(u==='mcm')return+(gwh*GWH_MCM).toFixed(2);if(u==='mtpm')return+(gwh/13890*30).toFixed(4);return+gwh.toFixed(1);}
+  // Stock converter: values in GWh (snapshot) → selected unit (per-value,
+  // no per-day divide). Used for LNG TANK INVENTORY.
+  function convStock(gwh){if(gwh==null||isNaN(gwh))return null;if(u==='mcm')return+(gwh*GWH_MCM).toFixed(2);if(u==='mtpm')return+(gwh/13890).toFixed(4);return+gwh.toFixed(1);}
   function uLbl(){return u==='mcm'?'mcm/d':u==='mtpm'?'mt/month':'GWh/d';}
+  function uLblStock(){return u==='mcm'?'mcm':u==='mtpm'?'mt':'GWh';}
 
   // Year selector state: array of years, default current + prev
   if(!window._lngvcYears||!window._lngvcYears.length) window._lngvcYears=[curY,curY-1];
@@ -14253,17 +14258,29 @@ function renderLngVC(){
     return (GD.lngDailyByCtry && GD.lngDailyByCtry[c]) || {};
   }
   function getStorPct(c,mo){return c==='all'?GD.storage[mo]?.pct??null:GD.storByCtry[c]?.[mo]?.pct??null;}
+  // Storage flow rate — returns value in the selected unit (GWh/d source).
   function getInj(c,mo){
-    if(c==='all'){let s=0,n=0;Object.entries(GD.storDaily||{}).forEach(([d,v])=>{if(d.slice(0,7)===mo){s+=v.inj||0;n++;}});return n?+(s/n/1000).toFixed(2):null;}
-    const d=GD.storByCtry[c]?.[mo];return d?.days?+(d.inj_sum/d.days/1000).toFixed(2):null;
+    let avg=null;
+    if(c==='all'){let s=0,n=0;Object.entries(GD.storDaily||{}).forEach(([d,v])=>{if(d.slice(0,7)===mo){s+=v.inj||0;n++;}});avg=n?s/n:null;}
+    else {const d=GD.storByCtry[c]?.[mo];avg=d?.days?d.inj_sum/d.days:null;}
+    return conv(avg);
   }
   function getWdr(c,mo){
-    if(c==='all'){let s=0,n=0;Object.entries(GD.storDaily||{}).forEach(([d,v])=>{if(d.slice(0,7)===mo){s+=v.wdr||0;n++;}});return n?+(s/n/1000).toFixed(2):null;}
-    const d=GD.storByCtry[c]?.[mo];return d?.days?+(d.wdr_sum/d.days/1000).toFixed(2):null;
+    let avg=null;
+    if(c==='all'){let s=0,n=0;Object.entries(GD.storDaily||{}).forEach(([d,v])=>{if(d.slice(0,7)===mo){s+=v.wdr||0;n++;}});avg=n?s/n:null;}
+    else {const d=GD.storByCtry[c]?.[mo];avg=d?.days?d.wdr_sum/d.days:null;}
+    return conv(avg);
+  }
+  // Net storage variation (injection − withdrawal) — selected unit, per day.
+  function getNet(c,mo){
+    const inj = getInj(c,mo), wdr = getWdr(c,mo);
+    if(inj==null && wdr==null) return null;
+    return +((inj||0) - (wdr||0)).toFixed(u==='mtpm'?4:2);
   }
   function getSend(c,mo){const d=getData(c,mo);if(!d)return null;const days=new Date(+mo.slice(0,4),+mo.slice(5,7),0).getDate();return conv(d.sendGWh/days);}
   function getUtil(c,mo){const d=getData(c,mo);if(!d||!d.dtrsGWh)return null;return+(d.sendGWh/d.dtrsGWh*100).toFixed(1);}
-  function getInv(c,mo){const d=getData(c,mo);if(!d||!d.invGWh)return null;const days=new Date(+mo.slice(0,4),+mo.slice(5,7),0).getDate();return+(d.invGWh*GWH_MCM/days).toFixed(2);}
+  // Inventory: stock at month-end; end-of-month GWh → selected unit (stock).
+  function getInv(c,mo){const d=getData(c,mo);if(!d||!d.invGWh)return null;return convStock(d.invGWh);}
 
   // Stats: latest month
   const allMos=Array.from(new Set([...Object.keys(GD.lngTotal||{}),...Object.keys(GD.storage||{})])).sort();
@@ -14356,13 +14373,14 @@ function renderLngVC(){
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
     <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">LNG TERMINAL UTILISATION <span class="ga-tag ga-tag-live">ALSI</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-util-c"></canvas></div><div class="ga-source">sendOut ÷ dtrs × 100% · monthly · ${selName}</div></div>
     <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">LNG TERMINAL SENDOUT <span class="ga-tag ga-tag-live">ALSI · daily</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-send-c"></canvas></div><div class="ga-source" id="lngvc-send-src">${uLbl()} · daily seasonal · ${selName}</div></div>
-    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">LNG TERMINAL INVENTORY <span class="ga-tag ga-tag-live">ALSI · daily</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-inv-c"></canvas></div><div class="ga-source" id="lngvc-inv-src">mcm stock · daily seasonal · ${selName}</div></div>
+    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">LNG TERMINAL INVENTORY <span class="ga-tag ga-tag-live">ALSI · daily</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-inv-c"></canvas></div><div class="ga-source" id="lngvc-inv-src">${uLblStock()} stock · daily seasonal · ${selName}</div></div>
   </div>
-  <!-- Row 2: Gas storage charts -->
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+  <!-- Row 2: Gas storage charts — 4-col so NET variation fits without stacking -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
     <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">GAS IN STORAGE <span class="ga-tag">AGSI+</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-stor-c"></canvas></div><div class="ga-source">Fill % · ${selName}</div></div>
-    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">STORAGE INJECTIONS <span class="ga-tag">AGSI+</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-inj-c"></canvas></div><div class="ga-source">TWh/d · ${selName}</div></div>
-    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">WITHDRAWALS <span class="ga-tag">AGSI+</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-wdr-c"></canvas></div><div class="ga-source">TWh/d · ${selName}</div></div>
+    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">STORAGE INJECTIONS <span class="ga-tag">AGSI+</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-inj-c"></canvas></div><div class="ga-source">${uLbl()} · ${selName}</div></div>
+    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">WITHDRAWALS <span class="ga-tag">AGSI+</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-wdr-c"></canvas></div><div class="ga-source">${uLbl()} · ${selName}</div></div>
+    <div class="ga-card"><div class="ga-sec" style="font-size:8.5px">NET STORAGE VARIATION <span class="ga-tag">AGSI+</span></div><div class="ga-ch-wrap" style="height:200px"><canvas id="lngvc-net-c"></canvas></div><div class="ga-source">${uLbl()} · inj − wdr · ${selName}</div></div>
   </div>`;
 
   setTimeout(()=>{
@@ -14377,8 +14395,9 @@ function renderLngVC(){
     // storage fill / injections / withdrawals match the storage pane).
     mk('lngvc-util-c',seasDs(getUtil,'util'),'%',0,100);
     mk('lngvc-stor-c',seasDs(getStorPct,'stor'),'%',0,100);
-    mk('lngvc-inj-c', seasDs(getInj,'inj'),'TWh/d');
-    mk('lngvc-wdr-c', seasDs(getWdr,'wdr'),'TWh/d');
+    mk('lngvc-inj-c', seasDs(getInj,'inj'),uLbl());
+    mk('lngvc-wdr-c', seasDs(getWdr,'wdr'),uLbl());
+    mk('lngvc-net-c', seasDs(getNet,'net'),uLbl());
 
     // Daily seasonal: LNG TERMINAL SENDOUT + INVENTORY — use day-of-year
     // calendar so partial current year stops at today without creating a
@@ -14415,11 +14434,11 @@ function renderLngVC(){
     }));
     mkDaily('lngvc-send-c', sendDaily, uLbl());
 
-    // Inventory — end-of-day stock in GWh → mcm. Uses statusGWh (the nested
-    // inventory.gwh value from ALSI, fixed 2026-04-22).
+    // Inventory — end-of-day stock (GWh source) converted to the selected
+    // unit via convStock. Uses statusGWh (nested inventory.gwh from ALSI).
     const invDaily = selYears.map((yr, i) => ({
       label: String(yr),
-      data: _seasSeriesFromDaily(daily, yr, r => r.statusGWh ? +(r.statusGWh * GWH_MCM).toFixed(1) : null),
+      data: _seasSeriesFromDaily(daily, yr, r => r.statusGWh ? convStock(r.statusGWh) : null),
       borderColor: GA_COLS[i % GA_COLS.length],
       backgroundColor: GA_COLS[i % GA_COLS.length] + (i===0 ? '22' : '00'),
       borderWidth: i===0 ? 2 : 1.2,
@@ -14428,7 +14447,7 @@ function renderLngVC(){
       borderDash: i>0 ? [5,3] : undefined,
       spanGaps: false, fill: false,
     }));
-    mkDaily('lngvc-inv-c', invDaily, 'mcm stock');
+    mkDaily('lngvc-inv-c', invDaily, uLblStock()+' stock');
 
     // Freshness caption — show the newest gas day present in the daily
     // data. GIE ALSI publishes T+1 at 19:30 CET so today - 2 days is normal
@@ -15048,15 +15067,15 @@ function renderStorMap(pane){
     <div class="ga-sec">STORAGE HEATMAP — EU COUNTRIES <span class="ga-tag ga-tag-live">GIE AGSI+</span></div>
     <div id="stor-hm-wrap" style="overflow-x:auto;padding:8px 0">`;
   const today=new Date(); const curY=today.getFullYear();
-  const months=Array.from({length:12},(_,m)=>GA_MO[m]);
+  const months=Array.from({length:today.getMonth()+1},(_,m)=>({lbl:GA_MO[m],mo:`${curY}-${String(m+1).padStart(2,'0')}`}));
   let tbl=`<table style="border-collapse:collapse;font-size:9px;width:100%"><thead><tr><th style="text-align:left;padding:4px 8px;color:var(--td);font-weight:400;position:sticky;left:0;background:var(--bg2);min-width:140px">Country</th>`;
-  months.forEach(m=>{ tbl+=`<th style="text-align:center;padding:4px 6px;color:var(--td);font-weight:400;min-width:50px">${m}</th>`; });
+  months.forEach(({lbl})=>{ tbl+=`<th style="text-align:center;padding:4px 6px;color:var(--td);font-weight:400;min-width:50px">${lbl}</th>`; });
+  tbl+=`<th style="text-align:center;padding:4px 8px;color:var(--td);font-weight:400;min-width:84px;border-left:2px solid rgba(77,158,245,.28)">MoM fill</th>`;
   tbl+='</tr></thead><tbody>';
   STOR_COUNTRIES.forEach(({code,name})=>{
     const ctry=GD.storByCtry[code];
     tbl+=`<tr><td style="position:sticky;left:0;background:var(--bg2);padding:4px 8px;color:var(--td)">${name}</td>`;
-    months.forEach((_,m)=>{
-      const mo=`${curY}-${String(m+1).padStart(2,'0')}`;
+    months.forEach(({mo})=>{
       const d=ctry?.[mo];
       if(!d){ tbl+=`<td style="text-align:center;padding:4px;color:#3d5070">--</td>`; return; }
       const pct=d.pct;
@@ -15064,10 +15083,25 @@ function renderStorMap(pane){
               `rgba(52,211,153,${0.2+pct/200})`;
       tbl+=`<td style="text-align:center;padding:4px;background:${r};color:#f0f4ff">${pct.toFixed(1)}%</td>`;
     });
+    // MoM — percentage-point change in fill % between the two most recent
+    // months that have data. Storage fill is already a %, so diff is in pp.
+    let momCell = '<td style="text-align:center;padding:4px;color:#3d5070;border-left:2px solid rgba(77,158,245,.28)">—</td>';
+    const avail = months.map(({mo}) => ({mo, v: ctry?.[mo]?.pct ?? null})).filter(x => x.v != null);
+    if(avail.length >= 2){
+      const cur = avail[avail.length-1], prev = avail[avail.length-2];
+      const delta = +(cur.v - prev.v).toFixed(1);
+      const c = delta >= 5 ? 'rgba(52,211,153,0.55)' :
+                delta >= 0 ? 'rgba(52,211,153,0.25)' :
+                delta >= -5? 'rgba(248,113,113,0.25)' :
+                             'rgba(248,113,113,0.55)';
+      const arrow = delta >= 0 ? '▲' : '▼';
+      momCell = `<td style="text-align:center;padding:4px;background:${c};color:#f0f4ff;border-left:2px solid rgba(77,158,245,.28)" title="${name} · ${prev.mo} ${prev.v.toFixed(1)}% → ${cur.mo} ${cur.v.toFixed(1)}%">${arrow} ${delta>=0?'+':''}${delta.toFixed(1)}pp</td>`;
+    }
+    tbl += momCell;
     tbl+='</tr>';
   });
   tbl+='</tbody></table>';
-  pane.innerHTML=`<div class="ga-card"><div class="ga-sec">STORAGE HEATMAP — EU COUNTRIES <span class="ga-tag ga-tag-live">GIE AGSI+</span></div><div style="overflow-x:auto;padding:4px 0">${tbl}</div><div class="ga-source">Source: GIE AGSI+ · Red &lt;30% · Amber 30–60% · Green &gt;60% · ${new Date().toLocaleDateString('en-GB')}</div></div>`;
+  pane.innerHTML=`<div class="ga-card"><div class="ga-sec">STORAGE HEATMAP — EU COUNTRIES <span class="ga-tag ga-tag-live">GIE AGSI+</span></div><div style="font-size:9px;color:#3d5070;margin-bottom:8px">Red &lt;30% · Amber 30–60% · Green &gt;60% · MoM = percentage-point change in fill vs prior month</div><div style="overflow-x:auto;padding:4px 0">${tbl}</div><div class="ga-source">Source: GIE AGSI+ · ${new Date().toLocaleDateString('en-GB')}</div></div>`;
 }
 
 function renderStorInject(pane){
@@ -15724,13 +15758,19 @@ function renderRegasHeatmap(pane){
   const today=new Date(); const curY=today.getFullYear();
   const months=Array.from({length:today.getMonth()+1},(_,m)=>({lbl:GA_MO[m],mo:`${curY}-${String(m+1).padStart(2,'0')}`}));
   const daysIn=mo=>{const[y,m]=mo.split('-').map(Number);return new Date(y,m,0).getDate();};
-  // Average sendout in GWh/d for a (code, month). Divides the monthly sum
-  // by days-in-month so partial current months read on the same scale as
-  // full historical months.
+  // Average sendout in GWh/d for a (code, month). IMPORTANT: divide by the
+  // number of days that ACTUALLY have data, not days-in-month. Otherwise
+  // a partial current month (e.g. April with 22/30 days reported) reads as
+  // artificially low vs a complete prior month - the original bug made
+  // Belgium/France look like double-digit DROPS even when their daily
+  // utilisation actually rose.
   const avgSend=(code,mo)=>{
     const d=GD.lngByCtry[code]?.[mo];
     if(!d || !d.sendGWh) return null;
-    return d.sendGWh / daysIn(mo);
+    const dailyMap=(GD.lngDailyByCtry && GD.lngDailyByCtry[code]) || {};
+    const actual=Object.keys(dailyMap).filter(dd => dd.startsWith(mo) && (dailyMap[dd].sendGWh||0) > 0).length;
+    const div=actual > 0 ? actual : daysIn(mo);
+    return d.sendGWh / div;
   };
   let tbl=`<table style="border-collapse:collapse;font-size:9px;width:100%"><thead><tr>
     <th style="text-align:left;padding:4px 8px;color:var(--td);font-weight:400;position:sticky;left:0;background:var(--bg2);min-width:130px">Country</th>
