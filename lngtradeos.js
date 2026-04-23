@@ -12986,44 +12986,52 @@ async function gaLoadENTSOGExits(from,to){
 // ENTSOG — DOMESTIC PRODUCTION (adjacentSystemTypeLabel=Production per country)
 // ─────────────────────────────────────────────────────────────────────────────
 async function gaLoadDomProductionLive(from, to){
-  // Single query for all EU production entries — no per-country filtering.
-  // tsoCountryCode is a response field, NOT a valid ENTSOG query parameter.
-  // adjacentSystemTypeLabel=Production filters entry points adjacent to production systems.
-  // We then aggregate rows by the first 2 chars of tsoEicCode (ISO country code).
-  const EIC_TO_LABEL = {
-    NL:'netherlands', RO:'romania', DK:'denmark', GB:'uk',
-    IT:'italy', DE:'germany', PL:'poland',
+  // ENTSOG removed the `adjacentSystemTypeLabel` query parameter at some
+  // point — the old call silently returned 0 rows and the chart/row went
+  // blank. Correct filter now is
+  //   pointType=Aggregated production point - TP            (EU)
+  //   pointType=Aggregated production point - TP ExtEU      (UK post-Brexit etc.)
+  // Country code lives on operatorKey (e.g. "NL-TSO-0001" → "NL"), not on
+  // the first two chars of tsoEicCode (those are the registry prefix "21").
+  const CODE_TO_LABEL = {
+    NL:'netherlands', UK:'uk', GB:'uk', RO:'romania', DE:'germany',
+    IT:'italy', PL:'poland', FR:'france', ES:'spain', HU:'hungary',
+    HR:'croatia', LV:'latvia', DK:'denmark',
   };
-  const cacheKey = `dom_prod_eu_${from.slice(0,7)}_${to.slice(0,7)}`;
+  const cacheKey = `dom_prod_eu_v2_${from.slice(0,7)}_${to.slice(0,7)}`;
   let raw = gaCacheGet(cacheKey);
   if(!raw){
     try{
-      // Build params as a plain string to avoid URLSearchParams comma-encoding
-      const paramStr = [
-        'indicator=Physical%20Flow',
-        'directionKey=entry',
-        'adjacentSystemTypeLabel=Production',
-        `from=${from}`, `to=${to}`,
-        'periodType=day', 'timezone=CET', 'limit=10000',
-      ].join('&');
-      // ENTSOG: always direct (public, open CORS)
-      const url = `${ENTSOG_BASE}/operationalDatas?${paramStr}`;
-      const r = await fetch(url, {headers:{Accept:'application/json'}});
-      if(!r.ok) throw new Error(`ENTSOG ${r.status}`);
-      raw = await r.json();
+      const fetchOne = async ptype => {
+        const paramStr = [
+          'indicator=Physical%20Flow',
+          `pointType=${encodeURIComponent(ptype)}`,
+          `from=${from}`, `to=${to}`,
+          'periodType=day', 'timeZone=WET', 'limit=3000',
+        ].join('&');
+        const url = `${ENTSOG_BASE}/operationalDatas?${paramStr}`;
+        const r = await fetch(url, {headers:{Accept:'application/json'}});
+        if(!r.ok) throw new Error(`ENTSOG ${r.status}`);
+        const j = await r.json();
+        return j?.operationalDatas || j?.operationaldatas || j?.data || [];
+      };
+      const [a, b] = await Promise.all([
+        fetchOne('Aggregated production point - TP'),
+        fetchOne('Aggregated production point - TP ExtEU'),
+      ]);
+      raw = { rows: [...a, ...b] };
       gaCacheSet(cacheKey, raw, 24);
     } catch(e){
       console.warn('Dom prod (EU query):', e.message, '— using static fallback');
       return;
     }
   }
-  const rows = raw?.operationaldatas||raw?.operationalDatas||raw?.operationalData||raw?.data||[];
+  const rows = raw?.rows || raw?.operationalDatas || raw?.operationaldatas || [];
   if(!rows.length) return;
   rows.forEach(d => {
-    // Derive country from tsoEicCode (e.g. "NL-TSO-0001..." → "NL")
-    const cc = (d.tsoEicCode||d.tsoCountryCode||'').slice(0,2).toUpperCase();
-    const label = EIC_TO_LABEL[cc];
-    if(!label) return; // skip non-target countries
+    const cc = (d.operatorKey||'').slice(0,2).toUpperCase();
+    const label = CODE_TO_LABEL[cc];
+    if(!label) return;
     const valMCM = (parseFloat(d.value||0)||0) * ENTSOG_KWH_TO_MCM;
     const date = (d.periodFrom||d.from||'').slice(0,10);
     const mo = date.slice(0,7);
@@ -14534,17 +14542,22 @@ function gaUpdateStatusDots(){
 // GA_AVAIL_YEARS defined in main script block above
 let _pipeYears = [2026]; // starts with current year only
 
-// Domestic production country registry. Kept in sync with
-// ENTSOG_PRODUCTION_COUNTRIES + EIC_TO_LABEL upstream (those drive the live
-// GA_LIVE.domestic fetch). Order matches the gas-balance-by-producer view.
+// Domestic production country registry. Aligned with ENTSOG's 'Aggregated
+// production point - TP' pointType (11 active reporters confirmed via
+// live API probe 2026-04-23). Ordered roughly by production size.
 const DOMPROD_COUNTRIES = [
-  {code:'NL', name:'Netherlands', label:'netherlands'},
-  {code:'GB', name:'United Kingdom', label:'uk'},
-  {code:'RO', name:'Romania', label:'romania'},
-  {code:'DE', name:'Germany', label:'germany'},
-  {code:'IT', name:'Italy', label:'italy'},
-  {code:'DK', name:'Denmark', label:'denmark'},
-  {code:'PL', name:'Poland', label:'poland'},
+  {code:'DE', name:'Germany',        label:'germany'},
+  {code:'UK', name:'United Kingdom', label:'uk'},
+  {code:'NL', name:'Netherlands',    label:'netherlands'},
+  {code:'RO', name:'Romania',        label:'romania'},
+  {code:'IT', name:'Italy',          label:'italy'},
+  {code:'PL', name:'Poland',         label:'poland'},
+  {code:'HU', name:'Hungary',        label:'hungary'},
+  {code:'FR', name:'France',         label:'france'},
+  {code:'ES', name:'Spain',          label:'spain'},
+  {code:'HR', name:'Croatia',        label:'croatia'},
+  {code:'LV', name:'Latvia',         label:'latvia'},
+  {code:'DK', name:'Denmark',        label:'denmark'},
 ];
 let _domYears = []; // default filled lazily to [curY, curY-1, curY-2]
 
