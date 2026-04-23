@@ -17287,9 +17287,14 @@ async function acer_loadLive(){
     const r = await fetch('/api/acer?action=csv',{cache:'no-store'});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const text = await r.text();
-    const lines = text.trim().split(/\r?\n/).slice(1);
+    // CSV is ordered newest-first; flip to chronological so the bench
+    // carry-forward runs in time order (today inherits yesterday's bench
+    // if ACER hasn't published a fresh LNG BENCHMARK value yet — common
+    // for T-0 rows).
+    const lines = text.trim().split(/\r?\n/).slice(1).reverse();
     const CONV = 0.293071;
     const rows = [];
+    let lastBench = NaN;
     for(const line of lines){
       const m = line.match(/^"([^"]+)","([^"]*)","([^"]*)","([^"]*)","([^"]*)"$/);
       if(!m) continue;
@@ -17297,8 +17302,15 @@ async function acer_loadLive(){
       const nweF = parseFloat(m[2]);
       const seF  = parseFloat(m[3]);
       const euF  = parseFloat(m[4]);
-      const bench = parseFloat(m[5]);
-      if(isNaN(nweF)||isNaN(bench)) continue;
+      let   bench = parseFloat(m[5]);
+      if(isNaN(nweF)) continue;
+      // Carry forward the last known bench if today's is missing.
+      if(isNaN(bench)){
+        if(isNaN(lastBench)) continue;
+        bench = lastBench;
+      } else {
+        lastBench = bench;
+      }
       const eurUsd = (typeof getEURUSD==='function') ? getEURUSD(d) : 1.07;
       const ttfRef = nweF - bench;
       rows.push({
