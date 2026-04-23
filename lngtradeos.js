@@ -14022,13 +14022,6 @@ async function renderGaDashboard(){
               </tr>
             </thead>
             <tbody>${pipeRows}</tbody>
-            <tfoot>
-              <tr style="border-top:1px solid rgba(52,211,153,0.25);font-weight:600">
-                <td style="padding:7px 8px;font-size:10px;color:#34d399;letter-spacing:1px">TOTAL PIPELINE</td>
-                <td style="padding:7px 8px;text-align:right;font-size:12px;color:${anyTodayData?'#34d399':'#3d5070'}">${anyTodayData?fmt(totalToday,1):'—'}</td>
-                <td style="padding:7px 8px;text-align:right;font-size:12px;color:#34d399">${fmt(totalYday,1)}</td>
-              </tr>
-            </tfoot>
           </table>
           <div style="font-size:7px;color:#3d5070;margin-top:6px;letter-spacing:0.5px;text-align:right">
             <span style="color:#60a5fa">D</span> = today's nominations · Gassco (Norway) + ENTSOG (others) ·
