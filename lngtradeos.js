@@ -15034,9 +15034,9 @@ function renderStorInject(pane){
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="ga-card">
-        <div class="ga-sec">NET SEASONAL — MONTHLY <span class="ga-tag">GIE AGSI+</span></div>
+        <div class="ga-sec">NET SEASONAL — MONTHLY (avg GWh/d) <span class="ga-tag">GIE AGSI+</span></div>
         <div class="ga-ch-wrap" style="height:300px"><canvas id="stor-inject-hist-chart"></canvas></div>
-        <div class="ga-source">GIE AGSI+ · Monthly sum of net (inj − wdr) in GWh</div>
+        <div class="ga-source">GIE AGSI+ · Monthly average daily net (inj − wdr) · partial-month-safe seasonal compare</div>
       </div>
       <div class="ga-card">
         <div class="ga-sec">NET SEASONAL — DAILY <span class="ga-tag">GIE AGSI+</span></div>
@@ -15087,7 +15087,11 @@ function renderStorInject(pane){
     }
   });
 
-  // ── Bottom-left: monthly net seasonal across selected years ──
+  // ── Bottom-left: monthly net seasonal — AVG daily net GWh/d per month ──
+  // Using the average (not the sum) so the current partial month reads the
+  // same as a full month would — i.e. April with 21 of 30 days plotted at
+  // the same scale as a complete April in a prior year. Sum-of-net across
+  // years with a partial current month was misleading on seasonal compare.
   const selYears = _storYears.slice().sort((a,b)=>b-a);
   const histDatasets = selYears.map((yr,i) => ({
     label: `${yr}`,
@@ -15096,7 +15100,7 @@ function renderStorInject(pane){
       const days = Object.keys(GD.storDaily||{}).filter(d => d.startsWith(mo));
       if(!days.length) return null;
       const net = days.reduce((s,d) => s + ((GD.storDaily[d]?.inj||0) - (GD.storDaily[d]?.wdr||0)), 0);
-      return +net.toFixed(0);
+      return +(net / days.length).toFixed(1);
     }),
     borderColor: GA_COLS[i], backgroundColor:'transparent',
     borderWidth: yr===curY ? 2.5 : 1.5,
@@ -15106,7 +15110,7 @@ function renderStorInject(pane){
   gaMakeChart('stor-inject-hist-chart','line',{labels:GA_MO,datasets:histDatasets},{
     scales:{
       x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},
-      y:{...GCD.scales.y,title:{display:true,text:'GWh net',color:'#3d5070',font:{size:9}}},
+      y:{...GCD.scales.y,title:{display:true,text:'GWh/d avg (net)',color:'#3d5070',font:{size:9}}},
     }
   });
 
