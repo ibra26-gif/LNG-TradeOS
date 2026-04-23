@@ -15806,15 +15806,16 @@ function regasTab(sub, btn){
   document.querySelectorAll('#ga-regas-subtabs .ga-stab').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   else {
-    const map={'heatmap':0,'terminals':1,'sendout':2,'lngstorage':3};
+    const map={'heatmap':0,'terminals':1,'sendout':2};
     const btns=document.querySelectorAll('#ga-regas-subtabs .ga-stab');
     const b=btns[map[sub]??0]; if(b)b.classList.add('active');
   }
   const pane=document.getElementById('ga-regas-pane');if(!pane)return;
   if(sub==='heatmap')         renderRegasHeatmap(pane);
   else if(sub==='terminals')  renderStorTerminalsHeatmap(pane);
-  else if(sub==='sendout')    renderRegasSendoutNew(pane);
-  else if(sub==='lngstorage') renderRegasLngStorage(pane);
+  // 'sendout' tab now covers sendout + utilisation + inventory seasonal;
+  // legacy 'lngstorage' kept as an alias so any saved URL still works.
+  else if(sub==='sendout' || sub==='lngstorage') renderRegasSendoutNew(pane);
 }
 
 function renderRegasSendout(pane){
@@ -17867,6 +17868,12 @@ function renderRegasSendoutNew(pane){
       <div class="ga-ch-wrap" style="height:240px"><canvas id="regas-util-seas"></canvas></div>
       <div class="ga-source">GIE ALSI · sendOut ÷ dtrs × 100%</div>
     </div>
+  </div>
+  <div class="ga-card" style="margin-top:12px">
+    <div class="ga-sec">LNG TERMINAL INVENTORY — SEASONAL <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
+    <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">${selName} · ${termName}</div>
+    <div class="ga-ch-wrap" style="height:260px"><canvas id="regas-inv-seas"></canvas></div>
+    <div class="ga-source">GIE ALSI · inventory.gwh end-of-day · mcm stock (converted via /10.55)</div>
   </div>`;
 
   setTimeout(()=>{
@@ -17922,6 +17929,22 @@ function renderRegasSendoutNew(pane){
     });
     gaMakeChart('regas-util-seas','line',{labels:GA_MO,datasets:utilDs},{
       scales:{x:monthlyScX, y:{...GCD.scales.y, min:0, max:100, title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}}
+    });
+
+    // Inventory seasonal — merged from the old LNG STORAGE tab. Daily stock
+    // (GWh → mcm via /10.55) overlaid on the 366-day calendar per selected
+    // year. Uses the same invGWh field the terminal loader populates.
+    const invDs = seasYrs.map((yr,i)=>({
+      label:String(yr),
+      data:_seasSeriesFromDaily(daily, yr, r => r.invGWh ? +(r.invGWh/10.55).toFixed(2) : null),
+      borderColor:GA_COLS[i], backgroundColor:GA_COLS[i]+(i===0?'22':'00'),
+      borderWidth:i===0?2:1.2, pointRadius:0, pointHoverRadius:3,
+      tension:0.15, borderDash:i>0?[5,3]:undefined, spanGaps:false,
+      fill:i===0,
+    }));
+    gaMakeChart('regas-inv-seas','line',{labels:_SEAS_MMDD,datasets:invDs},{
+      plugins:{tooltip:dailyTooltip},
+      scales:{x:dailyScX, y:{...GCD.scales.y, title:{display:true,text:'mcm stock',color:'#3d5070',font:{size:9}}}}
     });
   },80);
 }
