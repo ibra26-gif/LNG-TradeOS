@@ -13920,11 +13920,17 @@ async function renderGaDashboard(){
   }catch(e){ console.warn('China signal:',e.message); }
 
   // ── Build pipeline table ──────────────────────────────────────────────────
+  // Insert a visual divider before uk_interconn — everything above Russia
+  // (TurkStream) is gas IMPORTED into Europe from outside. Below that (UK
+  // ICs, VIP Pirineos, VIP Ibérico) is intra-European interconnect flow.
   const pipeRows=pipeData.map(r=>{
     const tVal=r.today?.mcm; const yVal=r.yday?.mcm;
     const tStr=tVal==null?'<span style="color:#3d5070">—</span>':(tVal<1?`<span style="color:#3d5070">${fmt(tVal,1)}</span>`:fmt(tVal,1));
     const yStr=yVal==null?'<span style="color:#3d5070">—</span>':(yVal<1?`<span style="color:#3d5070">${fmt(yVal,1)}</span>`:fmt(yVal,1));
-    return `<tr>
+    const divider = r.k==='uk_interconn'
+      ? `<tr><td colspan="3" style="padding:3px 8px 5px;font-size:8px;letter-spacing:1.5px;color:#4b5a72;border-top:1px solid rgba(77,158,245,0.25);border-bottom:1px solid rgba(77,158,245,0.08)">INTRA-EUROPEAN INTERCONNECTS</td></tr>`
+      : '';
+    return divider + `<tr>
       <td style="padding:5px 8px;font-size:10px;color:#dde4f0">${r.lbl}<div style="font-size:8px;color:#3d5070;margin-top:1px">${r.sub}</div></td>
       <td style="padding:5px 8px;text-align:right;font-size:11px;color:#60a5fa;font-weight:500">${tStr}</td>
       <td style="padding:5px 8px;text-align:right;font-size:11px;color:#f0f4ff">${yStr}</td>
@@ -14758,12 +14764,13 @@ function renderDomProductionPane(pane){
   const curY = new Date().getFullYear();
   if(!_domYears || !_domYears.length) _domYears = [curY, curY-1, curY-2];
   const okDom = !!(window.GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic);
+  const curView = window._domView || 'aggregate';
   pane.innerHTML = `
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
       <span class="ctrl-lbl">VIEW</span>
-      <select class="gsel" id="dom-view-sel" onchange="renderDomProductionPane(document.getElementById('ga-eugas-pane'))">
-        <option value="aggregate">EU+UK Aggregate (7 producers)</option>
-        <option value="country">By Country</option>
+      <select class="gsel" id="dom-view-sel" onchange="window._domView=this.value;renderDomProductionPane(document.getElementById('ga-eugas-pane'))">
+        <option value="aggregate"${curView==='aggregate'?' selected':''}>EU+UK Aggregate (7 producers)</option>
+        ${DOMPROD_COUNTRIES.map(c => `<option value="${c.label}"${curView===c.label?' selected':''}>${c.name}</option>`).join('')}
       </select>
       <span class="ctrl-lbl">YEARS</span>
       <div id="dom-yr-btns" style="display:flex;gap:4px">${GA_AVAIL_YEARS.map(y=>`<button class="ga-stab${_domYears.includes(y)?' active':''}" onclick="gdToggleDomYear(${y},this)">${y}</button>`).join('')}</div>
@@ -14792,10 +14799,12 @@ window.gdToggleDomYear = function(y, btn){
 function drawDomProductionCharts(){
   const view = document.getElementById('dom-view-sel')?.value || 'aggregate';
   const dom  = (window.GA_LIVE && GA_LIVE.domestic) || {};
+  const countryObj = DOMPROD_COUNTRIES.find(c => c.label === view);
+  const viewLabel = countryObj ? countryObj.name : 'EU+UK Total';
 
-  // Seasonal chart: EU+UK total OR a specific producer (via view)
+  // Seasonal chart — sum across all producers OR a single country's series.
   const seaDs = _domYears.slice().sort((a,b)=>b-a).map((yr, i) => ({
-    label: `${view==='aggregate'?'EU+UK Total':'By country'} ${yr}`,
+    label: `${viewLabel} ${yr}`,
     data: GA_MO.map((_,m) => {
       const mo = `${yr}-${String(m+1).padStart(2,'0')}`;
       if(view === 'aggregate'){
@@ -14803,11 +14812,8 @@ function drawDomProductionCharts(){
         DOMPROD_COUNTRIES.forEach(({label})=>{ const v=dom[label]?.[mo]; if(v!=null){sum+=v;found=true;} });
         return found ? +sum.toFixed(2) : null;
       }
-      // "By country" view still plots a shared aggregate on this seasonal —
-      // the per-country detail lives in the stacked bar below.
-      let sum=0, found=false;
-      DOMPROD_COUNTRIES.forEach(({label})=>{ const v=dom[label]?.[mo]; if(v!=null){sum+=v;found=true;} });
-      return found ? +sum.toFixed(2) : null;
+      const v = dom[view]?.[mo];
+      return v != null ? +v.toFixed(2) : null;
     }),
     borderColor: GA_COLS[i],
     backgroundColor: i===0 ? GA_COLS[0]+'18' : 'transparent',
