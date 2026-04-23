@@ -5,6 +5,14 @@
       "includeFiles": "data/*.csv"
     }
   },
+  "headers": [
+    {
+      "source": "/data/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    }
+  ],
   "crons": [
     { "path": "/api/brazil-ons-hydro", "schedule": "5 22 * * *" },
     { "path": "/api/colombia-xm-hydro", "schedule": "10 10 * * *" }
