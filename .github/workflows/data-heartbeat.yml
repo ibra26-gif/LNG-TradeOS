@@ -1,0 +1,59 @@
+name: Data freshness heartbeat
+
+# Fails (and emails you) when scraped data files go stale. GitHub emails
+# the repo owner by default on any workflow failure — no SMTP setup needed.
+#
+# Checks the latest commit timestamp on main that touched each monitored
+# file. Thresholds are picked to tolerate weekends and one missed run.
+
+on:
+  schedule:
+    # 09:00 UTC (10:00/11:00 CET depending on DST) Mon-Fri. Runs after both
+    # the 08:00 EEX cron and the Mon-morning weekend-rollover window.
+    - cron: "0 9 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need full history to read file-level commit timestamps
+
+      - name: Check freshness
+        run: |
+          set -e
+          FAIL=0
+
+          check_file() {
+            local path="$1" label="$2" weekday_limit_h="$3" monday_limit_h="$4"
+
+            if [ ! -f "$path" ]; then
+              echo "::error title=$label missing::$path not found in repo"
+              FAIL=1; return
+            fi
+
+            local last_ts age_h now_ts dow limit_h
+            last_ts=$(git log -1 --format=%ct -- "$path")
+            now_ts=$(date -u +%s)
+            age_h=$(( (now_ts - last_ts) / 3600 ))
+            dow=$(date -u +%u)  # 1=Mon .. 7=Sun
+
+            limit_h="$weekday_limit_h"
+            [ "$dow" = "1" ] && limit_h="$monday_limit_h"  # Mon: tolerate Fri-night push
+
+            echo "$label: last update ${age_h}h ago (limit ${limit_h}h, dow=$dow)"
+
+            if [ "$age_h" -gt "$limit_h" ]; then
+              echo "::error title=$label stale::$path is $age_h h old (limit $limit_h h). Check your laptop scraper (launchd com.lngtradeos.eexpush / acerfetch)."
+              FAIL=1
+            fi
+          }
+
+          # (weekday limit, Monday limit) — Monday is more lenient because the
+          # scrapers don't run Sat/Sun, so Fri-evening push is the newest thing.
+          check_file "data/EEX_Gas_Curves.xlsx"       "EEX curves"      36 80
+          check_file "data/acer_historical.csv"       "ACER curves"     36 80
+
+          exit $FAIL
