@@ -9054,6 +9054,14 @@ function renderCargoTab(){const b=document.getElementById('cp-body');if(!b)retur
   else if(CP.tab===5)b.innerHTML=cpPacificArb(d);
   else if(CP.tab===6)b.innerHTML=cpFrDiffBasis(d);
   else if(CP.tab===7)b.innerHTML=cpFobPricing(d);
+  // Browsers do NOT execute <script> tags injected via innerHTML. The FR Diff
+  // vs Basis tab emits a Chart.js init block as an inline <script> — re-insert
+  // it so it runs. Harmless for tabs that contain no <script>.
+  b.querySelectorAll('script').forEach(old => {
+    const s = document.createElement('script');
+    if(old.src) s.src = old.src; else s.textContent = old.textContent;
+    old.parentNode.replaceChild(s, old);
+  });
 }
 
 // ── Sync functions ─────────────────────────────────────────────────────────
@@ -9395,6 +9403,101 @@ function cpGlobalArb(d){
   });
   rkHtml+='</div>';
 
+  // ── Cross-origin "Why #1 wins" + 12M sparkline for Global Arb ────────────
+  // Enumerate every (origin, destination) pair, pick best two for the
+  // selected month, decompose Δ using each destination's natural hub.
+  const NAT_HUB = {eur:'TTF', mei:'JKM', asia:'JKM', ain:'TTF'};
+  const DES_SRC = {eur:d.des.nwe, mei:d.des.mei, asia:d.des.jktc, ain:d.des.ain};
+  const allPairs=[];
+  ORGS.forEach(org=>{
+    ['eur','mei','asia'].forEach(dk=>{
+      const arr=org.routes[dk];
+      if(!arr||arr[selM]==null)return;
+      allPairs.push({
+        org, dk,
+        label: `${org.label} → ${DEST_LBL[dk]}`,
+        v: arr[selM],
+        arr: arr,                              // nb series (for sparkline)
+        desArr: DES_SRC[dk],                   // DES price at destination
+        hub: NAT_HUB[dk],
+      });
+    });
+  });
+  allPairs.sort((a,b)=>b.v-a.v);
+  const gr1 = allPairs[0], gr2 = allPairs[1];
+
+  let gWhy='';
+  if(gr1 && gr2){
+    const nh1=(CP.fp[gr1.hub]||[])[selM], nh2=(CP.fp[gr2.hub]||[])[selM];
+    const ar1=gr1.desArr?.[selM],         ar2=gr2.desArr?.[selM];
+    // Recover freight from: nb = DES − Freight − index  →  fr = DES − index − nb
+    const fr1 = (ar1!=null && idxArr[selM]!=null) ? ar1 - idxArr[selM] - gr1.v : null;
+    const fr2 = (ar2!=null && idxArr[selM]!=null) ? ar2 - idxArr[selM] - gr2.v : null;
+    if([nh1,nh2,ar1,ar2,fr1,fr2].every(x=>x!=null)){
+      const dHub=+(nh1-nh2).toFixed(3);
+      const dPhys=+((ar1-nh1)-(ar2-nh2)).toFixed(3);
+      const dFr=+(fr1-fr2).toFixed(3);
+      const net=+(dHub+dPhys-dFr).toFixed(3);
+      const row=(lbl,v,note)=>{
+        const col=v>0?'#81c784':v<0?'#ef9a9a':'#90a4ae';
+        const sign=v>0?'+':'';
+        return `<tr><td style="color:#8a9bb5;font-size:10px;padding:3px 8px">${lbl}</td>
+          <td style="text-align:right;color:${col};font-size:10px;font-weight:500;padding:3px 8px">${sign}${v.toFixed(3)}</td>
+          <td style="color:#546e7a;font-size:9px;padding:3px 8px">${note}</td></tr>`;
+      };
+      gWhy=`
+      <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:8px">
+        <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">WHY #1 BEATS #2</span>
+        <span style="color:#3d5070">—</span>
+        <span style="color:${DEST_COL[gr1.dk]||'#c8d6e5'};font-size:9px;font-weight:700">${gr1.label}</span>
+        <span style="color:#3d5070">vs</span>
+        <span style="color:${DEST_COL[gr2.dk]||'#8a9bb5'};font-size:9px">${gr2.label}</span>
+      </div>
+      <div style="padding:4px 0 10px"><table style="border-collapse:collapse;width:100%;max-width:640px;margin:0 0 0 6px"><tbody>
+        ${row(`${gr1.hub} − ${gr2.hub} (natural hub spread)`, dHub, gr1.hub===gr2.hub?'same hub, no contribution':'')}
+        ${row('Phys diff edge', dPhys, 'difference in destination premiums')}
+        ${row('Freight delta', -dFr, dFr>0?`#1 pays +${dFr.toFixed(3)} more in freight`:dFr<0?`#1 saves ${Math.abs(dFr).toFixed(3)} in freight`:'identical freight')}
+        <tr style="border-top:1px solid #1e3a5f">
+          <td style="color:#c8d6e5;font-size:10px;font-weight:700;padding:4px 8px">NET EDGE (#1 − #2)</td>
+          <td style="text-align:right;color:${net>0?'#4ade80':'#f87171'};font-size:11px;font-weight:700;padding:4px 8px">${net>=0?'+':''}${net.toFixed(3)}</td>
+          <td style="color:#546e7a;font-size:9px;padding:4px 8px">$/MMBtu ${idxLbl}</td>
+        </tr>
+      </tbody></table></div>`;
+    }
+  }
+
+  let gSpark='';
+  if(gr1){
+    const series = MONTHS12.map((_,i)=>gr1.arr[i]);
+    const xs = series.filter(v=>v!=null);
+    if(xs.length>1){
+      const mn=Math.min(...xs,0), mx=Math.max(...xs,0);
+      const W=520,H=78,PL=30,PR=8,PT=10,PB=18;
+      const xS=i=>PL+(W-PL-PR)*(i/(series.length-1));
+      const yS=v=>H-PB-((v-mn)/((mx-mn)||1))*(H-PT-PB);
+      const zeroY=yS(0);
+      const pts=series.map((v,i)=>v==null?null:`${xS(i).toFixed(1)},${yS(v).toFixed(1)}`).filter(Boolean).join(' ');
+      const col=DEST_COL[gr1.dk]||'#c8d6e5';
+      const ticks=[0,3,6,9,Math.min(11,series.length-1)].map(i=>`<text x="${xS(i).toFixed(1)}" y="${H-PB+10}" fill="#546e7a" font-size="8" text-anchor="middle">${MONTHS12[i]||''}</text>`).join('');
+      const yLabels=[mn,mx].map(v=>`<text x="${PL-3}" y="${(yS(v)+3).toFixed(1)}" fill="#546e7a" font-size="8" text-anchor="end">${v>=0?'+':''}${v.toFixed(2)}</text>`).join('');
+      gSpark=`
+      <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:8px">
+        <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">12M TREND — #1 ROUTE</span>
+        <span style="color:#3d5070">—</span>
+        <span style="color:${col};font-size:9px;font-weight:700">${gr1.label}</span>
+      </div>
+      <div style="padding:6px 14px 14px">
+        <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block" font-family="IBM Plex Mono,monospace">
+          <line x1="${PL}" x2="${W-PR}" y1="${zeroY.toFixed(1)}" y2="${zeroY.toFixed(1)}" stroke="#1e3a5f" stroke-width="0.5" stroke-dasharray="3,3"/>
+          ${yLabels}
+          <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linejoin="round"/>
+          ${series.map((v,i)=>v==null?'':`<circle cx="${xS(i).toFixed(1)}" cy="${yS(v).toFixed(1)}" r="${i===selM?3:2}" fill="${i===selM?'#ffd54f':col}"/>`).join('')}
+          ${ticks}
+        </svg>
+      </div>`;
+    }
+  }
+
   return`
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FOB NETBACK IN</span>
@@ -9595,6 +9698,89 @@ function cpBasinTab(cfg,d){
     </tr>`;
   });
 
+  // ── "Why #1 wins" — decomposes Δ vs #2 into hub / phys / freight drivers ──
+  // All routes in a basin tab use the same `idxA` as cost base, so
+  //   Δ = (arr1 − arr2) − (fr1 − fr2)
+  //     = Δ_hub_spread + Δ_phys − Δ_freight
+  // where Δ_hub_spread = (natural_hub1 − natural_hub2)[m] using CP.fp,
+  //       Δ_phys       = (arr1 − natural_hub1) − (arr2 − natural_hub2)  [m]
+  //       Δ_freight    = fr1 − fr2 (positive = #1 has HIGHER freight, i.e. disadvantage)
+  let whyCard='';
+  if(top.length>=2){
+    const r1=top[0],r2=top[1];
+    const hub1=r1.dt.hub, hub2=r2.dt.hub;
+    const nh1=(CP.fp[hub1]||[])[m], nh2=(CP.fp[hub2]||[])[m];
+    const arr1=r1.dt.arr[m], arr2=r2.dt.arr[m];
+    const fr1=(r1.dt.frArr||[])[m], fr2=(r2.dt.frArr||[])[m];
+    if(nh1!=null&&nh2!=null&&arr1!=null&&arr2!=null&&fr1!=null&&fr2!=null){
+      const dHub = +(nh1-nh2).toFixed(3);
+      const dPhys= +((arr1-nh1)-(arr2-nh2)).toFixed(3);
+      const dFr  = +(fr1-fr2).toFixed(3); // >0 = #1 more expensive to ship
+      const net  = +(dHub + dPhys - dFr).toFixed(3);
+      const row=(lbl,v,note)=>{
+        const col=v>0?'#81c784':v<0?'#ef9a9a':'#90a4ae';
+        const sign=v>0?'+':'';
+        return `<tr><td style="color:#8a9bb5;font-size:10px;padding:3px 8px">${lbl}</td>
+          <td style="text-align:right;color:${col};font-size:10px;font-weight:500;padding:3px 8px">${sign}${v.toFixed(3)}</td>
+          <td style="color:#546e7a;font-size:9px;padding:3px 8px">${note}</td></tr>`;
+      };
+      const ts1=ts(r1.dt.label), ts2=ts(r2.dt.label);
+      whyCard=`
+      <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:8px">
+        <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">WHY #1 BEATS #2</span>
+        <span style="color:#3d5070">—</span>
+        <span style="color:${ts1.fg};font-size:9px;font-weight:700">${r1.dt.label}</span>
+        <span style="color:#3d5070">vs</span>
+        <span style="color:${ts2.fg};font-size:9px">${r2.dt.label}</span>
+      </div>
+      <div style="padding:4px 0 10px"><table style="border-collapse:collapse;width:100%;max-width:560px;margin:0 0 0 6px">
+        <tbody>
+          ${row(`${hub1} − ${hub2} (hub spread)`, dHub, hub1===hub2?'same hub, no contribution':'')}
+          ${row('Phys diff edge',                  dPhys, 'difference in destination premiums')}
+          ${row(`Freight delta (${r1.dt.label} vs ${r2.dt.label})`, -dFr, dFr>0?`#1 pays +${dFr.toFixed(3)} more in freight`:dFr<0?`#1 saves ${Math.abs(dFr).toFixed(3)} in freight`:'identical freight')}
+          <tr style="border-top:1px solid #1e3a5f">
+            <td style="color:#c8d6e5;font-size:10px;font-weight:700;padding:4px 8px">NET EDGE (#1 − #2)</td>
+            <td style="text-align:right;color:${net>0?'#4ade80':'#f87171'};font-size:11px;font-weight:700;padding:4px 8px">${net>=0?'+':''}${net.toFixed(3)}</td>
+            <td style="color:#546e7a;font-size:9px;padding:4px 8px">$/MMBtu ${idxLbl}</td>
+          </tr>
+        </tbody>
+      </table></div>`;
+    }
+  }
+
+  // ── 12M sparkline for the currently-selected origin's #1 route ────────────
+  let sparkCard='';
+  if(best){
+    const series = M12.map((_,i)=>nbx(best.dt,i));
+    const xs = series.filter(v=>v!=null);
+    if(xs.length>1){
+      const mn=Math.min(...xs, 0), mx=Math.max(...xs, 0);
+      const W=460,H=70,PL=28,PR=8,PT=8,PB=18;
+      const xS=i=>PL+(W-PL-PR)*(i/(series.length-1));
+      const yS=v=>H-PB-((v-mn)/((mx-mn)||1))*(H-PT-PB);
+      const zeroY=yS(0);
+      const pts=series.map((v,i)=>v==null?null:`${xS(i).toFixed(1)},${yS(v).toFixed(1)}`).filter(Boolean).join(' ');
+      const st=ts(best.dt.label);
+      const ticks=[0,3,6,9,Math.min(11,series.length-1)].map(i=>`<text x="${xS(i).toFixed(1)}" y="${H-PB+10}" fill="#546e7a" font-size="8" text-anchor="middle">${M12[i]||''}</text>`).join('');
+      const yLabels=[mn,mx].map(v=>`<text x="${PL-3}" y="${(yS(v)+3).toFixed(1)}" fill="#546e7a" font-size="8" text-anchor="end">${v>=0?'+':''}${v.toFixed(2)}</text>`).join('');
+      sparkCard=`
+      <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:8px">
+        <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">12M TREND — #1 ROUTE</span>
+        <span style="color:#3d5070">—</span>
+        <span style="color:${st.fg};font-size:9px;font-weight:700">${selOrg.label} → ${best.dt.label}</span>
+      </div>
+      <div style="padding:6px 14px 14px">
+        <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block" font-family="IBM Plex Mono,monospace">
+          <line x1="${PL}" x2="${W-PR}" y1="${zeroY.toFixed(1)}" y2="${zeroY.toFixed(1)}" stroke="#1e3a5f" stroke-width="0.5" stroke-dasharray="3,3"/>
+          ${yLabels}
+          <polyline points="${pts}" fill="none" stroke="${st.fg}" stroke-width="1.8" stroke-linejoin="round"/>
+          ${series.map((v,i)=>v==null?'':`<circle cx="${xS(i).toFixed(1)}" cy="${yS(v).toFixed(1)}" r="${i===m?3:2}" fill="${i===m?'#ffd54f':st.fg}"/>`).join('')}
+          ${ticks}
+        </svg>
+      </div>`;
+    }
+  }
+
   return`
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:7px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FOB NETBACK IN</span>${idxBtns}
@@ -9630,7 +9816,9 @@ function cpBasinTab(cfg,d){
   <div style="overflow-x:auto;padding:0 0 10px"><table class="f-tbl"><thead><tr>
     <th style="min-width:20px">#</th><th style="min-width:145px">TERMINAL</th>
     <th class="tr">DES price</th><th class="tr">Freight</th><th class="tr">${idxLbl}</th><th class="tr">FOB netback</th>
-  </tr></thead><tbody>${dtRows}</tbody></table></div>`;
+  </tr></thead><tbody>${dtRows}</tbody></table></div>
+  ${whyCard}
+  ${sparkCard}`;
 }
 
 
@@ -9942,39 +10130,71 @@ function cpFobPricing(d){
   const slope=CP.hhSlope||1.15;
   const usIdx   = CP.fobUsIdx   || 'TTF';
   const omanIdx = CP.fobOmanIdx || 'TTF';
-  const omanFixed = (CP.fobOmanFixed!=null && !isNaN(CP.fobOmanFixed)) ? CP.fobOmanFixed : 10.00;
 
-  // Returns the 24-month array of the index to net out of the DES price.
-  // TTF / JKM / 115%HH = forward curves; FIXED = user-entered flat value.
+  // TTF / JKM / 115%HH toggles return the index array to net out of the DES
+  // price. "Fixed" is handled separately below — it returns the absolute
+  // FOB ($/MMBtu) = DES − Freight, i.e. the fixed-price quoted indexation.
   const indexArr = (idx) => {
-    if(idx==='FIXED') return ML.map(()=>omanFixed);
     if(idx==='TTF')   return fp.TTF;
     if(idx==='JKM')   return fp.JKM;
     return ML.map((_,i)=>slope*fp.HH[i]); // HH → 115% HH
   };
 
   // Build one pane's HTML given a spec.
-  // Formula per cell: FOB_spread = DES_destination − Freight_route − Index
-  //   DES_destination uses the destination's natural index (TTF for Europe,
-  //   JKM for Asia/India) plus its phys differential — already computed in
-  //   d.des. The toggle selects which index to subtract, giving the FOB
-  //   quoted as a premium/discount over that index.
-  const renderPane = (title, originLabel, idxChoices, curIdx, setFn, routes, fixedInput) => {
+  // Formula per cell:
+  //   TTF/JKM/HH  →  FOB_spread  = DES_destination − Freight_route − Index
+  //                  (premium/discount over chosen index)
+  //   FIXED       →  FOB_absolute = DES_destination − Freight_route
+  //                  (fixed-price quoted indexation, $/MMBtu)
+  const renderPane = (title, originLabel, idxChoices, curIdx, setFn, routes) => {
     const idxBtns = idxChoices.map(x=>{
       const lbl = x==='HH' ? '115% HH' : x==='FIXED' ? 'Fixed' : x;
       return `<button class="f-btn sm${curIdx===x?' on':''}" onclick="${setFn}('${x}')">${lbl}</button>`;
     }).join('');
-    const idxVals = indexArr(curIdx);
-    const rowHtml = routes.map(r=>{
-      const fob = ML.map((_,i)=>{
-        const dv = r.desArr?.[i], frv = r.frArr?.[i], iv = idxVals[i];
-        if(dv==null || frv==null || iv==null || isNaN(dv) || isNaN(frv) || isNaN(iv)) return null;
-        return +(dv-frv-iv).toFixed(3);
-      });
-      const cells = fob.slice(0,vN).map(v=>{
+    const isFixed = curIdx==='FIXED';
+    const idxVals = isFixed ? null : indexArr(curIdx);
+    // Compute full route × month matrix so we can identify winners per column.
+    const fobByRoute = routes.map(r=>ML.map((_,i)=>{
+      const dv = r.desArr?.[i], frv = r.frArr?.[i];
+      if(dv==null || frv==null || isNaN(dv) || isNaN(frv)) return null;
+      if(isFixed) return +(dv-frv).toFixed(3);
+      const iv = idxVals[i];
+      if(iv==null || isNaN(iv)) return null;
+      return +(dv-frv-iv).toFixed(3);
+    }));
+    // Per-month winner: the route index with the highest FOB value for that month
+    // (highest FOB = best revenue for seller, regardless of mode — spread or absolute).
+    const winnerIdx = ML.map((_,i)=>{
+      let best=-Infinity, bi=-1;
+      fobByRoute.forEach((arr,ri)=>{ const v=arr[i]; if(v!=null && v>best){best=v; bi=ri;} });
+      return bi;
+    });
+    const rowHtml = routes.map((r,ri)=>{
+      const fob = fobByRoute[ri];
+      const cells = fob.slice(0,vN).map((v,i)=>{
         if(v==null) return `<td class="tr" style="color:#3d5070;font-size:10px">-</td>`;
+        const winner = winnerIdx[i]===ri;
+        // Tooltip: explain why this cell is the winner (vs #2 decomposition).
+        let tip='';
+        if(winner){
+          const runners = fobByRoute.map((arr,j)=>({j,v:arr[i]})).filter(x=>x.j!==ri && x.v!=null).sort((a,b)=>b.v-a.v);
+          const r2 = runners[0];
+          if(r2){
+            const delta = +(v-r2.v).toFixed(3);
+            const r2lbl = routes[r2.j].label;
+            tip = `🏆 Best route ${vMLx[i]}: ${r.label} ${isFixed?v.toFixed(3):(v>=0?'+':'')+v.toFixed(3)} $/MMBtu\nvs #2 (${r2lbl}) ${isFixed?r2.v.toFixed(3):(r2.v>=0?'+':'')+r2.v.toFixed(3)} — edge ${delta>=0?'+':''}${delta.toFixed(3)}`;
+          } else {
+            tip = `🏆 Best route ${vMLx[i]}: ${r.label}`;
+          }
+        }
+        if(isFixed){
+          const base = `color:#d4e157;font-size:10px;font-weight:500`;
+          if(winner) return `<td class="tr" title="${tip}" style="${base};font-weight:700;background:#0d2e15;border-top:1px solid #4ade80">${v.toFixed(3)} ★</td>`;
+          return `<td class="tr" style="${base}">${v.toFixed(3)}</td>`;
+        }
         const col = v>0 ? '#4ade80' : v<0 ? '#f87171' : '#c8d6e5';
         const sign = v>0 ? '+' : '';
+        if(winner) return `<td class="tr" title="${tip}" style="color:${col};font-size:10px;font-weight:700;background:#0d2e15;border-top:1px solid #4ade80">${sign}${v.toFixed(3)} ★</td>`;
         return `<td class="tr" style="color:${col};font-size:10px;font-weight:500">${sign}${v.toFixed(3)}</td>`;
       }).join('');
       return `<tr>
@@ -9984,20 +10204,13 @@ function cpFobPricing(d){
       </tr>`;
     }).join('');
 
-    const fixedInputHtml = fixedInput ? `
-      <span style="color:#546e7a;font-size:9px;margin-left:10px">Fixed Price ($/MMBtu)</span>
-      <input class="f-inp" type="number" step="0.05" style="width:80px;text-align:right;color:#d4e157"
-        value="${omanFixed.toFixed(2)}"
-        onchange="CP.fobOmanFixed=+this.value;cpSet('cp_fob_oman_fixed',CP.fobOmanFixed);renderCargoTab()">
-    ` : '';
-
+    const titleSuffix = isFixed ? ' ($/MMBtu, fixed-price)' : ' ($/MMBtu vs index)';
     return `
       <div class="f-sec" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <span>${title} <span style="color:#546e7a;font-size:9px;font-weight:400;margin-left:6px">Origin: ${originLabel}</span></span>
+        <span>${title}${titleSuffix} <span style="color:#546e7a;font-size:9px;font-weight:400;margin-left:6px">Origin: ${originLabel}</span></span>
         <div style="display:flex;align-items:center;gap:4px">
           <span style="color:#546e7a;font-size:9px;letter-spacing:1px">INDEX</span>
           ${idxBtns}
-          ${fixedInputHtml}
         </div>
       </div>
       <div style="overflow-x:auto;margin-bottom:18px"><table class="f-tbl"><thead><tr>
@@ -10025,22 +10238,20 @@ function cpFobPricing(d){
   ];
 
   const usPane = renderPane(
-    'US FOB PRICING ($/MMBtu vs index)',
+    'US FOB PRICING',
     'Sabine Pass',
     ['TTF','JKM','HH'],
     usIdx,
     "(x=>{CP.fobUsIdx=x;cpSet('cp_fob_us_idx',x);renderCargoTab()})",
-    usRoutes,
-    false
+    usRoutes
   );
   const omanPane = renderPane(
-    'OMAN LNG FOB PRICING ($/MMBtu vs index)',
+    'OMAN LNG FOB PRICING',
     'Oman',
     ['TTF','JKM','HH','FIXED'],
     omanIdx,
     "(x=>{CP.fobOmanIdx=x;cpSet('cp_fob_oman_idx',x);renderCargoTab()})",
-    omanRoutes,
-    omanIdx==='FIXED'
+    omanRoutes
   );
 
   return `
