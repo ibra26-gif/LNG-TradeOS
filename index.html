@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260422a">
-<script src="lngtradeos.js?v=20260424e" defer></script>
+<script src="lngtradeos.js?v=20260424g" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -946,19 +946,23 @@
 </section>
 
 <!-- PORTFOLIO VALUATION -->
+<!-- Intentionally parked as a placeholder. Portfolio Valuation is being
+     developed in parallel via a separate Claude Cowork session
+     (morning_book.html · schema v7). Sub-tabs, Cargo Book, Paper Book,
+     Optionality, Scenarios, P&L Log, Exposure, Spec Book, EOM, and the
+     full pvBook engine will slot back in from that work when merged. -->
 <section class="s-sec" id="section-portfolio">
-  <div class="sh-subnav">
-    <button class="sh-stab active" id="pvtab-morning"   onclick="pvTab('morning')">MORNING BOOK</button>
-    <button class="sh-stab"        id="pvtab-cargo"     onclick="pvTab('cargo')">CARGO BOOK</button>
-    <button class="sh-stab"        id="pvtab-paper"     onclick="pvTab('paper')">PAPER BOOK</button>
-    <button class="sh-stab"        id="pvtab-optim"     onclick="pvTab('optim')">OPTIMIZATION</button>
-    <button class="sh-stab"        id="pvtab-exposure"  onclick="pvTab('exposure')">EXPOSURE</button>
-    <button class="sh-stab"        id="pvtab-spec"      onclick="pvTab('spec')">SPEC BOOK</button>
-    <button class="sh-stab"        id="pvtab-scenarios" onclick="pvTab('scenarios')">SCENARIOS</button>
-    <button class="sh-stab"        id="pvtab-daily"     onclick="pvTab('daily')">DAILY P&amp;L</button>
-    <button class="sh-stab"        id="pvtab-eom"       onclick="pvTab('eom')">END OF MONTH</button>
+  <div id="pv-content">
+    <div style="max-width:720px;margin:64px auto;padding:40px 48px;background:var(--bg2,#0b1220);border:1px solid var(--bl,#1e3a5f);border-radius:8px;text-align:center">
+      <div style="color:#4fc3f7;font-size:11px;letter-spacing:3px;font-weight:700;margin-bottom:18px">PORTFOLIO VALUATION</div>
+      <div style="color:var(--th,#c8d6e5);font-size:16px;font-weight:500;margin-bottom:10px">Under construction</div>
+      <div style="color:var(--td,#546e7a);font-size:12px;line-height:1.7">
+        The full Portfolio Valuation engine — Morning Book, Cargo Book, Paper Book,<br>
+        Exposure, Spec Book, Optimization, Scenarios, Daily P&amp;L, End of Month —<br>
+        is being developed in parallel and will land here when ready.
+      </div>
+    </div>
   </div>
-  <div id="pv-content"></div>
 </section>
 
 <!-- LNG TOOLBOX -->

@@ -2305,20 +2305,13 @@ function pvChol(rHT,rHJ,rTJ){
   return[[L11,0,0],[L21,L22,0],[L31,L32,L33]];
 }
 
-function pvTab(tab){
-  document.querySelectorAll('[id^="pvtab-"]').forEach(t=>t.classList.remove('active'));
-  const el=document.getElementById('pvtab-'+tab);if(el)el.classList.add('active');
-  const c=document.getElementById('pv-content');if(!c)return;
-  pvBook.init();
-  if(tab==='morning')       pvBook.renderMorning(c);
-  else if(tab==='cargo')    pvBook.renderCargo(c);
-  else if(tab==='paper')    pvBook.renderStub(c,'PAPER BOOK','Hedge and spec trade capture — links hedges to cargoes, tracks spec positions with targets/stops.','Phase 4');
-  else if(tab==='optim')    pvBook.renderStub(c,'OPTIMIZATION','Per-cargo scenario comparator: evaluate up to 4 destinations side-by-side with intrinsic + extrinsic valuation (Kirk spread option).','Phase 2');
-  else if(tab==='exposure') pvBook.renderExposure(c);
-  else if(tab==='spec')     pvBook.renderStub(c,'SPEC BOOK','Speculative paper positions with entry/target/stop tracking, parametric VaR, and risk limits dashboard.','Phase 6');
-  else if(tab==='scenarios')pvBook.renderStub(c,'SCENARIOS — STRESS TESTS','Portfolio-wide shocks: JKM ±$3, TTF ±€5, freight +20%, correlation → 0/1. MTM impact per cargo and aggregate.','Phase 5');
-  else if(tab==='daily')    pvBook.renderStub(c,'DAILY P&L','Day-over-day P&L running log with decomposition: curve move, new trades, fixings, theta. Foundation for explain-P&L.','Phase 2');
-  else if(tab==='eom')      pvBook.renderStub(c,'END OF MONTH REPORT','Month-end close: realised vs marked P&L, Uncertain→Certain transitions, cargoes delivered, realised vs marked variance.','Phase 6');
+function pvTab(_tab){
+  // Placeholder while Portfolio Valuation is being developed in parallel
+  // (Cowork session → morning_book.html schema v7). The sub-tab buttons
+  // are removed from index.html; this stub exists only to absorb any
+  // stale navigation call (bookmarks, external links, showSec fallbacks)
+  // without throwing. The dormant pvBook IIFE below will be re-plumbed
+  // when the Cowork work merges in.
   window.scrollTo(0,0);
 }
 
@@ -12444,52 +12437,37 @@ function rgCostGraph(){
     </div>`;
 }
 
-// ── TAB 6: IMPLIED DES ──
+// ── TAB 7: BREAKEVEN LEVEL — Quoted Moneyness / Implied DES / Implied Diff ──
+// The tab shows, per terminal, the three numbers that matter for a quoted-
+// moneyness negotiation: what the counterparty quoted, and what it implies
+// for the DES price and TTF differential once the regas stack is netted out.
+//   IMPLIED DES  = Hub Price − Variable Cost − Quoted Moneyness
+//   IMPLIED DIFF = Implied DES − TTF
 function rgImplied(){
   const mi=RG.selMonth;
   const rows=RG.terminals.map(t=>{
     const hp=rgHP(t.hub,mi),v=rgVar(t,mi),ttf=rgTTF(mi);
-    const mktDiff=(RG.diffs[t.id]||[])[mi]||0,mktDES=ttf+mktDiff;
     const qMon=RG.impliedMon[t.id]||0;
-    const implDES=hp-v.total-qMon,implDiff=implDES-ttf,basis=implDiff-mktDiff;
-    const signal=Math.abs(basis)<0.05?'FAIR':basis>0?'CHEAP':'EXPENSIVE';
-    const sc=signal==='CHEAP'?'#4caf50':signal==='EXPENSIVE'?'#f44336':'#ffeb3b';
-    return`<tr style="background:${basis>0.05?'rgba(76,175,80,.07)':basis<-0.05?'rgba(244,67,54,.06)':''}">
+    const implDES=hp-v.total-qMon,implDiff=implDES-ttf;
+    return`<tr>
       <td style="color:var(--th);font-size:10px">${t.name}</td>
       <td style="color:#4fc3f7;font-size:9px">${t.hub}</td>
-      <td class="tr" style="color:#ffeb3b">${fmm(hp)}</td>
-      <td class="tr">${fmm(v.total)}</td>
-      <td class="tr" style="color:${mktDiff<0?'#f44336':'#546e7a'}">${mktDiff.toFixed(2)}</td>
-      <td class="tr" style="color:#26c6da">${fmm(mktDES)}</td>
-      <td style="padding:1px 3px"><input class="rg-inp" style="width:64px;text-align:right" type="number" step="0.001" value="${qMon.toFixed(3)}" onchange="RG.impliedMon['${t.id}']=+this.value;rgRT()"></td>
+      <td style="padding:1px 3px"><input class="rg-inp" style="width:72px;text-align:right;color:#ffeb3b" type="number" step="0.001" value="${qMon.toFixed(3)}" onchange="RG.impliedMon['${t.id}']=+this.value;rgRT()"></td>
       <td class="tr" style="color:#c8d6e5;font-weight:700">${fmm(implDES)}</td>
-      <td class="tr" style="color:${basis>0.05?'#4caf50':basis<-0.05?'#f44336':'#546e7a'}">${implDiff>=0?'+':''}${fmm(implDiff,3)}</td>
-      <td class="tr" style="color:${basis>0.05?'#4caf50':basis<-0.05?'#f44336':'#546e7a'};font-weight:${Math.abs(basis)>=0.05?700:400}">${basis>=0?'+':''}${fmm(basis,3)}</td>
-      <td style="color:${sc};font-weight:700;font-size:10px;text-align:center">${signal}</td>
+      <td class="tr" style="color:${implDiff>0?'#4caf50':implDiff<0?'#f44336':'#546e7a'};font-weight:500">${implDiff>=0?'+':''}${fmm(implDiff,3)}</td>
     </tr>`;
   }).join('');
   return`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
     <div class="f-sec" style="border:none;margin:0">SELECT MONTH</div>${msel()}
-    <span style="color:#546e7a;font-size:9px">Implied Diff = Hub − VarCost − Quoted Moneyness − TTF</span>
+    <span style="color:#546e7a;font-size:9px">Implied DES = Hub Price − Var Cost − Quoted Mon. · Implied Diff = Implied DES − TTF</span>
   </div>
-  <div class="f-grid f-g3" style="gap:8px;margin-bottom:14px">
-    <div class="f-card"><div style="color:#4caf50;font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:5px">★ CHEAP — GOOD DEAL</div><div style="color:#546e7a;font-size:9px;line-height:1.7">Implied DES > Market DES · Basis > +0.05<br>Counterparty offering value vs market</div></div>
-    <div class="f-card"><div style="color:#ffeb3b;font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:5px">◎ FAIR — IN LINE WITH MARKET</div><div style="color:#546e7a;font-size:9px;line-height:1.7">Implied ≈ Market Diff · Basis within ±0.05<br>Quote consistent with where DES trades</div></div>
-    <div class="f-card"><div style="color:#f44336;font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:5px">✗ EXPENSIVE — BAD DEAL</div><div style="color:#546e7a;font-size:9px;line-height:1.7">Implied DES < Market DES · Basis < −0.05<br>Counterparty extracting value from DES</div></div>
-  </div>
-  <div class="f-sec">IMPLIED DES ANALYSIS — ${ML[mi]} · All values $/MMBtu</div>
-  <div style="color:#546e7a;font-size:9px;margin-bottom:10px">Enter counterparty's quoted moneyness per terminal. Model back-solves the implied TTF differential and compares to your market DES.</div>
+  <div class="f-sec">BREAKEVEN — ${ML[mi]} · All values $/MMBtu</div>
+  <div style="color:#546e7a;font-size:9px;margin-bottom:10px">Enter counterparty's quoted moneyness per terminal. Model back-solves the implied DES price and TTF differential.</div>
   <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
-    <th style="min-width:130px">TERMINAL</th><th>HUB</th>
-    <th class="tr">HUB PRICE</th><th class="tr">VAR COST</th>
-    <th class="tr">MKT DIFF</th><th class="tr">MKT DES</th>
+    <th style="min-width:150px">TERMINAL</th><th>HUB</th>
     <th class="tr" style="color:#ffeb3b">QUOTED MON.</th>
     <th class="tr">IMPLIED DES</th><th class="tr">IMPLIED DIFF</th>
-    <th class="tr">BASIS</th><th>SIGNAL</th>
-  </tr></thead><tbody>${rows}</tbody></table></div>
-  <div style="margin-top:10px;color:#546e7a;font-size:9px;line-height:1.8">
-    Basis = Implied Diff − Market Diff · CHEAP if Basis &gt; 0.05 · EXPENSIVE if Basis &lt; −0.05
-  </div>`;
+  </tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 // ── TAB 7: NETBACK (no internal lock — tab-level lock handles it) ──
