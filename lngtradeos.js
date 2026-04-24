@@ -6257,7 +6257,10 @@ function initFreight(){
   F.svPosArr=JSON.parse(JSON.stringify(F.posArr));
   F.svRepoArr=JSON.parse(JSON.stringify(F.repoArr));
   F.mainTab=fg('f_mainTab',0);
-  F.matSubTab=0;
+  // Default to MATRIX (idx 2) — Freight Curves / Ship Params tabs were moved
+  // out of this section (they live in Foundation → Freight). Indices 0/1 are
+  // kept for legacy handlers (snapshot uploads, etc.) but not shown here.
+  F.matSubTab=2;
   // Matrix view state
   F.matView='snapshot';      // snapshot | strip | delta | overrides
   F.matSnapMonth=0;          // selected month index for snapshot
@@ -6332,7 +6335,7 @@ function renderFreight(){
   </div>
   <div class="f-subnav" style="padding:0;gap:0;border-bottom:2px solid #0a0f1e">
     <button class="f-tab${F.mainTab===0?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px;border-right:1px solid #1e3a5f" onclick="fMainTab(0)">① SINGLE VOYAGE CALCULATION</button>
-    <button class="f-tab${F.mainTab===1?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px" onclick="fMainTab(1)">② UPDATE THE CURVES</button>
+    <button class="f-tab${F.mainTab===1?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px" onclick="fMainTab(1)">② FREIGHT MATRIX &amp; REPORTS</button>
   </div>
   <div class="f-body" id="f-body"></div>`;
   renderFMain();
@@ -6708,16 +6711,34 @@ const MCP_AVAILABLE = window.location.hostname==='claude.ai' ||
   window.location.hostname==='localhost' ||
   window.location.hostname==='127.0.0.1';
 
+// Internal tab indices are preserved so every legacy fMatTab(0/1) caller
+// (Foundation-side save handlers, snapshot uploads) keeps working:
+//   0 → FREIGHT CURVES  (only shown in Foundation → Freight)
+//   1 → SHIP PARAMS     (only shown in Foundation → Freight)
+//   2 → MATRIX          (shown here)
+//   3 → DIFFERENTIALS   (shown here)
+//   4 → HISTORICAL      (shown here)
+// The Freight section's sub-nav only renders indices 2/3/4. Tabs 0 and 1
+// were duplicates of Foundation → Freight editors and have been removed
+// from this sub-nav to eliminate the "where do I edit?" ambiguity.
 const FMAT_TABS=['FREIGHT CURVES','SHIP PARAMS','MATRIX','DIFFERENTIALS','HISTORICAL FREIGHT CURVES'];
+const _MAT_VISIBLE_IDX=[2,3,4];
 function renderMatrixSection(){
   const stale=F.matrixTs&&F.blngTs&&F.blngTs>F.matrixTs;
+  // Clamp to a visible sub-tab if the user lands here on a legacy (0/1) index.
+  if(!_MAT_VISIBLE_IDX.includes(F.matSubTab)) F.matSubTab=2;
   return`<div style="background:#071a2b;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:12px">
     <span style="color:#81c784;font-size:9px;letter-spacing:2px;font-weight:700">PERSISTENT — FEEDS LNG GLOBAL NETBACK</span>
     <span style="flex:1"></span>
     ${stale?'<span style="color:#ff9800;font-size:10px;font-weight:700">⚠ MATRIX STALE — update curves then UPDATE MATRIX</span>':'<span style="color:#4caf50;font-size:9px">MATRIX CURRENT</span>'}
   </div>
+  <div style="background:#0a1628;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:10px;font-size:10px;color:#8a9bb5">
+    <span style="color:#546e7a;font-size:9px;letter-spacing:1px;font-weight:700">INPUTS LIVE IN</span>
+    <button class="f-btn sm" onclick="try{showSec('foundation');fdTab('freight');}catch(e){alert('Foundation → Freight');}" title="Edit freight curves and ship parameters in Foundation → Freight">→ FOUNDATION · FREIGHT</button>
+    <span style="color:#3d5070">Edit once there; matrix + views below re-read on refresh.</span>
+  </div>
   <div class="f-subnav" style="padding:0;gap:0">
-    ${FMAT_TABS.map((t,i)=>`<button class="f-tab${F.matSubTab===i?' active':''}" style="padding:8px 14px;font-size:9px" onclick="fMatTab(${i})">${t}</button>`).join('')}
+    ${_MAT_VISIBLE_IDX.map(i=>`<button class="f-tab${F.matSubTab===i?' active':''}" style="padding:8px 14px;font-size:9px" onclick="fMatTab(${i})">${FMAT_TABS[i]}</button>`).join('')}
   </div>
   <div class="f-body" style="padding:14px" id="f-mat-body">
     ${[renderMatCurves,renderMatParams,renderMatrix,renderDiff,()=>`<div id="f-hist-body">${renderHistorical()}</div>`][F.matSubTab]()}
