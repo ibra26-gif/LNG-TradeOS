@@ -6172,6 +6172,11 @@ let F={blng:null,params:null,snaps:null,matrix:null,matrixTs:null,blngTs:null,ex
   showExportMenu:false,
   // SV voyage selectors
   svOrig:'sabine',svDisch:'rotterdam',svMi:0,svLoadDate:new Date().toISOString().slice(0,10),
+  // SV output-range picker: months visible in the monthly cost table. null = auto
+  // (derived from svMi). Manual edits via dropdowns set concrete indices.
+  svRangeFrom:null,svRangeTo:null,
+  // SV DES price override for BOG valuation. null = auto from d.des[dest][svMi].
+  svDesOverride:null,
   // Matrix section selectors
   diffOrig:'sabine',diffBase:'rotterdam',diffSel:['tokyo','singapore'],
   histOrig:'sabine',histDisch:'rotterdam',histMi:0,
@@ -6347,22 +6352,68 @@ function renderSV(){
   // Migrate svParams if loaded from old localStorage (fraction → human values)
   if(p.bogRate<0.05)p.bogRate=p.bogRate*100;
   if(p.loadFactor<5)p.loadFactor=p.loadFactor*100;
+  // EU ETS coverage is always 100% when delivered to an EU/UK port, 0 otherwise.
+  // Previously a user-editable field — hardcoded now since it's deterministic.
+  p.etsCoverage = dp.euEts ? 1 : 0;
   const voyDays=nm?(nm/(p.speedLaden*24)).toFixed(2):'-';
+  const ballastDays=nm?(nm/(p.speedBallast*24)).toFixed(2):'-';
   const coolDays=p.cooldownEnabled?p.cooldownDays:0;
   const totalDays=nm?(+voyDays+coolDays+(p.gasUpEnabled?p.gasUpDays:0)+p.loadTimeDays+p.bufferDays+p.dischargeDays).toFixed(2):'-';
   const loaded=p.shipSize*p.energyFactor*(p.loadFactor/100);
   const bogLoss=nm?Math.round(loaded*(p.bogRate/100)*+totalDays):0;
+  // Ballast-leg BOG: only the retained heel stays onboard on the return leg,
+  // boiling off at the same daily rate for the ballast transit duration.
+  const heelMmbtu = p.heelVolume * p.energyFactor;
+  const ballastBOG = nm ? Math.round(heelMmbtu * (p.bogRate/100) * +ballastDays) : 0;
   const estDisch=nm?Math.round(loaded-bogLoss):'-';
   // Discharge date for selected pricing month
   let dischDate='-';
   if(nm&&F.svLoadDate){const d=new Date(F.svLoadDate);d.setDate(d.getDate()+Math.round(+totalDays));dischDate=d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
+
+  // ── Output range — defaults to pricing month → pricing month + 2 (3 months).
+  const mi = F.svMi;
+  const svRangeFrom = (F.svRangeFrom == null) ? mi : Math.max(0, Math.min(23, F.svRangeFrom));
+  const svRangeTo   = (F.svRangeTo   == null) ? Math.min(mi + 2, 23) : Math.max(svRangeFrom, Math.min(23, F.svRangeTo));
+
+  // ── DES price for BOG valuation. Auto-pulled from cpDerived.des based on the
+  // discharge port; user can override. Returns $/MMBtu for the selected month.
+  const _svDesKeyMap = {
+    rotterdam:'nwe', southhook:'uk', huelva:'iberia', zeebrugge:'nwe', swinoujscie:'swino',
+    inkoo:'inkoo', klaipeda:'klaipeda', revithoussa:'rev', panigaglia:'italy', livorno:'italy',
+    rovigo:'italy', piombino:'italy', ravenna:'italy', krk:'krk', aliaga:'ali',
+    ainsukhna:'ain', dahej:'mei', portqasim:'mei', tokyo:'jktc', tianjin:'jktc',
+    gwangyang:'jktc', singapore:'jktc', maptaphut:'thailand', guanabara:'brazil',
+    escobar:'argentina', bahiablanca:'argentina', quintero:'brazil',
+  };
+  const _svDefaultDes = (()=>{
+    try {
+      const d = (typeof cpDerived==='function') ? cpDerived() : null;
+      if(!d || !d.des) return null;
+      const k = _svDesKeyMap[F.svDisch];
+      if(k && d.des[k] && d.des[k][mi] != null) return +d.des[k][mi].toFixed(3);
+    } catch(e) { /* cpDerived not ready — fall back to null */ }
+    return null;
+  })();
+  const svDesPrice = (F.svDesOverride != null && !isNaN(F.svDesOverride)) ? +F.svDesOverride : _svDefaultDes;
+  // Table rows — only months inside [svRangeFrom, svRangeTo]. Each row includes
+  // the three BOG-aware unit-freight columns on the right (excl / BOG / incl).
   const tableRows=ML.map((m,i)=>{
+    if(i < svRangeFrom || i > svRangeTo) return '';
     const r=calcF(F.svOrig,F.svDisch,i,F.svBlng,F.svParams,F.svPosArr,F.svRepoArr);
     const isActive=i===F.svMi;
-    if(!r)return`<tr${isActive?' class="hi-row"':''}><td style="color:${isActive?'#4fc3f7':'#8a9bb5'}">${m}</td><td colspan="12" style="color:#3d5070;text-align:center">—</td></tr>`;
+    if(!r)return`<tr${isActive?' class="hi-row"':''}><td style="color:${isActive?'#4fc3f7':'#8a9bb5'}">${m}</td><td colspan="15" style="color:#3d5070;text-align:center">—</td></tr>`;
     const $=v=>v===0?'0':v.toLocaleString(undefined,{maximumFractionDigits:0});
-    return`<tr style="background:${isActive?'#0d2035':''}">
-      <td style="white-space:nowrap;color:${isActive?'#4fc3f7':'#8a9bb5'}">${m}</td>
+    // BOG economics (uses the same physical BOG numbers across all months —
+    // only the DES price is what shifts, which is fixed at the pricing-month
+    // default for now; per-month DES pricing is a future refinement).
+    const totalBog = (r.bogLoss || bogLoss) + ballastBOG;
+    const bogCost  = (svDesPrice != null) ? totalBog * svDesPrice : null;
+    const unitExcl = (r.estDisch > 0) ? r.total / r.estDisch : null;
+    const bogUnit  = (bogCost != null && r.estDisch > 0) ? bogCost / r.estDisch : null;
+    const unitIncl = (unitExcl != null && bogUnit != null) ? unitExcl + bogUnit : null;
+    const fv4 = v => v == null ? '—' : v.toFixed(4);
+    return`<tr style="background:${isActive?'#0d2035':''};${isActive?'border-left:3px solid #4fc3f7':''}">
+      <td style="white-space:nowrap;color:${isActive?'#4fc3f7':'#8a9bb5'};font-weight:${isActive?700:400}">${isActive?'◀ ':''}${m}</td>
       <td class="tr">${r.rate.toLocaleString()}</td>
       <td class="tr">${$(r.hire)}</td>
       <td class="tr" style="color:${r.pos?'#4fc3f7':'#3d5070'}">${$(r.pos)}</td>
@@ -6374,9 +6425,18 @@ function renderSV(){
       <td class="tr" style="color:${r.ets?'#ffb74d':'#3d5070'}">${$(r.ets)}</td>
       <td class="tr" style="color:${r.heel?'#c8d6e5':'#3d5070'}">${$(r.heel)}</td>
       <td class="tr" style="font-weight:600">${$(r.total)}</td>
-      <td class="tr" style="color:${fCol(r.freight)};font-weight:700">${r.freight.toFixed(4)}</td>
+      <td class="tr" style="color:${fCol(unitExcl)};font-weight:700">${fv4(unitExcl)}</td>
+      <td class="tr" style="color:#ef9a9a">${fv4(bogUnit)}</td>
+      <td class="tr" style="color:${fCol(unitIncl)};font-weight:700">${fv4(unitIncl)}</td>
     </tr>`;
   }).join('');
+  // Summary card — pricing month only (what the trader signed off on)
+  const rSel = calcF(F.svOrig,F.svDisch,mi,F.svBlng,F.svParams,F.svPosArr,F.svRepoArr);
+  const selTotalBog = rSel ? (rSel.bogLoss + ballastBOG) : 0;
+  const selBogCost  = (rSel && svDesPrice != null) ? selTotalBog * svDesPrice : null;
+  const selUnitExcl = (rSel && rSel.estDisch > 0) ? rSel.total / rSel.estDisch : null;
+  const selBogUnit  = (selBogCost != null && rSel && rSel.estDisch > 0) ? selBogCost / rSel.estDisch : null;
+  const selUnitIncl = (selUnitExcl != null && selBogUnit != null) ? selUnitExcl + selBogUnit : null;
   const exportMenuHtml=F.showExportMenu?`<div style="display:flex;gap:6px;margin:4px 14px"><button class="f-btn sm grn" onclick="svExportCSV()">CSV</button><button class="f-btn sm grn" onclick="svExportXLS()">EXCEL</button><button class="f-btn sm" onclick="F.showExportMenu=false;renderFMain()">✕</button></div>`:'';
   const svp=(k,l,step='any')=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #0d1526">
     <span style="font-size:10px;color:#8a9bb5">${l}</span>
@@ -6399,104 +6459,124 @@ function renderSV(){
   </div>
   ${exportMenuHtml}
   <div style="padding:14px">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-    <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px">
-      <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">CARGO PARAMETERS — Select supply &amp; discharge port</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-        <div>
-          <span class="f-lbl">SUPPLY LOCATION</span>
-          <select class="f-sel" onchange="F.svOrig=this.value;renderFMain()">${SUPPLY.map(p=>`<option value="${p.id}"${F.svOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select>
-          <div style="margin-top:5px;display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:9px;color:#546e7a">RATE BAND</span>
-            <span style="font-size:10px;font-weight:700;color:${BC[curve]}">${curve} &larr; auto-detected</span>
-          </div>
-        </div>
-        <div>
-          <span class="f-lbl">DISCHARGE PORT</span>
-          <select class="f-sel" onchange="F.svDisch=this.value;renderFMain()">${allD().map(p=>`<option value="${p.id}"${F.svDisch===p.id?' selected':''}>${p.name}</option>`).join('')}</select>
-          <div style="margin-top:5px;display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:9px;color:#546e7a">RATE BAND</span>
-            <span style="font-size:10px;font-weight:700;color:${BC[curve]}">${curve} &larr; auto from FC</span>
-          </div>
+  <!-- ═══ INPUTS ═══ -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+    <span style="font-size:9px;letter-spacing:3px;font-weight:700;color:#4fc3f7">INPUTS</span>
+    <span style="flex:1;height:1px;background:linear-gradient(90deg,#4fc3f7 0%,transparent 100%)"></span>
+  </div>
+
+  <!-- ① CARGO PARAMETERS -->
+  <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px;margin-bottom:12px">
+    <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">① CARGO PARAMETERS — Supply · Discharge · Timing · Output Range</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
+      <div>
+        <span class="f-lbl">SUPPLY LOCATION</span>
+        <select class="f-sel" onchange="F.svOrig=this.value;renderFMain()">${SUPPLY.map(p=>`<option value="${p.id}"${F.svOrig===p.id?' selected':''}>${p.name}</option>`).join('')}</select>
+        <div style="margin-top:5px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:9px;color:#546e7a">RATE BAND</span>
+          <span style="font-size:10px;font-weight:700;color:${BC[curve]}">${curve}</span>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div><span class="f-lbl">PRICING MONTH</span><select class="f-sel" onchange="F.svMi=+this.value;renderFMain()">${ML.map((m,i)=>`<option value="${i}"${F.svMi===i?' selected':''}>${m}</option>`).join('')}</select></div>
-        <div><span class="f-lbl">LOAD DATE</span><input class="f-inp" type="date" value="${F.svLoadDate}" onchange="F.svLoadDate=this.value;renderFMain()"></div>
+      <div>
+        <span class="f-lbl">DISCHARGE PORT</span>
+        <select class="f-sel" onchange="F.svDisch=this.value;renderFMain()">${allD().map(p=>`<option value="${p.id}"${F.svDisch===p.id?' selected':''}>${p.name}</option>`).join('')}</select>
+        <div style="margin-top:5px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:9px;color:#546e7a">EU ETS</span>
+          <span style="font-size:10px;font-weight:700;color:${dp.euEts?'#ffb74d':'#546e7a'}">${dp.euEts?'YES':'NO'}</span>
+        </div>
+      </div>
+      <div>
+        <span class="f-lbl">PRICING MONTH</span>
+        <select class="f-sel" onchange="F.svMi=+this.value;F.svRangeFrom=null;F.svRangeTo=null;F.svDesOverride=null;renderFMain()">${ML.map((m,i)=>`<option value="${i}"${F.svMi===i?' selected':''}>${m}</option>`).join('')}</select>
+      </div>
+      <div>
+        <span class="f-lbl">LOAD DATE</span>
+        <input class="f-inp" type="date" value="${F.svLoadDate}" onchange="F.svLoadDate=this.value;renderFMain()">
       </div>
     </div>
-    <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px">
-      <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">VOYAGE DETAILS</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
-        ${[
-          ['Laden Distance (NM)',nm?nm.toLocaleString():'-','NM'],
-          ['Total Voyage Days',nm?totalDays:'-','days'],
-          ['Laden Transit Days',nm?voyDays:'-','days'],
-          ['Load Date',F.svLoadDate||'-',''],
-          ['Est. Discharge Date',dischDate,''],
-          ['Load Port Cost ($)',sp.loadCost.toLocaleString(),'$'],
-          ['Discharge Port Cost ($)',dp.dischCost.toLocaleString(),'$'],
-          ['EU ETS Applicable',dp.euEts?'YES':'NO',''],
-          ['Ship Loaded (Mmbtu)',nm?Math.round(loaded).toLocaleString():'-','Mmbtu'],
-          ['BOG Loss (Mmbtu)',nm?bogLoss.toLocaleString():'-','Mmbtu'],
-          ['Est. Discharge Qty (Mmbtu)',nm?estDisch.toLocaleString():'-','Mmbtu','hl'],
-        ].map(([l,v,u,hl])=>`
-          <div style="font-size:9px;color:#546e7a;padding:4px 0;border-bottom:1px solid #0d1526">${l}</div>
-          <div style="font-size:10px;padding:4px 0;border-bottom:1px solid #0d1526;text-align:right;font-weight:${hl?'700':'400'};color:${hl?'#4fc3f7':l.includes('BOG')?'#f44336':l.includes('Discharge Date')?'#81c784':'#c8d6e5'}">${v}${u?` <span style="color:#3d5070;font-size:9px">${u}</span>`:''}</div>
-        `).join('')}
-      </div>
+    <!-- Output range picker — drives how many months the monthly cost table
+         renders. Defaults to the pricing month → pricing month + 2 (a 3-month
+         window starting at the selected pricing month). Manual edits persist. -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed #1e3a5f">
+      <span style="font-size:9px;letter-spacing:1.5px;color:#546e7a;font-weight:700">OUTPUT RANGE</span>
+      <span style="font-size:9px;color:#8a9bb5">FROM</span>
+      <select class="f-sel" style="width:auto" onchange="F.svRangeFrom=+this.value;renderFMain()">${ML.map((m,i)=>`<option value="${i}"${svRangeFrom===i?' selected':''}>${m}</option>`).join('')}</select>
+      <span style="font-size:9px;color:#8a9bb5">TO</span>
+      <select class="f-sel" style="width:auto" onchange="F.svRangeTo=+this.value;renderFMain()">${ML.map((m,i)=>`<option value="${i}"${svRangeTo===i?' selected':''}>${m}</option>`).join('')}</select>
+      <span style="flex:1"></span>
+      ${[[3,'3M'],[6,'6M'],[12,'12M'],[24,'All']].map(([n,l])=>{
+        const active=(svRangeTo-svRangeFrom+1)===Math.min(n,24-svRangeFrom);
+        return `<button class="f-btn sm${active?' on':''}" onclick="F.svRangeTo=Math.min(F.svRangeFrom+${n-1},23);renderFMain()">${l}</button>`;
+      }).join('')}
     </div>
   </div>
+
+  <!-- ② VOYAGE PARAMETERS (time + commercial knobs for this voyage) -->
   <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px;margin-bottom:12px">
     <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5;display:flex;justify-content:space-between;align-items:center">
-      <span>VESSEL PARAMETERS (from local params — edits do not affect the matrix)</span>
+      <span>② VOYAGE PARAMETERS</span>
       <div style="display:flex;gap:6px">
         <button class="f-btn sm${p.cooldownEnabled?' on':''}" onclick="F.svParams.cooldownEnabled=!F.svParams.cooldownEnabled;renderFMain()">COOLDOWN ${p.cooldownEnabled?'ON':'OFF'}</button>
         <button class="f-btn sm${p.gasUpEnabled?' on':''}" onclick="F.svParams.gasUpEnabled=!F.svParams.gasUpEnabled;renderFMain()">GAS UP ${p.gasUpEnabled?'ON':'OFF'}</button>
-        <button class="f-btn sm" onclick="F.svParams={...F.params};renderFMain()">RESET TO SAVED</button>
+        <button class="f-btn sm" onclick="F.svParams={...F.params,etsCoverage:1};renderFMain()">RESET TO SAVED</button>
       </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-top:4px">
+      <div>
+        ${svp('loadTimeDays','Load Port Days',0.25)}
+        ${svp('dischargeDays','Discharge Port Days',0.25)}
+        ${svp('bufferDays','Buffer Days',0.25)}
+        ${svp('gasUpDays','Gas-Up Days',0.25)}
+        ${svp('cooldownDays','Cooldown Days',0.25)}
+      </div>
+      <div>
+        ${svpEua(2026)}
+        ${svpEua(2027)}
+        ${svpEua(2028)}
+        ${svp('eurUsd','EUR/USD',0.01)}
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ VESSEL PARAMETERS (ship + fuel + emissions — mostly defaults) -->
+  <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px;margin-bottom:12px">
+    <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5;display:flex;justify-content:space-between;align-items:center">
+      <span>③ VESSEL PARAMETERS (local — edits don't affect the matrix)</span>
+      <button class="f-btn sm" onclick="F.svParams={...F.params,etsCoverage:1};renderFMain()">RESET TO SAVED</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-top:4px">
       <div>
         ${svp('shipSize','Ship Size (m3)',1000)}
         ${svp('energyFactor','Energy Factor (Mmbtu/m3)',0.01)}
         ${svp('loadFactor','Load Factor (% of capacity)',0.1)}
+        ${svp('bogRate','BOG Rate (%/day)',0.01)}
         ${svp('hfoLaden','Laden HFO (tns/day)',1)}
+        ${svp('hfoBallast','Ballast HFO (tns/day)',1)}
         ${svp('lsmgoLaden','Laden LSMGO (tns/day)',0.5)}
+        ${svp('lsmgoBallast','Ballast LSMGO (t/d)',0.5)}
         ${svp('lsmgoDischarge','Discharge LSMGO (t/d)',0.5)}
+        ${svp('pilotFuel','Pilot Fuel (tns)',0.5)}
         ${svp('hfoPrice','HFO Price ($/tn)',10)}
-        ${svp('loadTimeDays','Load Port Days',0.25)}
-        ${svp('gasUpDays','Gas-Up Days',0.25)}
-        ${svp('bufferDays','Buffer Days',0.25)}
-        ${svpPct('etsCoverage','EU ETS Coverage (%) — 100% EU+UK',1)}
-        ${svp('cooldownDays','Cooldown Days',0.25)}
-        ${svp('heelVolume','Heel Retention (m3)',100)}
-        ${svp('heelCost','Heel Cost ($/m3)',0.5)}
+        ${svp('lsmgoPrice','LSMGO Price ($/tn)',10)}
       </div>
       <div>
         ${svp('speedLaden','Speed Laden (knots)',0.5)}
         ${svp('speedBallast','Speed Ballast (knots)',0.5)}
-        ${svp('bogRate','BOG Rate (%/day)',0.01)}
-        ${svp('hfoBallast','Ballast HFO (tns/day)',1)}
-        ${svp('lsmgoBallast','Ballast LSMGO (t/d)',0.5)}
-        ${svp('pilotFuel','Pilot Fuel (tns)',0.5)}
-        ${svp('lsmgoPrice','LSMGO Price ($/tn)',10)}
-        ${svp('dischargeDays','Discharge Port Days',0.25)}
+        ${svp('heelVolume','Heel Retention (m3)',100)}
+        ${svp('heelCost','Heel Cost ($/m3)',0.5)}
         ${svp('warRisk','War Risk ($/day)',1)}
         ${svp('suezCanal','Suez Canal Toll ($)',1000)}
         ${svp('panamaCanal','Panama Canal Toll ($)',1000)}
-        ${svpEua(2026)}
-        ${svpEua(2027)}
-        ${svpEua(2028)}
-        ${svp('eurUsd','EUR/USD',0.01)}
         ${svp('co2Hfo','CO2 Factor HFO',0.001)}
         ${svp('co2Mgo','CO2 Factor LSMGO',0.001)}
       </div>
     </div>
   </div>
+
+  <!-- ④ FREIGHT CURVES -->
   <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px;margin-bottom:12px">
     <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5;display:flex;justify-content:space-between;align-items:center">
-      <span>FREIGHT CURVES — LOCAL ($/day · Pos% · Repo% — active curve: <span style="color:${BC[curve]}">${curve}</span>)</span>
+      <span>④ FREIGHT CURVES — LOCAL ($/day · Pos% · Repo% — active curve: <span style="color:${BC[curve]}">${curve}</span>)</span>
       <button class="f-btn sm" onclick="F.svBlng=JSON.parse(JSON.stringify(F.blng));F.svPosArr=JSON.parse(JSON.stringify(F.posArr));F.svRepoArr=JSON.parse(JSON.stringify(F.repoArr));renderFMain()">RESET TO SAVED</button>
     </div>
     <div style="overflow-x:auto"><table class="f-tbl"><thead>
@@ -6516,9 +6596,80 @@ function renderSV(){
     }).join('')}
     </tbody></table></div>
   </div>
+
+  <!-- ═══ OUTPUTS ═══ -->
+  <div style="display:flex;align-items:center;gap:8px;margin:16px 0 8px">
+    <span style="font-size:9px;letter-spacing:3px;font-weight:700;color:#81c784">OUTPUTS</span>
+    <span style="flex:1;height:1px;background:linear-gradient(90deg,#81c784 0%,transparent 100%)"></span>
+  </div>
+
+  <!-- ⑤ VOYAGE DETAILS — three equal-width sub-cards -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+    <!-- ⑤a DISTANCE & TIME -->
+    <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px">
+      <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 10px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">⑤a DISTANCE &amp; TIME</div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:10px">
+        <div style="color:#546e7a">Laden distance</div><div style="text-align:right;color:#c8d6e5">${nm?nm.toLocaleString():'-'} <span style="color:#3d5070;font-size:9px">NM</span></div>
+        <div style="color:#546e7a">Laden days</div><div style="text-align:right;color:#c8d6e5">${nm?voyDays:'-'} <span style="color:#3d5070;font-size:9px">d</span></div>
+        <div style="color:#546e7a">Ballast days</div><div style="text-align:right;color:#c8d6e5">${nm?ballastDays:'-'} <span style="color:#3d5070;font-size:9px">d</span></div>
+        <div style="color:#546e7a">Total voyage days</div><div style="text-align:right;color:#4fc3f7;font-weight:700">${nm?totalDays:'-'} <span style="color:#3d5070;font-size:9px">d</span></div>
+        <div style="color:#546e7a">Load date</div><div style="text-align:right;color:#c8d6e5">${F.svLoadDate||'-'}</div>
+        <div style="color:#546e7a">Est. discharge</div><div style="text-align:right;color:#81c784">${dischDate}</div>
+      </div>
+    </div>
+    <!-- ⑤b QUANTITY -->
+    <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px">
+      <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 10px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">⑤b QUANTITY</div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:10px">
+        <div style="color:#546e7a">Ship loaded</div><div style="text-align:right;color:#c8d6e5">${nm?Math.round(loaded).toLocaleString():'-'} <span style="color:#3d5070;font-size:9px">MMBtu</span></div>
+        <div style="color:#546e7a">Laden BOG</div><div style="text-align:right;color:#f87171">${nm?bogLoss.toLocaleString():'-'} <span style="color:#3d5070;font-size:9px">MMBtu</span></div>
+        <div style="color:#546e7a">Ballast BOG</div><div style="text-align:right;color:#f87171">${nm?ballastBOG.toLocaleString():'-'} <span style="color:#3d5070;font-size:9px">MMBtu</span></div>
+        <div style="color:#546e7a;font-weight:700">EDQ</div><div style="text-align:right;color:#4fc3f7;font-weight:700">${nm?estDisch.toLocaleString():'-'} <span style="color:#3d5070;font-size:9px">MMBtu</span></div>
+        <div style="color:#546e7a">EU ETS</div><div style="text-align:right;color:${dp.euEts?'#ffb74d':'#546e7a'};font-weight:${dp.euEts?700:400}">${dp.euEts?'YES':'NO'}</div>
+      </div>
+    </div>
+    <!-- ⑤c PORT COSTS -->
+    <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px">
+      <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 10px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">⑤c PORT COSTS</div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:10px">
+        <div style="color:#546e7a">Load port</div><div style="text-align:right;color:#c8d6e5">$ ${sp.loadCost.toLocaleString()}</div>
+        <div style="color:#546e7a">Discharge port</div><div style="text-align:right;color:#c8d6e5">$ ${dp.dischCost.toLocaleString()}</div>
+        <div style="color:#546e7a;grid-column:1/3;border-top:1px dashed #1e3a5f;margin-top:4px;padding-top:4px"></div>
+        <div style="color:#546e7a;font-weight:700">Total ports</div><div style="text-align:right;color:#4fc3f7;font-weight:700">$ ${(sp.loadCost+dp.dischCost).toLocaleString()}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ FREIGHT SUMMARY — selected pricing month, with editable DES price and BOG math -->
+  <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px;margin-bottom:12px">
+    <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 10px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5;display:flex;justify-content:space-between;align-items:center">
+      <span>⑥ FREIGHT SUMMARY — PRICING MONTH <span style="color:#4fc3f7">${ML[mi]}</span></span>
+      <button class="f-btn sm" onclick="F.svDesOverride=null;renderFMain()" title="Reset DES price to auto">↺ AUTO DES</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;padding:4px 2px;font-size:11px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#546e7a">Total voyage cost</span><span style="color:#c8d6e5;font-weight:700">${rSel?('$ '+Math.round(rSel.total).toLocaleString()):'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#546e7a">Unit Freight (excl. BOG)</span><span style="color:#c8d6e5;font-weight:700">${selUnitExcl!=null?selUnitExcl.toFixed(4):'—'} <span style="color:#3d5070;font-size:9px">$/MMBtu</span></span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;grid-column:1/3;border-top:1px dashed #1e3a5f;padding-top:8px;margin-top:2px">
+        <span style="color:#546e7a">DES price for BOG valuation</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <input class="f-inp" type="number" step="0.01" style="width:96px;text-align:right;color:#d4e157" value="${svDesPrice!=null?svDesPrice.toFixed(3):''}" placeholder="auto" onchange="F.svDesOverride=this.value===''?null:+this.value;renderFMain()">
+          <span style="color:#3d5070;font-size:9px">$/MMBtu ${F.svDesOverride==null?'(auto · d.des.'+(_svDesKeyMap[F.svDisch]||'?')+')':'(override)'}</span>
+        </span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#546e7a">Boil-off Cost at DES</span><span style="color:#f87171;font-weight:500">${selBogCost!=null?('$ '+Math.round(selBogCost).toLocaleString()):'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#546e7a">Boil-off Unit Freight</span><span style="color:#f87171">${selBogUnit!=null?selBogUnit.toFixed(4):'—'} <span style="color:#3d5070;font-size:9px">$/MMBtu</span></span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;grid-column:1/3;border-top:1px solid #4fc3f7;padding-top:8px;margin-top:2px;background:#071a2b;margin-left:-12px;margin-right:-12px;padding-left:12px;padding-right:12px;padding-bottom:6px">
+        <span style="color:#c8d6e5;font-weight:700;letter-spacing:.5px">FREIGHT INCL. BOG</span>
+        <span style="color:#4fc3f7;font-weight:700;font-size:14px">${selUnitIncl!=null?selUnitIncl.toFixed(4):'—'} <span style="color:#3d5070;font-size:9px">$/MMBtu</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑦ MONTHLY VOYAGE COST TABLE — filtered by range picker from ① -->
   <div style="background:#0a1628;border:1px solid #1e3a5f;padding:12px">
-    <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5">
-      FREIGHT COST BY DELIVERY MONTH — All parameters from Freight Rates Parameters &amp; Freight Curves above
+    <div style="background:#1a3a6b;padding:5px 10px;margin:-12px -12px 12px;font-size:9px;letter-spacing:2px;font-weight:700;color:#c8d6e5;display:flex;justify-content:space-between;align-items:center">
+      <span>⑦ MONTHLY VOYAGE COST — ${ML[svRangeFrom]} → ${ML[svRangeTo]} (${svRangeTo-svRangeFrom+1} months)</span>
+      <span style="color:#546e7a;font-size:9px;font-weight:400">Change range above in ① Cargo Parameters</span>
     </div>
     <div style="overflow-x:auto;margin-top:4px"><table class="f-tbl"><thead>
       <tr>
@@ -6534,9 +6685,14 @@ function renderSV(){
         <th class="tr" style="min-width:52px;color:#ffb74d">ETS $</th>
         <th class="tr" style="min-width:48px">HEEL $</th>
         <th class="tr" style="min-width:86px;font-weight:700">TOTAL VOY $</th>
-        <th class="tr" style="min-width:82px;font-weight:700">UNIT $/MMBtu</th>
+        <th class="tr" style="min-width:92px;font-weight:700">UNIT EXCL-BOG</th>
+        <th class="tr" style="min-width:82px;color:#ef9a9a">BOG UNIT</th>
+        <th class="tr" style="min-width:92px;font-weight:700">INCL-BOG</th>
       </tr>
     </thead><tbody>${tableRows}</tbody></table></div>
+    <div style="font-size:9px;color:#3d5070;margin-top:6px;padding-top:6px;border-top:1px dashed #1e3a5f">
+      Unit excl. BOG = Total voyage $ / EDQ &nbsp;·&nbsp; BOG unit = (Laden BOG + Ballast BOG) × DES / EDQ &nbsp;·&nbsp; Incl. BOG = Unit excl. + BOG unit
+    </div>
   </div>
   </div>`;
 }
