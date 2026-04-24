@@ -10,11 +10,11 @@
     "Nybro": 19.0,
     "Dunkerque": 49.4,
     "Zeebrugge": 43.7,
-    "Easington": 30.5
+    "Easington": 30.4
   },
   "today_total_mcm": 302.1,
   "_meta": {
-    "updated": "2026-04-24T18:09:26Z",
+    "updated": "2026-04-24T20:19:58Z",
     "source": "gassco homepage scrape"
   }
 }
