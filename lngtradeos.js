@@ -8713,25 +8713,16 @@ function cpDerived(){
   const phyAli     =ML.map((_,i)=>withOv('ali',     termFr('ali',i),     i)); // no premium — Turkish terminal
   const phySwino   =ML.map((_,i)=>withOv('swino',   termFr('swinoujscie',i)+0.02,i)); // +$0.02: ice/pilotage premium
   // ── South America (Brazil + Argentina) — FOB-netback from USGC ──────────────
-  // For each month: compute FOB netback (vs TTF) from Sabine Pass across all known
-  // TTF-linked destinations, take the best, then add the Sabine→destination freight.
-  // Formula: phyDest = best_USGC_netback_vs_TTF + freight.sabine_<dest>
-  // Fallback if sabine_guanabara / sabine_escobar absent in CP.freight: use angola_dahej
-  // ratio as coarse proxy. User can always override per cell.
+  // Argentina/Brazil parity uses a SINGLE European reference: Italy.
+  // Ain Sukhna (Egypt premium) and all other destinations are excluded —
+  // they distorted the max. Asia is also not a competitor because shipping
+  // Sabine → South America uses Atlantic routing, not COGH/PC to Asia.
+  // Formula: phyDest = italy_netback_vs_TTF + freight.sabine_<dest>
   function _usgcBestNetbackVsTtf(i){
-    const cands = [
-      phys.nwe[i]       - (freight.sabine_rotterdam?.[i]      ?? 0),
-      phys.iberia[i]    - (freight.sabine_iberia?.[i]         ?? freight.sabine_rotterdam?.[i] ?? 0),
-      phyItaly[i]       - (freight.sabine_rovigo?.[i]         ?? freight.sabine_rotterdam?.[i] * 1.10 ?? 0),
-      phyRev[i]         - (freight.sabine_rev?.[i]            ?? freight.sabine_rotterdam?.[i] * 1.15 ?? 0),
-      phyKrk[i]         - (freight.sabine_krk?.[i]            ?? freight.sabine_rotterdam?.[i] * 1.14 ?? 0),
-      phyAin[i]         - (freight.sabine_ain?.[i]            ?? freight.sabine_rotterdam?.[i] * 1.34 ?? 0),
-      phyAli[i]         - (freight.sabine_ali?.[i]            ?? freight.sabine_rotterdam?.[i] * 1.28 ?? 0),
-      phyKlaipeda[i]    - (freight.sabine_klaipeda?.[i]       ?? freight.sabine_rotterdam?.[i] * 1.17 ?? 0),
-      phyInkoo[i]       - (freight.sabine_inkoo?.[i]          ?? freight.sabine_rotterdam?.[i] * 1.21 ?? 0),
-      phySwino[i]       - (freight.sabine_swinoujscie?.[i]    ?? freight.sabine_rotterdam?.[i] * 1.13 ?? 0),
-    ].filter(v => v != null && !isNaN(v));
-    return cands.length ? Math.max.apply(null, cands) : null;
+    const fr = freight.sabine_rovigo?.[i] ?? (freight.sabine_rotterdam?.[i] != null ? freight.sabine_rotterdam[i] * 1.10 : null);
+    const phy = phyItaly[i];
+    if(phy == null || fr == null || isNaN(phy) || isNaN(fr)) return null;
+    return phy - fr;
   }
   const phyBrazil = ML.map((_,i) => {
     const nb = _usgcBestNetbackVsTtf(i);
@@ -9466,38 +9457,6 @@ function cpGlobalArb(d){
     }
   }
 
-  let gSpark='';
-  if(gr1){
-    const series = MONTHS12.map((_,i)=>gr1.arr[i]);
-    const xs = series.filter(v=>v!=null);
-    if(xs.length>1){
-      const mn=Math.min(...xs,0), mx=Math.max(...xs,0);
-      const W=520,H=78,PL=30,PR=8,PT=10,PB=18;
-      const xS=i=>PL+(W-PL-PR)*(i/(series.length-1));
-      const yS=v=>H-PB-((v-mn)/((mx-mn)||1))*(H-PT-PB);
-      const zeroY=yS(0);
-      const pts=series.map((v,i)=>v==null?null:`${xS(i).toFixed(1)},${yS(v).toFixed(1)}`).filter(Boolean).join(' ');
-      const col=DEST_COL[gr1.dk]||'#c8d6e5';
-      const ticks=[0,3,6,9,Math.min(11,series.length-1)].map(i=>`<text x="${xS(i).toFixed(1)}" y="${H-PB+10}" fill="#546e7a" font-size="8" text-anchor="middle">${MONTHS12[i]||''}</text>`).join('');
-      const yLabels=[mn,mx].map(v=>`<text x="${PL-3}" y="${(yS(v)+3).toFixed(1)}" fill="#546e7a" font-size="8" text-anchor="end">${v>=0?'+':''}${v.toFixed(2)}</text>`).join('');
-      gSpark=`
-      <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:8px">
-        <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">12M TREND — #1 ROUTE</span>
-        <span style="color:#3d5070">—</span>
-        <span style="color:${col};font-size:9px;font-weight:700">${gr1.label}</span>
-      </div>
-      <div style="padding:6px 14px 14px">
-        <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block" font-family="IBM Plex Mono,monospace">
-          <line x1="${PL}" x2="${W-PR}" y1="${zeroY.toFixed(1)}" y2="${zeroY.toFixed(1)}" stroke="#1e3a5f" stroke-width="0.5" stroke-dasharray="3,3"/>
-          ${yLabels}
-          <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linejoin="round"/>
-          ${series.map((v,i)=>v==null?'':`<circle cx="${xS(i).toFixed(1)}" cy="${yS(v).toFixed(1)}" r="${i===selM?3:2}" fill="${i===selM?'#ffd54f':col}"/>`).join('')}
-          ${ticks}
-        </svg>
-      </div>`;
-    }
-  }
-
   return`
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FOB NETBACK IN</span>
@@ -9525,6 +9484,7 @@ function cpGlobalArb(d){
     <select class="f-sel" onchange="CP.selMonth=+this.value;renderCargoTab()">${vML().map((mo,i)=>`<option value="${i}"${i===selM?' selected':''}>${mo}</option>`).join('')}</select>
   </div>
   <div style="padding:12px 0">${rkHtml}</div>
+  ${gWhy}
   <style>.cp-popup .leaflet-popup-content-wrapper{background:#0d1e36;border:1px solid #1e3a5f;border-radius:2px;box-shadow:none}.cp-popup .leaflet-popup-tip{background:#0d1e36}.cp-tooltip{background:#070b14;border:1px solid #1e3a5f;color:#c8d6e5;font-family:IBM Plex Mono,monospace;font-size:10px;box-shadow:none}</style>`;
 }
 
@@ -9748,39 +9708,6 @@ function cpBasinTab(cfg,d){
     }
   }
 
-  // ── 12M sparkline for the currently-selected origin's #1 route ────────────
-  let sparkCard='';
-  if(best){
-    const series = M12.map((_,i)=>nbx(best.dt,i));
-    const xs = series.filter(v=>v!=null);
-    if(xs.length>1){
-      const mn=Math.min(...xs, 0), mx=Math.max(...xs, 0);
-      const W=460,H=70,PL=28,PR=8,PT=8,PB=18;
-      const xS=i=>PL+(W-PL-PR)*(i/(series.length-1));
-      const yS=v=>H-PB-((v-mn)/((mx-mn)||1))*(H-PT-PB);
-      const zeroY=yS(0);
-      const pts=series.map((v,i)=>v==null?null:`${xS(i).toFixed(1)},${yS(v).toFixed(1)}`).filter(Boolean).join(' ');
-      const st=ts(best.dt.label);
-      const ticks=[0,3,6,9,Math.min(11,series.length-1)].map(i=>`<text x="${xS(i).toFixed(1)}" y="${H-PB+10}" fill="#546e7a" font-size="8" text-anchor="middle">${M12[i]||''}</text>`).join('');
-      const yLabels=[mn,mx].map(v=>`<text x="${PL-3}" y="${(yS(v)+3).toFixed(1)}" fill="#546e7a" font-size="8" text-anchor="end">${v>=0?'+':''}${v.toFixed(2)}</text>`).join('');
-      sparkCard=`
-      <div style="background:#070b14;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;padding:6px 14px;display:flex;align-items:center;gap:8px">
-        <span style="color:#546e7a;font-size:9px;font-weight:700;letter-spacing:1px">12M TREND — #1 ROUTE</span>
-        <span style="color:#3d5070">—</span>
-        <span style="color:${st.fg};font-size:9px;font-weight:700">${selOrg.label} → ${best.dt.label}</span>
-      </div>
-      <div style="padding:6px 14px 14px">
-        <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block" font-family="IBM Plex Mono,monospace">
-          <line x1="${PL}" x2="${W-PR}" y1="${zeroY.toFixed(1)}" y2="${zeroY.toFixed(1)}" stroke="#1e3a5f" stroke-width="0.5" stroke-dasharray="3,3"/>
-          ${yLabels}
-          <polyline points="${pts}" fill="none" stroke="${st.fg}" stroke-width="1.8" stroke-linejoin="round"/>
-          ${series.map((v,i)=>v==null?'':`<circle cx="${xS(i).toFixed(1)}" cy="${yS(v).toFixed(1)}" r="${i===m?3:2}" fill="${i===m?'#ffd54f':st.fg}"/>`).join('')}
-          ${ticks}
-        </svg>
-      </div>`;
-    }
-  }
-
   return`
   <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:7px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FOB NETBACK IN</span>${idxBtns}
@@ -9817,8 +9744,7 @@ function cpBasinTab(cfg,d){
     <th style="min-width:20px">#</th><th style="min-width:145px">TERMINAL</th>
     <th class="tr">DES price</th><th class="tr">Freight</th><th class="tr">${idxLbl}</th><th class="tr">FOB netback</th>
   </tr></thead><tbody>${dtRows}</tbody></table></div>
-  ${whyCard}
-  ${sparkCard}`;
+  ${whyCard}`;
 }
 
 
