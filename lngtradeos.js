@@ -7538,6 +7538,176 @@ function renderHistorical(){
     <div style="font-size:8px;color:#3d5070;margin-top:6px">${n} observation dates · independent contract selectors · Pearson r: -1=inverse, 0=no link, +1=direct</div>`;
   }
 
+  // ── ① HISTORICAL · rolling time-series with Financial-style stats panel ──
+  // Two instrument+tenor pickers, range presets, line chart, stats table.
+  function histSeriesView(){
+    if(!hasCurves) return '';
+    const sorted=[...curves].sort((a,b)=>a.date.localeCompare(b.date));
+    const n=sorted.length;
+    const BLNGS=['BLNG1','BLNG2','BLNG3'];
+    const range = F.histSerRange || 'ALL';
+    // Date-range filter: cut the snapshot list by the number of months specified.
+    // ALL = every snapshot. YTD = snapshots in current calendar year.
+    const now=new Date();
+    const filter = ds => {
+      const d=new Date(ds);
+      if(range==='ALL') return true;
+      if(range==='YTD') return d.getFullYear()===now.getFullYear();
+      const months = {'1M':1,'3M':3,'6M':6,'1Y':12}[range];
+      if(!months) return true;
+      const cut=new Date(now); cut.setMonth(cut.getMonth()-months);
+      return d>=cut;
+    };
+    const series1Inst = F.histSerI1 || 'BLNG2';
+    const series2Inst = F.histSerI2 || 'none';
+    const tenor1      = F.histSerT1==null ? 0 : +F.histSerT1;
+    const tenor2      = F.histSerT2==null ? 0 : +F.histSerT2;
+    // Pull values for a given BLNG × tenor across the filtered snapshot list.
+    const pull = (inst, tenor) => sorted.filter(s=>filter(s.date)).map(s=>({
+      date: s.date,
+      v: s.blng?.[inst]?.[tenor] ?? null,
+    }));
+    const s1 = pull(series1Inst, tenor1);
+    const s2 = series2Inst==='none' ? null : pull(series2Inst, tenor2);
+    const stats = vals => {
+      const x = vals.filter(v=>v!=null&&!isNaN(v));
+      if(!x.length) return null;
+      const s=[...x].sort((a,b)=>a-b);
+      const mean = x.reduce((a,b)=>a+b,0)/x.length;
+      const pct = q => { const i=(s.length-1)*q; const lo=Math.floor(i), hi=Math.ceil(i); return s[lo] + (s[hi]-s[lo])*(i-lo); };
+      const sd = Math.sqrt(x.reduce((a,b)=>a+(b-mean)**2,0)/Math.max(x.length-1,1));
+      return {
+        n:x.length, current:x[x.length-1], mean, median:pct(0.5), sd,
+        min:s[0], p5:pct(0.05), p25:pct(0.25), p75:pct(0.75), p95:pct(0.95), max:s[s.length-1],
+      };
+    };
+    const st1 = stats(s1.map(d=>d.v));
+    const st2 = s2 ? stats(s2.map(d=>d.v)) : null;
+    const bBtns = id => BLNGS.map(b=>`<button class="f-btn sm${(id==='i1'?series1Inst:series2Inst)===b?' on':''}" onclick="F.${id==='i1'?'histSerI1':'histSerI2'}='${b}';document.getElementById('f-hist-body').innerHTML=renderHistorical()">${b}</button>`).join('');
+    const tSel = (id,val) => `<select class="f-sel" style="min-width:90px" onchange="F.${id==='t1'?'histSerT1':'histSerT2'}=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">${ML.map((m,i)=>`<option value="${i}"${i===+val?' selected':''}>${m}</option>`).join('')}</select>`;
+    const rangeBtns = ['1M','3M','6M','YTD','1Y','ALL'].map(r=>`<button class="f-btn sm${range===r?' on':''}" onclick="F.histSerRange='${r}';document.getElementById('f-hist-body').innerHTML=renderHistorical()">${r}</button>`).join('');
+    // Chart data
+    const labels = s1.map(d=>d.date.slice(5));
+    const lineData = [];
+    lineData.push({ name:`${series1Inst} ${ML[tenor1]}`, color:BC[series1Inst]||'#4fc3f7', values:s1.map(d=>d.v) });
+    if(s2) lineData.push({ name:`${series2Inst} ${ML[tenor2]}`, color:BC[series2Inst]||'#ffb74d', values:s2.map(d=>d.v) });
+    // Inline chart renderer (independent of histView's mkChart; passes its
+    // own labels so it works outside that scope).
+    const chart = (()=>{
+      const vals = lineData.flatMap(d=>d.values.filter(v=>v!=null));
+      if(vals.length<2) return `<div style="height:220px;display:flex;align-items:center;justify-content:center;color:#3d5070;font-size:10px;border:1px dashed #1e3a5f">No data in this window — widen the range or pick a different tenor</div>`;
+      const id=`hs_${Math.random().toString(36).slice(2,8)}`;
+      const datasets = lineData.map(s=>{
+        const h=s.color; const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);
+        return {
+          label: s.name,
+          data: s.values.map((v,i)=>({x:labels[i], y:v})),
+          borderColor: s.color,
+          backgroundColor: `rgba(${r},${g},${b},0.08)`,
+          pointBackgroundColor: s.color,
+          pointRadius: s.values.map(v=>v!=null?2.5:0),
+          pointHoverRadius: 5,
+          borderWidth: 1.8, tension: 0.3, spanGaps: false,
+        };
+      });
+      return `
+        <div style="position:relative;height:260px;background:#070b14;border:1px solid #1e3a5f;padding:8px">
+          <canvas id="${id}"></canvas>
+        </div>
+        <script>(function(){
+          const el=document.getElementById('${id}'); if(!el||!window.Chart)return;
+          new Chart(el,{type:'line',
+            data:{labels:${JSON.stringify(labels)},datasets:${JSON.stringify(datasets)}},
+            options:{responsive:true,maintainAspectRatio:false,
+              interaction:{mode:'index',intersect:false},
+              plugins:{legend:{labels:{color:'#8a9bb5',font:{size:10,family:'IBM Plex Mono'},boxWidth:12}},
+                tooltip:{backgroundColor:'#0d1e36',borderColor:'#1e3a5f',borderWidth:1,titleColor:'#4fc3f7',bodyColor:'#c8d6e5',
+                  callbacks:{label:ctx=>ctx.parsed.y==null?null:ctx.dataset.label+': '+ctx.parsed.y.toLocaleString()+' $/day'}}},
+              scales:{
+                x:{grid:{color:'#0f2035'},ticks:{color:'#546e7a',font:{size:9,family:'IBM Plex Mono'},maxTicksLimit:8,maxRotation:0}},
+                y:{grid:{color:'#0f2035'},ticks:{color:'#546e7a',font:{size:9,family:'IBM Plex Mono'},
+                  callback:v=>Math.abs(v)>=1000?(v/1000).toFixed(v%1000===0?0:1)+'k':v.toFixed(0)}}
+              }
+            }
+          });
+        })();<\/script>`;
+    })();
+    // Stats table
+    const row = (label, st, color) => {
+      if(!st) return `<tr><td style="color:${color};font-weight:700">${label}</td>${Array(11).fill('<td class="tr" style="color:#3d5070">—</td>').join('')}</tr>`;
+      const f = v => v==null?'—':Math.round(v).toLocaleString();
+      const z = (st.current - st.mean) / (st.sd || 1);
+      const zCol = Math.abs(z)>2 ? '#f87171' : Math.abs(z)>1 ? '#ffb74d' : '#81c784';
+      return `<tr>
+        <td style="color:${color};font-weight:700">${label}</td>
+        <td class="tr" style="color:#c8d6e5;font-weight:700">${f(st.current)}</td>
+        <td class="tr">${f(st.mean)}</td>
+        <td class="tr">${f(st.median)}</td>
+        <td class="tr">${f(st.sd)}</td>
+        <td class="tr">${f(st.min)}</td>
+        <td class="tr">${f(st.p5)}</td>
+        <td class="tr">${f(st.p25)}</td>
+        <td class="tr">${f(st.p75)}</td>
+        <td class="tr">${f(st.p95)}</td>
+        <td class="tr">${f(st.max)}</td>
+        <td class="tr" style="color:${zCol};font-weight:700">${z.toFixed(2)}</td>
+        <td class="tr" style="color:#546e7a">${st.n}</td>
+      </tr>`;
+    };
+    const statsTbl = `
+      <div style="overflow-x:auto;margin-top:14px"><table class="f-tbl"><thead>
+        <tr>
+          <th style="min-width:120px">SERIES</th>
+          <th class="tr">CURRENT</th><th class="tr">MEAN</th><th class="tr">MEDIAN</th><th class="tr">STD DEV</th>
+          <th class="tr">MIN</th><th class="tr">P5</th><th class="tr">P25</th><th class="tr">P75</th><th class="tr">P95</th><th class="tr">MAX</th>
+          <th class="tr">Z-SCORE</th><th class="tr">N</th>
+        </tr>
+      </thead><tbody>
+        ${row(`${series1Inst} · ${ML[tenor1]}`, st1, BC[series1Inst]||'#4fc3f7')}
+        ${s2 ? row(`${series2Inst} · ${ML[tenor2]}`, st2, BC[series2Inst]||'#ffb74d') : ''}
+      </tbody></table></div>
+      <div style="font-size:8px;color:#3d5070;margin-top:6px">All values $/day · N = non-null snapshots in window · Z-score = (Current − Mean) / Std Dev</div>
+    `;
+    return `
+    <div style="background:#071a2b;border:1px solid #1e3a5f;padding:10px 14px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1fr auto;gap:10px 16px;align-items:end">
+      <div>
+        <span class="f-lbl" style="color:#546e7a">SERIES 1</span>
+        <div style="display:flex;gap:5px;margin-top:4px;align-items:center">${bBtns('i1')} ${tSel('t1',tenor1)}</div>
+      </div>
+      <div>
+        <span class="f-lbl" style="color:#546e7a">SERIES 2 (optional)</span>
+        <div style="display:flex;gap:5px;margin-top:4px;align-items:center">
+          <button class="f-btn sm${series2Inst==='none'?' on':''}" onclick="F.histSerI2='none';document.getElementById('f-hist-body').innerHTML=renderHistorical()">none</button>
+          ${bBtns('i2')} ${series2Inst!=='none'?tSel('t2',tenor2):''}
+        </div>
+      </div>
+      <div style="text-align:right">
+        <span class="f-lbl" style="color:#546e7a">DATE RANGE</span>
+        <div style="display:flex;gap:4px;margin-top:4px">${rangeBtns}</div>
+      </div>
+    </div>
+    ${chart}
+    ${statsTbl}
+    `;
+  }
+
+  // ── ② SPREAD · time-series of BLNGx − BLNGy for a chosen tenor ──
+  function histSpreadView(){
+    return `<div style="background:#0a1628;border:1px dashed #1e3a5f;padding:24px;text-align:center">
+      <div style="color:#546e7a;font-size:10px;letter-spacing:1px;margin-bottom:6px">SPREAD VIEW — COMING NEXT</div>
+      <div style="color:#3d5070;font-size:9px">BLNG1 − BLNG2 · BLNG1 − BLNG3 · BLNG2 − BLNG3 historical spread charts.</div>
+    </div>`;
+  }
+
+  // ── ④ FREIGHT vs BASIS · JKM−TTF history above, BLNG1/2/3 history below,
+  // both for the same contract month so you can eye the arb evolution.
+  function histVsBasisView(){
+    return `<div style="background:#0a1628;border:1px dashed #1e3a5f;padding:24px;text-align:center">
+      <div style="color:#546e7a;font-size:10px;letter-spacing:1px;margin-bottom:6px">FREIGHT vs BASIS — COMING NEXT</div>
+      <div style="color:#3d5070;font-size:9px">Two stacked charts: JKM−TTF above, BLNG1/2/3 below, linked by a contract-month dropdown.</div>
+    </div>`;
+  }
+
   // ── MAIN RENDER ───────────────────────────────────────────────────────────
   return`
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
@@ -7574,12 +7744,23 @@ function renderHistorical(){
   ${hasCurves
     ?`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
         <div style="background:#071a2b;border:1px solid #1e3a5f;padding:4px;display:inline-flex;gap:0;border-radius:2px">
-          <button class="f-tab${F.histView==='forward'?' active':''}" style="padding:6px 14px;font-size:9px;letter-spacing:1px" onclick="F.histView='forward';document.getElementById('f-hist-body').innerHTML=renderHistorical()">FORWARD CURVE BY DATE</button>
-          <button class="f-tab${F.histView==='historical'?' active':''}" style="padding:6px 14px;font-size:9px;letter-spacing:1px" onclick="F.histView='historical';document.getElementById('f-hist-body').innerHTML=renderHistorical()">HISTORICAL RATE BY MONTH</button>
+          ${[
+            ['historical','① HISTORICAL'],
+            ['spread','② SPREAD'],
+            ['forward','③ FORWARD CURVE'],
+            ['vsbasis','④ FREIGHT vs BASIS'],
+          ].map(([k,l])=>`<button class="f-tab${(F.histView||'historical')===k?' active':''}" style="padding:6px 14px;font-size:9px;letter-spacing:1px" onclick="F.histView='${k}';document.getElementById('f-hist-body').innerHTML=renderHistorical()">${l}</button>`).join('')}
         </div>
         <span style="font-size:9px;color:#546e7a">${curves.length} observation dates in database</span>
       </div>
-      ${F.histView==='forward'?fwdView():histView()}`
+      ${(()=>{
+        const v=F.histView||'historical';
+        if(v==='forward')  return fwdView();
+        if(v==='historical') return histSeriesView();
+        if(v==='spread')   return histSpreadView();
+        if(v==='vsbasis')  return histVsBasisView();
+        return histSeriesView();
+      })()}`
     :`<div style="background:#0a1628;border:1px dashed #1e3a5f;padding:32px;text-align:center">
         <div style="color:#546e7a;font-size:10px;letter-spacing:1px;margin-bottom:8px">NO HISTORICAL CURVES LOADED</div>
         <div style="color:#3d5070;font-size:9px">Click "SCRAPE FROM GMAIL" to load all OB LNG EOD Curve emails, or "LOAD FROM DRIVE" to load from the LNG Freight Curves folder</div>
