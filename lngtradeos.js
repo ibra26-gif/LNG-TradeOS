@@ -10678,7 +10678,7 @@ window.syncEEX=syncEEX;
     // Bump this tag whenever the EEX parser, EEX_HUBS list, or
     // PUBLIC_STATE_KEYS membership changes, so existing viewers force a
     // fresh XLSX fetch instead of trusting a stale localStorage cache.
-    const EXPECTED='v6-merge-not-replace';
+    const EXPECTED='v7-drop-session-guard';
     if(localStorage.getItem(TAG)!==EXPECTED){
       localStorage.removeItem('eex_v1');
       localStorage.removeItem('lngtradeos_eex_xlsx_ts');
@@ -10711,19 +10711,21 @@ window.syncEEX=syncEEX;
         return;
       }
     }
-    // Stage 2 — sync EEX (aD is now either freshly loaded or unchanged)
-    if(sessionStorage.getItem('lngtradeos_eex_done')!=='1'){
-      sessionStorage.setItem('lngtradeos_eex_done','1');
-      console.log('[Boot] Stage 2: syncEEX');
-      const eexChanged=await syncEEX();
-      console.log('[Boot] eexChanged='+eexChanged);
-      if(eexChanged){
-        // Re-render dashboard tiles + EU hub chart with fresh EEX data —
-        // no full reload needed since we only touched in-memory eexD.
-        console.log('[Boot] Re-rendering dashboard UI with fresh EEX data');
-        if(typeof buildDash==='function')buildDash();
-        if(typeof buildEuHubChart==='function')buildEuHubChart();
-      }
+    // Stage 2 — sync EEX on every page load. The session-storage guard that
+    // previously surrounded this call was a false economy: it meant a user
+    // who loaded the dashboard in the morning never saw the afternoon push,
+    // because the guard skipped syncEEX for the rest of their session.
+    // syncEEX is cheap (~40KB xlsx) and its internal logic already skips
+    // work when aD isn't ready; just call it unconditionally.
+    console.log('[Boot] Stage 2: syncEEX');
+    const eexChanged=await syncEEX();
+    console.log('[Boot] eexChanged='+eexChanged);
+    if(eexChanged){
+      // Re-render dashboard tiles + EU hub chart with fresh EEX data —
+      // no full reload needed since we only touched in-memory eexD.
+      console.log('[Boot] Re-rendering dashboard UI with fresh EEX data');
+      if(typeof buildDash==='function')buildDash();
+      if(typeof buildEuHubChart==='function')buildEuHubChart();
     }
   }catch(e){console.warn('[Boot] error:',e);}
 })();
