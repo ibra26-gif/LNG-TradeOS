@@ -1413,6 +1413,30 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
               <input type="number" id="f-buy-spread" value="1.90" step="0.01" oninput="cargoPreview()">
             </div>
           </div>
+          <!-- Pricing window (SPA-style averaging) — defaults: window=1, lag=0,
+               scalar=1, pricingZ=1 (single-month, no compound, no bucketing).
+               Set non-defaults for oil-indexed legs (e.g. Brent (3,0,1) =
+               3-month avg ending at delivery month) or LTSA-style scalars
+               like 94.5%×slope. pricingZ groups N-month buckets so all
+               cargoes in the bucket compute to the same price. -->
+          <div class="form-row c4">
+            <div class="field">
+              <label>Window <span class="hint" style="font-weight:normal">months avg</span></label>
+              <input type="number" id="f-buy-window" value="1" min="1" step="1" oninput="cargoPreview()">
+            </div>
+            <div class="field">
+              <label>Lag <span class="hint" style="font-weight:normal">months back</span></label>
+              <input type="number" id="f-buy-lag" value="0" min="0" step="1" oninput="cargoPreview()">
+            </div>
+            <div class="field">
+              <label>Scalar <span class="hint" style="font-weight:normal">e.g. 0.945</span></label>
+              <input type="number" id="f-buy-scalar" value="1" step="0.001" oninput="cargoPreview()">
+            </div>
+            <div class="field">
+              <label>Pricing Z <span class="hint" style="font-weight:normal">months bucket</span></label>
+              <input type="number" id="f-buy-pricingZ" value="1" min="1" step="1" oninput="cargoPreview()">
+            </div>
+          </div>
           <div class="formula-box">
             <span class="k">Buy price</span><span class="eq">=</span>
             <span id="buy-expr" class="mono">1.15 × HH(Jul-26) + 1.900</span>
@@ -1498,6 +1522,25 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
             <div class="field">
               <label>Spread ($/MMBtu)</label>
               <input type="number" id="f-sell-spread" value="-0.195" step="0.001" oninput="cargoPreview()">
+            </div>
+          </div>
+          <!-- Sell-leg pricing window — same semantics as buy leg above. -->
+          <div class="form-row c4">
+            <div class="field">
+              <label>Window <span class="hint" style="font-weight:normal">months avg</span></label>
+              <input type="number" id="f-sell-window" value="1" min="1" step="1" oninput="cargoPreview()">
+            </div>
+            <div class="field">
+              <label>Lag <span class="hint" style="font-weight:normal">months back</span></label>
+              <input type="number" id="f-sell-lag" value="0" min="0" step="1" oninput="cargoPreview()">
+            </div>
+            <div class="field">
+              <label>Scalar <span class="hint" style="font-weight:normal">e.g. 0.945</span></label>
+              <input type="number" id="f-sell-scalar" value="1" step="0.001" oninput="cargoPreview()">
+            </div>
+            <div class="field">
+              <label>Pricing Z <span class="hint" style="font-weight:normal">months bucket</span></label>
+              <input type="number" id="f-sell-pricingZ" value="1" min="1" step="1" oninput="cargoPreview()">
             </div>
           </div>
           <div class="formula-box">
@@ -7565,25 +7608,39 @@ function collectFormCargo() {
   const n = i => +(g(i)?.value) || 0;
   const v = i => g(i)?.value || '';
 
-  // When editing, preserve the extended leg fields (window, lag, scalar, pricingZ)
-  // and the pricing anchors — the form doesn't yet have UI inputs for these, so
-  // a plain rebuild would silently wipe them.  Same for the flex object: a form
-  // that stores destinations as a comma-separated string can't round-trip the
-  // object shape used by oil-indexed destinations, so we keep the existing flex
-  // unless the user flipped the toggle.
+  // The form now has UI for window / lag / scalar / pricingZ on both legs
+  // (post-merge backlog #1). Form values win when set; preserveLeg falls back
+  // to the existing leg only for keys the form doesn't provide (so legacy
+  // cargoes loaded from older saves don't lose data). Same flex preservation
+  // as before.
   const editing = currentEditingCargoId ? getCargoById(currentEditingCargoId) : null;
   const preserveLeg = (formLeg, existingLeg) => {
     const out = { ...formLeg };
     if (existingLeg) {
-      if (existingLeg.window    != null) out.window    = existingLeg.window;
-      if (existingLeg.lag       != null) out.lag       = existingLeg.lag;
-      if (existingLeg.scalar    != null) out.scalar    = existingLeg.scalar;
-      if (existingLeg.pricingZ  != null) out.pricingZ  = existingLeg.pricingZ;
+      if (out.window   == null && existingLeg.window   != null) out.window   = existingLeg.window;
+      if (out.lag      == null && existingLeg.lag      != null) out.lag      = existingLeg.lag;
+      if (out.scalar   == null && existingLeg.scalar   != null) out.scalar   = existingLeg.scalar;
+      if (out.pricingZ == null && existingLeg.pricingZ != null) out.pricingZ = existingLeg.pricingZ;
     }
     return out;
   };
-  const buyForm  = { idx: v('f-buy-idx'),  formula: v('f-buy-formula'),  mult: n('f-buy-mult'),  spread: n('f-buy-spread') };
-  const sellForm = { idx: v('f-sell-idx'), formula: v('f-sell-formula'), mult: n('f-sell-mult'), spread: n('f-sell-spread') };
+  // Read the extended pricing-window inputs. Only persist non-default values
+  // on the leg object so cargoes stay minimal and the legacy single-month
+  // shape is preserved when the user hasn't customised the form.
+  const readLegExt = (prefix) => {
+    const ext = {};
+    const win = +(g(`f-${prefix}-window`)?.value);
+    const lag = +(g(`f-${prefix}-lag`)?.value);
+    const sca = +(g(`f-${prefix}-scalar`)?.value);
+    const pz  = +(g(`f-${prefix}-pricingZ`)?.value);
+    if (isFinite(win) && win !== 1)  ext.window   = win;
+    if (isFinite(lag) && lag !== 0)  ext.lag      = lag;
+    if (isFinite(sca) && sca !== 1)  ext.scalar   = sca;
+    if (isFinite(pz)  && pz  !== 1)  ext.pricingZ = pz;
+    return ext;
+  };
+  const buyForm  = { idx: v('f-buy-idx'),  formula: v('f-buy-formula'),  mult: n('f-buy-mult'),  spread: n('f-buy-spread'),  ...readLegExt('buy')  };
+  const sellForm = { idx: v('f-sell-idx'), formula: v('f-sell-formula'), mult: n('f-sell-mult'), spread: n('f-sell-spread'), ...readLegExt('sell') };
   const buyOut  = preserveLeg(buyForm,  editing?.buy);
   const sellOut = preserveLeg(sellForm, editing?.sell);
 
@@ -7825,17 +7882,27 @@ function editCargo(id) {
   if (g('f-bograte'))    g('f-bograte').value = c.bogRate;
   // Buy leg
   if (c.buy) {
-    if (g('f-buy-idx'))     g('f-buy-idx').value = c.buy.idx;
-    if (g('f-buy-formula')) g('f-buy-formula').value = c.buy.formula;
-    if (g('f-buy-mult'))    g('f-buy-mult').value = c.buy.mult;
-    if (g('f-buy-spread'))  g('f-buy-spread').value = c.buy.spread;
+    if (g('f-buy-idx'))      g('f-buy-idx').value      = c.buy.idx;
+    if (g('f-buy-formula'))  g('f-buy-formula').value  = c.buy.formula;
+    if (g('f-buy-mult'))     g('f-buy-mult').value     = c.buy.mult;
+    if (g('f-buy-spread'))   g('f-buy-spread').value   = c.buy.spread;
+    // Extended pricing-window fields (post-merge backlog #1) — fall back
+    // to defaults so legacy cargoes show 1/0/1/1 instead of empty inputs.
+    if (g('f-buy-window'))   g('f-buy-window').value   = c.buy.window   ?? 1;
+    if (g('f-buy-lag'))      g('f-buy-lag').value      = c.buy.lag      ?? 0;
+    if (g('f-buy-scalar'))   g('f-buy-scalar').value   = c.buy.scalar   ?? 1;
+    if (g('f-buy-pricingZ')) g('f-buy-pricingZ').value = c.buy.pricingZ ?? 1;
   }
   // Sell leg
   if (c.sell) {
-    if (g('f-sell-idx'))     g('f-sell-idx').value = c.sell.idx;
-    if (g('f-sell-formula')) g('f-sell-formula').value = c.sell.formula;
-    if (g('f-sell-mult'))    g('f-sell-mult').value = c.sell.mult;
-    if (g('f-sell-spread'))  g('f-sell-spread').value = c.sell.spread;
+    if (g('f-sell-idx'))      g('f-sell-idx').value      = c.sell.idx;
+    if (g('f-sell-formula'))  g('f-sell-formula').value  = c.sell.formula;
+    if (g('f-sell-mult'))     g('f-sell-mult').value     = c.sell.mult;
+    if (g('f-sell-spread'))   g('f-sell-spread').value   = c.sell.spread;
+    if (g('f-sell-window'))   g('f-sell-window').value   = c.sell.window   ?? 1;
+    if (g('f-sell-lag'))      g('f-sell-lag').value      = c.sell.lag      ?? 0;
+    if (g('f-sell-scalar'))   g('f-sell-scalar').value   = c.sell.scalar   ?? 1;
+    if (g('f-sell-pricingZ')) g('f-sell-pricingZ').value = c.sell.pricingZ ?? 1;
   }
   // References
   if (c.refBuy) {

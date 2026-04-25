@@ -4,9 +4,22 @@
 // ════════════════════════════════════════════════════════════════════════════════════════
 
 const fs = require('fs');
-const { JSDOM } = require('/tmp/testdeps/node_modules/jsdom');
+const path = require('path');
+// JSDOM is installed at /tmp/testdeps for the Cowork sandbox; fall back to a
+// regular node_modules resolution when running locally.
+let JSDOM;
+try { JSDOM = require('/tmp/testdeps/node_modules/jsdom').JSDOM; }
+catch (_) { JSDOM = require('jsdom').JSDOM; }
 
-const html = fs.readFileSync('/sessions/loving-affectionate-fermi/mnt/outputs/morning_book.html','utf8');
+// Source-of-truth path: morning_book.html lives next to this verify.js script.
+// Original Cowork path was a sandbox absolute; fall back to it for parity runs.
+const candidates = [
+  path.join(__dirname, 'morning_book.html'),
+  '/sessions/loving-affectionate-fermi/mnt/outputs/morning_book.html',
+];
+const htmlPath = candidates.find(p => { try { return fs.statSync(p).isFile(); } catch { return false; } });
+if (!htmlPath) { console.error('morning_book.html not found in:\n  ' + candidates.join('\n  ')); process.exit(2); }
+const html = fs.readFileSync(htmlPath, 'utf8');
 const dom = new JSDOM(html, { runScripts:'dangerously', pretendToBeVisual:true, url:'https://lng-tradeos.local/' });
 const { window: w } = dom;
 
@@ -891,6 +904,50 @@ setTimeout(() => {
     check('FOB preset freight responds to load port (Sabine→Tokyo > Oman→Tokyo)',
           sabineTokyoF > omanTokyoF + 0.20,
           `Sabine $${sabineTokyoF.toFixed(2)} vs Oman $${omanTokyoF.toFixed(2)}`);
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
+    console.log('SECTION 24 · Cargo form inputs for window / lag / scalar / pricingZ');
+    console.log(bar);
+    // The form now exposes the four extended pricing-window fields on each
+    // leg. Setting non-defaults must round-trip into the booked cargo; defaults
+    // (1/0/1/1) must be omitted from the cargo's leg object so legacy single-
+    // month legs stay minimal.
+    const doc = w.document;
+    const set = (id, val) => { const el = doc.getElementById(id); if (el) { el.value = String(val); el.dispatchEvent(new w.Event('input', {bubbles:true})); el.dispatchEvent(new w.Event('change', {bubbles:true})); } return !!el; };
+    check('Buy-leg Window input present',   !!doc.getElementById('f-buy-window'));
+    check('Buy-leg Lag input present',      !!doc.getElementById('f-buy-lag'));
+    check('Buy-leg Scalar input present',   !!doc.getElementById('f-buy-scalar'));
+    check('Buy-leg PricingZ input present', !!doc.getElementById('f-buy-pricingZ'));
+    check('Sell-leg Window input present',   !!doc.getElementById('f-sell-window'));
+    check('Sell-leg Lag input present',      !!doc.getElementById('f-sell-lag'));
+    check('Sell-leg Scalar input present',   !!doc.getElementById('f-sell-scalar'));
+    check('Sell-leg PricingZ input present', !!doc.getElementById('f-sell-pricingZ'));
+
+    // Default-collect: with all four at defaults, legs should NOT carry the
+    // extension keys (cargoes stay minimal).
+    set('f-buy-window', 1); set('f-buy-lag', 0); set('f-buy-scalar', 1); set('f-buy-pricingZ', 1);
+    set('f-sell-window', 1); set('f-sell-lag', 0); set('f-sell-scalar', 1); set('f-sell-pricingZ', 1);
+    const defCargo = w.collectFormCargo();
+    check('Defaults: buy.window omitted',   defCargo.buy.window   === undefined);
+    check('Defaults: buy.lag omitted',      defCargo.buy.lag      === undefined);
+    check('Defaults: buy.scalar omitted',   defCargo.buy.scalar   === undefined);
+    check('Defaults: buy.pricingZ omitted', defCargo.buy.pricingZ === undefined);
+    check('Defaults: sell.window omitted',  defCargo.sell.window  === undefined);
+
+    // Non-default round-trip: set Brent (3, 0, 1) with scalar 0.945 + pricingZ 3.
+    set('f-buy-idx', 'Brent'); set('f-buy-formula', '% × Index'); set('f-buy-mult', 0.115);
+    set('f-buy-window', 3); set('f-buy-lag', 0); set('f-buy-scalar', 0.945); set('f-buy-pricingZ', 3);
+    const c = w.collectFormCargo();
+    check('Non-default: buy.window = 3',      c.buy.window === 3,
+          `got ${JSON.stringify(c.buy.window)}`);
+    check('Non-default: buy.scalar = 0.945',  Math.abs(c.buy.scalar - 0.945) < 1e-9,
+          `got ${JSON.stringify(c.buy.scalar)}`);
+    check('Non-default: buy.pricingZ = 3',    c.buy.pricingZ === 3);
+    check('Non-default: buy.lag stays omitted (=0)', c.buy.lag === undefined);
+
+    // Reset form so subsequent runs aren't polluted.
+    set('f-buy-window', 1); set('f-buy-lag', 0); set('f-buy-scalar', 1); set('f-buy-pricingZ', 1);
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
