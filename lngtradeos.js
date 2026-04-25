@@ -9089,6 +9089,8 @@ const CP_SEED_FR={
     trinidad_southhook: nmScale('trinidad_gate',     3682/4044),
     angola_southhook:   nmScale('angola_gate',       4737/5008),
     nigeria_southhook:  nmScale('nigeria_gate',      4161/4432),
+    qatar_southhook:    nmScale('qatar_gate',        12100/12000),
+    oman_southhook:     nmScale('oman_gate',         12200/12100),
     // Revithoussa (Greece) — via Gibraltar route
     trinidad_rev:       nmScale('trinidad_gate',     5400/4044),
     angola_rev:         nmScale('angola_gate',       6100/5008),
@@ -9100,26 +9102,38 @@ const CP_SEED_FR={
     trinidad_rovigo:    nmScale('trinidad_gate',     4306/4044),
     angola_rovigo:      nmScale('angola_gate',       3713/5008),
     nigeria_rovigo:     nmScale('nigeria_gate',      3011/4432),
+    qatar_rovigo:       nmScale('qatar_gate',        12650/12000),
+    oman_rovigo:        nmScale('oman_gate',         12750/12100),
     // Klaipeda — Baltic route via North Sea
     trinidad_klaipeda:  nmScale('trinidad_gate',     4657/4044),
     angola_klaipeda:    nmScale('angola_gate',       4333/5008),
     nigeria_klaipeda:   nmScale('nigeria_gate',      3631/4432),
+    qatar_klaipeda:     nmScale('qatar_gate',        12700/12000),
+    oman_klaipeda:      nmScale('oman_gate',         12800/12100),
     // Inkoo (Finland) — Balticconnector
     trinidad_inkoo:     nmScale('trinidad_gate',     4746/4044),
     angola_inkoo:       nmScale('angola_gate',       4560/5008),
     nigeria_inkoo:      nmScale('nigeria_gate',      3858/4432),
+    qatar_inkoo:        nmScale('qatar_gate',        12800/12000),
+    oman_inkoo:         nmScale('oman_gate',         12900/12100),
     // KRK (Croatia) — Adriatic
     trinidad_krk:       nmScale('trinidad_gate',     4389/4044),
     angola_krk:         nmScale('angola_gate',       3791/5008),
     nigeria_krk:        nmScale('nigeria_gate',      3089/4432),
+    qatar_krk:          nmScale('qatar_gate',        13000/12000),
+    oman_krk:           nmScale('oman_gate',         13100/12100),
     // Aliaga (Turkey) — eastern Med
     trinidad_ali:       nmScale('trinidad_gate',     4959/4044),
     angola_ali:         nmScale('angola_gate',       4276/5008),
     nigeria_ali:        nmScale('nigeria_gate',      3574/4432),
+    qatar_ali:          nmScale('qatar_gate',        13300/12000),
+    oman_ali:           nmScale('oman_gate',         13400/12100),
     // Swinoujscie — gate + 670 NM Baltic extension
     trinidad_swinoujscie: nmScale('trinidad_gate',   4714/4044),
     angola_swinoujscie:   nmScale('angola_gate',     5678/5008),
     nigeria_swinoujscie:  nmScale('nigeria_gate',    5102/4432),
+    qatar_swinoujscie:    nmScale('qatar_gate',      12450/12000),
+    oman_swinoujscie:     nmScale('oman_gate',       12550/12100),
     // Maptaphut — tokyo minus 2046 NM (constant delta)
     sabine_maptaphut:   nmScale('sabine_tokyo',      14254/16300),
     trinidad_maptaphut: nmScale('trinidad_tokyo',    12554/14600),
@@ -10288,26 +10302,36 @@ function cpMEIArb(d){
     {id:'qatar',label:'Qatar',col:'#ffb74d',
      hmRoutes:{eur:fr.qatar_gate,mei:fr.qatar_dahej,asia:fr.qatar_tokyo},
      dtRoutes:[
-       {label:'NWE (Gate)',           hub:'TTF',arr:d.des.nwe,    frArr:fr.qatar_gate},
-       {label:'Iberia',               hub:'TTF',arr:d.des.iberia, frArr:fr.qatar_iberia},
-       {label:'DES Italy',            hub:'TTF',arr:d.des.italy,  frArr:fr.qatar_rev},
-       {label:'Swinoujscie',          hub:'TTF',arr:d.des.swino,  frArr:fr.qatar_gate},
-       {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,    frArr:fr.qatar_ain},
-       {label:'Revithoussa',          hub:'TTF',arr:d.des.rev,    frArr:fr.qatar_rev},
-       {label:'MEI (Dahej)',          hub:'JKM',arr:d.des.mei,    frArr:fr.qatar_dahej},
-       {label:'JKTC',                 hub:'JKM',arr:d.des.jktc,   frArr:fr.qatar_tokyo},
+       {label:'NWE (Gate)',           hub:'TTF',arr:d.des.nwe,      frArr:fr.qatar_gate},
+       {label:'Iberia',               hub:'TTF',arr:d.des.iberia,   frArr:fr.qatar_iberia},
+       {label:'UK Terminals',         hub:'TTF',arr:d.des.uk,       frArr:fr.qatar_southhook},
+       {label:'DES Italy',            hub:'TTF',arr:d.des.italy,    frArr:fr.qatar_rovigo},
+       {label:'Klaipeda',             hub:'TTF',arr:d.des.klaipeda, frArr:fr.qatar_klaipeda},
+       {label:'Inkoo',                hub:'TTF',arr:d.des.inkoo,    frArr:fr.qatar_inkoo},
+       {label:'Swinoujscie',          hub:'TTF',arr:d.des.swino,    frArr:fr.qatar_swinoujscie},
+       {label:'Revithoussa',          hub:'TTF',arr:d.des.rev,      frArr:fr.qatar_rev},
+       {label:'KRK',                  hub:'TTF',arr:d.des.krk,      frArr:fr.qatar_krk},
+       {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,      frArr:fr.qatar_ain},
+       {label:'Aliaga',               hub:'TTF',arr:d.des.ali,      frArr:fr.qatar_ali},
+       {label:'MEI (Dahej)',          hub:'JKM',arr:d.des.mei,      frArr:fr.qatar_dahej},
+       {label:'JKTC',                 hub:'JKM',arr:d.des.jktc,     frArr:fr.qatar_tokyo},
      ]},
     {id:'oman',label:'Oman',col:'#ffa726',
      hmRoutes:{eur:fr.oman_gate,mei:fr.oman_dahej,asia:fr.oman_tokyo},
      dtRoutes:[
-       {label:'NWE (Gate)',           hub:'TTF',arr:d.des.nwe,    frArr:fr.oman_gate},
-       {label:'Iberia',               hub:'TTF',arr:d.des.iberia, frArr:fr.oman_iberia},
-       {label:'DES Italy',            hub:'TTF',arr:d.des.italy,  frArr:fr.oman_rev},
-       {label:'Swinoujscie',          hub:'TTF',arr:d.des.swino,  frArr:fr.oman_gate},
-       {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,    frArr:fr.oman_ain},
-       {label:'Revithoussa',          hub:'TTF',arr:d.des.rev,    frArr:fr.oman_rev},
-       {label:'MEI (Dahej)',          hub:'JKM',arr:d.des.mei,    frArr:fr.oman_dahej},
-       {label:'JKTC',                 hub:'JKM',arr:d.des.jktc,   frArr:fr.oman_tokyo},
+       {label:'NWE (Gate)',           hub:'TTF',arr:d.des.nwe,      frArr:fr.oman_gate},
+       {label:'Iberia',               hub:'TTF',arr:d.des.iberia,   frArr:fr.oman_iberia},
+       {label:'UK Terminals',         hub:'TTF',arr:d.des.uk,       frArr:fr.oman_southhook},
+       {label:'DES Italy',            hub:'TTF',arr:d.des.italy,    frArr:fr.oman_rovigo},
+       {label:'Klaipeda',             hub:'TTF',arr:d.des.klaipeda, frArr:fr.oman_klaipeda},
+       {label:'Inkoo',                hub:'TTF',arr:d.des.inkoo,    frArr:fr.oman_inkoo},
+       {label:'Swinoujscie',          hub:'TTF',arr:d.des.swino,    frArr:fr.oman_swinoujscie},
+       {label:'Revithoussa',          hub:'TTF',arr:d.des.rev,      frArr:fr.oman_rev},
+       {label:'KRK',                  hub:'TTF',arr:d.des.krk,      frArr:fr.oman_krk},
+       {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,      frArr:fr.oman_ain},
+       {label:'Aliaga',               hub:'TTF',arr:d.des.ali,      frArr:fr.oman_ali},
+       {label:'MEI (Dahej)',          hub:'JKM',arr:d.des.mei,      frArr:fr.oman_dahej},
+       {label:'JKTC',                 hub:'JKM',arr:d.des.jktc,     frArr:fr.oman_tokyo},
      ]},
   ]};
   // MEI freight basis breakdown
@@ -10336,19 +10360,48 @@ function cpPacificArb(d){
   //   Barrow:    maptaphut 2350/3788=0.620  dahej 3582/3788=0.946
   //   Gladstone: maptaphut 4133/3778=1.094  dahej 5346/3778=1.415
   //   Bontang:   maptaphut 1726/2587=0.667  dahej 2932/2587=1.133
-  // Europe-leg uses CoGH routing (Suez off — Houthi risk). Derived from CoGH
-  // shipping-lane estimates Pacific → Rotterdam: Barrow ≈ 12,500, Gladstone ≈
-  // 13,500, Bontang ≈ 13,000 NM. If you want to switch to Panama/Suez for
-  // specific origins, bump these factors (see routing-toggle roadmap).
-  const pac_b_thai   =pacFr(fr.australia_b_tokyo, 0.620);
-  const pac_b_dahej  =pacFr(fr.australia_b_tokyo, 0.946);
-  const pac_g_thai   =pacFr(fr.australia_g_tokyo, 1.094);
-  const pac_g_dahej  =pacFr(fr.australia_g_tokyo, 1.415);
-  const pac_id_thai  =pacFr(fr.indonesia_tokyo,   0.667);
-  const pac_id_dahej =pacFr(fr.indonesia_tokyo,   1.133);
-  const pac_b_gate   =pacFr(fr.australia_b_tokyo, 3.300);  // 12500/3788 CoGH
-  const pac_g_gate   =pacFr(fr.australia_g_tokyo, 3.573);  // 13500/3778 CoGH
-  const pac_id_gate  =pacFr(fr.indonesia_tokyo,   5.025);  // 13000/2587 CoGH
+  const pac_b_thai   =pacFr(fr.australia_b_tokyo, 2350/3788);
+  const pac_b_dahej  =pacFr(fr.australia_b_tokyo, 3582/3788);
+  const pac_g_thai   =pacFr(fr.australia_g_tokyo, 4133/3778);
+  const pac_g_dahej  =pacFr(fr.australia_g_tokyo, 5346/3778);
+  const pac_id_thai  =pacFr(fr.indonesia_tokyo,   1726/2587);
+  const pac_id_dahej =pacFr(fr.indonesia_tokyo,   2932/2587);
+  // Europe-leg uses CoGH routing (Suez off — Houthi risk). All EU sub-terminals
+  // scaled from each origin's tokyo freight × (dest_nm / tokyo_nm).
+  // NM_DB confirmed values (2026-04):
+  //   Barrow tokyo=3788  rotterdam=12500  southhook=12600  rovigo=12550  klaipeda=13050  inkoo=13100  swinoujscie=12800  revithoussa=13150  krk=13000  aliaga=13300  huelva=11750  ainsukhna=8955
+  //   Gladstone tokyo=3778  rotterdam=13500  southhook=13600  rovigo=13550  klaipeda=14050  inkoo=14100  swinoujscie=13800  revithoussa=14150  krk=14000  aliaga=14300  huelva=12750  ainsukhna=10317
+  //   Bontang tokyo=2587  rotterdam=13000  southhook=13100  rovigo=13050  klaipeda=13550  inkoo=13600  swinoujscie=13300  revithoussa=13650  krk=13500  aliaga=13800  huelva=12250  ainsukhna=9773
+  const pac_b_gate   =pacFr(fr.australia_b_tokyo, 12500/3788);
+  const pac_b_uk     =pacFr(fr.australia_b_tokyo, 12600/3788);
+  const pac_b_iberia =pacFr(fr.australia_b_tokyo, 11750/3788);
+  const pac_b_rovigo =pacFr(fr.australia_b_tokyo, 12550/3788);
+  const pac_b_klai   =pacFr(fr.australia_b_tokyo, 13050/3788);
+  const pac_b_ink    =pacFr(fr.australia_b_tokyo, 13100/3788);
+  const pac_b_swino  =pacFr(fr.australia_b_tokyo, 12800/3788);
+  const pac_b_rev    =pacFr(fr.australia_b_tokyo, 13150/3788);
+  const pac_b_krk    =pacFr(fr.australia_b_tokyo, 13000/3788);
+  const pac_b_ali    =pacFr(fr.australia_b_tokyo, 13300/3788);
+  const pac_g_gate   =pacFr(fr.australia_g_tokyo, 13500/3778);
+  const pac_g_uk     =pacFr(fr.australia_g_tokyo, 13600/3778);
+  const pac_g_iberia =pacFr(fr.australia_g_tokyo, 12750/3778);
+  const pac_g_rovigo =pacFr(fr.australia_g_tokyo, 13550/3778);
+  const pac_g_klai   =pacFr(fr.australia_g_tokyo, 14050/3778);
+  const pac_g_ink    =pacFr(fr.australia_g_tokyo, 14100/3778);
+  const pac_g_swino  =pacFr(fr.australia_g_tokyo, 13800/3778);
+  const pac_g_rev    =pacFr(fr.australia_g_tokyo, 14150/3778);
+  const pac_g_krk    =pacFr(fr.australia_g_tokyo, 14000/3778);
+  const pac_g_ali    =pacFr(fr.australia_g_tokyo, 14300/3778);
+  const pac_id_gate  =pacFr(fr.indonesia_tokyo,   13000/2587);
+  const pac_id_uk    =pacFr(fr.indonesia_tokyo,   13100/2587);
+  const pac_id_iberia=pacFr(fr.indonesia_tokyo,   12250/2587);
+  const pac_id_rovigo=pacFr(fr.indonesia_tokyo,   13050/2587);
+  const pac_id_klai  =pacFr(fr.indonesia_tokyo,   13550/2587);
+  const pac_id_ink   =pacFr(fr.indonesia_tokyo,   13600/2587);
+  const pac_id_swino =pacFr(fr.indonesia_tokyo,   13300/2587);
+  const pac_id_rev   =pacFr(fr.indonesia_tokyo,   13650/2587);
+  const pac_id_krk   =pacFr(fr.indonesia_tokyo,   13500/2587);
+  const pac_id_ali   =pacFr(fr.indonesia_tokyo,   13800/2587);
 
   const cfg={orgs:[
     {id:'aus_b',label:'Barrow Island (Aus)',col:'#81c784',
@@ -10356,27 +10409,54 @@ function cpPacificArb(d){
      dtRoutes:[
        {label:'JKTC',                  hub:'JKM',arr:d.des.jktc,     frArr:fr.australia_b_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.thailand, frArr:pac_b_thai},
-       {label:'MEI (Dahej)',           hub:'JKM',arr:d.des.mei,  frArr:pac_b_dahej},
-       {label:'NWE (Gate)',            hub:'TTF',arr:d.des.nwe,  frArr:pac_b_gate},
-       {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,  frArr:fr.australia_b_ain},
+       {label:'MEI (Dahej)',           hub:'JKM',arr:d.des.mei,      frArr:pac_b_dahej},
+       {label:'NWE (Gate)',            hub:'TTF',arr:d.des.nwe,      frArr:pac_b_gate},
+       {label:'Iberia',                hub:'TTF',arr:d.des.iberia,   frArr:pac_b_iberia},
+       {label:'UK Terminals',          hub:'TTF',arr:d.des.uk,       frArr:pac_b_uk},
+       {label:'DES Italy',             hub:'TTF',arr:d.des.italy,    frArr:pac_b_rovigo},
+       {label:'Klaipeda',              hub:'TTF',arr:d.des.klaipeda, frArr:pac_b_klai},
+       {label:'Inkoo',                 hub:'TTF',arr:d.des.inkoo,    frArr:pac_b_ink},
+       {label:'Swinoujscie',           hub:'TTF',arr:d.des.swino,    frArr:pac_b_swino},
+       {label:'Revithoussa',           hub:'TTF',arr:d.des.rev,      frArr:pac_b_rev},
+       {label:'KRK',                   hub:'TTF',arr:d.des.krk,      frArr:pac_b_krk},
+       {label:'Aliaga',                hub:'TTF',arr:d.des.ali,      frArr:pac_b_ali},
+       {label:'Ain Sukhna',            hub:'TTF',arr:d.des.ain,      frArr:fr.australia_b_ain},
      ]},
     {id:'aus_g',label:'Gladstone (Aus)',col:'#66bb6a',
      hmRoutes:{eur:pac_g_gate,mei:pac_g_dahej,asia:fr.australia_g_tokyo},
      dtRoutes:[
        {label:'JKTC',                  hub:'JKM',arr:d.des.jktc,     frArr:fr.australia_g_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.thailand, frArr:pac_g_thai},
-       {label:'MEI (Dahej)',           hub:'JKM',arr:d.des.mei,  frArr:pac_g_dahej},
-       {label:'NWE (Gate)',            hub:'TTF',arr:d.des.nwe,  frArr:pac_g_gate},
-       {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,  frArr:fr.australia_g_ain},
+       {label:'MEI (Dahej)',           hub:'JKM',arr:d.des.mei,      frArr:pac_g_dahej},
+       {label:'NWE (Gate)',            hub:'TTF',arr:d.des.nwe,      frArr:pac_g_gate},
+       {label:'Iberia',                hub:'TTF',arr:d.des.iberia,   frArr:pac_g_iberia},
+       {label:'UK Terminals',          hub:'TTF',arr:d.des.uk,       frArr:pac_g_uk},
+       {label:'DES Italy',             hub:'TTF',arr:d.des.italy,    frArr:pac_g_rovigo},
+       {label:'Klaipeda',              hub:'TTF',arr:d.des.klaipeda, frArr:pac_g_klai},
+       {label:'Inkoo',                 hub:'TTF',arr:d.des.inkoo,    frArr:pac_g_ink},
+       {label:'Swinoujscie',           hub:'TTF',arr:d.des.swino,    frArr:pac_g_swino},
+       {label:'Revithoussa',           hub:'TTF',arr:d.des.rev,      frArr:pac_g_rev},
+       {label:'KRK',                   hub:'TTF',arr:d.des.krk,      frArr:pac_g_krk},
+       {label:'Aliaga',                hub:'TTF',arr:d.des.ali,      frArr:pac_g_ali},
+       {label:'Ain Sukhna',            hub:'TTF',arr:d.des.ain,      frArr:fr.australia_g_ain},
      ]},
     {id:'bontang',label:'Bontang (Indonesia)',col:'#a5d6a7',
      hmRoutes:{eur:pac_id_gate,mei:pac_id_dahej,asia:fr.indonesia_tokyo},
      dtRoutes:[
        {label:'JKTC',                  hub:'JKM',arr:d.des.jktc,     frArr:fr.indonesia_tokyo},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.thailand, frArr:pac_id_thai},
-       {label:'MEI (Dahej)',           hub:'JKM',arr:d.des.mei,  frArr:pac_id_dahej},
-       {label:'NWE (Gate)',            hub:'TTF',arr:d.des.nwe,  frArr:pac_id_gate},
-       {label:'Ain Sukhna',           hub:'TTF',arr:d.des.ain,  frArr:fr.indonesia_ain},
+       {label:'MEI (Dahej)',           hub:'JKM',arr:d.des.mei,      frArr:pac_id_dahej},
+       {label:'NWE (Gate)',            hub:'TTF',arr:d.des.nwe,      frArr:pac_id_gate},
+       {label:'Iberia',                hub:'TTF',arr:d.des.iberia,   frArr:pac_id_iberia},
+       {label:'UK Terminals',          hub:'TTF',arr:d.des.uk,       frArr:pac_id_uk},
+       {label:'DES Italy',             hub:'TTF',arr:d.des.italy,    frArr:pac_id_rovigo},
+       {label:'Klaipeda',              hub:'TTF',arr:d.des.klaipeda, frArr:pac_id_klai},
+       {label:'Inkoo',                 hub:'TTF',arr:d.des.inkoo,    frArr:pac_id_ink},
+       {label:'Swinoujscie',           hub:'TTF',arr:d.des.swino,    frArr:pac_id_swino},
+       {label:'Revithoussa',           hub:'TTF',arr:d.des.rev,      frArr:pac_id_rev},
+       {label:'KRK',                   hub:'TTF',arr:d.des.krk,      frArr:pac_id_krk},
+       {label:'Aliaga',                hub:'TTF',arr:d.des.ali,      frArr:pac_id_ali},
+       {label:'Ain Sukhna',            hub:'TTF',arr:d.des.ain,      frArr:fr.indonesia_ain},
      ]},
   ]};
   return`<div class="f-sec">PACIFIC BASIN ARB</div>`+cpBasinTab(cfg,d);
@@ -10621,17 +10701,23 @@ function cpFobPricing(d){
   // ─── US FOB pane (Sabine Pass) ─────────────────────────────────────────────
   // desArr = destination's natural DES price (from cpDerived.des).
   const usRoutes = [
-    {label:'DES NWE',          freightLbl:'Sabine → Gate',        desArr:d.des.nwe,  frArr:fr.sabine_rotterdam},
-    {label:'DES MEI',          freightLbl:'Sabine → Dahej',       desArr:d.des.mei,  frArr:fr.sabine_dahej},
-    {label:'DES JKTC (COGH)',  freightLbl:'Sabine → JKTC · COGH', desArr:d.des.jktc, frArr:fr.sabine_tokyo},
+    {label:'DES NWE',          freightLbl:'Sabine → Gate',        desArr:d.des.nwe,    frArr:fr.sabine_rotterdam},
+    {label:'DES UK',           freightLbl:'Sabine → South Hook',  desArr:d.des.uk,     frArr:fr.sabine_southhook},
+    {label:'DES Iberia',       freightLbl:'Sabine → Huelva',      desArr:d.des.iberia, frArr:fr.sabine_iberia},
+    {label:'DES Italy',        freightLbl:'Sabine → Rovigo',      desArr:d.des.italy,  frArr:fr.sabine_rovigo},
+    {label:'DES MEI',          freightLbl:'Sabine → Dahej',       desArr:d.des.mei,    frArr:fr.sabine_dahej},
+    {label:'DES JKTC (COGH)',  freightLbl:'Sabine → JKTC · COGH', desArr:d.des.jktc,   frArr:fr.sabine_tokyo},
     {label:'DES JKTC (PC)',    freightLbl:'Sabine → JKTC · Panama', desArr:d.des.jktc, frArr:d.sabine_tokyo_pc},
   ];
 
   // ─── Oman FOB pane (Oman) ──────────────────────────────────────────────────
   const omanRoutes = [
-    {label:'DES JKTC',  freightLbl:'Oman → Tokyo Bay',   desArr:d.des.jktc, frArr:fr.oman_tokyo},
-    {label:'DES Dahej', freightLbl:'Oman → Dahej',       desArr:d.des.mei,  frArr:fr.oman_dahej},
-    {label:'DES NWE',   freightLbl:'Oman → Gate · COGH', desArr:d.des.nwe,  frArr:fr.oman_gate},
+    {label:'DES JKTC',  freightLbl:'Oman → Tokyo Bay',     desArr:d.des.jktc,   frArr:fr.oman_tokyo},
+    {label:'DES Dahej', freightLbl:'Oman → Dahej',         desArr:d.des.mei,    frArr:fr.oman_dahej},
+    {label:'DES NWE',   freightLbl:'Oman → Gate · COGH',   desArr:d.des.nwe,    frArr:fr.oman_gate},
+    {label:'DES UK',    freightLbl:'Oman → South Hook',    desArr:d.des.uk,     frArr:fr.oman_southhook},
+    {label:'DES Iberia',freightLbl:'Oman → Huelva',        desArr:d.des.iberia, frArr:fr.oman_iberia},
+    {label:'DES Italy', freightLbl:'Oman → Rovigo',        desArr:d.des.italy,  frArr:fr.oman_rovigo},
   ];
 
   const usPane = renderPane(
