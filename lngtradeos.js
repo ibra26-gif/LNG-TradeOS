@@ -6274,7 +6274,34 @@ function initFreight(){
   F.validatedAudit=fg('f_validated_audit',null);  // [origId][dischId][mi]=$/MMBtu
   // Historical Freight Curves (Google Drive loaded)
   F.histCurves=fg('f_hist_curves',[]);
-  F.histView='forward';
+  // One-shot purge: prior parser bug stored garbage values like -26/-27/-28
+  // (Date column slipped into BLNG cells). Detect by sampling: if any BLNG
+  // value across snapshots is below the realistic $/day floor (5,000), wipe.
+  (function purgeCorruptHistCurves(){
+    try {
+      const TAG = 'f_hist_curves_purged_v1';
+      if(localStorage.getItem(TAG) === '1') return;
+      let bad = false;
+      for(const s of F.histCurves){
+        if(!s || !s.blng) continue;
+        for(const k of ['BLNG1','BLNG2','BLNG3']){
+          const arr = s.blng[k] || [];
+          for(const v of arr){
+            if(v != null && Math.abs(v) < 1000){ bad = true; break; }
+          }
+          if(bad) break;
+        }
+        if(bad) break;
+      }
+      if(bad){
+        F.histCurves = [];
+        fs('f_hist_curves', []);
+        console.log('[Hist] Wiped corrupt freight cache (values < 1000 detected); please re-upload via UPLOAD EXCEL.');
+      }
+      localStorage.setItem(TAG, '1');
+    } catch(e) { /* best-effort */ }
+  })();
+  F.histView='historical';
   F.histSelDate=0;
   F.histSelMonth=0;
   F.histSelMonthSpread=0;
@@ -7718,15 +7745,15 @@ function renderHistorical(){
       :`<div style="display:flex;gap:6px;flex-wrap:wrap">
           ${MCP_AVAILABLE
             ? `<button class="f-btn on" onclick="fAuthGate(()=>loadFreightFromGmail())">📧 SCRAPE FROM GMAIL</button>
-               <button class="f-btn" onclick="fAuthGate(()=>loadHistFromGDrive())">⬇ LOAD FROM DRIVE</button>`
+               <button class="f-btn" onclick="fAuthGate(()=>loadHistFromGDrive())">⬇ LOAD FROM DRIVE</button>
+               <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-img-upload').click())">📁 UPLOAD IMAGES</button>
+               <input type="file" id="hist-img-upload" accept=".png,.jpg,.jpeg" multiple style="display:none" onchange="parseHistImages(this)">`
             : ''}
           <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-xls-upload').click())">📊 UPLOAD EXCEL</button>
           <input type="file" id="hist-xls-upload" accept=".xlsx,.xls" multiple style="display:none" onchange="parseHistExcel(this)">
           <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-json-upload').click())">⬆ IMPORT JSON</button>
           <input type="file" id="hist-json-upload" accept=".json" style="display:none" onchange="importHistJson(this)">
           <button class="f-btn" onclick="fAuthGate(()=>exportHistJson())">⬇ EXPORT JSON</button>
-          <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-img-upload').click())">📁 UPLOAD IMAGES</button>
-          <input type="file" id="hist-img-upload" accept=".png,.jpg,.jpeg" multiple style="display:none" onchange="parseHistImages(this)">
         </div>`}
     ${hasCurves&&!F.histLoading?`<button class="f-btn sm" onclick="fAuthGate(()=>{F.histCurves=[];fs('f_hist_curves',[]);document.getElementById('f-hist-body').innerHTML=renderHistorical()})">CLEAR</button>`:''}
   </div>
@@ -8158,43 +8185,92 @@ async function parseHistExcel(el){
 
       const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
 
-      // Try each sheet — look for one containing BLNG1/2/3 headers
+      // ── Robust BLNG sheet detector ──────────────────────────────────────
+      // Earlier version matched headers by `cell.includes('BLNG1')`, which
+      // tripped on banner cells like 'OB FFA Rates - BLNG1/2/3' and pointed
+      // c1/c2/c3 at the Date column → values parsed as -26/-27/-28 from
+      // strings like "Apr-26".
+      //
+      // New rules:
+      //  1. Prefer sheets named Monthly/Summary/Sheet1 (in that order).
+      //  2. Header row is the first row whose cells, after trim/upper, contain
+      //     ALL of {'BLNG1','BLNG2','BLNG3'} as exact whole-cell matches.
+      //  3. Column indices come from those exact matches — no false positives.
+      //  4. If the header row also contains 'M IDX' or 'M', use it as the
+      //     monthly alignment key (M+0..M+24) so we drop the assessment
+      //     month and align M+1 → ML[0].
+      //  5. Cells must parse to a finite number AND be in the realistic
+      //     $/day range [5_000, 500_000]; outside that → null. This catches
+      //     date-string slips, percent values, and stray totals.
       let b1=[], b2=[], b3=[];
       let found=false;
-      for(const shName of wb.SheetNames){
+      const sheetOrder = (() => {
+        const named = wb.SheetNames.slice();
+        const pri = ['Monthly','Summary','Sheet1'];
+        const head = pri.filter(n=>named.includes(n));
+        const tail = named.filter(n=>!head.includes(n));
+        return [...head, ...tail];
+      })();
+      for(const shName of sheetOrder){
         const ws=wb.Sheets[shName];
-        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-        // Find header row containing BLNG1, BLNG2, BLNG3
-        let hdrRow=-1, c1=-1, c2=-1, c3=-1;
-        for(let r=0;r<Math.min(rows.length,15);r++){
-          const h=(rows[r]||[]).map(x=>String(x).trim().toUpperCase());
-          const i1=h.findIndex(x=>x.includes('BLNG1'));
-          const i2=h.findIndex(x=>x.includes('BLNG2'));
-          const i3=h.findIndex(x=>x.includes('BLNG3'));
-          if(i1>=0||i2>=0||i3>=0){hdrRow=r;c1=i1;c2=i2;c3=i3;break;}
-        }
-        if(hdrRow<0)continue;
-
-        // Collect 24 monthly rows after header
-        // Look for rows with 174+N_M pattern or just sequential month rows
-        const pv=v=>{const n=parseFloat(String(v||'').replace(/[^0-9.\-]/g,''));return isNaN(n)?null:n;};
-        let monthCount=0;
-        for(let r=hdrRow+1;r<rows.length&&monthCount<24;r++){
-          const row=rows[r];
-          const label=String(row[0]||'').trim();
-          // Skip blank rows, quarterly, calendar year rows
-          if(!label||label.includes('CURQ')||label.includes('CAL')||label.includes('174CURQ')||
-             label.match(/Q[1-5]\s*\d{2}/)||label.match(/Cal\s*\d/))continue;
-          // Accept monthly rows: 174+N_M or just any row with values
-          if(label.includes('_M')||label.includes('CURMON')||monthCount<24){
-            if(label.includes('CURMON'))continue; // skip curmon
-            if(c1>=0)b1.push(pv(row[c1]));else b1.push(null);
-            if(c2>=0)b2.push(pv(row[c2]));else b2.push(null);
-            if(c3>=0)b3.push(pv(row[c3]));else b3.push(null);
-            monthCount++;
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+        // Find header row with ALL THREE BLNGs as exact cells
+        let hdrRow=-1, c1=-1, c2=-1, c3=-1, cMidx=-1;
+        for(let r=0;r<Math.min(rows.length,20);r++){
+          const h=(rows[r]||[]).map(x=>String(x??'').trim().toUpperCase());
+          const i1=h.indexOf('BLNG1');
+          const i2=h.indexOf('BLNG2');
+          const i3=h.indexOf('BLNG3');
+          if(i1>=0 && i2>=0 && i3>=0){
+            hdrRow=r; c1=i1; c2=i2; c3=i3;
+            cMidx = h.indexOf('M IDX');
+            if(cMidx<0) cMidx = h.indexOf('M');
+            break;
           }
         }
-        if(monthCount>0){found=true;break;}
+        if(hdrRow<0) continue;
+
+        // Strict numeric coercion + sanity-bound for $/day rates
+        const SANE_MIN = 5000, SANE_MAX = 500000;
+        const pv = v => {
+          if(v==null || v==='') return null;
+          // Reject anything that looks like a date / month string
+          if(typeof v === 'string' && /[A-Za-z]/.test(v)) return null;
+          const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/[, $]/g,''));
+          if(!isFinite(n)) return null;
+          if(n < SANE_MIN || n > SANE_MAX) return null;
+          return n;
+        };
+
+        // Collect data rows. If M idx is available, align M+1..M+24 explicitly
+        // (so OB's "174_CURMON" / M+0 row is dropped and M+1 lands at index 0).
+        const data = rows.slice(hdrRow+1).filter(r=>r && r.some(c=>c!==''&&c!=null));
+        if(cMidx>=0){
+          b1 = Array(24).fill(null); b2 = Array(24).fill(null); b3 = Array(24).fill(null);
+          for(const row of data){
+            const mi = parseInt(row[cMidx]);
+            if(!isFinite(mi)) continue;
+            const out = mi - 1;                         // M+1 → idx 0
+            if(out < 0 || out >= 24) continue;
+            b1[out] = pv(row[c1]);
+            b2[out] = pv(row[c2]);
+            b3[out] = pv(row[c3]);
+          }
+        } else {
+          // No M idx column — fall back to sequential, skipping CURMON / Q / Cal rows.
+          for(const row of data){
+            if(b1.length>=24) break;
+            const label = String(row[0]??'').trim().toUpperCase();
+            if(label.includes('CURMON')) continue;
+            if(label.includes('CURQ') || label.includes('CAL')) continue;
+            if(label.match(/^Q[1-5]\b/)) continue;
+            b1.push(pv(row[c1])); b2.push(pv(row[c2])); b3.push(pv(row[c3]));
+          }
+        }
+        const anyData = b1.some(v=>v!=null) || b2.some(v=>v!=null) || b3.some(v=>v!=null);
+        if(anyData){ found=true; break; }
+        // Otherwise try the next sheet (this one parsed but yielded nulls)
+        b1=[]; b2=[]; b3=[];
       }
 
       if(!found||(!b1.some(v=>v!=null)&&!b2.some(v=>v!=null)&&!b3.some(v=>v!=null))){
