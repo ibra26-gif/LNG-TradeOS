@@ -19692,5 +19692,155 @@ SAM.init = function() {
   samLoadColombiaHydro();
 };
 
+// ════════════════════════════════════════════════════════════════════════════
+// PORTFOLIO VALUATION IFRAME — DATA INTEGRATION (Pattern A · postMessage)
+// ────────────────────────────────────────────────────────────────────────────
+// The Cowork PV prototype mounted at #pv-frame seeds its own demo curves +
+// freight snapshots. We REPLACE those with the live main-app data:
+//   - aD  (LNG EOD curves: TTF/JKM/HH/NBP/Brent/Dated, by date and pricing-key)
+//   - eexD (EEX EU hub curves: THE/PEG/PSV/PVB/ZTP, merged in by trade date)
+//   - F.snaps + F.blng (BLNG1/2/3 freight $/day, historical + current)
+// Phase 1: curves + freight only. Phase 2 will add NM_DB / PORT_COSTS / phys
+// diffs — those need port-id ↔ display-name mapping work first.
+//
+// Trigger flow:
+//   1. iframe boots, posts {type:'pv-ready'} to window.parent (us).
+//   2. Listener below receives it, builds payload, posts back as 'pv-data'.
+//   3. After EEX sync / Drive sync land fresh data, _pvPushPayload re-fires
+//      so the iframe stays in sync without the user reopening it.
+// ════════════════════════════════════════════════════════════════════════════
+(function pvIntegration(){
+  // pk → 'MMM-YY' lookup, built once from ML.
+  const PK_TO_LBL = {};
+  if (typeof ML !== 'undefined') {
+    const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    ML.forEach(m => {
+      const [mo, yy] = m.split('-');
+      const monIdx = MO.indexOf(mo);
+      if (monIdx < 0) return;
+      const pk = `20${yy}-${String(monIdx+1).padStart(2,'0')}`;
+      PK_TO_LBL[pk] = m;
+    });
+  }
+
+  function _pvBuildCurveSnapshots(){
+    const out = {};
+    if (typeof aD === 'undefined' || !aD) return out;
+    Object.keys(aD).forEach(date => {
+      const day = aD[date];
+      if (!day || !day.rows) return;
+      const slot = {};
+      day.rows.forEach(row => {
+        const lbl = PK_TO_LBL[row.pk];
+        if (!lbl) return;
+        const cell = {};
+        ['JKM','TTF','HH','NBP','Brent','Dated'].forEach(idx => {
+          if (row[idx] != null && isFinite(row[idx])) cell[idx] = +row[idx];
+        });
+        if (Object.keys(cell).length) slot[lbl] = cell;
+      });
+      // Merge EEX EU hubs by matching trade date + pricing-key.
+      if (typeof eexD !== 'undefined' && eexD[date]?.rows) {
+        eexD[date].rows.forEach(row => {
+          const lbl = PK_TO_LBL[row.pk];
+          if (!lbl) return;
+          if (!slot[lbl]) slot[lbl] = {};
+          ['THE','PEG','PSV','PVB','ZTP'].forEach(hub => {
+            if (row[hub] != null && isFinite(row[hub])) slot[lbl][hub] = +row[hub];
+          });
+        });
+      }
+      if (Object.keys(slot).length) out[date] = slot;
+    });
+    return out;
+  }
+
+  function _pvBuildFreightSnapshots(){
+    const out = {};
+    if (typeof F === 'undefined' || !F) return out;
+    // Historical snapshots first.
+    (F.snaps || []).forEach(snap => {
+      if (!snap || !snap.date || !snap.blng) return;
+      const slot = {};
+      ML.forEach((m, i) => {
+        const b1 = snap.blng.BLNG1?.[i], b2 = snap.blng.BLNG2?.[i], b3 = snap.blng.BLNG3?.[i];
+        if (b1 == null && b2 == null && b3 == null) return;
+        slot[m] = {};
+        if (b1 != null) slot[m].BLNG1 = +b1;
+        if (b2 != null) slot[m].BLNG2 = +b2;
+        if (b3 != null) slot[m].BLNG3 = +b3;
+      });
+      if (Object.keys(slot).length) out[snap.date] = slot;
+    });
+    // Current saved curve as today's snapshot (so iframe always has the latest).
+    if (F.blng) {
+      const today = new Date().toISOString().slice(0, 10);
+      const slot = {};
+      ML.forEach((m, i) => {
+        const b1 = F.blng.BLNG1?.[i], b2 = F.blng.BLNG2?.[i], b3 = F.blng.BLNG3?.[i];
+        if (b1 == null && b2 == null && b3 == null) return;
+        slot[m] = {};
+        if (b1 != null) slot[m].BLNG1 = +b1;
+        if (b2 != null) slot[m].BLNG2 = +b2;
+        if (b3 != null) slot[m].BLNG3 = +b3;
+      });
+      if (Object.keys(slot).length) out[today] = slot;
+    }
+    return out;
+  }
+
+  function _pvBuildPayload(reason){
+    return {
+      reason: reason || 'manual',
+      curveSnapshots: _pvBuildCurveSnapshots(),
+      freightSnapshots: _pvBuildFreightSnapshots(),
+    };
+  }
+
+  function _pvPushPayload(reason){
+    const frame = document.getElementById('pv-frame');
+    if (!frame || !frame.contentWindow) return false;
+    try {
+      const payload = _pvBuildPayload(reason);
+      frame.contentWindow.postMessage({ type:'pv-data', payload }, '*');
+      console.log('[PV] pushed payload (' + reason + '): ' +
+        Object.keys(payload.curveSnapshots).length + ' curve snapshot(s), ' +
+        Object.keys(payload.freightSnapshots).length + ' freight snapshot(s)');
+      return true;
+    } catch (e) { console.warn('[PV] push failed:', e); return false; }
+  }
+
+  window._pvBuildPayload = _pvBuildPayload;
+  window._pvPushPayload  = _pvPushPayload;
+
+  // Listen for the iframe's ready signal, then push initial payload.
+  window.addEventListener('message', (e) => {
+    if (!e.data || e.data.type !== 'pv-ready') return;
+    _pvPushPayload('iframe-ready');
+  });
+
+  // Auto-push when main-app data refreshes. We use a debounced trampoline so
+  // back-to-back updates (EEX sync + Drive sync + curve recompute) coalesce
+  // into one postMessage.
+  let _pvPushTimer = null;
+  function _pvScheduleRefresh(reason){
+    clearTimeout(_pvPushTimer);
+    _pvPushTimer = setTimeout(() => _pvPushPayload(reason || 'auto-refresh'), 800);
+  }
+  window._pvScheduleRefresh = _pvScheduleRefresh;
+
+  // Hook into known data-refresh points without rewriting them — wrap the
+  // originals so they call into our scheduler after they finish.
+  ['syncEEX','lDrive','syncEEXDrive','syncNewFiles'].forEach(fnName => {
+    const orig = window[fnName];
+    if (typeof orig !== 'function') return;
+    window[fnName] = async function(...args){
+      const r = await orig.apply(this, args);
+      _pvScheduleRefresh(fnName + '-done');
+      return r;
+    };
+  });
+})();
+
 })();
 })();

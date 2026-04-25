@@ -9513,6 +9513,58 @@ renderCargoTable();
 renderMorningBook();
 renderSpecBook();
 
+// ────────────────────────────────────────────────────────────────────────────
+// PARENT DASHBOARD INTEGRATION (Pattern A · postMessage)
+// The main lngtradeos.js dashboard pushes its live data into this iframe via
+// window.postMessage. We listen for {type:'pv-data', payload:{...}}.
+// On receipt, applyExternalData REPLACES the seeded curve + freight snapshots
+// with the parent's live aD / F.snaps and re-renders. We tell the parent
+// we're ready by posting {type:'pv-ready'} once seed setup is done — the
+// parent listens for that signal before sending its first payload.
+//
+// Payload shape:
+//   {
+//     curveSnapshots: { 'YYYY-MM-DD': { 'Jul-26': { TTF, JKM, HH, NBP, Brent } } },
+//     freightSnapshots: { 'YYYY-MM-DD': { 'Jul-26': { BLNG1, BLNG2, BLNG3 } } },
+//     // (NM, port costs, phys diffs are Phase 2 — flagged but not wired yet)
+//   }
+function applyExternalData(payload) {
+  if (!payload || typeof payload !== 'object') return;
+  let touched = false;
+  if (payload.curveSnapshots && Object.keys(payload.curveSnapshots).length) {
+    STATE.curves.snapshots = payload.curveSnapshots;
+    const dates = Object.keys(payload.curveSnapshots).sort();
+    STATE.curves.activeDate   = dates[dates.length - 1];
+    STATE.curves.baselineDate = dates[dates.length - 2] || dates[dates.length - 1];
+    touched = true;
+  }
+  if (payload.freightSnapshots && Object.keys(payload.freightSnapshots).length) {
+    STATE.freightCurves.snapshots = payload.freightSnapshots;
+    const dates = Object.keys(payload.freightSnapshots).sort();
+    STATE.freightCurves.activeDate   = dates[dates.length - 1];
+    STATE.freightCurves.baselineDate = dates[dates.length - 2] || dates[dates.length - 1];
+    touched = true;
+  }
+  if (touched) {
+    saveState();
+    if (typeof renderAll === 'function') renderAll();
+    console.log('[PV] applied external data', { reason: payload.reason || '?' });
+  }
+}
+window.applyExternalData = applyExternalData;
+
+window.addEventListener('message', (e) => {
+  if (!e.data || e.data.type !== 'pv-data') return;
+  applyExternalData(e.data.payload);
+});
+
+// Tell the parent we're ready to receive live data. Use '*' as targetOrigin
+// since the iframe is same-origin under both production (lngtradeos.com) and
+// dev (file://); the parent message listener still validates the message type.
+if (window.parent && window.parent !== window) {
+  try { window.parent.postMessage({type:'pv-ready'}, '*'); } catch(_) {}
+}
+
 // Re-render state-derived views whenever the relevant tab is activated
 document.querySelectorAll('.tabbar button[data-tab="spec"]').forEach(b => b.addEventListener('click', renderSpecBook));
 document.querySelectorAll('.tabbar button[data-tab="paper"]').forEach(b => b.addEventListener('click', renderPaperTable));

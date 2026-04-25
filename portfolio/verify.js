@@ -1108,6 +1108,45 @@ setTimeout(() => {
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
+    console.log('SECTION 28 · Parent dashboard data integration (postMessage)');
+    console.log(bar);
+    // The iframe exposes applyExternalData(payload) and posts 'pv-ready' to its
+    // parent on boot. The main app listens, builds a payload from its live aD /
+    // eexD / F.snaps, posts it back. On receipt, the iframe replaces its seed
+    // curve + freight snapshots with the parent's live data.
+    check('applyExternalData on window',  typeof w.applyExternalData === 'function');
+    // Use window-exposed listCurveSnapshots / listFreightSnapshots / curveLookup
+    // / freightLookup since STATE itself isn't on window in JSDOM.
+    const beforeCurves  = w.listCurveSnapshots().length;
+    const beforeFreight = w.listFreightSnapshots().length;
+    check('Has seed curve snapshots',   beforeCurves >= 1);
+    check('Has seed freight snapshots', beforeFreight >= 1);
+    // Apply a synthetic external payload — two curve dates + one freight date.
+    const payload = {
+      reason: 'verify-test',
+      curveSnapshots: {
+        '2026-04-23': { 'May-26': { TTF: 99.99, JKM: 100.0, HH: 1.111, NBP: 88.8, Brent: 70.0 } },
+        '2026-04-24': { 'May-26': { TTF: 100.5, JKM: 101.0, HH: 1.222, NBP: 89.0, Brent: 70.5 } },
+      },
+      freightSnapshots: {
+        '2026-04-24': { 'May-26': { BLNG1: 75555, BLNG2: 80555, BLNG3: 95555 } },
+      },
+    };
+    w.applyExternalData(payload);
+    const curvesAfter   = w.listCurveSnapshots();
+    const freightAfter  = w.listFreightSnapshots();
+    check('Curves replaced (2 dates)',   curvesAfter.length === 2 && curvesAfter.includes('2026-04-24'));
+    check('Curve activeDate is set',     w.listCurveSnapshots().includes('2026-04-24'));
+    check('Curve cell carried through',  Math.abs(w.curveLookup('May-26','TTF','2026-04-24') - 100.5) < 1e-9);
+    check('Freight replaced (1 date)',   freightAfter.length === 1 && freightAfter[0] === '2026-04-24');
+    check('Freight cell carried through',w.freightLookup('May-26','BLNG2','2026-04-24') === 80555);
+    // Empty payload no-op.
+    const beforeNoop = w.listCurveSnapshots().length;
+    w.applyExternalData({ reason:'noop' });
+    check('Empty payload is no-op', w.listCurveSnapshots().length === beforeNoop);
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
     console.log('SUMMARY');
     console.log(bar);
     console.log(`    Passed: ${passed}`);
