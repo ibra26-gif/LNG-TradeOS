@@ -1696,16 +1696,44 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
               <div class="hint">Buyer/seller can divert the cargo to a different hub</div>
             </div>
             <div class="field">
-              <label>Destinations <span class="label-hint">comma-sep</span></label>
+              <label>Gas-hub destinations <span class="label-hint">comma-sep</span></label>
               <input type="text" id="flex-dest-dests" placeholder="JKM,TTF,NBP" value="JKM,TTF,NBP">
-              <div class="hint">Gas hubs only (no Brent/JCC)</div>
+              <div class="hint">Gas hubs only — oil-indexed below</div>
             </div>
             <div class="field">
-              <label>Freight <span class="label-hint">$/MMBtu · avg</span></label>
+              <label>Basket freight <span class="label-hint">$/MMBtu · fallback</span></label>
               <input type="number" id="flex-dest-freight" value="1.53" step="0.01">
-              <div class="hint">Average across destinations</div>
+              <div class="hint">Used when an entry has no per-dest freight</div>
             </div>
-            <div class="field"></div>
+            <!-- Holder of the destination option (post-merge backlog #3).
+                 'me'   → I hold the right to divert; extrinsic adds to my book.
+                 'cpty' → I sold the right to my counterparty (FOB-style premium
+                          baked into the price); extrinsic SUBTRACTS, intrinsic
+                          drops to 0. valueInstance honours this signed split
+                          (lines ~6193-6252). -->
+            <div class="field">
+              <label>Held by</label>
+              <select id="flex-dest-holder">
+                <option value="me" selected>Me</option>
+                <option value="cpty">Counterparty</option>
+              </select>
+              <div class="hint">'Cpty' flips extrinsic sign (option I sold)</div>
+            </div>
+          </div>
+          <!-- Oil-indexed destination editor (post-merge backlog #2)
+               Each row is a {idx, slope, scalar, window, lag, constant, freight}
+               object — Margrabe/Clark in valueInstance treats it identically to
+               a string gas-hub destination, just priced as
+                 LNG = scalar × slope × avg(idx[M-lag-window+1 … M-lag]) + constant
+               Default values match the seed on LT-CHENIERE: 11.5%×Brent(3,0,1). -->
+          <div id="flex-oil-dests-wrap" style="margin-top:6px; padding:10px 12px; background:var(--bg-sunken,#0a1628); border:1px dashed var(--input-border,#1e3a5f); border-radius:4px">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px">
+              <span style="font-size:11.5px; color:var(--text-2)">Oil-indexed destinations</span>
+              <span class="hint" style="font-style:italic">e.g. Japanese SPA · 11.5% × Brent (3,0,1) − $0.50</span>
+              <span style="flex:1"></span>
+              <button type="button" class="btn ghost" style="padding:4px 10px; font-size:11px" onclick="addOilDest()">+ Add oil-indexed</button>
+            </div>
+            <div id="flex-oil-dests-list"></div>
           </div>
 
           <!-- Volume flex -->
@@ -7686,12 +7714,72 @@ function collectFormCargo() {
   };
 }
 
+// ── Oil-indexed destination editor (post-merge backlog #2) ──────────────────
+// Each row in #flex-oil-dests-list is one oil-indexed destination object.
+// We keep the state in the DOM (one .oil-dest-row per entry) so the existing
+// edit/clear lifecycle works without an extra global. addOilDest appends a
+// blank row; readOilDests scrapes the list back into objects.
+function addOilDest(seed) {
+  const list = document.getElementById('flex-oil-dests-list');
+  if (!list) return;
+  const s = seed || {};
+  const row = document.createElement('div');
+  row.className = 'oil-dest-row';
+  row.style.cssText = 'display:grid;grid-template-columns:78px 70px 70px 60px 56px 70px 70px 28px;gap:6px;margin-bottom:6px;align-items:end';
+  const micro = 'font-size:10px;color:var(--text-3);letter-spacing:.04em;text-transform:uppercase';
+  const inp = 'width:100%;padding:5px 6px;font-size:11.5px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:3px;color:var(--text-1)';
+  row.innerHTML = `
+    <div><div style="${micro}">Index</div>
+      <select class="od-idx" style="${inp}"><option${s.idx==='Brent'||!s.idx?' selected':''}>Brent</option><option${s.idx==='JCC'?' selected':''}>JCC</option></select>
+    </div>
+    <div><div style="${micro}">Slope</div>   <input class="od-slope"    type="number" step="0.001" value="${s.slope    ?? 0.115}" style="${inp}"></div>
+    <div><div style="${micro}">Scalar</div>  <input class="od-scalar"   type="number" step="0.001" value="${s.scalar   ?? 1}"     style="${inp}"></div>
+    <div><div style="${micro}">Window</div>  <input class="od-window"   type="number" step="1" min="1" value="${s.window ?? 3}"   style="${inp}"></div>
+    <div><div style="${micro}">Lag</div>     <input class="od-lag"      type="number" step="1" min="0" value="${s.lag    ?? 0}"   style="${inp}"></div>
+    <div><div style="${micro}">Constant</div><input class="od-constant" type="number" step="0.01" value="${s.constant ?? 0}"      style="${inp}"></div>
+    <div><div style="${micro}">Freight</div> <input class="od-freight"  type="number" step="0.01" value="${s.freight  ?? 1.53}"   style="${inp}"></div>
+    <div><button type="button" title="Remove" style="height:29px;padding:0 8px;background:transparent;border:1px solid var(--input-border);border-radius:3px;color:var(--text-3);cursor:pointer" onclick="this.closest('.oil-dest-row').remove()">×</button></div>
+  `;
+  list.appendChild(row);
+}
+window.addOilDest = addOilDest;
+function readOilDests() {
+  const rows = document.querySelectorAll('#flex-oil-dests-list .oil-dest-row');
+  const out = [];
+  rows.forEach(r => {
+    const num = sel => +(r.querySelector(sel)?.value);
+    const idx = r.querySelector('.od-idx')?.value || 'Brent';
+    const slope = num('.od-slope');
+    if (!isFinite(slope) || slope === 0) return;  // skip half-filled rows
+    const obj = { idx, slope };
+    const scalar = num('.od-scalar');     if (isFinite(scalar)   && scalar   !== 1) obj.scalar   = scalar;
+    const win    = num('.od-window');     if (isFinite(win)      && win      !== 1) obj.window   = win;
+    const lag    = num('.od-lag');        if (isFinite(lag)      && lag      !== 0) obj.lag      = lag;
+    const con    = num('.od-constant');   if (isFinite(con)      && con      !== 0) obj.constant = con;
+    const fr     = num('.od-freight');    if (isFinite(fr)       && fr       !== 0) obj.freight  = fr;
+    out.push(obj);
+  });
+  return out;
+}
+window.readOilDests = readOilDests;
+function clearOilDests() {
+  const list = document.getElementById('flex-oil-dests-list');
+  if (list) list.innerHTML = '';
+}
+
 function collectFormFlex() {
   const g = i => document.getElementById(i);
   const flex = {};
   if (g('flex-dest-on')?.checked) {
     const dests = (g('flex-dest-dests')?.value || 'JKM,TTF,NBP').split(',').map(s => s.trim()).filter(Boolean);
-    flex.destination = { destinations: dests, freight: +g('flex-dest-freight')?.value || 1.53 };
+    // Merge gas-hub strings + oil-indexed objects into one destinations array.
+    // valueInstance handles both shapes uniformly.
+    const oil = readOilDests();
+    const dest = { destinations: [...dests, ...oil], freight: +g('flex-dest-freight')?.value || 1.53 };
+    // Holder: only persist when 'cpty' (since 'me' is the default in valueInstance).
+    const holder = g('flex-dest-holder')?.value;
+    if (holder === 'cpty') dest.holder = 'cpty';
+    flex.destination = dest;
   }
   if (g('flex-vol-on')?.checked) {
     flex.volume = { flexPct: (+g('flex-vol-pct')?.value || 10) / 100 };
@@ -7849,6 +7937,8 @@ function clearCargoForm() {
   ['flex-dest-on','flex-vol-on','flex-cancel-on','flex-reload-on'].forEach(id => {
     const el = g(id); if (el) el.checked = false;
   });
+  if (typeof clearOilDests === 'function') clearOilDests();
+  if (g('flex-dest-holder')) g('flex-dest-holder').value = 'me';
   updateCargoModeChip();
   // Fire a preview refresh
   if (typeof cargoPreview === 'function') cargoPreview();
@@ -7931,8 +8021,19 @@ function editCargo(id) {
   if (g('flex-dest-on')) {
     g('flex-dest-on').checked = !!c.flex?.destination;
     if (c.flex?.destination) {
-      if (g('flex-dest-dests'))   g('flex-dest-dests').value = c.flex.destination.destinations.join(',');
+      // Split gas-hub strings vs oil-indexed objects so each lands in its
+      // own UI surface (text input vs the new oil-dest list).
+      const allDests = c.flex.destination.destinations || [];
+      const gasHubs   = allDests.filter(d => typeof d === 'string');
+      const oilDests  = allDests.filter(d => typeof d === 'object' && d !== null);
+      if (g('flex-dest-dests'))   g('flex-dest-dests').value = gasHubs.join(',');
       if (g('flex-dest-freight')) g('flex-dest-freight').value = c.flex.destination.freight;
+      if (g('flex-dest-holder'))  g('flex-dest-holder').value = c.flex.destination.holder || 'me';
+      clearOilDests();
+      oilDests.forEach(addOilDest);
+    } else {
+      if (g('flex-dest-holder')) g('flex-dest-holder').value = 'me';
+      clearOilDests();
     }
   }
   if (g('flex-vol-on')) {

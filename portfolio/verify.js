@@ -951,6 +951,131 @@ setTimeout(() => {
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
+    console.log('SECTION 25 · Oil-indexed destination editor in flex form');
+    console.log(bar);
+    // The flex-destination editor now exposes a dynamic list of
+    // oil-indexed destinations with the {idx, slope, scalar, window, lag,
+    // constant, freight} object shape. Adding rows + flipping the toggle on
+    // must produce a destinations[] array that mixes gas-hub strings with
+    // oil-indexed objects. Editing a cargo with mixed destinations must
+    // round-trip back into the right surfaces.
+    check('addOilDest is on window',     typeof w.addOilDest === 'function');
+    check('readOilDests is on window',   typeof w.readOilDests === 'function');
+    check('Oil-dest list container',     !!doc.getElementById('flex-oil-dests-list'));
+    // Reset cleanly.
+    if (doc.getElementById('flex-oil-dests-list')) doc.getElementById('flex-oil-dests-list').innerHTML = '';
+    // Flip the destination toggle on, leave the gas-hub text at JKM,TTF,NBP, and
+    // add one Brent (3,0,1) at 11.5% with a $0.50 constant + per-dest freight.
+    const destOn = doc.getElementById('flex-dest-on'); destOn.checked = true;
+    set('f-buy-pricingZ', 1); set('f-buy-window', 1); set('f-buy-scalar', 1); set('f-buy-lag', 0);
+    w.addOilDest({ idx:'Brent', slope:0.115, window:3, lag:0, constant:0.50, freight:2.10 });
+    check('Row was added to the list', doc.querySelectorAll('#flex-oil-dests-list .oil-dest-row').length === 1);
+    const flexA = w.collectFormFlex();
+    const destsA = flexA.destination?.destinations || [];
+    check('destinations[] mixes strings + object', destsA.length === 4 && destsA.filter(d => typeof d === 'object').length === 1);
+    const oilA = destsA.find(d => typeof d === 'object');
+    check('Oil-dest persists slope = 0.115',     Math.abs(oilA.slope - 0.115) < 1e-9);
+    check('Oil-dest persists window = 3',         oilA.window === 3);
+    check('Oil-dest persists constant = 0.50',    Math.abs(oilA.constant - 0.50) < 1e-9);
+    check('Oil-dest persists per-dest freight',   Math.abs(oilA.freight - 2.10) < 1e-9);
+    check('Oil-dest scalar omitted at default',   oilA.scalar === undefined);
+    check('Oil-dest lag omitted at default',      oilA.lag === undefined);
+    // Add a second row with all non-defaults.
+    w.addOilDest({ idx:'JCC', slope:0.135, scalar:0.945, window:5, lag:1, constant:0, freight:1.85 });
+    const flexB = w.collectFormFlex();
+    const oilB = flexB.destination.destinations.filter(d => typeof d === 'object');
+    check('Two oil rows captured',          oilB.length === 2);
+    check('Second row scalar = 0.945',      Math.abs(oilB[1].scalar - 0.945) < 1e-9);
+    check('Second row lag = 1',             oilB[1].lag === 1);
+
+    // Round-trip: build a fake cargo with these dests, run editCargo, confirm
+    // the form's text input + oil-dest list end up split correctly.
+    const fakeCargo = {
+      id: 'TEST-OIL', status:'Fixed', cargoType:'Equity', cpty:'Test', dealType:'single',
+      incoterm:'FOB/DES', coverage:'covered', loadPort:'Sabine Pass', dischPort:'Gate',
+      loadMonth:'Jul-26', sellMonth:'Jul-26',
+      vesselCbm:174000, fillPct:98.5, energyFactor:23.1, ladenDays:18, bogRate:0.10,
+      buy:{ idx:'HH', formula:'% × Index + Spread', mult:1.15, spread:1.90 },
+      sell:{ idx:'TTF', formula:'Index + Spread', mult:1.0, spread:-0.195 },
+      flex:{ destination:{ destinations:['JKM','TTF',{idx:'Brent',slope:0.115,window:3,constant:0.50,freight:2.10}], freight:1.53 } },
+      freightMode:'manual', freightManual:{freight:1.53,bog:0,other:0},
+    };
+    if (typeof w.bookCargo === 'function') w.bookCargo(fakeCargo);
+    if (typeof w.editCargo === 'function') w.editCargo('TEST-OIL');
+    const dests3 = doc.getElementById('flex-dest-dests')?.value || '';
+    const oilRows3 = doc.querySelectorAll('#flex-oil-dests-list .oil-dest-row').length;
+    check('editCargo: gas hubs land in text input', dests3.split(',').map(s=>s.trim()).sort().join(',') === 'JKM,TTF');
+    check('editCargo: 1 oil-dest row populated', oilRows3 === 1);
+    if (typeof w.deleteCargo === 'function') w.deleteCargo('TEST-OIL');
+    // Reset state for any tests that follow.
+    if (doc.getElementById('flex-oil-dests-list')) doc.getElementById('flex-oil-dests-list').innerHTML = '';
+    destOn.checked = false;
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
+    console.log('SECTION 26 · Holder radio on flex destination toggle');
+    console.log(bar);
+    // The destination flex now has a Held by [Me / Counterparty] selector.
+    // 'me'   → flex.destination.holder is omitted (default), extrinsic is positive
+    // 'cpty' → flex.destination.holder = 'cpty', valueInstance flips signs
+    //          (extrinsic SUBTRACTS from book, intrinsic drops to 0)
+    check('Holder selector present', !!doc.getElementById('flex-dest-holder'));
+    check('Holder defaults to me',   doc.getElementById('flex-dest-holder')?.value === 'me');
+
+    // collectFormFlex omits holder when value is 'me' (matches valueInstance default).
+    destOn.checked = true;
+    set('flex-dest-holder', 'me');
+    const flexMe = w.collectFormFlex();
+    check('me default → flex.destination.holder omitted', flexMe.destination.holder === undefined);
+
+    // Switch to cpty → persisted as 'cpty'.
+    set('flex-dest-holder', 'cpty');
+    const flexCp = w.collectFormFlex();
+    check('cpty → flex.destination.holder = "cpty"', flexCp.destination.holder === 'cpty');
+
+    // Round-trip via editCargo: book a cargo with holder=cpty, edit, the select reflects it.
+    const fakeCargoH = {
+      id:'TEST-HOLDER', status:'Fixed', cargoType:'Equity', cpty:'TestCpty', dealType:'single',
+      incoterm:'FOB/DES', coverage:'covered', loadPort:'Sabine Pass', dischPort:'Gate',
+      loadMonth:'Jul-26', sellMonth:'Jul-26',
+      vesselCbm:174000, fillPct:98.5, energyFactor:23.1, ladenDays:18, bogRate:0.10,
+      buy:{idx:'HH',formula:'% × Index + Spread',mult:1.15,spread:1.90},
+      sell:{idx:'TTF',formula:'Index + Spread',mult:1.0,spread:-0.195},
+      flex:{destination:{destinations:['JKM','TTF','NBP'], freight:1.53, holder:'cpty'}},
+      freightMode:'manual', freightManual:{freight:1.53,bog:0,other:0},
+    };
+    if (typeof w.bookCargo === 'function') w.bookCargo(fakeCargoH);
+    if (typeof w.editCargo === 'function') w.editCargo('TEST-HOLDER');
+    check('editCargo populates Held by = cpty', doc.getElementById('flex-dest-holder')?.value === 'cpty');
+    if (typeof w.deleteCargo === 'function') w.deleteCargo('TEST-HOLDER');
+
+    // Math sign-flip: valueInstance must return signed extrinsic when holder=cpty.
+    // Use the same instance shape getOptionalityInstances() produces, so the
+    // function gets every field it expects (sellMo, tbtu, params, etc).
+    if (typeof w.valueInstance === 'function') {
+      const mkInst = (holder) => ({
+        dealId:'OPT-'+holder, dealKind:'cargo', dealType:'Equity',
+        loadMo:'Jul-26', sellMo:'Jul-26', tbtu:3.4,
+        contractedIdx:'TTF', contractedPx: null,
+        flexType:'dest',
+        params:{ destinations:['JKM','TTF','NBP'], freight:1.53, holder },
+      });
+      const me = w.valueInstance(mkInst('me'));
+      const cp = w.valueInstance(mkInst('cpty'));
+      check('valueInstance returns extrinsic for me-holder',     isFinite(me?.extrinsic));
+      check('valueInstance returns extrinsic for cpty-holder',   isFinite(cp?.extrinsic));
+      // cpty extrinsic is the signed (negative) version of me extrinsic
+      check('cpty extrinsic = -me extrinsic',  Math.abs(me.extrinsic + cp.extrinsic) < 1e-9,
+            `me=${me?.extrinsic?.toFixed?.(4)} cp=${cp?.extrinsic?.toFixed?.(4)}`);
+      // cpty intrinsic drops to 0 (basis priced into the FOB sale)
+      check('cpty intrinsic = 0', cp.intrinsic === 0);
+    }
+
+    destOn.checked = false;
+    set('flex-dest-holder', 'me');
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
     console.log('SUMMARY');
     console.log(bar);
     console.log(`    Passed: ${passed}`);
