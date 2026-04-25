@@ -1368,6 +1368,44 @@ setTimeout(() => {
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
+    console.log('SECTION 34 · Physical exposure — coverage gating (no reference-leg double-count)');
+    console.log(bar);
+    // Bug found 2026-04-25: STR-GATE-26 children (coverage='uncovered',
+    // refBuy.idx='HH' as a placeholder) were posting -3.94 TBtu to HH Jul-26
+    // alongside the legitimate Cheniere -4.53. User correctly flagged this
+    // as double-counting: an uncovered cargo's reference buy leg is for
+    // MTM marking only, not hedge exposure. Same logic for unsold sell ref.
+    // After the fix, HH Jul-26 = Cheniere only.
+    const expHH = w.computePhysicalExposure().HH?.['Jul-26'];
+    check('HH Jul-26 reflects Cheniere only (no Gate-Short ref-buy)',
+          expHH != null && Math.abs(expHH) < 5.5, `got ${expHH?.toFixed(3)} (expected single-cargo magnitude < 5.5)`);
+
+    // Direct coverage gating: book a synthetic uncovered FOB/DES cargo with
+    // refBuy.idx='HH' on a fresh month — it MUST NOT post to HH exposure.
+    const probe = {
+      id:'TEST-COV-GATE', status:'Fixed', cargoType:'Equity', cpty:'Test',
+      dealType:'single', incoterm:'FOB/DES', coverage:'uncovered',
+      loadPort:'Sabine Pass', dischPort:'Gate',
+      loadMonth:'Mar-28', sellMonth:'Mar-28',
+      vesselCbm:174000, fillPct:98.5, energyFactor:23.1, ladenDays:18, bogRate:0.10,
+      buy: null,
+      sell:{ idx:'TTF', formula:'Index + Spread', mult:1.0, spread:-0.25 },
+      refBuy:{ idx:'HH', month:'Mar-28', override:null },
+      freightMode:'manual', freightManual:{freight:0,bog:0,other:0},
+    };
+    const beforeHH = w.computePhysicalExposure().HH?.['Mar-28'] || 0;
+    w.bookCargo(probe);
+    const afterHH = w.computePhysicalExposure().HH?.['Mar-28'] || 0;
+    check('Uncovered cargo does NOT add HH exposure via refBuy',
+          Math.abs(afterHH - beforeHH) < 1e-6, `Δ HH Mar-28 = ${(afterHH - beforeHH).toFixed(4)}`);
+    // The SELL leg (TTF) MUST still post — that's a real commitment.
+    const ttfMar28 = w.computePhysicalExposure().TTF?.['Mar-28'] || 0;
+    check('Uncovered cargo DOES add sell-leg (TTF) exposure', ttfMar28 > 0,
+          `TTF Mar-28 = ${ttfMar28.toFixed(3)}`);
+    w.deleteCargo('TEST-COV-GATE');
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
     console.log('SUMMARY');
     console.log(bar);
     console.log(`    Passed: ${passed}`);

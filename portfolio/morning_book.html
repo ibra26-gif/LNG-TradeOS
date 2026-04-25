@@ -4792,38 +4792,48 @@ function computePhysicalExposure() {
   };
 
   for (const c of getCargoes()) {
-    if (c.dealType === 'lt') continue;  // skip LT contracts in this summary; they'd blow up the grid
+    // Don't skip LT — children are stored as dealType='single' so they slip
+    // through anyway; the prior `if (c.dealType === 'lt') continue` was a
+    // no-op. Including LT children matches the trader's expectation
+    // (see Cheniere → HH exposure on the Jul-26 cell).
     const v = computeCargoValues(c);
     const [iBuy, iSell] = c.incoterm.split('/');
 
-    // Buy exposure (negative = short)
-    const buyLeg = c.coverage === 'uncovered' ? null : c.buy;
-    const buyIdx = c.coverage === 'uncovered' ? (c.refBuy?.idx) : c.buy?.idx;
-    const buyAnchor = c.coverage === 'uncovered'
-      ? (c.refBuy?.month)
-      : (c.buyPricingAnchor || c.loadMonth);
-    if (buyIdx && buyAnchor) {
-      const qty    = (iBuy === 'FOB') ? v.loaded : v.edq;
-      const slope  = legSlope(buyLeg);
-      const months = legMonths(buyAnchor, buyLeg);
-      const share  = -qty * slope / months.length;
-      out[buyIdx] = out[buyIdx] || {};
-      for (const m of months) out[buyIdx][m] = (out[buyIdx][m] || 0) + share;
+    // ── Coverage gating (per user 2026-04-25) ─────────────────────────────
+    // Reference legs (refBuy on uncovered cargoes, refSell on unsold) are for
+    // MTM marking only — the trader hasn't committed to that supply/sale yet,
+    // so they DON'T carry hedge exposure. Posting them was double-counting
+    // and tripped the Jul-26 HH cell (Cheniere child − 4.526 + Gate-Short
+    // child − 3.935 = − 8.461; Gate-Short shouldn't have been there).
+    //   coverage='covered'   → both legs real → both posted
+    //   coverage='uncovered' → only SELL real → buy skipped
+    //   coverage='unsold'    → only BUY real  → sell skipped
+    if (c.coverage !== 'uncovered') {
+      const buyLeg = c.buy;
+      const buyIdx = c.buy?.idx;
+      const buyAnchor = c.buyPricingAnchor || c.loadMonth;
+      if (buyIdx && buyAnchor) {
+        const qty    = (iBuy === 'FOB') ? v.loaded : v.edq;
+        const slope  = legSlope(buyLeg);
+        const months = legMonths(buyAnchor, buyLeg);
+        const share  = -qty * slope / months.length;
+        out[buyIdx] = out[buyIdx] || {};
+        for (const m of months) out[buyIdx][m] = (out[buyIdx][m] || 0) + share;
+      }
     }
 
-    // Sell exposure (positive = long)
-    const sellLeg = c.coverage === 'unsold' ? null : c.sell;
-    const sellIdx = c.coverage === 'unsold' ? (c.refSell?.idx) : c.sell?.idx;
-    const sellAnchor = c.coverage === 'unsold'
-      ? (c.refSell?.month)
-      : (c.sellPricingAnchor || c.sellMonth);
-    if (sellIdx && sellAnchor) {
-      const qty    = (iSell === 'DES') ? v.edq : v.loaded;
-      const slope  = legSlope(sellLeg);
-      const months = legMonths(sellAnchor, sellLeg);
-      const share  = +qty * slope / months.length;
-      out[sellIdx] = out[sellIdx] || {};
-      for (const m of months) out[sellIdx][m] = (out[sellIdx][m] || 0) + share;
+    if (c.coverage !== 'unsold') {
+      const sellLeg = c.sell;
+      const sellIdx = c.sell?.idx;
+      const sellAnchor = c.sellPricingAnchor || c.sellMonth;
+      if (sellIdx && sellAnchor) {
+        const qty    = (iSell === 'DES') ? v.edq : v.loaded;
+        const slope  = legSlope(sellLeg);
+        const months = legMonths(sellAnchor, sellLeg);
+        const share  = +qty * slope / months.length;
+        out[sellIdx] = out[sellIdx] || {};
+        for (const m of months) out[sellIdx][m] = (out[sellIdx][m] || 0) + share;
+      }
     }
   }
   return out;
