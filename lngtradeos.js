@@ -12876,9 +12876,22 @@ function rgCostGraph(){
 // (vs TTF) and the breakeven level the terminal can absorb before going OTM.
 //   BREAKEVEN = Hub Price − Variable Cost − TTF
 // Terminals are ranked ascending by breakeven (lowest = tightest first).
+// Dedicated setter so the BREAKEVEN dropdown persists like the dashboard's
+// dashMonth1/dashMonth2. Keeps the month sticky across tab switches.
+function rgSetSelMonth(v){RG.selMonth=+v;rgs('selMonth',RG.selMonth);rgRT();}
+
 function rgImplied(){
   const mi=RG.selMonth;
   const ttf=rgTTF(mi);
+  // Detect flat ttfCurve (session-restored fallback) so the user understands
+  // why every month might look identical. If max-min < 0.001 €/MWh we flag it.
+  const ttfRaw=RG.ttfCurve||[];
+  const ttfMin=Math.min(...ttfRaw.slice(0,horizonIdx()));
+  const ttfMax=Math.max(...ttfRaw.slice(0,horizonIdx()));
+  const ttfFlat=(ttfMax-ttfMin)<0.001;
+  const flatHint=ttfFlat?`<div style="background:#3d2c0d;border:1px solid #ffb74d;color:#ffb74d;padding:8px 12px;border-radius:4px;margin-bottom:10px;font-size:10px;line-height:1.6">⚠ TTF forward curve is flat (${ttfRaw[0]?.toFixed(2)} €/MWh on all ${horizonIdx()} months). Breakeven varies only via curve shape — load fresh EOD curves from Financial Trading to see month-to-month differentiation.</div>`:'';
+  // Build the dropdown via a named handler so the inline event is unambiguous.
+  const monthSelect=`<select class="f-sel" style="width:100px" onchange="rgSetSelMonth(this.value)">${vML().map((m,i)=>`<option value="${i}"${RG.selMonth===i?' selected':''}>${m}</option>`).join('')}</select>`;
   const rows=RG.terminals.map(t=>{
     const v=rgVar(t,mi);
     if(v.suppressed)return null;
@@ -12895,9 +12908,11 @@ function rgImplied(){
       <td class="tr" style="color:${r.be>=0?'#81c784':'#ef9a9a'};font-weight:700">${r.be>=0?'+':''}${fmm(r.be)}</td>
     </tr>`).join('');
   return`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-    <div class="f-sec" style="border:none;margin:0">SELECT MONTH</div>${msel()}
+    <div class="f-sec" style="border:none;margin:0">SELECT MONTH</div>${monthSelect}
     <span style="color:#546e7a;font-size:9px">Breakeven = Hub Price − Variable Costs − TTF · sorted ascending</span>
+    <span style="color:#4fc3f7;font-size:10px;margin-left:auto;font-weight:600">TTF ${ML[mi]}: ${ttf.toFixed(3)} $/MMBtu (€${(RG.ttfCurve[mi]||0).toFixed(2)}/MWh)</span>
   </div>
+  ${flatHint}
   <div class="f-sec">BREAKEVEN — ${ML[mi]} · All values $/MMBtu</div>
   <div style="color:#546e7a;font-size:9px;margin-bottom:10px">Terminals ordered from lowest breakeven (tightest) to highest (most ITM). Phys diff = current physical differential vs TTF.</div>
   <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
