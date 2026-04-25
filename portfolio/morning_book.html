@@ -7043,11 +7043,21 @@ function renderVolTable() {
     const active = (VOL_WINDOW_DAYS === d) ? ' active' : '';
     return `<button class="view-toggle-btn${active}" style="padding:3px 8px;font-size:10px;border-radius:3px;border:1px solid var(--border);background:${VOL_WINDOW_DAYS === d ? 'var(--accent-bg, #1e40af)' : 'var(--bg-card)'};color:${VOL_WINDOW_DAYS === d ? '#fff' : 'var(--text-2)'};cursor:pointer;margin-right:4px" onclick="setVolWindow(${d})">${d}D</button>`;
   }).join('');
+  // Snapshot count — shows how much history is available for vol calc.
+  // Color: red <5 (vol can't compute), amber 5-29, green ≥30.
+  const snapCount = Object.keys(STATE.curves?.snapshots || {}).length;
+  const snapCol = snapCount >= 30 ? 'var(--pos, #4ade80)'
+                : snapCount >=  5 ? 'var(--warn, #f59e0b)'
+                : 'var(--neg, #f87171)';
+  const snapHint = snapCount >= 30 ? 'sufficient history'
+                 : snapCount >=  5 ? 'thin history — N/A possible on shorter windows'
+                 : `need ≥5 snapshots to compute (have ${snapCount})`;
   // Header row with window selector
   const winHdr = `<tr><td colspan="6" style="padding:6px 8px;background:var(--bg-sunken);border-bottom:1px solid var(--border)">
-    <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-3)">
+    <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-3);flex-wrap:wrap">
       <span style="font-weight:600;letter-spacing:0.06em">REALIZED VOL WINDOW</span>${winBtns}
-      <span style="margin-left:auto;color:var(--text-4);font-size:10px">anchor: ${_volAnchorMonth()}</span>
+      <span style="margin-left:auto;color:var(--text-4);font-size:10px">anchor: <b style="color:var(--text-2)">${_volAnchorMonth()}</b></span>
+      <span title="${snapHint}" style="color:${snapCol};font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;border:1px solid ${snapCol}33;background:${snapCol}11">${snapCount} snapshot${snapCount === 1 ? '' : 's'}</span>
     </div>
   </td></tr>`;
   // Column headers

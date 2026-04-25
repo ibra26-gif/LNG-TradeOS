@@ -1626,6 +1626,42 @@ setTimeout(() => {
       if (typeof w.deleteCurveSnapshot === 'function') w.deleteCurveSnapshot(ds);
     }
 
+    // ── Phase 1: confirm postMessage payload with multi-date snapshots populates history ──
+    // Simulate the lngtradeos.js _pvBuildCurveSnapshots payload: 10 historical
+    // dates with full curves. After applyExternalData, vol can compute for all
+    // standard indices (TTF/JKM/HH/NBP/Brent) without manual injection.
+    const tmoNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const tToday = new Date();
+    const tM2 = new Date(tToday.getFullYear(), tToday.getMonth() + 2, 1);
+    const tAnchor = `${tmoNames[tM2.getMonth()]}-${String(tM2.getFullYear()).slice(2)}`;
+    const multiPayload = { reason: 'phase1-test', curveSnapshots: {} };
+    for (let k = 0; k < 10; k++) {
+      const d = new Date(tToday.getTime() - (10-k) * 86400000);
+      const ds = d.toISOString().slice(0,10);
+      multiPayload.curveSnapshots[ds] = {
+        [tAnchor]: {
+          TTF:   17.50 + (k % 2 === 0 ?  0.10 : -0.10),
+          JKM:   18.50 + (k % 2 === 0 ?  0.15 : -0.15),
+          HH:     3.20 + (k % 2 === 0 ?  0.05 : -0.05),
+          NBP:   17.10 + (k % 2 === 0 ?  0.08 : -0.08),
+          Brent: 88.00 + (k % 2 === 0 ?  1.50 : -1.50),
+        },
+      };
+    }
+    w.applyExternalData(multiPayload);
+    // After apply, getRollingRealizedVol should produce a number for each idx
+    ['TTF','JKM','HH','NBP','Brent'].forEach(idx => {
+      const r = w.getRollingRealizedVol(idx);
+      check(`Phase 1 multi-date payload → ${idx} realized vol computed`,
+            r != null && r.nObs >= 5,
+            r ? `vol=${(r.vol*100).toFixed(1)}%, nObs=${r.nObs}` : 'null');
+    });
+    // Snapshot count should now reflect the payload (could be 10 or 11 depending
+    // on whether any of the seed dates collide with the payload dates).
+    const finalSnapCount = w.listCurveSnapshots ? w.listCurveSnapshots().length : 0;
+    check('Snapshot count populated by payload (≥10)',
+          finalSnapCount >= 10, `count=${finalSnapCount}`);
+
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
     console.log('SUMMARY');
