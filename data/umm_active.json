@@ -41,20 +41,20 @@
       "msg_id": "2026-187__________________001"
     },
     {
-      "title": "Other unavailability · Planned",
-      "asset": "Dornum",
-      "impact": "+0.0 mcm/d",
-      "from": "2026-03-02",
-      "to": "2029-01-01",
-      "type": "planned",
-      "published": "2026-02-19T10:14:35.540000",
-      "msg_id": "2026-136__________________002"
+      "title": "Offshore pipeline unavailability · Unplanned",
+      "asset": "Åsgard",
+      "impact": "-5.3 mcm/d",
+      "from": "2026-04-25",
+      "to": "2026-04-26",
+      "type": "unplanned",
+      "published": "2026-04-24T13:14:21.330000",
+      "msg_id": "2026-195__________________001"
     }
   ],
   "_meta": {
-    "updated": "2026-04-24T23:23:47Z",
+    "updated": "2026-04-25T06:16:56Z",
     "source": "gassco xlexport",
-    "total_messages": 161,
-    "active_count": 5
+    "total_messages": 160,
+    "active_count": 6
   }
 }
