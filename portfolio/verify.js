@@ -1084,18 +1084,56 @@ setTimeout(() => {
     check('Unit toggle present',           !!doc.getElementById('exp-unit-toggle'));
     check('TBtu button present',           !!doc.querySelector('#exp-unit-toggle [data-unit="tbtu"]'));
     check('Lots button present',           !!doc.querySelector('#exp-unit-toggle [data-unit="lots"]'));
-    // LOT_SIZE is a top-level const inside morning_book.html and not on
-    // window in JSDOM (HANDOVER §4 testability trap). Read the lot conversion
-    // from the source via an export probe instead.
-    const HH_LOT  = 2500;       // documented industry standard
-    const TTF_LOT = 10000;
-    check('Source has HH lot constant 2500',  /HH:2500/.test(html));
-    check('Source has TTF lot constant 10000', /TTF:10000/.test(html));
-    // Pure conversion math (independent of any rendered grid):
-    const lotsHH  = 3.5 * 1e6 / HH_LOT;
-    const lotsTTF = 3.5 * 1e6 / TTF_LOT;
-    check('3.5 TBtu × HH = 1,400 lots',    Math.round(lotsHH) === 1400, `got ${lotsHH}`);
-    check('3.5 TBtu × TTF = 350 lots',     Math.round(lotsTTF) === 350, `got ${lotsTTF}`);
+    // LOT_SPEC is hoisted on window via top-level function declarations of
+    // its accessors. Use lotSizeMMBtu(idx, monthLabel) for trade math; HH/JKM/TFU
+    // are flat MMBtu, EU MWh hubs vary by month, NBP varies by days-in-month.
+    check('Source has HH lot constant 2500',
+          /HH:\s*\{\s*kind:'mmbtu',\s*size:2500/.test(html));
+    check('Source has TFU lot constant 10000 (ICE U.S. cash-settled)',
+          /TFU:\s*\{\s*kind:'mmbtu',\s*size:10000/.test(html));
+    // TTF/THE/PEG/ZEE/PSV/PVB are MWh-based on ICE Endex / EEX
+    check('TTF is MWh-denominated (1 MW × hours-in-month)',
+          /TTF:\s*\{\s*kind:'mwh',\s*mw:1/.test(html));
+    check('THE is MWh-denominated', /THE:\s*\{\s*kind:'mwh',\s*mw:1/.test(html));
+    check('PEG is MWh-denominated', /PEG:\s*\{\s*kind:'mwh',\s*mw:1/.test(html));
+    check('ZEE is MWh-denominated', /ZEE:\s*\{\s*kind:'mwh',\s*mw:1/.test(html));
+    check('PSV is MWh-denominated', /PSV:\s*\{\s*kind:'mwh',\s*mw:1/.test(html));
+    check('PVB is MWh-denominated', /PVB:\s*\{\s*kind:'mwh',\s*mw:1/.test(html));
+    check('NBP is therm-denominated (1,000 therms/day)',
+          /NBP:\s*\{\s*kind:'therm',\s*perDay:1000/.test(html));
+    // Pure conversion math: HH stays at 2,500 MMBtu/lot regardless of month
+    const HH_LOT  = 2500;
+    check('3.5 TBtu × HH = 1,400 lots',
+          Math.round(3.5 * 1e6 / HH_LOT) === 1400);
+    // Live month-specific lot sizes via the helper (window-exposed)
+    if (typeof w.lotSizeMMBtu === 'function') {
+      const ttfJul26 = w.lotSizeMMBtu('TTF', 'Jul-26');   // 31 d × 24 h × 3.41214 = 2538.56
+      check('TTF Jul-26 lot ≈ 2,539 MMBtu (744 hrs)',
+            Math.abs(ttfJul26 - 2538.56) < 1, `got ${ttfJul26.toFixed(2)}`);
+      const ttfApr26 = w.lotSizeMMBtu('TTF', 'Apr-26');   // 30 d × 24 h × 3.41214 = 2456.74
+      check('TTF Apr-26 lot ≈ 2,457 MMBtu (720 hrs)',
+            Math.abs(ttfApr26 - 2456.74) < 1, `got ${ttfApr26.toFixed(2)}`);
+      const ttfMar26 = w.lotSizeMMBtu('TTF', 'Mar-26');   // 31 d × 24 h - 1 (DST) = 743 hrs × 3.41214 = 2535.15
+      check('TTF Mar-26 lot accounts for DST spring-forward (743 hrs, not 744)',
+            Math.abs(ttfMar26 - 2535.15) < 1, `got ${ttfMar26.toFixed(2)}`);
+      const ttfOct26 = w.lotSizeMMBtu('TTF', 'Oct-26');   // 31 × 24 + 1 (DST) = 745 × 3.41214 = 2541.97
+      check('TTF Oct-26 lot accounts for DST fall-back (745 hrs)',
+            Math.abs(ttfOct26 - 2541.97) < 1, `got ${ttfOct26.toFixed(2)}`);
+      const nbpJul26 = w.lotSizeMMBtu('NBP', 'Jul-26');   // 31 × 1000 × 0.1 = 3,100
+      check('NBP Jul-26 lot = 3,100 MMBtu (31-day month)',
+            Math.abs(nbpJul26 - 3100) < 0.001, `got ${nbpJul26.toFixed(2)}`);
+      const nbpApr26 = w.lotSizeMMBtu('NBP', 'Apr-26');   // 30 × 100 = 3,000
+      check('NBP Apr-26 lot = 3,000 MMBtu (30-day month)',
+            Math.abs(nbpApr26 - 3000) < 0.001, `got ${nbpApr26.toFixed(2)}`);
+      const jkmJul26 = w.lotSizeMMBtu('JKM', 'Jul-26');   // flat 10k regardless of month
+      check('JKM Jul-26 lot = 10,000 MMBtu (flat)', jkmJul26 === 10000);
+      const tfuJul26 = w.lotSizeMMBtu('TFU', 'Jul-26');   // flat 10k
+      check('TFU Jul-26 lot = 10,000 MMBtu (flat)', tfuJul26 === 10000);
+      const hhJul26 = w.lotSizeMMBtu('HH', 'Jul-26');     // flat 2,500
+      check('HH Jul-26 lot = 2,500 MMBtu (flat)', hhJul26 === 2500);
+    } else {
+      check('lotSizeMMBtu helper exposed on window', false, 'function missing');
+    }
     // Toggle the grid into Lots mode and confirm the title updates.
     if (typeof w.setExposureUnit === 'function') {
       w.setExposureUnit('lots');
