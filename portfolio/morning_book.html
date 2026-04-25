@@ -837,6 +837,13 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
   background: var(--bg-sunken); color: var(--text-1); font-weight: 600;
   padding: 6px 8px; font-size: 12px; text-align: left;
 }
+/* Read-only cell — replaces editable input on Curves + Freight grids.
+   Mimics the input's padding + alignment so the layout doesn't shift. */
+.curve-grid td .ro-cell {
+  display: block; padding: 6px 8px; font-size: 12px;
+  text-align: right; color: var(--text-1);
+  font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum';
+}
 .curve-grid td input {
   width: 100%; padding: 6px 8px; font-size: 12px;
   font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum';
@@ -2828,13 +2835,17 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
     <div class="page-head">
       <div>
         <h1>Curves</h1>
-        <div class="sub">Forward curves in $/MMBtu (Brent in $/bbl). Edit cells inline, paste from your EOD Excel, or upload a snapshot. Re-marking propagates live to all cargo MTMs and optionality values.</div>
+        <div class="sub">Forward curves in $/MMBtu (Brent in $/bbl). Read-only — edits land here automatically from the main dashboard's Financial Trading sync (OB EOD + EEX cron). Snapshot picker, view toggles, basis spreads and CSV export remain interactive.</div>
       </div>
       <div class="right">
-        <button class="btn ghost" onclick="document.getElementById('curve-paste-modal').style.display='flex'">Paste from Excel</button>
         <button class="btn ghost" onclick="exportActiveCurveCSV()">Export CSV</button>
-        <button class="btn primary" onclick="snapshotEodNow()">Snapshot now (EOD)</button>
       </div>
+    </div>
+
+    <div style="background:var(--info-bg, #0d1f3a); border:1px solid var(--info-border, #1e3a5f); color:var(--info-text, #4fc3f7); padding:10px 14px; border-radius:6px; margin-bottom:14px; font-size:12px; line-height:1.5">
+      <strong style="color:#4fc3f7">Edit in main dashboard.</strong>
+      Forward curves are sourced from <em>Financial Trading</em> (OB EOD Excel via Drive sync + EEX cron for EU hubs).
+      Re-uploads / curve edits there auto-propagate here on the next sync — no manual edits needed in this view.
     </div>
 
     <!-- Snapshot picker bar -->
@@ -2860,13 +2871,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
             <button data-curve-view="pct">% change</button>
           </div>
         </div>
-        <div class="field">
-          <label>Snapshot management</label>
-          <div style="display:flex; gap:6px">
-            <button class="btn ghost" style="font-size:11px" onclick="cloneActiveCurveSnapshot()">Clone active</button>
-            <button class="btn danger" style="font-size:11px" onclick="deleteActiveCurveSnapshot()">Delete</button>
-          </div>
-        </div>
+        <!-- Snapshot management hidden — clone/delete now done in main dashboard. -->
       </div>
     </div>
 
@@ -2934,13 +2939,17 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
     <div class="page-head">
       <div>
         <h1>Freight Curves</h1>
-        <div class="sub">Baltic LNG forward freight rates in $/day for a 174k m³ vessel. Edit any cell to mark the rate for that month; cargo voyage costs re-compute instantly. <strong>BLNG1</strong> = Pacific · <strong>BLNG2</strong> = Atlantic · <strong>BLNG3</strong> = X-Basin.</div>
+        <div class="sub">Baltic LNG forward freight rates in $/day for a 174k m³ vessel. Read-only — edits land here automatically from the main dashboard's Foundation/Freight uploads (OB FFA xlsx). <strong>BLNG1</strong> = Pacific · <strong>BLNG2</strong> = Atlantic · <strong>BLNG3</strong> = X-Basin.</div>
       </div>
       <div class="right">
-        <button class="btn ghost" onclick="document.getElementById('freight-paste-modal').style.display='flex'">Paste from Excel</button>
         <button class="btn ghost" onclick="exportActiveFreightCSV()">Export CSV</button>
-        <button class="btn primary" onclick="markDailyFreight()">Mark daily rate</button>
       </div>
+    </div>
+
+    <div style="background:var(--info-bg, #0d1f3a); border:1px solid var(--info-border, #1e3a5f); color:var(--info-text, #4fc3f7); padding:10px 14px; border-radius:6px; margin-bottom:14px; font-size:12px; line-height:1.5">
+      <strong style="color:#4fc3f7">Edit in main dashboard.</strong>
+      Freight curves are sourced from <em>Foundation → Freight → Update the Curves</em> (UPLOAD EXCEL the OB FFA xlsx).
+      Re-uploads there auto-propagate here on the next sync.
     </div>
 
     <!-- Snapshot bar -->
@@ -2966,13 +2975,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
             <button data-freight-view="pct">% change</button>
           </div>
         </div>
-        <div class="field">
-          <label>Management</label>
-          <div style="display:flex; gap:6px">
-            <button class="btn ghost" style="font-size:11px" onclick="cloneActiveFreightSnapshot()">Clone active</button>
-            <button class="btn danger" style="font-size:11px" onclick="deleteActiveFreightSnapshot()">Delete</button>
-          </div>
-        </div>
+        <!-- Snapshot management hidden — clone/delete now done in main dashboard. -->
       </div>
     </div>
 
@@ -8844,7 +8847,8 @@ function renderCurvesTab() {
             deltaTag = `<div class="delta-tag ${delta >= 0 ? 'pos' : 'neg'}">${delta >= 0 ? '+' : ''}${delta.toFixed(3)}</div>`;
           }
         }
-        return `<td><input type="number" step="0.001" value="${displayVal}" data-month="${m}" data-idx="${idx}" onchange="onCurveCellEdit(this)">${deltaTag}</td>`;
+        // Read-only display (edits routed through main dashboard → Financial)
+        return `<td><span class="ro-cell" data-month="${m}" data-idx="${idx}">${displayVal}</span>${deltaTag}</td>`;
       }).join('');
       return `<tr><td class="month-cell">${m}</td>${cells}</tr>`;
     }).join('');
@@ -9104,7 +9108,8 @@ function renderFreightGrid(gridId, kind) {
           deltaTag = `<div class="delta-tag ${delta >= 0 ? 'pos' : 'neg'}">${delta >= 0 ? '+' : ''}${Math.round(delta).toLocaleString()}</div>`;
         }
       }
-      return `<td><input type="text" value="${displayVal}" data-period="${p}" data-route="${route}" onchange="onFreightCellEdit(this)">${deltaTag}</td>`;
+      // Read-only display (edits routed through main dashboard → Foundation/Freight)
+      return `<td><span class="ro-cell" data-period="${p}" data-route="${route}">${displayVal}</span>${deltaTag}</td>`;
     }).join('');
     return `<tr><td class="month-cell">${p}</td>${cells}</tr>`;
   }).join('');

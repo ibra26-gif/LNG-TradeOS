@@ -1290,6 +1290,39 @@ setTimeout(() => {
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
+    console.log('SECTION 32 · Read-only Curves + Freight tabs (main app is editor)');
+    console.log(bar);
+    // The Curves and Freight grids in the iframe were two-way editable, but
+    // any edit got clobbered next time the main app pushed (postMessage).
+    // To eliminate the source-of-truth ambiguity, both grids are now read-
+    // only — edits go through the main dashboard's Financial Trading and
+    // Foundation/Freight tabs respectively.
+    if (typeof w.renderCurvesTab === 'function') w.renderCurvesTab();
+    if (typeof w.renderFreightTab === 'function') w.renderFreightTab();
+    const curveCells = doc.querySelectorAll('#curve-grid .ro-cell').length;
+    check('Curve grid uses read-only cells (.ro-cell)', curveCells > 0, `${curveCells} ro-cells found`);
+    const curveInputs = doc.querySelectorAll('#curve-grid input').length;
+    check('Curve grid has no editable inputs',          curveInputs === 0, `${curveInputs} input(s) still present`);
+    const freightCells = doc.querySelectorAll('.curve-grid .ro-cell').length;
+    check('Freight grids use read-only cells',          freightCells > curveCells, `${freightCells} total ro-cells`);
+    // Banners present on both sections.
+    const curveBanner = doc.querySelector('#sec-curves .info-bg, #sec-curves [style*="info-bg"], #sec-curves [style*="--info-bg"]')
+      || Array.from(doc.querySelectorAll('#sec-curves *')).find(el => /Edit in main dashboard/i.test(el.textContent));
+    check('Curves section has "edit in main dashboard" banner', !!curveBanner);
+    const freightBanner = Array.from(doc.querySelectorAll('#sec-freight *')).find(el => /Edit in main dashboard/i.test(el.textContent));
+    check('Freight section has "edit in main dashboard" banner', !!freightBanner);
+    // Write-action buttons removed.
+    const pasteBtn = Array.from(doc.querySelectorAll('#sec-curves button')).find(b => /Paste from Excel/i.test(b.textContent));
+    check('Paste from Excel button removed (Curves)', !pasteBtn);
+    const snapBtn = Array.from(doc.querySelectorAll('#sec-curves button')).find(b => /Snapshot now/i.test(b.textContent));
+    check('Snapshot now (EOD) button removed (Curves)', !snapBtn);
+    const fPasteBtn = Array.from(doc.querySelectorAll('#sec-freight button')).find(b => /Paste from Excel/i.test(b.textContent));
+    check('Paste from Excel button removed (Freight)', !fPasteBtn);
+    const cloneCBtn = Array.from(doc.querySelectorAll('#sec-curves button')).find(b => /Clone active/i.test(b.textContent));
+    check('Clone active button removed (Curves)', !cloneCBtn);
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
     console.log('SUMMARY');
     console.log(bar);
     console.log(`    Passed: ${passed}`);
