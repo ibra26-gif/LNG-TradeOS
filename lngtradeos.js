@@ -9151,6 +9151,9 @@ const CP_SEED_FR={
   });
 })();
 
+// Build marker — bump on each cache-bust so we can confirm at a glance
+// from the console which JS version is actually live in the browser.
+console.log('%c[lngtradeos] build 2026-04-26 LNG-ARB-MAP-v2 loaded · CP_TABS has 9 tabs incl LNG ARB','color:#4fc3f7;font-weight:bold');
 const CP_TABS=['PHYS DIFFERENTIALS','DES PRICES','GLOBAL ARB','LNG ARB','ATLANTIC BASIN','MEI','PACIFIC BASIN','FREIGHT DIFFERENTIAL vs BASIS','FOB PRICING'];
 let CP={fp:null,phys:null,freight:null,liqFee:null,histSnaps:null,tab:0,selMonth:0,indexMode:'TTF',hhSlope:1.15,coghMode:false,histSnapDate:new Date().toISOString().slice(0,10)};
 function cpGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
