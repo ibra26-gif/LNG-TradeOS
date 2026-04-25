@@ -914,7 +914,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
       <button data-tab="exposure">Exposure Book</button>
       <button data-tab="spec">Spec Book</button>
       <span class="sep"></span>
-      <button data-tab="pnl">P&amp;L Log</button>
+      <button data-tab="pnl">P&amp;L</button>
       <span class="sep"></span>
       <button data-tab="curves">Curves</button>
       <button data-tab="freight">Freight</button>
@@ -2626,22 +2626,132 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
        ══════════════════════════════════════════════ -->
   <section class="sec" id="sec-pnl">
 
-    <div class="page-head">
-      <div>
-        <h1>P&amp;L Log</h1>
-        <div class="sub">Daily Combined Book snapshots — equity curve over time, drawdown stats, per-day log. Snapshots auto-capture when you re-mark curves or click the button.</div>
-      </div>
-      <div class="right">
-        <div class="view-toggle" id="pnl-range-toggle">
-          <button data-pnl-range="7">7d</button>
-          <button data-pnl-range="30" class="active">30d</button>
-          <button data-pnl-range="90">90d</button>
-          <button data-pnl-range="all">All</button>
+    <!-- Sub-nav: ① P&L breakdown · ② P&L Log (historical equity curve)
+         pnlSubTab state lives at the top of the renderer chain; switching
+         tabs hides/shows the corresponding pane and re-renders. -->
+    <div class="view-toggle" id="pnl-subtab" style="margin-bottom:14px">
+      <button class="active" data-pnl-subtab="summary">P&amp;L</button>
+      <button data-pnl-subtab="log">P&amp;L Log</button>
+    </div>
+
+    <!-- ① P&L SUMMARY — total · by contract month · by contract · by deal type -->
+    <div id="pnl-pane-summary">
+      <div class="page-head">
+        <div>
+          <h1>P&amp;L</h1>
+          <div class="sub">Mark-to-market breakdown by contract month, contract, and deal type. Toggle Physical / Hedge / Combined to slice the same numbers.</div>
         </div>
-        <button class="btn ghost" onclick="exportPnlHistoryCSV()">Export CSV</button>
-        <button class="btn primary" onclick="snapshotEodNowFromPnlLog()">Snapshot EOD now</button>
+        <div class="right">
+          <div class="view-toggle" id="pnl-source-toggle">
+            <button data-pnl-source="combined" class="active">Combined</button>
+            <button data-pnl-source="physical">Physical</button>
+            <button data-pnl-source="hedge">Hedge</button>
+          </div>
+          <button class="btn ghost" onclick="exportPnlSummaryCSV()">Export CSV</button>
+        </div>
+      </div>
+
+      <!-- KPI strip -->
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">Total P&amp;L</div>
+          <div class="metric-value" id="pnl-sum-total">—</div>
+          <div class="metric-sub" id="pnl-sum-total-sub">all positions</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Physical</div>
+          <div class="metric-value" id="pnl-sum-phys">—</div>
+          <div class="metric-sub" id="pnl-sum-phys-sub">cargoes MTM</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Hedge</div>
+          <div class="metric-value" id="pnl-sum-hedge">—</div>
+          <div class="metric-sub" id="pnl-sum-hedge-sub">paper hedges</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Cargoes</div>
+          <div class="metric-value" id="pnl-sum-count">—</div>
+          <div class="metric-sub" id="pnl-sum-count-sub">—</div>
+        </div>
+      </div>
+
+      <!-- By contract month -->
+      <div class="card">
+        <div class="card-head">
+          <h3>P&amp;L by contract month</h3>
+          <span class="meta" id="pnl-by-month-meta">—</span>
+        </div>
+        <div style="max-height:320px; overflow-y:auto">
+          <table class="tbl">
+            <thead><tr>
+              <th>Month</th>
+              <th class="num" style="text-align:right">Physical</th>
+              <th class="num" style="text-align:right">Hedge</th>
+              <th class="num" style="text-align:right">Total</th>
+            </tr></thead>
+            <tbody id="pnl-by-month-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- By contract / deal -->
+      <div class="card">
+        <div class="card-head">
+          <h3>P&amp;L by contract</h3>
+          <span class="meta" id="pnl-by-contract-meta">one row per cargo</span>
+        </div>
+        <div style="max-height:360px; overflow-y:auto">
+          <table class="tbl">
+            <thead><tr>
+              <th>Cargo / Deal</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Load month</th>
+              <th class="num" style="text-align:right">TBtu</th>
+              <th class="num" style="text-align:right">Physical $M</th>
+            </tr></thead>
+            <tbody id="pnl-by-contract-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- By deal type -->
+      <div class="card">
+        <div class="card-head">
+          <h3>P&amp;L by deal type</h3>
+        </div>
+        <table class="tbl">
+          <thead><tr>
+            <th>Deal type</th>
+            <th class="num" style="text-align:right">Cargoes</th>
+            <th class="num" style="text-align:right">TBtu</th>
+            <th class="num" style="text-align:right">Physical $M</th>
+            <th class="num" style="text-align:right">Hedge $M</th>
+            <th class="num" style="text-align:right">Total $M</th>
+          </tr></thead>
+          <tbody id="pnl-by-deal-body"></tbody>
+        </table>
       </div>
     </div>
+
+    <!-- ② P&L LOG — original equity-curve view (unchanged content) -->
+    <div id="pnl-pane-log" style="display:none">
+      <div class="page-head">
+        <div>
+          <h1>P&amp;L Log</h1>
+          <div class="sub">Daily Combined Book snapshots — equity curve over time, drawdown stats, per-day log. Snapshots auto-capture when you re-mark curves or click the button.</div>
+        </div>
+        <div class="right">
+          <div class="view-toggle" id="pnl-range-toggle">
+            <button data-pnl-range="7">7d</button>
+            <button data-pnl-range="30" class="active">30d</button>
+            <button data-pnl-range="90">90d</button>
+            <button data-pnl-range="all">All</button>
+          </div>
+          <button class="btn ghost" onclick="exportPnlHistoryCSV()">Export CSV</button>
+          <button class="btn primary" onclick="snapshotEodNowFromPnlLog()">Snapshot EOD now</button>
+        </div>
+      </div>
 
     <!-- KPI strip -->
     <div class="metrics-grid">
@@ -2707,6 +2817,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
         </table>
       </div>
     </div>
+    </div><!-- /pnl-pane-log -->
 
   </section>
   <!-- ══════════════════════════════════════════════
@@ -4585,6 +4696,13 @@ function computePhysicalExposure() {
   };
 
   // Effective slope for a formula leg = scalar × mult.
+  // Convention is $-DELTA hedging (per user 2026-04-25): physical exposure
+  // accounts for the price-formula multiplier so the hedge ratio neutralises
+  // the actual $ P&L impact of a $1/MMBtu index move. Example:
+  //   Cheniere 1.15 × HH + 2.50 cargo, 3.94 TBtu loaded
+  //   $ exposure to a $1 HH move = 1.15 × 3.94 M = $4.53 M
+  //   Hedge:  4,530,000 / 2,500 = 1,812 HH lots (NOT raw 1,576)
+  // The legacy single-month, scalar=1 mult=1 case collapses to plain volume.
   const legSlope = (leg) => {
     if (!leg) return 1;
     const scalar = leg.scalar ?? 1;
@@ -4643,6 +4761,7 @@ function renderAll() {
   if (typeof renderFreightTab  === 'function') renderFreightTab();
   if (typeof renderSettingsTab === 'function') renderSettingsTab();
   if (typeof renderPnlLog      === 'function') renderPnlLog();
+  if (typeof renderPnlSummary  === 'function') renderPnlSummary();
   if (typeof cargoPreview      === 'function') cargoPreview();    // refresh form preview after curve change
   if (typeof paperPreview      === 'function') paperPreview();
 }
@@ -9479,6 +9598,216 @@ function setPnlStack(s) {
   renderPnlLog();
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// P&L SUB-TAB — summary breakdown (P&L by month / contract / deal type)
+// New top-level pane next to P&L Log. Toggle to source = combined / physical /
+// hedge slices the same MTM numbers three different ways.
+// ════════════════════════════════════════════════════════════════════════════
+let pnlSubTab = 'summary';      // 'summary' | 'log'
+let pnlSource = 'combined';     // 'combined' | 'physical' | 'hedge'
+function getPnlSubTab() { return pnlSubTab; }
+function getPnlSource() { return pnlSource; }
+
+function setPnlSubTab(t) {
+  pnlSubTab = t;
+  document.querySelectorAll('#pnl-subtab button').forEach(b => b.classList.toggle('active', b.dataset.pnlSubtab === t));
+  const summaryPane = document.getElementById('pnl-pane-summary');
+  const logPane     = document.getElementById('pnl-pane-log');
+  if (summaryPane) summaryPane.style.display = (t === 'summary') ? '' : 'none';
+  if (logPane)     logPane.style.display     = (t === 'log')     ? '' : 'none';
+  if (t === 'summary') renderPnlSummary();
+  else                 renderPnlLog();
+}
+window.setPnlSubTab = setPnlSubTab;
+
+function setPnlSource(s) {
+  pnlSource = s;
+  document.querySelectorAll('#pnl-source-toggle button').forEach(b => b.classList.toggle('active', b.dataset.pnlSource === s));
+  renderPnlSummary();
+}
+window.setPnlSource = setPnlSource;
+
+// Aggregate hedge $ P&L per CONTRACT MONTH. computeHedgeExposure returns
+// TBtu by index × month — for a $-impact aggregation we instead walk
+// trades, expand quarterly/Cal hedges to constituent monthlies, and sum
+// per-month tradePnL contributions weighted by 1/N (N = months in the bucket).
+function _hedgePnlByMonth() {
+  const out = {};
+  const trades = (typeof getHedges === 'function') ? getHedges() : [];
+  trades.forEach(t => {
+    const total = (typeof tradePnL === 'function') ? tradePnL(t) : 0;
+    if (!isFinite(total) || !t.month) return;
+    const months = (typeof periodToMonths === 'function') ? periodToMonths(t.month) : [t.month];
+    if (!months.length) return;
+    const share = total / months.length;
+    months.forEach(m => { out[m] = (out[m] || 0) + share; });
+  });
+  return out;
+}
+
+function renderPnlSummary() {
+  // Guard: if the panel HTML hasn't loaded (e.g. sub-tab init order), bail.
+  if (!document.getElementById('pnl-by-month-body')) return;
+  const cargoes = (typeof getCargoes === 'function') ? getCargoes() : [];
+  const hedges  = (typeof getHedges  === 'function') ? getHedges()  : [];
+
+  // Per-cargo physical MTM in raw $ (computeCargoValues returns $M)
+  const phys = cargoes.map(c => {
+    const v = (typeof computeCargoValues === 'function') ? computeCargoValues(c) : { mtm: 0, loaded: 0 };
+    return { c, mtm: (v.mtm || 0) * 1e6, loaded: v.loaded || 0 };
+  });
+  const physTotal = phys.reduce((a, p) => a + p.mtm, 0);
+
+  // Hedge total in raw $
+  const hedgeTotal = hedges.reduce((a, t) => a + ((typeof tradePnL === 'function') ? tradePnL(t) : 0), 0);
+
+  const total = physTotal + hedgeTotal;
+  const fmt = (v) => (typeof fmtBig === 'function') ? fmtBig(v) : '$' + v.toFixed(0);
+  const fmtSigned = (v) => {
+    if (Math.abs(v) < 1) return '—';
+    return (v > 0 ? '+' : '−') + fmt(Math.abs(v)).replace(/^[+-]?/, '');
+  };
+  const className = v => Math.abs(v) < 1 ? '' : (v > 0 ? 'pos' : 'neg');
+
+  // KPI strip
+  const kpi = (id, val, sub) => {
+    const e = document.getElementById(id); if (e) { e.textContent = fmtSigned(val); e.className = 'metric-value ' + className(val); }
+    const s = document.getElementById(id + '-sub'); if (s && sub != null) s.textContent = sub;
+  };
+  kpi('pnl-sum-total', total, `${cargoes.length} cargoes · ${hedges.length} hedges`);
+  kpi('pnl-sum-phys',  physTotal);
+  kpi('pnl-sum-hedge', hedgeTotal);
+  const cE = document.getElementById('pnl-sum-count'); if (cE) cE.textContent = String(cargoes.length);
+  const cS = document.getElementById('pnl-sum-count-sub'); if (cS) cS.textContent = `${hedges.length} hedge trades`;
+
+  // ── BY CONTRACT MONTH ─────────────────────────────────────────────────────
+  // Cargo MTM bucketed by sellMonth; hedge $ bucketed by trade.month (Q/Cal
+  // expanded to constituent monthlies, share split equally).
+  const physByMonth  = {};
+  phys.forEach(({ c, mtm }) => {
+    const m = c.sellMonth || c.loadMonth || 'Unknown';
+    physByMonth[m] = (physByMonth[m] || 0) + mtm;
+  });
+  const hedgeByMonth = _hedgePnlByMonth();
+  const allMonths = Array.from(new Set([...Object.keys(physByMonth), ...Object.keys(hedgeByMonth)])).sort((a, b) => {
+    const ord = (typeof MONTH_ORDER !== 'undefined') ? MONTH_ORDER : null;
+    if (ord) {
+      const ai = ord.indexOf(a), bi = ord.indexOf(b);
+      if (ai >= 0 && bi >= 0) return ai - bi;
+    }
+    return a.localeCompare(b);
+  });
+  const monthBody = document.getElementById('pnl-by-month-body');
+  monthBody.innerHTML = allMonths.map(m => {
+    const p = physByMonth[m] || 0, h = hedgeByMonth[m] || 0, t = p + h;
+    const showP = (pnlSource === 'combined' || pnlSource === 'physical') ? fmtSigned(p) : '—';
+    const showH = (pnlSource === 'combined' || pnlSource === 'hedge')    ? fmtSigned(h) : '—';
+    const showT = pnlSource === 'physical' ? fmtSigned(p)
+                : pnlSource === 'hedge'    ? fmtSigned(h)
+                                           : fmtSigned(t);
+    const tCls = pnlSource === 'physical' ? className(p) : pnlSource === 'hedge' ? className(h) : className(t);
+    return `<tr>
+      <td>${m}</td>
+      <td class="num ${className(p)}" style="text-align:right">${showP}</td>
+      <td class="num ${className(h)}" style="text-align:right">${showH}</td>
+      <td class="num ${tCls}" style="text-align:right;font-weight:600">${showT}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="4" style="color:var(--text-3);text-align:center;padding:14px">No P&amp;L yet</td></tr>`;
+  const meta = document.getElementById('pnl-by-month-meta');
+  if (meta) meta.textContent = `${allMonths.length} month${allMonths.length === 1 ? '' : 's'}`;
+
+  // ── BY CONTRACT (one row per cargo) ───────────────────────────────────────
+  // Hedges are not per-cargo, so the contract view is physical-only when the
+  // source toggle is 'physical' or 'combined'; in 'hedge' mode we hide rows.
+  const cBody = document.getElementById('pnl-by-contract-body');
+  if (cBody) {
+    if (pnlSource === 'hedge') {
+      cBody.innerHTML = `<tr><td colspan="6" style="color:var(--text-3);text-align:center;padding:14px">Hedge view — see paper-trade table on the Paper Book tab</td></tr>`;
+    } else {
+      const sorted = [...phys].sort((a, b) => Math.abs(b.mtm) - Math.abs(a.mtm));
+      cBody.innerHTML = sorted.map(({ c, mtm, loaded }) => {
+        return `<tr>
+          <td>${c.id || '—'}</td>
+          <td>${c.dealType || '—'}</td>
+          <td>${c.status || '—'}</td>
+          <td>${c.loadMonth || '—'}</td>
+          <td class="num" style="text-align:right">${(loaded || 0).toFixed(2)}</td>
+          <td class="num ${className(mtm)}" style="text-align:right;font-weight:600">${fmtSigned(mtm)}</td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="6" style="color:var(--text-3);text-align:center;padding:14px">No cargoes booked</td></tr>`;
+    }
+  }
+
+  // ── BY DEAL TYPE ──────────────────────────────────────────────────────────
+  // Aggregate phys by dealType; hedges aren't tied to a dealType so they roll
+  // into a single 'Hedges (paper)' row regardless of the source toggle.
+  const dealAgg = {};
+  phys.forEach(({ c, mtm, loaded }) => {
+    const k = c.dealType || 'single';
+    const d = dealAgg[k] = dealAgg[k] || { count: 0, tbtu: 0, phys: 0, hedge: 0 };
+    d.count++; d.tbtu += loaded; d.phys += mtm;
+  });
+  const dBody = document.getElementById('pnl-by-deal-body');
+  if (dBody) {
+    const labels = { single: 'Single', strip: 'Strip', lt: 'LT' };
+    const dealRows = Object.keys(dealAgg).sort().map(k => {
+      const d = dealAgg[k];
+      const t = d.phys + d.hedge;
+      return `<tr>
+        <td>${labels[k] || k}</td>
+        <td class="num" style="text-align:right">${d.count}</td>
+        <td class="num" style="text-align:right">${d.tbtu.toFixed(2)}</td>
+        <td class="num ${className(d.phys)}" style="text-align:right">${fmtSigned(d.phys)}</td>
+        <td class="num" style="text-align:right">—</td>
+        <td class="num ${className(t)}" style="text-align:right;font-weight:600">${fmtSigned(t)}</td>
+      </tr>`;
+    });
+    if (pnlSource !== 'physical') {
+      // Append a hedges aggregation row.
+      dealRows.push(`<tr>
+        <td>Hedges (paper)</td>
+        <td class="num" style="text-align:right">${hedges.length}</td>
+        <td class="num" style="text-align:right">—</td>
+        <td class="num" style="text-align:right">—</td>
+        <td class="num ${className(hedgeTotal)}" style="text-align:right">${fmtSigned(hedgeTotal)}</td>
+        <td class="num ${className(hedgeTotal)}" style="text-align:right;font-weight:600">${fmtSigned(hedgeTotal)}</td>
+      </tr>`);
+    }
+    dBody.innerHTML = dealRows.join('') || `<tr><td colspan="6" style="color:var(--text-3);text-align:center;padding:14px">No deals booked</td></tr>`;
+  }
+}
+window.renderPnlSummary = renderPnlSummary;
+
+// CSV export — one wide row per contract month plus a totals row.
+function exportPnlSummaryCSV() {
+  if (typeof downloadCSV !== 'function') return;
+  const cargoes = (typeof getCargoes === 'function') ? getCargoes() : [];
+  const hedges  = (typeof getHedges  === 'function') ? getHedges()  : [];
+  const physByMonth  = {};
+  cargoes.forEach(c => {
+    const v = computeCargoValues(c);
+    const m = c.sellMonth || c.loadMonth || 'Unknown';
+    physByMonth[m] = (physByMonth[m] || 0) + (v.mtm || 0) * 1e6;
+  });
+  const hedgeByMonth = _hedgePnlByMonth();
+  const months = Array.from(new Set([...Object.keys(physByMonth), ...Object.keys(hedgeByMonth)])).sort((a, b) => {
+    const ord = (typeof MONTH_ORDER !== 'undefined') ? MONTH_ORDER : null;
+    if (ord) { const ai = ord.indexOf(a), bi = ord.indexOf(b); if (ai >= 0 && bi >= 0) return ai - bi; }
+    return a.localeCompare(b);
+  });
+  const headers = ['Month','Physical_USD','Hedge_USD','Total_USD'];
+  const rows = months.map(m => {
+    const p = physByMonth[m] || 0, h = hedgeByMonth[m] || 0;
+    return { Month: m, Physical_USD: Math.round(p), Hedge_USD: Math.round(h), Total_USD: Math.round(p + h) };
+  });
+  const physTotal  = Object.values(physByMonth).reduce((a, v) => a + v, 0);
+  const hedgeTotal = Object.values(hedgeByMonth).reduce((a, v) => a + v, 0);
+  rows.push({ Month: 'TOTAL', Physical_USD: Math.round(physTotal), Hedge_USD: Math.round(hedgeTotal), Total_USD: Math.round(physTotal + hedgeTotal) });
+  downloadCSV(`pnl-summary_${new Date().toISOString().slice(0,10)}.csv`, headers, rows);
+  if (typeof toast === 'function') toast(`Exported ${rows.length - 1} months + total to CSV`, { kind: 'success' });
+}
+window.exportPnlSummaryCSV = exportPnlSummaryCSV;
+
 // ── Init ──
 // Load persisted state before any rendering
 loadState();
@@ -9630,8 +9959,19 @@ document.querySelectorAll('#pnl-range-toggle button').forEach(b => {
 document.querySelectorAll('#pnl-stack-toggle button').forEach(b => {
   b.addEventListener('click', () => setPnlStack(b.dataset.pnlStack));
 });
-document.querySelectorAll('.tabbar button[data-tab="pnl"]').forEach(b => b.addEventListener('click', renderPnlLog));
-// Initial render
+// New P&L sub-tab + source toggle wiring (P&L summary / P&L Log).
+document.querySelectorAll('#pnl-subtab button').forEach(b => {
+  b.addEventListener('click', () => setPnlSubTab(b.dataset.pnlSubtab));
+});
+document.querySelectorAll('#pnl-source-toggle button').forEach(b => {
+  b.addEventListener('click', () => setPnlSource(b.dataset.pnlSource));
+});
+// Top-level tab click → re-render the active sub-pane (summary or log).
+document.querySelectorAll('.tabbar button[data-tab="pnl"]').forEach(b => b.addEventListener('click', () => {
+  if (pnlSubTab === 'summary') renderPnlSummary(); else renderPnlLog();
+}));
+// Initial render — both panes paint once so toggle is instant
+if (typeof renderPnlSummary === 'function') renderPnlSummary();
 if (typeof renderPnlLog === 'function') renderPnlLog();
 
 // Initial render of the Curves + Freight + Settings tabs

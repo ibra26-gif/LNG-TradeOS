@@ -1183,6 +1183,44 @@ setTimeout(() => {
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
+    console.log('SECTION 30 · P&L tab — Summary sub-tab + source toggle');
+    console.log(bar);
+    // The P&L tab now has two sub-tabs: ① P&L (summary breakdown), ② P&L Log.
+    // The summary pane has its own source toggle (Combined / Physical / Hedge)
+    // and three breakdown tables (by month, by contract, by deal type).
+    check('Top-level tab renamed to P&L',  doc.querySelector('.tabbar button[data-tab="pnl"]')?.textContent.trim() === 'P&L');
+    check('Sub-tab nav present',           !!doc.getElementById('pnl-subtab'));
+    check('Summary pane present',          !!doc.getElementById('pnl-pane-summary'));
+    check('Log pane present',              !!doc.getElementById('pnl-pane-log'));
+    check('Source toggle present',         !!doc.getElementById('pnl-source-toggle'));
+    check('By-month table present',        !!doc.getElementById('pnl-by-month-body'));
+    check('By-contract table present',     !!doc.getElementById('pnl-by-contract-body'));
+    check('By-deal table present',         !!doc.getElementById('pnl-by-deal-body'));
+    check('renderPnlSummary on window',    typeof w.renderPnlSummary === 'function');
+    check('exportPnlSummaryCSV on window', typeof w.exportPnlSummaryCSV === 'function');
+    check('Default sub-tab = summary',     w.getPnlSubTab() === 'summary');
+    check('Default source = combined',     w.getPnlSource() === 'combined');
+    // Render → KPI strip + tables populate without throwing.
+    w.renderPnlSummary();
+    const totalCell = doc.getElementById('pnl-sum-total');
+    check('Total P&L KPI rendered',        totalCell && totalCell.textContent !== '—');
+    const monthRows = doc.querySelectorAll('#pnl-by-month-body tr').length;
+    check('By-month table has rows',       monthRows >= 1);
+    const dealRows = doc.querySelectorAll('#pnl-by-deal-body tr').length;
+    check('By-deal table has rows',        dealRows >= 1);
+    // Toggle to Physical → renders without throwing.
+    w.setPnlSource('physical');
+    check('Physical source applied',       w.getPnlSource() === 'physical');
+    w.setPnlSource('combined');
+    // Switch to Log sub-tab and back.
+    w.setPnlSubTab('log');
+    check('Log sub-tab activated',         w.getPnlSubTab() === 'log');
+    check('Log pane visible',              doc.getElementById('pnl-pane-log').style.display !== 'none');
+    check('Summary pane hidden',           doc.getElementById('pnl-pane-summary').style.display === 'none');
+    w.setPnlSubTab('summary');
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
     console.log('SUMMARY');
     console.log(bar);
     console.log(`    Passed: ${passed}`);
