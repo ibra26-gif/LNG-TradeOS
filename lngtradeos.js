@@ -9023,12 +9023,18 @@ function exportMatrixXLS(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:S
 const CP_SEED_PRICES={
   HH:[2.90,2.90,3.03,3.28,3.35,3.33,3.39,3.71,4.55,5.02,4.48,3.53,3.23,3.20,3.33,3.53,3.59,3.57,3.65,3.92,4.64,5.10,4.43,3.55],
   TTF:[16.857,16.857,16.876,16.878,16.870,16.868,16.868,16.939,17.022,16.983,16.865,16.080,14.030,13.094,12.866,12.824,12.834,12.743,12.657,12.699,12.926,12.773,12.581,11.813],
-  JKM:[18.157,18.157,18.126,18.303,18.145,17.868,17.318,17.289,17.622,17.358,17.215,16.030,14.380,13.419,13.341,13.299,13.384,13.243,13.257,13.199,13.551,13.523,13.306,12.213]
+  JKM:[18.157,18.157,18.126,18.303,18.145,17.868,17.318,17.289,17.622,17.358,17.215,16.030,14.380,13.419,13.341,13.299,13.384,13.243,13.257,13.199,13.551,13.523,13.306,12.213],
+  // NBP seasonal pattern (NBP-TTF spread varies: -0.20 to -0.30 summer, -0.60 to -0.90 winter).
+  // Used as fallback when EOD NBP curve isn't loaded; gets overwritten by cpSyncPrices.
+  NBP:[16.557,16.557,16.576,16.578,16.470,16.268,16.068,16.039,16.122,16.183,16.265,15.680,13.730,12.794,12.466,12.524,12.434,12.143,11.757,11.799,12.026,11.973,11.981,11.413]
 };
 const CP_SEED_PHYS={
   nwe    :Array(24).fill(-0.40),
   iberia :Array(24).fill(-0.40),
-  uk     :Array(24).fill(-0.40),
+  // UK trades on NBP, which typically discounts to TTF (Atlantic premium for NWE).
+  // Seasonal: -0.30 summer (Apr-Sep), -0.60 to -0.90 winter (Oct-Mar). User can
+  // override per cell. cpDerived will recompute dynamically when fp.NBP is loaded.
+  uk     :[-0.30,-0.30,-0.30,-0.30,-0.40,-0.60,-0.80,-0.90,-0.90,-0.80,-0.60,-0.40,-0.30,-0.30,-0.30,-0.30,-0.40,-0.60,-0.80,-0.90,-0.90,-0.80,-0.60,-0.40],
   // France, Germany, Belgium — seeded equal to DES NWE; editable overrides per
   // terminal. Feed the Global LNG Netback for FR/DE/BE terminals and the Regas
   // model's TTF-differential tab.
@@ -9165,20 +9171,48 @@ function cpDerived(){
   });
   CP.freight=freight; // write back so basin tabs (cpGlobalArb/Atlantic/MEI/Pacific) get clean values
   // ── Physical diffs ─────────────────────────────────────────────────────────
-  const phyItaly=ML.map((_,i)=>phys.nwe[i]+(freight.sabine_rovigo?.[i]??freight.sabine_rotterdam[i]*1.21)-(freight.sabine_rotterdam[i]));
+  // Two layers: (1) freight equilibrium baseline via termFr — assumes no-arb
+  //             pricing equal to NWE after freight. (2) local premium added on
+  //             top, capturing the genuine arb edge each terminal commands
+  //             beyond freight. User per-cell overrides (cp_phys_ov) win above
+  //             both layers.
+  //
+  // Local premiums seeded from market intuition + KB notes (2026-04-25, user-
+  // reviewed). Italy: summer wider because Asia pulls Atlantic cargoes east,
+  // Italy must outbid for Med-only volumes; winter compresses (TTF spikes too).
+  // Aliaga +0.17: Turkey BOTAS structural import dependency.
+  // Swinoujscie summer/winter + 0.02 ice/pilotage on top.
+  const SUMMER_MO=new Set(['Apr','May','Jun','Jul','Aug','Sep']);
+  const LOCAL_PREM={
+    italy:    {summer:0.20, winter:0.10},
+    klaipeda: {summer:0.10, winter:0.10},
+    inkoo:    {summer:0.10, winter:0.10},
+    krk:      {summer:0.10, winter:0.10},
+    ali:      {summer:0.17, winter:0.17},
+    rev:      {summer:0.10, winter:0.10},
+    swino:    {summer:0.10, winter:0.20},
+  };
+  const localPrem=(t,i)=>{
+    const p=LOCAL_PREM[t]; if(!p) return 0;
+    const lbl=ML[i]||''; const mo=lbl.split('-')[0];
+    return SUMMER_MO.has(mo)?p.summer:p.winter;
+  };
   // Thailand diff: Angola Dahej - Angola MapTaPhut (via COGH)
   const phyThailand=ML.map((_,i)=>{const amt=freight.angola_maptaphut?.[i]??freight.angola_dahej[i]*1.233;return +(freight.angola_dahej[i]-amt).toFixed(3);});
   const ov=cpGet('cp_phys_ov',{});
   const termFr=(t,i)=>phys.nwe[i]+((freight['sabine_'+t]?.[i]??0)-(freight.sabine_rotterdam[i]));
   const withOv=(t,base,i)=>{const k=t+'_'+i;return ov[k]!=null?ov[k]:base;};
+  // Italy uses sabine_rovigo for the freight leg, plus seasonal local premium
+  const phyItaly  =ML.map((_,i)=>withOv('italy',
+    phys.nwe[i]+((freight.sabine_rovigo?.[i]??freight.sabine_rotterdam[i])-freight.sabine_rotterdam[i])+localPrem('italy',i), i));
   const phyMei    =ML.map((_,i)=>withOv('mei',    +(freight.angola_dahej[i]-freight.angola_tokyo[i]).toFixed(3),i));
-  const phyKlaipeda=ML.map((_,i)=>withOv('klaipeda',termFr('klaipeda',i),i));
-  const phyInkoo   =ML.map((_,i)=>withOv('inkoo',   termFr('inkoo',i),   i));
-  const phyRev     =ML.map((_,i)=>withOv('rev',     termFr('rev',i),     i));
-  const phyKrk     =ML.map((_,i)=>withOv('krk',     termFr('krk',i),     i));
-  const phyAin     =ML.map((_,i)=>withOv('ain',     termFr('ain',i)+(CP.egyptPremium??0.50),i));
-  const phyAli     =ML.map((_,i)=>withOv('ali',     termFr('ali',i),     i)); // no premium — Turkish terminal
-  const phySwino   =ML.map((_,i)=>withOv('swino',   termFr('swinoujscie',i)+0.02,i)); // +$0.02: ice/pilotage premium
+  const phyKlaipeda=ML.map((_,i)=>withOv('klaipeda',termFr('klaipeda',i)+localPrem('klaipeda',i),i));
+  const phyInkoo   =ML.map((_,i)=>withOv('inkoo',   termFr('inkoo',i)   +localPrem('inkoo',i),   i));
+  const phyRev     =ML.map((_,i)=>withOv('rev',     termFr('rev',i)     +localPrem('rev',i),     i));
+  const phyKrk     =ML.map((_,i)=>withOv('krk',     termFr('krk',i)     +localPrem('krk',i),     i));
+  const phyAin     =ML.map((_,i)=>withOv('ain',     termFr('ain',i)+(CP.egyptPremium??0.50),i)); // Egypt premium handled separately
+  const phyAli     =ML.map((_,i)=>withOv('ali',     termFr('ali',i)     +localPrem('ali',i),     i));
+  const phySwino   =ML.map((_,i)=>withOv('swino',   termFr('swinoujscie',i)+localPrem('swino',i)+0.02,i)); // +$0.02 ice/pilotage on top
   // ── South America (Brazil + Argentina) — FOB-netback from USGC ──────────────
   // Argentina/Brazil parity uses a SINGLE European reference: Italy.
   // Ain Sukhna (Egypt premium) and all other destinations are excluded —
@@ -9203,11 +9237,22 @@ function cpDerived(){
     if(nb == null || fr == null) return withOv('argentina', null, i);
     return withOv('argentina', +(nb + fr).toFixed(3), i);
   });
+  // ── UK phys diff: derive dynamically from real NBP-TTF spread when both
+  // forward curves are loaded (user has synced from EOD). Falls back to the
+  // seasonal seed in CP_SEED_PHYS.uk otherwise. UK trades on NBP, NOT TTF —
+  // so a flat -0.40 placeholder massively underweights the actual NBP discount
+  // and made UK look spuriously profitable on FOB netbacks vs Rotterdam.
+  const phyUkDynamic = ML.map((_,i) => {
+    if(fp.NBP && fp.NBP[i]!=null && fp.TTF[i]!=null && !isNaN(fp.NBP[i]) && !isNaN(fp.TTF[i])){
+      return +(fp.NBP[i] - fp.TTF[i]).toFixed(3);
+    }
+    return phys.uk[i];   // user-set or seasonal seed
+  });
   // ── DES absolute prices ────────────────────────────────────────────────────
   const des={
     nwe:     ML.map((_,i)=>fp.TTF[i]+phys.nwe[i]),
     iberia:  ML.map((_,i)=>fp.TTF[i]+phys.iberia[i]),
-    uk:      ML.map((_,i)=>fp.TTF[i]+phys.uk[i]),
+    uk:      ML.map((_,i)=>fp.TTF[i]+phyUkDynamic[i]),
     italy:   ML.map((_,i)=>fp.TTF[i]+phyItaly[i]),
     klaipeda:ML.map((_,i)=>fp.TTF[i]+phyKlaipeda[i]),
     inkoo:   ML.map((_,i)=>fp.TTF[i]+phyInkoo[i]),
@@ -9527,8 +9572,8 @@ function cpSyncPrices(){
   if(!sDates||!sDates.length){alert('No price data loaded. Load via Financial Trading first.');return;}
   const latest=sDates[sDates.length-1];const row=aD[latest];if(!row){alert('No data for '+latest);return;}
   const mapIdx=pk=>{const found=ML.findIndex(m=>{const ms={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};const p=m.split('-');return '20'+p[1]+'-'+ms[p[0]]===pk;});return found;};
-  const keys=['HH','TTF','JKM','SP_JT'];
-  const newFp={HH:[...CP.fp.HH],TTF:[...CP.fp.TTF],JKM:[...CP.fp.JKM],SP_JT:[...(CP.fp.SP_JT||new Array(24).fill(null))]};
+  const keys=['HH','TTF','JKM','NBP','SP_JT'];
+  const newFp={HH:[...CP.fp.HH],TTF:[...CP.fp.TTF],JKM:[...CP.fp.JKM],NBP:[...(CP.fp.NBP||new Array(24).fill(null))],SP_JT:[...(CP.fp.SP_JT||new Array(24).fill(null))]};
   let count=0;
   if(aD&&sDates.length){
     sDates.forEach(date=>{const r=aD[date];if(!r||!r.rows)return;r.rows.forEach(row=>{const idx=mapIdx(row.pk);if(idx<0||idx>=24)return;keys.forEach(k=>{if(row[k]!=null){newFp[k][idx]=row[k];count++;}});});});
