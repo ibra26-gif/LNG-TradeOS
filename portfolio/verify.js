@@ -1551,6 +1551,83 @@ setTimeout(() => {
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
+    console.log('SECTION 37 · Vol model — rolling realized + override + default');
+    console.log(bar);
+    // Three-layer effective vol: override > rolling realized (≥5 obs) > default.
+    // Anchor month = M+2 of the active snapshot. Window controlled by VOL_WINDOW_DAYS.
+    check('getEffectiveVol exists on window', typeof w.getEffectiveVol === 'function');
+    check('getRollingRealizedVol exists on window', typeof w.getRollingRealizedVol === 'function');
+    check('setVolOverride exists on window', typeof w.setVolOverride === 'function');
+    check('setVolWindow exists on window', typeof w.setVolWindow === 'function');
+
+    // With only 2 seed snapshots (today + yesterday), realized vol is too thin
+    // to compute (need ≥5 obs of returns). getEffectiveVol should fall back to default.
+    const ttfEff0 = w.getEffectiveVol('TTF');
+    check('TTF effective vol falls back to default with thin history',
+          ttfEff0.source === 'default',
+          `source=${ttfEff0.source}, vol=${ttfEff0.vol.toFixed(3)}`);
+
+    // Set a manual override → effective vol must reflect it and source = override
+    w.setVolOverride('TTF', 55);   // 55%
+    const ttfEff1 = w.getEffectiveVol('TTF');
+    check('Override 55% → effective vol = 0.55, source=override',
+          Math.abs(ttfEff1.vol - 0.55) < 1e-6 && ttfEff1.source === 'override',
+          `source=${ttfEff1.source}, vol=${ttfEff1.vol.toFixed(3)}`);
+
+    // Clear override → falls back to default again
+    w.setVolOverride('TTF', null);
+    const ttfEff2 = w.getEffectiveVol('TTF');
+    check('Clearing override reverts to default',
+          ttfEff2.source === 'default',
+          `source=${ttfEff2.source}`);
+
+    // Inject 8 synthetic snapshots for HH at the active anchor month (M+2)
+    // with alternating ±2% prices → σ_d = 0.02, annualized ≈ 0.02 × √252 ≈ 31.7%.
+    // We can't write STATE directly (top-level let, not on window), so we use
+    // the hoisted importCurveSnapshot API which updates STATE.curves.snapshots.
+    const moNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const today = new Date();
+    const m2 = new Date(today.getFullYear(), today.getMonth() + 2, 1);
+    const anchorMo = `${moNames[m2.getMonth()]}-${String(m2.getFullYear()).slice(2)}`;
+    const injectedDates = [];
+    for (let k = 0; k < 8; k++) {
+      const d = new Date(today.getTime() - (8-k) * 86400000);
+      const ds = d.toISOString().slice(0,10);
+      const px = 3.00 * (k % 2 === 0 ? 1.0 : 1.02);   // alternating ±2%
+      // Build a minimal payload with HH at the anchor; use updateCurveCell API
+      w.updateCurveCell(ds, anchorMo, 'HH', px);
+      injectedDates.push(ds);
+    }
+    const real = w.getRollingRealizedVol('HH');
+    check('Realized vol now computable for HH (8 obs injected via updateCurveCell)',
+          real != null && real.nObs >= 5,
+          real ? `vol=${(real.vol*100).toFixed(1)}%, nObs=${real.nObs}, anchor=${real.anchor}` : 'null');
+    if (real) {
+      check('Realized vol in plausible range (>10% for ±2% alternating moves)',
+            real.vol > 0.10 && real.vol < 2.00,
+            `vol=${(real.vol*100).toFixed(1)}%`);
+    }
+
+    // Effective vol now uses realized (no override set)
+    const hhEff = w.getEffectiveVol('HH');
+    check('HH effective vol now sourced from realized', hhEff.source === 'realized',
+          `source=${hhEff.source}`);
+
+    // Override beats realized
+    w.setVolOverride('HH', 80);
+    const hhEff2 = w.getEffectiveVol('HH');
+    check('Override beats realized when both available',
+          hhEff2.source === 'override' && Math.abs(hhEff2.vol - 0.80) < 1e-6,
+          `source=${hhEff2.source}, vol=${hhEff2.vol}`);
+    w.setVolOverride('HH', null);
+
+    // Cleanup injected snapshots — delete each date entirely
+    for (const ds of injectedDates) {
+      if (typeof w.deleteCurveSnapshot === 'function') w.deleteCurveSnapshot(ds);
+    }
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
     console.log('SUMMARY');
     console.log(bar);
     console.log(`    Passed: ${passed}`);

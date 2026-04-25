@@ -6544,9 +6544,98 @@ function bachelierPut(F, K, sigmaAbs, T) {
 function logToAbsVol(sigmaLog, F) { return sigmaLog * Math.abs(F); }
 
 // ════════════════════════════════════════════════
+//  ROLLING REALIZED VOL — derived from curve snapshot history
+// ════════════════════════════════════════════════
+// Three-layer vol model:
+//   1. Manual override per index (STATE.volOverrides, persisted)
+//   2. Rolling realized vol from snapshot history (computed live)
+//   3. DEFAULT_VOLS seed (fallback when no history yet)
+// Anchor: M+2 of the active snapshot — third forward month, stable across
+// expiry rolls. Returns are log-returns of that anchor's price across the
+// snapshot date series. Annualized × √252 (trading days/yr convention).
+// User picks window 30 / 60 / 90 trading days via the Optionality tab UI.
+let VOL_WINDOW_DAYS = 30;
+
+function _volAnchorMonth() {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dStr = STATE.curves?.activeDate || new Date().toISOString().slice(0,10);
+  const d = new Date(dStr + 'T00:00:00');
+  d.setMonth(d.getMonth() + 2);  // M+2 — third forward month
+  const yy = String(d.getFullYear()).slice(2);
+  return `${months[d.getMonth()]}-${yy}`;
+}
+
+function _volPriceSeries(idx) {
+  const anchor = _volAnchorMonth();
+  const dates = Object.keys(STATE.curves?.snapshots || {}).sort();
+  const series = [];
+  for (const d of dates) {
+    const snap = STATE.curves.snapshots[d];
+    const px = snap?.[anchor]?.[idx];
+    if (px != null && !isNaN(px) && px > 0) series.push({ date: d, price: px });
+  }
+  return { anchor, series };
+}
+
+function _logReturns(series) {
+  const r = [];
+  for (let i = 1; i < series.length; i++) {
+    const r_i = Math.log(series[i].price / series[i-1].price);
+    if (isFinite(r_i)) r.push(r_i);
+  }
+  return r;
+}
+
+function _stdev(arr) {
+  if (arr.length < 2) return 0;
+  const mean = arr.reduce((a,b)=>a+b,0) / arr.length;
+  const variance = arr.reduce((a,b)=>a + (b-mean)*(b-mean), 0) / (arr.length - 1);
+  return Math.sqrt(variance);
+}
+
+// Annualized realized vol from log-returns. Returns null if too few obs.
+function getRollingRealizedVol(idx, windowDays) {
+  windowDays = windowDays || VOL_WINDOW_DAYS;
+  const { series, anchor } = _volPriceSeries(idx);
+  const r = _logReturns(series);
+  if (r.length < 5) return null;   // need at least 5 obs to be meaningful
+  const win = r.slice(-windowDays);
+  return { vol: _stdev(win) * Math.sqrt(252), nObs: win.length, anchor };
+}
+
+// Effective vol — used everywhere downstream. Override > realized > default.
+function getEffectiveVol(idx) {
+  const ov = STATE.volOverrides?.[idx];
+  if (ov != null && !isNaN(ov)) return { vol: +ov, source: 'override' };
+  const realized = getRollingRealizedVol(idx);
+  if (realized && isFinite(realized.vol) && realized.vol > 0) {
+    return { vol: realized.vol, source: 'realized', nObs: realized.nObs, anchor: realized.anchor };
+  }
+  return { vol: DEFAULT_VOLS[idx] ?? 0.40, source: 'default' };
+}
+
+function setVolOverride(idx, pct) {
+  if (!STATE.volOverrides) STATE.volOverrides = {};
+  if (pct == null || pct === '' || isNaN(+pct)) {
+    delete STATE.volOverrides[idx];
+  } else {
+    STATE.volOverrides[idx] = (+pct) / 100;
+  }
+  saveState();
+  renderOptionality();
+}
+
+function setVolWindow(days) {
+  VOL_WINDOW_DAYS = +days || 30;
+  renderOptionality();
+}
+
+// ════════════════════════════════════════════════
 //  Market parameters — mutable, rendered from panel
 // ════════════════════════════════════════════════
-// Default implied vols (annualized, log-normal).  Editable in the Optionality tab.
+// Default implied vols (annualized, log-normal). Used as last-resort fallback
+// when no rolling realized vol is available (need ≥5 snapshots) and no manual
+// override is set. Live values for downstream pricing come via getEffectiveVol.
 const DEFAULT_VOLS = {
   JKM: 0.45, TTF: 0.40, NBP: 0.38, HH: 0.50, Brent: 0.30, JCC: 0.28,
   PEG: 0.40, PSV: 0.40, ZTP: 0.40, THE: 0.40, PVB: 0.40, TFU: 0.35,
@@ -6949,16 +7038,63 @@ function renderVolTable() {
   const tbody = document.getElementById('opt-vol-table');
   if (!tbody) return;
   const indices = ['JKM','TTF','NBP','HH','Brent','JCC','PEG','THE','PSV','ZTP','PVB','TFU'];
-  tbody.innerHTML = indices.map(i => `
-    <tr>
-      <td class="idx">${i}</td>
-      <td class="nums"><input class="opt-vol-input" type="number" value="${(MKT_VOLS[i]*100).toFixed(0)}" step="1" min="5" max="150" onchange="updateVol('${i}', this.value)"> %</td>
-      <td class="bar-wrap"><div class="hbar"><div class="fill a" style="width:${(MKT_VOLS[i] * 100).toFixed(0)}%; max-width:100%"></div></div></td>
-    </tr>`).join('');
+  // Window selector — 30D / 60D / 90D buttons
+  const winBtns = [30, 60, 90].map(d => {
+    const active = (VOL_WINDOW_DAYS === d) ? ' active' : '';
+    return `<button class="view-toggle-btn${active}" style="padding:3px 8px;font-size:10px;border-radius:3px;border:1px solid var(--border);background:${VOL_WINDOW_DAYS === d ? 'var(--accent-bg, #1e40af)' : 'var(--bg-card)'};color:${VOL_WINDOW_DAYS === d ? '#fff' : 'var(--text-2)'};cursor:pointer;margin-right:4px" onclick="setVolWindow(${d})">${d}D</button>`;
+  }).join('');
+  // Header row with window selector
+  const winHdr = `<tr><td colspan="6" style="padding:6px 8px;background:var(--bg-sunken);border-bottom:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-3)">
+      <span style="font-weight:600;letter-spacing:0.06em">REALIZED VOL WINDOW</span>${winBtns}
+      <span style="margin-left:auto;color:var(--text-4);font-size:10px">anchor: ${_volAnchorMonth()}</span>
+    </div>
+  </td></tr>`;
+  // Column headers
+  const colHdr = `<tr style="font-size:9.5px;color:var(--text-3);background:var(--bg-sunken)">
+    <th style="text-align:left;padding:4px 6px">Index</th>
+    <th style="text-align:right;padding:4px 6px">Realized</th>
+    <th style="text-align:right;padding:4px 6px">Override</th>
+    <th style="text-align:right;padding:4px 6px">In Use</th>
+    <th style="padding:4px 6px"></th>
+    <th style="text-align:center;padding:4px 6px">Reset</th>
+  </tr>`;
+  // Data rows
+  const rows = indices.map(i => {
+    const eff = getEffectiveVol(i);
+    const realized = getRollingRealizedVol(i);
+    const ov = STATE.volOverrides?.[i];
+    const realLbl = realized
+      ? `<span title="${realized.nObs} obs · anchor ${realized.anchor}">${(realized.vol*100).toFixed(1)}%</span>`
+      : `<span style="color:var(--text-4)" title="Need ≥5 snapshots — fall back to default">n/a</span>`;
+    const ovInputVal = (ov != null) ? (ov*100).toFixed(0) : '';
+    const ovInput = `<input class="opt-vol-input" type="number" placeholder="—" value="${ovInputVal}" step="1" min="5" max="200" style="width:54px;text-align:right" onchange="setVolOverride('${i}', this.value)"> %`;
+    const sourceColor = eff.source === 'override' ? 'var(--info, #4fc3f7)'
+                     : eff.source === 'realized' ? 'var(--pos, #4ade80)'
+                     : 'var(--text-4)';
+    const sourceTag = eff.source === 'override' ? 'OVR'
+                    : eff.source === 'realized' ? 'REAL'
+                    : 'DEF';
+    const inUseCell = `<span style="color:${sourceColor};font-weight:600">${(eff.vol*100).toFixed(1)}%</span>
+      <span style="font-size:8px;color:var(--text-4);margin-left:3px">${sourceTag}</span>`;
+    const resetBtn = (ov != null)
+      ? `<button onclick="setVolOverride('${i}', null)" style="padding:2px 6px;font-size:9px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--text-3);cursor:pointer" title="Clear override">×</button>`
+      : '';
+    return `<tr>
+      <td class="idx" style="padding:4px 6px">${i}</td>
+      <td class="nums" style="text-align:right;padding:4px 6px">${realLbl}</td>
+      <td class="nums" style="text-align:right;padding:4px 6px">${ovInput}</td>
+      <td class="nums" style="text-align:right;padding:4px 6px">${inUseCell}</td>
+      <td class="bar-wrap" style="padding:4px 6px"><div class="hbar"><div class="fill a" style="width:${Math.min(100, eff.vol * 100).toFixed(0)}%; max-width:100%"></div></div></td>
+      <td style="text-align:center;padding:4px 6px">${resetBtn}</td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = `<thead>${winHdr}${colHdr}</thead><tbody>${rows}</tbody>`;
 }
+// Legacy hook — kept so any inline onchange that still calls updateVol still works.
+// New flow goes through setVolOverride.
 function updateVol(idx, pct) {
-  MKT_VOLS[idx] = (+pct) / 100;
-  renderOptionality();
+  setVolOverride(idx, pct);
 }
 function renderCorrMatrix() {
   const tbl = document.getElementById('opt-corr-matrix');
@@ -7222,6 +7358,11 @@ function computeFobPremium() {
 }
 
 function renderOptionality() {
+  // Refresh MKT_VOLS from the effective vol layer (override > realized > default)
+  // so downstream pricing math (Margrabe / Bachelier / Clark) sees the live values.
+  ['JKM','TTF','NBP','HH','Brent','JCC','PEG','PSV','ZTP','THE','PVB','TFU'].forEach(i => {
+    MKT_VOLS[i] = getEffectiveVol(i).vol;
+  });
   renderVolTable();
   renderCorrMatrix();
 
