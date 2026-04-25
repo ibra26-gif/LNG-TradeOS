@@ -12871,37 +12871,41 @@ function rgCostGraph(){
     </div>`;
 }
 
-// ── TAB 7: BREAKEVEN LEVEL — Quoted Moneyness / Implied DES / Implied Diff ──
-// The tab shows, per terminal, the three numbers that matter for a quoted-
-// moneyness negotiation: what the counterparty quoted, and what it implies
-// for the DES price and TTF differential once the regas stack is netted out.
-//   IMPLIED DES  = Hub Price − Variable Cost − Quoted Moneyness
-//   IMPLIED DIFF = Implied DES − TTF
+// ── TAB 7: BREAKEVEN LEVEL — Hub Price / Current Phys Diff / Breakeven ──
+// Per terminal: shows the hub forward price, the current physical differential
+// (vs TTF) and the breakeven level the terminal can absorb before going OTM.
+//   BREAKEVEN = Hub Price − Variable Cost − TTF
+// Terminals are ranked ascending by breakeven (lowest = tightest first).
 function rgImplied(){
   const mi=RG.selMonth;
+  const ttf=rgTTF(mi);
   const rows=RG.terminals.map(t=>{
-    const hp=rgHP(t.hub,mi),v=rgVar(t,mi),ttf=rgTTF(mi);
-    const qMon=RG.impliedMon[t.id]||0;
-    const implDES=hp-v.total-qMon,implDiff=implDES-ttf;
-    return`<tr>
-      <td style="color:var(--th);font-size:10px">${t.name}</td>
-      <td style="color:#4fc3f7;font-size:9px">${t.hub}</td>
-      <td style="padding:1px 3px"><input class="rg-inp" style="width:72px;text-align:right;color:#ffeb3b" type="number" step="0.001" value="${qMon.toFixed(3)}" onchange="RG.impliedMon['${t.id}']=+this.value;rgRT()"></td>
-      <td class="tr" style="color:#c8d6e5;font-weight:700">${fmm(implDES)}</td>
-      <td class="tr" style="color:${implDiff>0?'#4caf50':implDiff<0?'#f44336':'#546e7a'};font-weight:500">${implDiff>=0?'+':''}${fmm(implDiff,3)}</td>
-    </tr>`;
-  }).join('');
+    const v=rgVar(t,mi);
+    if(v.suppressed)return null;
+    const hp=rgHP(t.hub,mi);
+    const phys=(RG.diffs[t.id]||[])[mi]||0;
+    const be=+(hp-v.total-ttf).toFixed(4);
+    return{t,hp,phys,be};
+  }).filter(Boolean).sort((a,b)=>a.be-b.be);
+  const trBody=rows.map(r=>`<tr>
+      <td style="color:var(--th);font-size:10px">${r.t.name}</td>
+      <td style="color:#4fc3f7;font-size:9px">${r.t.hub}</td>
+      <td class="tr" style="color:#c8d6e5;font-weight:600">${fmm(r.hp)}</td>
+      <td class="tr" style="color:${r.phys>0?'#4caf50':r.phys<0?'#f44336':'#546e7a'};font-weight:500">${r.phys>=0?'+':''}${fmm(r.phys,3)}</td>
+      <td class="tr" style="color:${r.be>=0?'#81c784':'#ef9a9a'};font-weight:700">${r.be>=0?'+':''}${fmm(r.be)}</td>
+    </tr>`).join('');
   return`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
     <div class="f-sec" style="border:none;margin:0">SELECT MONTH</div>${msel()}
-    <span style="color:#546e7a;font-size:9px">Implied DES = Hub Price − Var Cost − Quoted Mon. · Implied Diff = Implied DES − TTF</span>
+    <span style="color:#546e7a;font-size:9px">Breakeven = Hub Price − Variable Costs − TTF · sorted ascending</span>
   </div>
   <div class="f-sec">BREAKEVEN — ${ML[mi]} · All values $/MMBtu</div>
-  <div style="color:#546e7a;font-size:9px;margin-bottom:10px">Enter counterparty's quoted moneyness per terminal. Model back-solves the implied DES price and TTF differential.</div>
+  <div style="color:#546e7a;font-size:9px;margin-bottom:10px">Terminals ordered from lowest breakeven (tightest) to highest (most ITM). Phys diff = current physical differential vs TTF.</div>
   <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
     <th style="min-width:150px">TERMINAL</th><th>HUB</th>
-    <th class="tr" style="color:#ffeb3b">QUOTED MON.</th>
-    <th class="tr">IMPLIED DES</th><th class="tr">IMPLIED DIFF</th>
-  </tr></thead><tbody>${rows}</tbody></table></div>`;
+    <th class="tr">HUB PRICE</th>
+    <th class="tr">CURRENT PHYS DIFF</th>
+    <th class="tr" style="color:#ffeb3b">BREAKEVEN LEVEL</th>
+  </tr></thead><tbody>${trBody}</tbody></table></div>`;
 }
 
 // ── TAB 7: NETBACK (no internal lock — tab-level lock handles it) ──
