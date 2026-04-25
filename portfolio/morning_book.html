@@ -2641,12 +2641,12 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
       <button data-pnl-subtab="log">P&amp;L Log</button>
     </div>
 
-    <!-- ① P&L SUMMARY — total · by contract month · by contract · by deal type -->
+    <!-- ① P&L SUMMARY — KPI strip · filter bar · hierarchical tree · per-cargo drill-down -->
     <div id="pnl-pane-summary">
       <div class="page-head">
         <div>
           <h1>P&amp;L</h1>
-          <div class="sub">Mark-to-market breakdown by contract month, contract, and deal type. Toggle Physical / Hedge / Combined to slice the same numbers.</div>
+          <div class="sub">Hierarchical breakdown — Desk → Activity → Cargo type → Destination → Delivered/Undelivered. Filters apply to KPIs, tree and the per-cargo list. Click ▶ to expand a group.</div>
         </div>
         <div class="right">
           <div class="view-toggle" id="pnl-source-toggle">
@@ -2658,54 +2658,92 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
         </div>
       </div>
 
-      <!-- KPI strip -->
-      <div class="metrics-grid">
-        <div class="metric">
-          <div class="metric-label">Total P&amp;L</div>
-          <div class="metric-value" id="pnl-sum-total">—</div>
-          <div class="metric-sub" id="pnl-sum-total-sub">all positions</div>
+      <!-- Filter bar (Hybrid A+B) — most-used always visible, "More filters" reveals the rest -->
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:4px 0">
+          <div class="field" style="min-width:140px">
+            <label style="font-size:10px;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase">Year</label>
+            <select id="pnl-filter-year"><option value="all">All years</option></select>
+          </div>
+          <div class="field" style="min-width:140px">
+            <label style="font-size:10px;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase">Deal type</label>
+            <select id="pnl-filter-dealType">
+              <option value="all">All deal types</option>
+              <option value="single">Single</option>
+              <option value="strip">Strip</option>
+              <option value="lt">LT</option>
+            </select>
+          </div>
+          <div class="field" style="min-width:140px">
+            <label style="font-size:10px;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase">Cargo type</label>
+            <select id="pnl-filter-cargoType"><option value="all">All cargo types</option></select>
+          </div>
+          <div class="field" style="min-width:160px">
+            <label style="font-size:10px;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase">Counterparty</label>
+            <select id="pnl-filter-cpty"><option value="all">All counterparties</option></select>
+          </div>
+          <button class="btn ghost" id="pnl-filter-more-btn" type="button" onclick="togglePnlMoreFilters()">More filters ▾</button>
+          <span style="flex:1"></span>
+          <span class="meta" id="pnl-filter-status">—</span>
+          <button class="btn ghost" type="button" onclick="resetPnlFilters()">Reset</button>
+          <button class="btn ghost" type="button" onclick="expandAllPnlGroups()">Expand all</button>
         </div>
-        <div class="metric">
-          <div class="metric-label">Physical</div>
-          <div class="metric-value" id="pnl-sum-phys">—</div>
-          <div class="metric-sub" id="pnl-sum-phys-sub">cargoes MTM</div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">Hedge</div>
-          <div class="metric-value" id="pnl-sum-hedge">—</div>
-          <div class="metric-sub" id="pnl-sum-hedge-sub">paper hedges</div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">Cargoes</div>
-          <div class="metric-value" id="pnl-sum-count">—</div>
-          <div class="metric-sub" id="pnl-sum-count-sub">—</div>
+        <!-- Extended filters (hidden by default) -->
+        <div id="pnl-filter-more" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div class="field" style="min-width:140px">
+              <label style="font-size:10px;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase">Status</label>
+              <select id="pnl-filter-status-sel">
+                <option value="all">All</option><option value="Fixed">Fixed (undelivered)</option><option value="Actualized">Actualized (delivered)</option>
+              </select>
+            </div>
+            <div class="field" style="min-width:140px">
+              <label style="font-size:10px;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase">Coverage</label>
+              <select id="pnl-filter-coverage">
+                <option value="all">All</option><option value="covered">Covered</option><option value="unsold">Unsold</option><option value="uncovered">Uncovered</option>
+              </select>
+            </div>
+            <div class="field" style="min-width:140px">
+              <label style="font-size:10px;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase">Destination region</label>
+              <select id="pnl-filter-region">
+                <option value="all">All</option><option value="Atlantic">Atlantic</option><option value="MEI">MEI</option><option value="Asia">Asia</option><option value="South America">South America</option>
+              </select>
+            </div>
+            <div class="field" style="min-width:160px">
+              <label style="font-size:10px;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase">Parent deal</label>
+              <select id="pnl-filter-parent"><option value="all">All</option></select>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- By contract month -->
+      <!-- KPI strip -->
+      <div class="metrics-grid">
+        <div class="metric"><div class="metric-label">Total P&amp;L</div><div class="metric-value" id="pnl-sum-total">—</div><div class="metric-sub" id="pnl-sum-total-sub">all positions</div></div>
+        <div class="metric"><div class="metric-label">Physical</div><div class="metric-value" id="pnl-sum-phys">—</div><div class="metric-sub" id="pnl-sum-phys-sub">cargoes MTM</div></div>
+        <div class="metric"><div class="metric-label">Hedge</div><div class="metric-value" id="pnl-sum-hedge">—</div><div class="metric-sub" id="pnl-sum-hedge-sub">paper hedges</div></div>
+        <div class="metric"><div class="metric-label">Cargoes</div><div class="metric-value" id="pnl-sum-count">—</div><div class="metric-sub" id="pnl-sum-count-sub">—</div></div>
+      </div>
+
+      <!-- Hierarchical breakdown tree -->
       <div class="card">
         <div class="card-head">
-          <h3>P&amp;L by contract month</h3>
-          <span class="meta" id="pnl-by-month-meta">—</span>
+          <h3>P&amp;L breakdown</h3>
+          <span class="meta" id="pnl-tree-meta">—</span>
         </div>
-        <div style="max-height:320px; overflow-y:auto">
-          <table class="tbl">
-            <thead><tr>
-              <th>Month</th>
-              <th class="num" style="text-align:right">Physical</th>
-              <th class="num" style="text-align:right">Hedge</th>
-              <th class="num" style="text-align:right">Total</th>
-            </tr></thead>
-            <tbody id="pnl-by-month-body"></tbody>
+        <div style="overflow-x:auto">
+          <table class="tbl" id="pnl-tree-table">
+            <thead><tr id="pnl-tree-thead"><!-- populated --></tr></thead>
+            <tbody id="pnl-tree-body"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- By contract / deal -->
+      <!-- Per-cargo drill-down (kept) -->
       <div class="card">
         <div class="card-head">
           <h3>P&amp;L by contract</h3>
-          <span class="meta" id="pnl-by-contract-meta">one row per cargo</span>
+          <span class="meta" id="pnl-by-contract-meta">one row per cargo · sorted by |MtM|</span>
         </div>
         <div style="max-height:360px; overflow-y:auto">
           <table class="tbl">
@@ -2720,24 +2758,6 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
             <tbody id="pnl-by-contract-body"></tbody>
           </table>
         </div>
-      </div>
-
-      <!-- By deal type -->
-      <div class="card">
-        <div class="card-head">
-          <h3>P&amp;L by deal type</h3>
-        </div>
-        <table class="tbl">
-          <thead><tr>
-            <th>Deal type</th>
-            <th class="num" style="text-align:right">Cargoes</th>
-            <th class="num" style="text-align:right">TBtu</th>
-            <th class="num" style="text-align:right">Physical $M</th>
-            <th class="num" style="text-align:right">Hedge $M</th>
-            <th class="num" style="text-align:right">Total $M</th>
-          </tr></thead>
-          <tbody id="pnl-by-deal-body"></tbody>
-        </table>
       </div>
     </div>
 
@@ -9707,23 +9727,138 @@ function _hedgePnlByMonth() {
   return out;
 }
 
+// ── Destination region bucketing (Atlantic / MEI / Asia / South America) ──
+// Used by the destination layer of the P&L hierarchical tree and by the
+// "Destination region" filter. Discharge ports not in the map fall back to
+// 'Other'. Mirrors PORT_COSTS keys (display names).
+const PORT_TO_REGION = {
+  // Atlantic = Europe basin
+  'Gate':'Atlantic','Rotterdam':'Atlantic','Zeebrugge':'Atlantic','Huelva':'Atlantic',
+  'Isle of Grain':'Atlantic','South Hook':'Atlantic','Krk':'Atlantic',
+  'Panigaglia LNG':'Atlantic','Livorno':'Atlantic','Rovigo':'Atlantic','Piombino':'Atlantic','Ravenna':'Atlantic',
+  'Inkoo':'Atlantic','Klaipeda':'Atlantic','Swinoujscie':'Atlantic','Revithoussa':'Atlantic',
+  // MEI = Middle East / India / Egypt
+  'Dahej':'MEI','Port Qasim':'MEI','Ain Sukhna':'MEI','Aliaga':'MEI','Jebel Ali':'MEI',
+  // Asia = Asia-Pacific
+  'Tokyo Bay':'Asia','Sodegaura':'Asia','Incheon':'Asia','Caofeidian':'Asia',
+  'Tianjin':'Asia','Gwangyang':'Asia','Singapore':'Asia','Map Ta Phut':'Asia',
+  // South America (separate per user 2026-04-25)
+  'Guanabara':'South America','Quintero':'South America',
+  'Escobar':'South America','Bahia Blanca':'South America','Manzanillo':'South America',
+};
+function _regionFor(port) { return PORT_TO_REGION[port] || 'Other'; }
+
+// ── P&L filter state ─────────────────────────────────────────────────────
+// Hybrid (A+B) — top-row filters always visible; "More filters ▾" reveals
+// the rest. State drives _filterCargoes(), which feeds the KPI strip,
+// hierarchical tree, and per-cargo drill-down.
+let pnlFilters = { year:'all', dealType:'all', cargoType:'all', cpty:'all',
+                   status:'all', coverage:'all', region:'all', parent:'all' };
+let pnlMoreOpen = false;
+let pnlExpanded = new Set();   // group ids: 'activity', 'cargotype', 'destination', 'status'
+function getPnlFilters() { return { ...pnlFilters }; }
+window.getPnlFilters = getPnlFilters;
+
+function _cargoYear(c) {
+  const m = (c.loadMonth || c.sellMonth || '').match(/-(\d{2})$/);
+  return m ? '20' + m[1] : null;
+}
+function _filterCargoes(cargoes) {
+  return cargoes.filter(c => {
+    if (pnlFilters.year      !== 'all' && _cargoYear(c) !== pnlFilters.year) return false;
+    if (pnlFilters.dealType  !== 'all' && c.dealType   !== pnlFilters.dealType) return false;
+    if (pnlFilters.cargoType !== 'all' && c.cargoType  !== pnlFilters.cargoType) return false;
+    if (pnlFilters.cpty      !== 'all' && c.cpty       !== pnlFilters.cpty) return false;
+    if (pnlFilters.status    !== 'all' && c.status     !== pnlFilters.status) return false;
+    if (pnlFilters.coverage  !== 'all' && c.coverage   !== pnlFilters.coverage) return false;
+    if (pnlFilters.region    !== 'all' && _regionFor(c.dischPort) !== pnlFilters.region) return false;
+    if (pnlFilters.parent    !== 'all' && (c.parentDealId || '') !== pnlFilters.parent) return false;
+    return true;
+  });
+}
+function setPnlFilter(k, v) { pnlFilters[k] = v; renderPnlSummary(); }
+window.setPnlFilter = setPnlFilter;
+
+function resetPnlFilters() {
+  pnlFilters = { year:'all', dealType:'all', cargoType:'all', cpty:'all',
+                 status:'all', coverage:'all', region:'all', parent:'all' };
+  // Reset the dropdown UI back to 'all'.
+  ['year','dealType','cargoType','cpty','status-sel','coverage','region','parent'].forEach(id => {
+    const el = document.getElementById('pnl-filter-' + id);
+    if (el) el.value = 'all';
+  });
+  renderPnlSummary();
+}
+window.resetPnlFilters = resetPnlFilters;
+
+function togglePnlMoreFilters() {
+  pnlMoreOpen = !pnlMoreOpen;
+  const wrap = document.getElementById('pnl-filter-more');
+  const btn  = document.getElementById('pnl-filter-more-btn');
+  if (wrap) wrap.style.display = pnlMoreOpen ? '' : 'none';
+  if (btn)  btn.textContent = pnlMoreOpen ? 'Fewer filters ▴' : 'More filters ▾';
+}
+window.togglePnlMoreFilters = togglePnlMoreFilters;
+
+function expandAllPnlGroups() {
+  pnlExpanded = new Set(['activity','cargotype','destination','status']);
+  renderPnlSummary();
+}
+window.expandAllPnlGroups = expandAllPnlGroups;
+
+function _toggleGroup(id) {
+  if (pnlExpanded.has(id)) pnlExpanded.delete(id); else pnlExpanded.add(id);
+  renderPnlSummary();
+}
+window._toggleGroup = _toggleGroup;
+
+// Populate the cargoType / cpty / parent dropdowns from currently-booked
+// cargoes. Idempotent — preserves the user's current selection if still valid.
+function _refillPnlFilterOptions() {
+  const cargoes = (typeof getCargoes === 'function') ? getCargoes() : [];
+  const refill = (id, key, getValues) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const current = el.value;
+    const vals = Array.from(new Set(cargoes.map(getValues).filter(Boolean))).sort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +
+                   vals.map(v => `<option value="${v}">${v}</option>`).join('');
+    if (vals.includes(current) || current === 'all') el.value = current;
+  };
+  refill('pnl-filter-cargoType', 'cargo types',  c => c.cargoType);
+  refill('pnl-filter-cpty',      'counterparties',c => c.cpty);
+  refill('pnl-filter-parent',    'parent deals', c => c.parentDealId);
+  // Year dropdown — list every year present in the book.
+  const yEl = document.getElementById('pnl-filter-year');
+  if (yEl) {
+    const cur = yEl.value;
+    const yrs = Array.from(new Set(cargoes.map(_cargoYear).filter(Boolean))).sort();
+    yEl.innerHTML = `<option value="all">All years</option>` +
+                    yrs.map(y => `<option value="${y}">${y}</option>`).join('');
+    if (yrs.includes(cur) || cur === 'all') yEl.value = cur;
+  }
+}
+
 function renderPnlSummary() {
   // Guard: if the panel HTML hasn't loaded (e.g. sub-tab init order), bail.
-  if (!document.getElementById('pnl-by-month-body')) return;
-  const cargoes = (typeof getCargoes === 'function') ? getCargoes() : [];
-  const hedges  = (typeof getHedges  === 'function') ? getHedges()  : [];
+  if (!document.getElementById('pnl-tree-body')) return;
+
+  // Refill filter dropdowns to match latest book contents.
+  _refillPnlFilterOptions();
+
+  const allCargoes = (typeof getCargoes === 'function') ? getCargoes() : [];
+  const cargoes    = _filterCargoes(allCargoes);
+  const hedges     = (typeof getHedges  === 'function') ? getHedges()  : [];
 
   // Per-cargo physical MTM in raw $ (computeCargoValues returns $M)
   const phys = cargoes.map(c => {
     const v = (typeof computeCargoValues === 'function') ? computeCargoValues(c) : { mtm: 0, loaded: 0 };
     return { c, mtm: (v.mtm || 0) * 1e6, loaded: v.loaded || 0 };
   });
-  const physTotal = phys.reduce((a, p) => a + p.mtm, 0);
-
-  // Hedge total in raw $
+  const physTotal  = phys.reduce((a, p) => a + p.mtm, 0);
   const hedgeTotal = hedges.reduce((a, t) => a + ((typeof tradePnL === 'function') ? tradePnL(t) : 0), 0);
-
   const total = physTotal + hedgeTotal;
+
   const fmt = (v) => (typeof fmtBig === 'function') ? fmtBig(v) : '$' + v.toFixed(0);
   const fmtSigned = (v) => {
     if (Math.abs(v) < 1) return '—';
@@ -9736,51 +9871,139 @@ function renderPnlSummary() {
     const e = document.getElementById(id); if (e) { e.textContent = fmtSigned(val); e.className = 'metric-value ' + className(val); }
     const s = document.getElementById(id + '-sub'); if (s && sub != null) s.textContent = sub;
   };
-  kpi('pnl-sum-total', total, `${cargoes.length} cargoes · ${hedges.length} hedges`);
+  kpi('pnl-sum-total', total, `${cargoes.length} of ${allCargoes.length} cargoes · ${hedges.length} hedges`);
   kpi('pnl-sum-phys',  physTotal);
   kpi('pnl-sum-hedge', hedgeTotal);
   const cE = document.getElementById('pnl-sum-count'); if (cE) cE.textContent = String(cargoes.length);
   const cS = document.getElementById('pnl-sum-count-sub'); if (cS) cS.textContent = `${hedges.length} hedge trades`;
+  const fStat = document.getElementById('pnl-filter-status');
+  if (fStat) fStat.textContent = `Showing ${cargoes.length} of ${allCargoes.length} cargoes`;
 
-  // ── BY CONTRACT MONTH ─────────────────────────────────────────────────────
-  // Cargo MTM bucketed by sellMonth; hedge $ bucketed by trade.month (Q/Cal
-  // expanded to constituent monthlies, share split equally).
-  const physByMonth  = {};
+  // ── COLUMN MODEL ─────────────────────────────────────────────────────────
+  // Total · YTD · MTD · then 12 monthly columns. If a Year filter is active,
+  // monthlies span Jan–Dec of that year. Otherwise show next-12 from the
+  // earliest cargo loadMonth (sensible default = the current ML window).
+  const today = new Date();
+  const curYear  = today.getFullYear();
+  const curMonth = today.getMonth();   // 0-indexed
+  const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let monthCols;
+  if (pnlFilters.year !== 'all') {
+    monthCols = MO.map(m => `${m}-${pnlFilters.year.slice(2)}`);
+  } else if (typeof MONTH_ORDER !== 'undefined' && MONTH_ORDER.length) {
+    monthCols = MONTH_ORDER.slice(0, 12);
+  } else {
+    monthCols = [];
+  }
+  const colKeys = ['TOTAL','YTD','MTD', ...monthCols];
+
+  // Per-cargo monthly contribution (single bucket = sellMonth || loadMonth)
+  const cargoMonthlyMtm = (c, mtm) => {
+    const m = c.sellMonth || c.loadMonth;
+    return m ? { [m]: mtm } : {};
+  };
+
+  // Aggregate physical mtm by an arbitrary key function. Returns a map
+  // {key: {label, count, mtm, byMonth: {Jul-26: $$, ...}}}.
+  const aggregateBy = (keyFn, labelFn) => {
+    const acc = {};
+    phys.forEach(({ c, mtm }) => {
+      const k = keyFn(c);
+      if (!k) return;
+      const slot = acc[k] = acc[k] || { label: labelFn(c, k), count:0, mtm:0, byMonth:{} };
+      slot.count++; slot.mtm += mtm;
+      const m = c.sellMonth || c.loadMonth;
+      if (m) slot.byMonth[m] = (slot.byMonth[m] || 0) + mtm;
+    });
+    return acc;
+  };
+
+  // Compute YTD / MTD / per-column totals from a {byMonth} map + raw mtm total.
+  const computeRowTotals = (mtmTotal, byMonth) => {
+    const r = { TOTAL: mtmTotal, YTD: 0, MTD: 0 };
+    monthCols.forEach(m => { r[m] = byMonth[m] || 0; });
+    Object.entries(byMonth).forEach(([m, v]) => {
+      const mt = m.match(/^(\w{3})-(\d{2})$/);
+      if (!mt) return;
+      const year = 2000 + +mt[2];
+      const monIdx = MO.indexOf(mt[1]);
+      if (year === curYear) r.YTD += v;
+      if (year === curYear && monIdx === curMonth) r.MTD += v;
+    });
+    return r;
+  };
+
+  // Build group → sub-rows map for each layer.
+  const dealLabels   = { single: 'Single', strip: 'Strip', lt: 'LT' };
+  const groupActivity    = aggregateBy(c => c.dealType || 'single',  (c, k) => dealLabels[k] || k);
+  const groupCargoType   = aggregateBy(c => c.cargoType || 'Equity', (c, k) => k);
+  const groupDestination = aggregateBy(c => _regionFor(c.dischPort), (c, k) => k);
+  const groupStatus      = aggregateBy(c => c.status === 'Actualized' ? 'delivered' : 'undelivered',
+                                       (c, k) => k === 'delivered' ? 'Delivered (Actualized)' : 'Undelivered (Fixed)');
+
+  // Desk row totals (everything in `phys`, agnostic of group key)
+  const deskByMonth = {};
   phys.forEach(({ c, mtm }) => {
-    const m = c.sellMonth || c.loadMonth || 'Unknown';
-    physByMonth[m] = (physByMonth[m] || 0) + mtm;
+    const m = c.sellMonth || c.loadMonth;
+    if (m) deskByMonth[m] = (deskByMonth[m] || 0) + mtm;
   });
-  const hedgeByMonth = _hedgePnlByMonth();
-  const allMonths = Array.from(new Set([...Object.keys(physByMonth), ...Object.keys(hedgeByMonth)])).sort((a, b) => {
-    const ord = (typeof MONTH_ORDER !== 'undefined') ? MONTH_ORDER : null;
-    if (ord) {
-      const ai = ord.indexOf(a), bi = ord.indexOf(b);
-      if (ai >= 0 && bi >= 0) return ai - bi;
-    }
-    return a.localeCompare(b);
-  });
-  const monthBody = document.getElementById('pnl-by-month-body');
-  monthBody.innerHTML = allMonths.map(m => {
-    const p = physByMonth[m] || 0, h = hedgeByMonth[m] || 0, t = p + h;
-    const showP = (pnlSource === 'combined' || pnlSource === 'physical') ? fmtSigned(p) : '—';
-    const showH = (pnlSource === 'combined' || pnlSource === 'hedge')    ? fmtSigned(h) : '—';
-    const showT = pnlSource === 'physical' ? fmtSigned(p)
-                : pnlSource === 'hedge'    ? fmtSigned(h)
-                                           : fmtSigned(t);
-    const tCls = pnlSource === 'physical' ? className(p) : pnlSource === 'hedge' ? className(h) : className(t);
-    return `<tr>
-      <td>${m}</td>
-      <td class="num ${className(p)}" style="text-align:right">${showP}</td>
-      <td class="num ${className(h)}" style="text-align:right">${showH}</td>
-      <td class="num ${tCls}" style="text-align:right;font-weight:600">${showT}</td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="4" style="color:var(--text-3);text-align:center;padding:14px">No P&amp;L yet</td></tr>`;
-  const meta = document.getElementById('pnl-by-month-meta');
-  if (meta) meta.textContent = `${allMonths.length} month${allMonths.length === 1 ? '' : 's'}`;
+  const deskTotals = computeRowTotals(physTotal, deskByMonth);
 
-  // ── BY CONTRACT (one row per cargo) ───────────────────────────────────────
-  // Hedges are not per-cargo, so the contract view is physical-only when the
-  // source toggle is 'physical' or 'combined'; in 'hedge' mode we hide rows.
+  // ── HEADER ───────────────────────────────────────────────────────────────
+  const thead = document.getElementById('pnl-tree-thead');
+  if (thead) {
+    thead.innerHTML = `<th style="text-align:left">Row</th>` +
+      colKeys.map(k => `<th class="num" style="text-align:right">${k}</th>`).join('');
+  }
+
+  // ── TREE BODY ────────────────────────────────────────────────────────────
+  const renderRow = (level, marker, label, totals, opts = {}) => {
+    const indent = '&nbsp;'.repeat(level * 4);
+    const lblCls = level === 0 ? 'font-weight:700' : level === 1 ? 'font-weight:600;color:var(--text-2)' : '';
+    const cells = colKeys.map(k => {
+      const v = totals[k];
+      return `<td class="num ${className(v)}" style="text-align:right">${fmtSigned(v)}</td>`;
+    }).join('');
+    const onclick = opts.toggleId ? ` onclick="_toggleGroup('${opts.toggleId}')"` : '';
+    const cursor  = opts.toggleId ? 'cursor:pointer' : '';
+    return `<tr style="${cursor}"${onclick}>
+      <td style="${lblCls}">${indent}${marker} ${label}${opts.suffix || ''}</td>
+      ${cells}
+    </tr>`;
+  };
+
+  const groupBlock = (groupId, headerLabel, agg) => {
+    const open = pnlExpanded.has(groupId);
+    const totalAgg = Object.values(agg).reduce((a, s) => a + s.mtm, 0);
+    const allByMonth = {};
+    Object.values(agg).forEach(s => Object.entries(s.byMonth).forEach(([m, v]) => allByMonth[m] = (allByMonth[m] || 0) + v));
+    const headerTotals = computeRowTotals(totalAgg, allByMonth);
+    const headerMarker = open ? '▼' : '▶';
+    let html = renderRow(1, headerMarker, headerLabel, headerTotals, { toggleId: groupId });
+    if (open) {
+      const sortedKeys = Object.keys(agg).sort((a, b) => Math.abs(agg[b].mtm) - Math.abs(agg[a].mtm));
+      sortedKeys.forEach(k => {
+        const s = agg[k];
+        const totals = computeRowTotals(s.mtm, s.byMonth);
+        html += renderRow(2, '·', s.label, totals, { suffix: ` <span class="meta">(${s.count} cargoes)</span>` });
+      });
+    }
+    return html;
+  };
+
+  let body = '';
+  body += renderRow(0, '◆', 'Desk (TOTAL)', deskTotals);
+  body += groupBlock('activity',    'By activity (deal type)', groupActivity);
+  body += groupBlock('cargotype',   'By cargo type',           groupCargoType);
+  body += groupBlock('destination', 'By destination region',   groupDestination);
+  body += groupBlock('status',      'By delivery status',      groupStatus);
+
+  const treeBody = document.getElementById('pnl-tree-body');
+  if (treeBody) treeBody.innerHTML = body || `<tr><td colspan="${colKeys.length+1}" style="color:var(--text-3);text-align:center;padding:14px">No P&amp;L matches the current filters</td></tr>`;
+  const treeMeta = document.getElementById('pnl-tree-meta');
+  if (treeMeta) treeMeta.textContent = `${cargoes.length} cargoes · click groups to expand · columns: TOTAL · YTD · MTD · ${pnlFilters.year !== 'all' ? pnlFilters.year : 'rolling 12M'}`;
+
+  // ── PER-CARGO DRILL-DOWN (kept) ──────────────────────────────────────────
   const cBody = document.getElementById('pnl-by-contract-body');
   if (cBody) {
     if (pnlSource === 'hedge') {
@@ -9796,46 +10019,8 @@ function renderPnlSummary() {
           <td class="num" style="text-align:right">${(loaded || 0).toFixed(2)}</td>
           <td class="num ${className(mtm)}" style="text-align:right;font-weight:600">${fmtSigned(mtm)}</td>
         </tr>`;
-      }).join('') || `<tr><td colspan="6" style="color:var(--text-3);text-align:center;padding:14px">No cargoes booked</td></tr>`;
+      }).join('') || `<tr><td colspan="6" style="color:var(--text-3);text-align:center;padding:14px">No cargoes match the current filters</td></tr>`;
     }
-  }
-
-  // ── BY DEAL TYPE ──────────────────────────────────────────────────────────
-  // Aggregate phys by dealType; hedges aren't tied to a dealType so they roll
-  // into a single 'Hedges (paper)' row regardless of the source toggle.
-  const dealAgg = {};
-  phys.forEach(({ c, mtm, loaded }) => {
-    const k = c.dealType || 'single';
-    const d = dealAgg[k] = dealAgg[k] || { count: 0, tbtu: 0, phys: 0, hedge: 0 };
-    d.count++; d.tbtu += loaded; d.phys += mtm;
-  });
-  const dBody = document.getElementById('pnl-by-deal-body');
-  if (dBody) {
-    const labels = { single: 'Single', strip: 'Strip', lt: 'LT' };
-    const dealRows = Object.keys(dealAgg).sort().map(k => {
-      const d = dealAgg[k];
-      const t = d.phys + d.hedge;
-      return `<tr>
-        <td>${labels[k] || k}</td>
-        <td class="num" style="text-align:right">${d.count}</td>
-        <td class="num" style="text-align:right">${d.tbtu.toFixed(2)}</td>
-        <td class="num ${className(d.phys)}" style="text-align:right">${fmtSigned(d.phys)}</td>
-        <td class="num" style="text-align:right">—</td>
-        <td class="num ${className(t)}" style="text-align:right;font-weight:600">${fmtSigned(t)}</td>
-      </tr>`;
-    });
-    if (pnlSource !== 'physical') {
-      // Append a hedges aggregation row.
-      dealRows.push(`<tr>
-        <td>Hedges (paper)</td>
-        <td class="num" style="text-align:right">${hedges.length}</td>
-        <td class="num" style="text-align:right">—</td>
-        <td class="num" style="text-align:right">—</td>
-        <td class="num ${className(hedgeTotal)}" style="text-align:right">${fmtSigned(hedgeTotal)}</td>
-        <td class="num ${className(hedgeTotal)}" style="text-align:right;font-weight:600">${fmtSigned(hedgeTotal)}</td>
-      </tr>`);
-    }
-    dBody.innerHTML = dealRows.join('') || `<tr><td colspan="6" style="color:var(--text-3);text-align:center;padding:14px">No deals booked</td></tr>`;
   }
 }
 window.renderPnlSummary = renderPnlSummary;
@@ -10027,6 +10212,22 @@ document.querySelectorAll('#pnl-subtab button').forEach(b => {
 });
 document.querySelectorAll('#pnl-source-toggle button').forEach(b => {
   b.addEventListener('click', () => setPnlSource(b.dataset.pnlSource));
+});
+// Wire P&L filter dropdowns. Each onchange writes to pnlFilters and re-
+// renders the summary (KPIs + tree + per-cargo list all driven by the
+// same _filterCargoes() result).
+[
+  ['pnl-filter-year',       'year'],
+  ['pnl-filter-dealType',   'dealType'],
+  ['pnl-filter-cargoType',  'cargoType'],
+  ['pnl-filter-cpty',       'cpty'],
+  ['pnl-filter-status-sel', 'status'],
+  ['pnl-filter-coverage',   'coverage'],
+  ['pnl-filter-region',     'region'],
+  ['pnl-filter-parent',     'parent'],
+].forEach(([id, key]) => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', () => setPnlFilter(key, el.value));
 });
 // Top-level tab click → re-render the active sub-pane (summary or log).
 document.querySelectorAll('.tabbar button[data-tab="pnl"]').forEach(b => b.addEventListener('click', () => {

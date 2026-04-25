@@ -1193,9 +1193,9 @@ setTimeout(() => {
     check('Summary pane present',          !!doc.getElementById('pnl-pane-summary'));
     check('Log pane present',              !!doc.getElementById('pnl-pane-log'));
     check('Source toggle present',         !!doc.getElementById('pnl-source-toggle'));
-    check('By-month table present',        !!doc.getElementById('pnl-by-month-body'));
-    check('By-contract table present',     !!doc.getElementById('pnl-by-contract-body'));
-    check('By-deal table present',         !!doc.getElementById('pnl-by-deal-body'));
+    check('Hierarchical tree table present', !!doc.getElementById('pnl-tree-body'));
+    check('By-contract drill-down present',  !!doc.getElementById('pnl-by-contract-body'));
+    check('Filter bar present',              !!doc.getElementById('pnl-filter-year'));
     check('renderPnlSummary on window',    typeof w.renderPnlSummary === 'function');
     check('exportPnlSummaryCSV on window', typeof w.exportPnlSummaryCSV === 'function');
     check('Default sub-tab = summary',     w.getPnlSubTab() === 'summary');
@@ -1204,10 +1204,8 @@ setTimeout(() => {
     w.renderPnlSummary();
     const totalCell = doc.getElementById('pnl-sum-total');
     check('Total P&L KPI rendered',        totalCell && totalCell.textContent !== '—');
-    const monthRows = doc.querySelectorAll('#pnl-by-month-body tr').length;
-    check('By-month table has rows',       monthRows >= 1);
-    const dealRows = doc.querySelectorAll('#pnl-by-deal-body tr').length;
-    check('By-deal table has rows',        dealRows >= 1);
+    const treeRows = doc.querySelectorAll('#pnl-tree-body tr').length;
+    check('Tree has at least the Desk + 4 group rows', treeRows >= 5);
     // Toggle to Physical → renders without throwing.
     w.setPnlSource('physical');
     check('Physical source applied',       w.getPnlSource() === 'physical');
@@ -1320,6 +1318,53 @@ setTimeout(() => {
     check('Paste from Excel button removed (Freight)', !fPasteBtn);
     const cloneCBtn = Array.from(doc.querySelectorAll('#sec-curves button')).find(b => /Clone active/i.test(b.textContent));
     check('Clone active button removed (Curves)', !cloneCBtn);
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
+    console.log('SECTION 33 · P&L hierarchical tree + filter bar');
+    console.log(bar);
+    // The summary pane swapped 3 discrete tables for one hierarchical tree
+    // (Desk → Activity → Cargo type → Destination → Status) plus a filter
+    // bar that narrows everything (KPIs + tree + per-cargo list). All four
+    // groups collapsed by default; click expands.
+    check('Hierarchical tree thead present', !!doc.getElementById('pnl-tree-thead'));
+    check('Year filter dropdown present',    !!doc.getElementById('pnl-filter-year'));
+    check('Deal-type filter present',        !!doc.getElementById('pnl-filter-dealType'));
+    check('Cargo-type filter present',       !!doc.getElementById('pnl-filter-cargoType'));
+    check('Counterparty filter present',     !!doc.getElementById('pnl-filter-cpty'));
+    check('More-filters toggle present',     !!doc.getElementById('pnl-filter-more-btn'));
+    check('Reset / Expand-all helpers exist', typeof w.resetPnlFilters === 'function' && typeof w.expandAllPnlGroups === 'function');
+    check('togglePnlMoreFilters exposed',    typeof w.togglePnlMoreFilters === 'function');
+    check('_toggleGroup exposed',            typeof w._toggleGroup === 'function');
+    check('setPnlFilter exposed',            typeof w.setPnlFilter === 'function');
+    // Default-state tree: Desk + 4 group HEADERS only (collapsed). 1 + 4 = 5.
+    w.resetPnlFilters();   // ensure clean state
+    w.renderPnlSummary();
+    const collapsedRows = doc.querySelectorAll('#pnl-tree-body tr').length;
+    check('Default state: 5 rows (Desk + 4 group headers)',
+          collapsedRows === 5, `got ${collapsedRows}`);
+    // Expand 'activity' → adds child rows.
+    w._toggleGroup('activity');
+    const afterExpand = doc.querySelectorAll('#pnl-tree-body tr').length;
+    check('Expanding "activity" adds child rows', afterExpand > collapsedRows, `${collapsedRows} → ${afterExpand}`);
+    // Expand-all helper opens all 4 groups.
+    w.expandAllPnlGroups();
+    const allOpen = doc.querySelectorAll('#pnl-tree-body tr').length;
+    check('Expand all > activity-only expanded', allOpen >= afterExpand);
+
+    // Filter behaviour: pick a deal type and confirm the per-cargo list shrinks.
+    const cargoesAll = w.getCargoes().length;
+    const beforeFilter = doc.querySelectorAll('#pnl-by-contract-body tr').length;
+    w.setPnlFilter('dealType', 'lt');
+    const afterFilter = doc.querySelectorAll('#pnl-by-contract-body tr').length;
+    check('Setting dealType=lt narrows the cargo list', afterFilter < beforeFilter,
+          `${beforeFilter} → ${afterFilter} of ${cargoesAll}`);
+    w.resetPnlFilters();
+
+    // Filter status text reflects book size after reset.
+    const fStat = doc.getElementById('pnl-filter-status')?.textContent || '';
+    check('Filter status banner reflects book',  /Showing\s+\d+\s+of\s+\d+\s+cargoes/.test(fStat),
+          `text = "${fStat}"`);
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
