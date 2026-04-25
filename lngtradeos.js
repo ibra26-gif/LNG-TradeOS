@@ -10277,40 +10277,35 @@ function cpLngArb(d){
   const BASIS = CP.lngArbBasis;
   const isFixed = BASIS === 'FIXED';
 
-  // ── Origin definitions ────────────────────────────────────────────────────
-  // basisLabel = the natural pricing reference for this origin (Sabine prices
-  // off HH-slope, all others off TTF or JKM depending on destination).
+  // ── Origin definitions (lat/lon used by Map view; equirectangular projection)
   const ORIGINS = [
-    {id:'sabine',     label:'Sabine Pass',  basin:'US',  col:'#4fc3f7', frPrefix:'sabine'},
-    {id:'trinidad',   label:'Trinidad',     basin:'AT',  col:'#29b6f6', frPrefix:'trinidad'},
-    {id:'angola',     label:'Angola',       basin:'WAF', col:'#ff9800', frPrefix:'angola'},
-    {id:'nigeria',    label:'Nigeria',      basin:'WAF', col:'#81c784', frPrefix:'nigeria'},
-    {id:'qatar',      label:'Qatar',        basin:'MEI', col:'#ffb74d', frPrefix:'qatar'},
-    {id:'oman',       label:'Oman',         basin:'MEI', col:'#ffa726', frPrefix:'oman'},
-    {id:'australia_b',label:'Aus (Barrow)', basin:'PAC', col:'#a5d6a7', frPrefix:'australia_b'},
+    {id:'sabine',     label:'Sabine Pass',  basin:'US',  col:'#4fc3f7', frPrefix:'sabine',      lat: 29.73, lon:-93.87},
+    {id:'trinidad',   label:'Trinidad',     basin:'AT',  col:'#29b6f6', frPrefix:'trinidad',    lat: 10.18, lon:-61.68},
+    {id:'angola',     label:'Angola',       basin:'WAF', col:'#ff9800', frPrefix:'angola',      lat: -6.13, lon: 12.37},
+    {id:'nigeria',    label:'Nigeria',      basin:'WAF', col:'#81c784', frPrefix:'nigeria',     lat:  4.43, lon:  7.17},
+    {id:'qatar',      label:'Qatar',        basin:'MEI', col:'#ffb74d', frPrefix:'qatar',       lat: 25.92, lon: 51.57},
+    {id:'oman',       label:'Oman',         basin:'MEI', col:'#ffa726', frPrefix:'oman',        lat: 22.64, lon: 59.45},
+    {id:'australia_b',label:'Aus (Barrow)', basin:'PAC', col:'#a5d6a7', frPrefix:'australia_b', lat:-20.80, lon:115.42},
   ];
 
-  // ── Destination definitions ───────────────────────────────────────────────
-  // hubKey = the destination's natural pricing index (used in TTF/JKM toggle).
-  // desKey = key in d.des. frKey = suffix in fr['<origin>_<frKey>'].
-  // If a route has no freight curve for a given origin, the cell shows '—'.
+  // ── Destination definitions (lat/lon for Map view) ───────────────────────
   const DESTS = [
-    {id:'nwe',     label:'EU NWE (Gate)',     hub:'TTF', desKey:'nwe',     frKey:'rotterdam'},
-    {id:'iberia',  label:'Iberia',            hub:'TTF', desKey:'iberia',  frKey:'iberia'},
-    {id:'uk',      label:'UK (S.Hook)',       hub:'TTF', desKey:'uk',      frKey:'southhook'},
-    {id:'italy',   label:'Italy (Rovigo)',    hub:'TTF', desKey:'italy',   frKey:'rovigo'},
-    {id:'klaipeda',label:'Klaipeda',          hub:'TTF', desKey:'klaipeda',frKey:'klaipeda'},
-    {id:'inkoo',   label:'Inkoo',             hub:'TTF', desKey:'inkoo',   frKey:'inkoo'},
-    {id:'swino',   label:'Swinoujscie',       hub:'TTF', desKey:'swino',   frKey:'swinoujscie'},
-    {id:'rev',     label:'Revithoussa',       hub:'TTF', desKey:'rev',     frKey:'rev'},
-    {id:'krk',     label:'KRK',               hub:'TTF', desKey:'krk',     frKey:'krk'},
-    {id:'ali',     label:'Aliaga',            hub:'TTF', desKey:'ali',     frKey:'ali'},
-    {id:'ain',     label:'Egypt (Ain Sukhna)',hub:'TTF', desKey:'ain',     frKey:'ain'},
-    {id:'mei',     label:'India (Dahej)',     hub:'JKM', desKey:'mei',     frKey:'dahej'},
-    {id:'jktc',    label:'JKTC (J/K/T/CN)',   hub:'JKM', desKey:'jktc',    frKey:'tokyo'},
-    {id:'thailand',label:'Thailand (Map Ta Phut)', hub:'JKM', desKey:'thailand', frKey:'maptaphut'},
-    {id:'brazil',  label:'Brazil (Guanabara)',hub:'TTF', desKey:'brazil',  frKey:'guanabara', sabineOnly:true},
-    {id:'argentina',label:'Argentina (Escobar)',hub:'TTF', desKey:'argentina', frKey:'escobar', sabineOnly:true},
+    {id:'nwe',     label:'EU NWE (Gate)',     hub:'TTF', desKey:'nwe',     frKey:'rotterdam',  lat: 51.95, lon:  4.06},
+    {id:'iberia',  label:'Iberia',            hub:'TTF', desKey:'iberia',  frKey:'iberia',     lat: 37.20, lon: -7.00},
+    {id:'uk',      label:'UK (S.Hook)',       hub:'TTF', desKey:'uk',      frKey:'southhook',  lat: 51.71, lon: -5.07},
+    {id:'italy',   label:'Italy (Rovigo)',    hub:'TTF', desKey:'italy',   frKey:'rovigo',     lat: 45.07, lon: 12.59},
+    {id:'klaipeda',label:'Klaipeda',          hub:'TTF', desKey:'klaipeda',frKey:'klaipeda',   lat: 55.71, lon: 21.17},
+    {id:'inkoo',   label:'Inkoo',             hub:'TTF', desKey:'inkoo',   frKey:'inkoo',      lat: 60.04, lon: 24.00},
+    {id:'swino',   label:'Swinoujscie',       hub:'TTF', desKey:'swino',   frKey:'swinoujscie',lat: 53.92, lon: 14.25},
+    {id:'rev',     label:'Revithoussa',       hub:'TTF', desKey:'rev',     frKey:'rev',        lat: 38.00, lon: 23.39},
+    {id:'krk',     label:'KRK',               hub:'TTF', desKey:'krk',     frKey:'krk',        lat: 45.03, lon: 14.57},
+    {id:'ali',     label:'Aliaga',            hub:'TTF', desKey:'ali',     frKey:'ali',        lat: 38.80, lon: 26.97},
+    {id:'ain',     label:'Egypt (Ain Sukhna)',hub:'TTF', desKey:'ain',     frKey:'ain',        lat: 29.61, lon: 32.34},
+    {id:'mei',     label:'India (Dahej)',     hub:'JKM', desKey:'mei',     frKey:'dahej',      lat: 21.70, lon: 72.53},
+    {id:'jktc',    label:'JKTC (J/K/T/CN)',   hub:'JKM', desKey:'jktc',    frKey:'tokyo',      lat: 35.45, lon:139.60},
+    {id:'thailand',label:'Thailand (Map Ta Phut)', hub:'JKM', desKey:'thailand', frKey:'maptaphut', lat: 12.68, lon:101.16},
+    {id:'brazil',  label:'Brazil (Guanabara)',hub:'TTF', desKey:'brazil',  frKey:'guanabara',  lat:-22.78, lon:-43.13, sabineOnly:true},
+    {id:'argentina',label:'Argentina (Escobar)',hub:'TTF', desKey:'argentina', frKey:'escobar',lat:-34.18, lon:-58.79, sabineOnly:true},
   ];
 
   // ── Basis price for FOB-spread expression ────────────────────────────────
@@ -10432,19 +10427,205 @@ function cpLngArb(d){
   // ── Stash data on window for drawer + modal handlers (avoids re-deriving) ──
   window.__lngArbCtx = { ORIGINS, DESTS, matrix, basis: BASIS, basisLbl, m, monthLbl: ML[m], des, fr, fp, sl };
 
-  return `
+  // ── View toggle (Cards / Map). Persisted per session in cp_lng_arb_view ──
+  if (!CP.lngArbView) CP.lngArbView = cpGet('cp_lng_arb_view', 'cards');
+  const VIEW = CP.lngArbView;
+  const viewBtn = (k, lbl) => {
+    const on = VIEW === k;
+    return `<button class="f-btn sm${on?' on':''}" onclick="cpSetLngArbView('${k}')" style="margin-right:3px">${lbl}</button>`;
+  };
+  const viewToggle = `${viewBtn('cards','◫ Cards')}${viewBtn('map','🌍 Map')}`;
+
+  // Top bar shared by both views
+  const topBar = `
     <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="color:#546e7a;font-size:9px;letter-spacing:1px;font-weight:700">LNG ARB · GLOBAL NETBACK FLOW</span>
+      <span style="color:#3d5070">|</span>
+      <span style="color:#546e7a;font-size:9px;letter-spacing:1px">VIEW</span>${viewToggle}
       <span style="color:#3d5070">|</span>
       <span style="color:#546e7a;font-size:9px;letter-spacing:1px">MONTH</span>${monthSel}
       <span style="color:#3d5070">|</span>
       <span style="color:#546e7a;font-size:9px;letter-spacing:1px">QUOTE BASIS</span>${idxToggle}
       <span style="margin-left:auto;color:#546e7a;font-size:9px">${ML[m]} · ${basisLbl}</span>
-    </div>
+    </div>`;
+
+  if (VIEW === 'map') {
+    return topBar + cpLngArbMapBody({ ORIGINS, DESTS, matrix, isFixed, fmt, fmtSp, colorBE, basisLbl, m });
+  }
+
+  return `${topBar}
     <div style="padding:10px 14px;color:#546e7a;font-size:10px;letter-spacing:1px;font-weight:600;border-bottom:1px solid #1e3a5f">ORIGINS — best 3 destinations · FAIR = avg top 3</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding:10px 14px">${originCards}</div>
     <div style="padding:10px 14px;color:#546e7a;font-size:10px;letter-spacing:1px;font-weight:600;border-bottom:1px solid #1e3a5f;border-top:1px solid #1e3a5f">DESTINATIONS — top 5 origins by DES (cheapest first)</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding:10px 14px">${destCards}</div>
+    <div id="lng-arb-drawer" style="display:none;border-top:2px solid #1e3a5f;background:#080e1c"></div>
+    <div id="lng-arb-modal-mount"></div>
+  `;
+}
+
+// ── View toggle setter (persisted) ────────────────────────────────────────
+function cpSetLngArbView(v){
+  CP.lngArbView = v;
+  cpSet('cp_lng_arb_view', v);
+  renderCargoTab();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MAP VIEW renderer — equirectangular projection over a simplified inline SVG
+// ════════════════════════════════════════════════════════════════════════════
+// Layout: 1200×600 viewBox, equirectangular (Plate Carrée) projection.
+// World map drawn as rough continent polygons (manually authored — no
+// external dependency). Markers absolutely positioned via lat/lon → x/y.
+// Top-3 destination flow arrows drawn per origin (color = FOB Δ strength).
+// Same drawer + voyage modal handlers as the Cards view.
+function cpLngArbMapBody(ctx){
+  const { ORIGINS, DESTS, matrix, isFixed, fmt, fmtSp, colorBE, basisLbl, m } = ctx;
+  const W = 1200, H = 600;
+  // Equirectangular projection: lon/lat → x/y (linear)
+  const px = lon => ((lon + 180) / 360) * W;
+  const py = lat => ((90 - lat) / 180) * H;
+
+  // ── Simplified inline world SVG (rough continent polygons, equirectangular)
+  // Authored manually - cartographic accuracy is not the goal; recognizability is.
+  const worldPaths = `
+    <!-- North America -->
+    <path d="M 145,90 L 200,80 L 290,75 L 360,95 L 410,140 L 395,180 L 350,210 L 290,225 L 240,235 L 195,225 L 165,200 L 140,160 L 130,125 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Greenland -->
+    <path d="M 470,55 L 530,50 L 555,80 L 540,110 L 495,115 L 470,90 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Central America -->
+    <path d="M 290,225 L 320,235 L 340,255 L 330,275 L 310,265 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- South America -->
+    <path d="M 350,275 L 410,265 L 445,300 L 460,365 L 455,440 L 425,490 L 395,510 L 370,485 L 350,420 L 340,360 L 345,310 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Europe -->
+    <path d="M 575,115 L 660,105 L 720,115 L 740,150 L 705,180 L 660,195 L 605,185 L 580,160 L 565,135 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- UK + Ireland -->
+    <path d="M 555,135 L 580,125 L 590,150 L 580,175 L 560,180 L 545,160 L 540,140 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Iberia -->
+    <path d="M 555,180 L 605,178 L 610,205 L 580,215 L 555,205 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Italy -->
+    <path d="M 645,190 L 670,190 L 685,225 L 678,250 L 655,235 L 645,210 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Africa -->
+    <path d="M 605,225 L 705,210 L 765,225 L 800,260 L 815,310 L 800,360 L 770,410 L 730,440 L 690,445 L 660,430 L 630,400 L 615,360 L 605,320 L 600,275 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Middle East / Arabia -->
+    <path d="M 765,225 L 825,220 L 855,255 L 840,295 L 800,300 L 770,285 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Asia (Russia / China bulk) -->
+    <path d="M 745,90 L 900,80 L 1020,90 L 1090,115 L 1080,170 L 1050,205 L 970,225 L 905,225 L 850,210 L 790,190 L 755,160 L 740,125 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- India -->
+    <path d="M 890,260 L 940,255 L 950,295 L 935,335 L 905,335 L 880,300 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- SE Asia / Indochina -->
+    <path d="M 970,260 L 1015,255 L 1035,290 L 1010,325 L 980,310 L 970,285 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Japan -->
+    <path d="M 1095,170 L 1115,165 L 1130,195 L 1118,225 L 1100,210 L 1090,190 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Indonesia / Maritime SE Asia -->
+    <path d="M 1000,330 L 1080,325 L 1095,355 L 1050,365 L 1010,355 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Australia -->
+    <path d="M 1010,395 L 1095,385 L 1130,410 L 1130,445 L 1080,460 L 1030,455 L 1005,430 Z" fill="#162638" stroke="#243a55" stroke-width="0.7"/>
+    <!-- Antarctica strip -->
+    <path d="M 50,560 L 1180,560 L 1180,590 L 50,590 Z" fill="#0e1828" stroke="#1c2c40" stroke-width="0.5"/>
+  `;
+
+  // ── Flow arrows: top-3 destinations per origin, color by FOB Δ ──
+  let arrows = '';
+  ORIGINS.forEach(O => {
+    const ranked = DESTS
+      .map(D => ({ D, v: matrix[O.id][D.id] }))
+      .filter(x => x.v != null)
+      .sort((a,b) => b.v - a.v)
+      .slice(0, 3);
+    ranked.forEach(({ D, v }) => {
+      const x1 = px(O.lon), y1 = py(O.lat);
+      const x2 = px(D.lon), y2 = py(D.lat);
+      // Bezier control point — perpendicular offset for graceful curve
+      const mx = (x1 + x2) / 2;
+      const my = (y1 + y2) / 2 - Math.min(80, Math.abs(x2 - x1) * 0.18);
+      // Color by FOB Δ strength
+      const col = isFixed ? '#4fc3f7'
+                : v >= 0.20 ? '#4ade80'
+                : v >= 0    ? '#facc15'
+                : '#f87171';
+      const w = Math.max(0.6, Math.min(2.2, isFixed ? 1.0 : Math.abs(v) * 1.8));
+      arrows += `<path d="M ${x1.toFixed(1)} ${y1.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}"
+                       fill="none" stroke="${col}" stroke-width="${w}" stroke-opacity="0.55"
+                       stroke-dasharray="${isFixed ? '' : '0'}" />`;
+    });
+  });
+
+  // ── Origin markers: large basin-colored dots ──
+  const originMarkers = ORIGINS.map(O => {
+    const x = px(O.lon), y = py(O.lat);
+    const ranked = DESTS.map(D => ({ D, v: matrix[O.id][D.id] })).filter(x => x.v != null).sort((a,b) => b.v - a.v).slice(0, 3);
+    const fair = ranked.length ? ranked.reduce((a,x) => a + x.v, 0) / ranked.length : null;
+    const tip = `${O.label}\nFAIR (top 3 avg): ${fmtSp(fair)}\nTop: ${ranked.map(r => `${r.D.label} ${fmtSp(r.v)}`).join('  ·  ')}`;
+    return `<g class="lngarb-mk lngarb-orig" transform="translate(${x.toFixed(1)},${y.toFixed(1)})" style="cursor:pointer" onclick="cpLngArbDrawer('origin','${O.id}')">
+      <circle r="11" fill="${O.col}" fill-opacity="0.25" stroke="${O.col}" stroke-width="2"/>
+      <circle r="4" fill="${O.col}"/>
+      <title>${tip}</title>
+    </g>`;
+  }).join('');
+
+  // ── Destination markers: small white-ringed dots ──
+  const destMarkers = DESTS.map(D => {
+    const x = px(D.lon), y = py(D.lat);
+    const ranked = ORIGINS.map(O => ({ O, fob: matrix[O.id][D.id] })).filter(x => x.fob != null).sort((a,b) => b.fob - a.fob).slice(0, 3);
+    const physDelta = CP.phys[D.desKey]?.[m];
+    const physTxt = physDelta != null ? `${D.hub} Δ ${(physDelta>=0?'+':'')+physDelta.toFixed(3)}` : '';
+    const tip = `${D.label}\n${physTxt}\nBest origins: ${ranked.map(r => `${r.O.label} ${fmtSp(r.fob)}`).join('  ·  ')}`;
+    return `<g class="lngarb-mk lngarb-dest" transform="translate(${x.toFixed(1)},${y.toFixed(1)})" style="cursor:pointer" onclick="cpLngArbDrawer('dest','${D.id}')">
+      <circle r="6" fill="#080e1c" stroke="#c8d6e5" stroke-width="1.5"/>
+      <circle r="2" fill="#c8d6e5"/>
+      <title>${tip}</title>
+    </g>`;
+  }).join('');
+
+  // ── HTML labels overlaid on top (SVG text would scale awkwardly) ──
+  // Position via percent (relative to map container) so they align with SVG markers.
+  const originLabels = ORIGINS.map(O => {
+    const xp = (px(O.lon) / W) * 100, yp = (py(O.lat) / H) * 100;
+    return `<div style="position:absolute;left:${xp.toFixed(2)}%;top:${(yp + 2.5).toFixed(2)}%;transform:translateX(-50%);font-size:9.5px;font-weight:700;color:${O.col};text-shadow:0 0 4px #000,0 0 4px #000;pointer-events:none;white-space:nowrap">${O.label.replace(' (Barrow)','')}</div>`;
+  }).join('');
+  const destLabels = DESTS.map(D => {
+    const xp = (px(D.lon) / W) * 100, yp = (py(D.lat) / H) * 100;
+    // Stagger the label position to avoid clutter for tight clusters (Med/EU)
+    const yOff = ['rev','ali','italy','krk'].includes(D.id) ? -3.0 : 1.5;
+    return `<div style="position:absolute;left:${xp.toFixed(2)}%;top:${(yp + yOff).toFixed(2)}%;transform:translateX(-50%);font-size:8.5px;color:#c8d6e5;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none;white-space:nowrap">${D.label.split(' (')[0]}</div>`;
+  }).join('');
+
+  // ── Legend ──
+  const legend = `
+    <div style="position:absolute;bottom:8px;right:10px;background:#080e1cdd;border:1px solid #1e3a5f;border-radius:5px;padding:8px 12px;font-size:9px;color:#8a9bb5;line-height:1.7;backdrop-filter:blur(2px)">
+      <div style="font-weight:700;color:#c8d6e5;margin-bottom:4px">FLOW ARROWS</div>
+      <div><span style="display:inline-block;width:18px;height:2px;background:#4ade80;vertical-align:middle"></span> FOB Δ ≥ +0.20</div>
+      <div><span style="display:inline-block;width:18px;height:2px;background:#facc15;vertical-align:middle"></span> +0.00 to +0.20</div>
+      <div><span style="display:inline-block;width:18px;height:2px;background:#f87171;vertical-align:middle"></span> negative (loss)</div>
+      <div style="margin-top:4px;color:#3d5070">Top 3 routes per origin · click any marker</div>
+    </div>`;
+
+  return `
+    <div style="position:relative;width:100%;background:#0a1628;border-bottom:1px solid #1e3a5f">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;display:block">
+        <!-- Ocean -->
+        <rect x="0" y="0" width="${W}" height="${H}" fill="#0a1628"/>
+        <!-- Lat/lon grid (subtle) -->
+        ${[15,30,45,60,75,90,105,120].map(lon => {
+          const x = px(lon - 180);
+          return `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="#0e1c30" stroke-width="0.5"/>`;
+        }).join('')}
+        ${[60,30,0,-30,-60].map(lat => {
+          const y = py(lat);
+          return `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#0e1c30" stroke-width="0.5"/>`;
+        }).join('')}
+        <!-- Continents -->
+        ${worldPaths}
+        <!-- Flow arrows -->
+        <g class="lngarb-arrows">${arrows}</g>
+        <!-- Markers -->
+        ${destMarkers}
+        ${originMarkers}
+      </svg>
+      ${originLabels}
+      ${destLabels}
+      ${legend}
+    </div>
     <div id="lng-arb-drawer" style="display:none;border-top:2px solid #1e3a5f;background:#080e1c"></div>
     <div id="lng-arb-modal-mount"></div>
   `;
