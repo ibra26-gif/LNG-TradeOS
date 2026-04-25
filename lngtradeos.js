@@ -19789,11 +19789,78 @@ SAM.init = function() {
     return out;
   }
 
+  // ── Phase 2: NM_DB + PORT_COSTS + phys diffs ──────────────────────────────
+  // The iframe keys NM_DB and PORT_COSTS by long display names ('Sabine Pass',
+  // 'Gate', 'Tokyo Bay'). Main app keys NM and SUPPLY/BASE_D by short ids
+  // ('sabine', 'rotterdam', 'tokyo'). Translate so iframe lookups land.
+  const _LOAD_ID_TO_NAME = {
+    sabine:'Sabine Pass', trinidad:'Trinidad & Tobago', angola:'Angola',
+    nigeria:'Nigeria LNG', qatar:'Ras Laffan', oman:'Oman LNG',
+    australia_b:'Barrow Island', australia_g:'Gladstone', indonesia:'Bontang',
+  };
+  const _DISCH_ID_TO_NAME = {
+    rotterdam:'Gate', southhook:'Isle of Grain', huelva:'Huelva',
+    zeebrugge:'Zeebrugge', swinoujscie:'Swinoujscie', inkoo:'Inkoo',
+    klaipeda:'Klaipeda', revithoussa:'Revithoussa',
+    panigaglia:'Panigaglia LNG', livorno:'Livorno', rovigo:'Rovigo',
+    piombino:'Piombino', ravenna:'Ravenna', krk:'Krk', aliaga:'Aliaga',
+    ainsukhna:'Ain Sukhna', jebelali:'Jebel Ali', dahej:'Dahej',
+    portqasim:'Port Qasim', tianjin:'Tianjin', tokyo:'Tokyo Bay',
+    gwangyang:'Gwangyang', singapore:'Singapore', maptaphut:'Map Ta Phut',
+    guanabara:'Guanabara', quintero:'Quintero', manzanillo:'Manzanillo',
+    bahiablanca:'Bahia Blanca', escobar:'Escobar',
+  };
+  function _pvBuildNm(){
+    const out = {};
+    if (typeof NM === 'undefined' || !NM) return out;
+    Object.keys(NM).forEach(loadId => {
+      const loadName = _LOAD_ID_TO_NAME[loadId] || loadId;
+      out[loadName] = {};
+      Object.keys(NM[loadId]).forEach(dischId => {
+        const dischName = _DISCH_ID_TO_NAME[dischId] || dischId;
+        const v = NM[loadId][dischId];
+        if (v != null && isFinite(v)) out[loadName][dischName] = +v;
+      });
+    });
+    return out;
+  }
+  function _pvBuildPortCosts(){
+    const out = {};
+    if (typeof SUPPLY !== 'undefined') {
+      SUPPLY.forEach(s => {
+        const name = _LOAD_ID_TO_NAME[s.id] || s.name;
+        if (s.loadCost != null && isFinite(s.loadCost)) out[name] = +s.loadCost;
+      });
+    }
+    if (typeof BASE_D !== 'undefined') {
+      BASE_D.forEach(d => {
+        const name = _DISCH_ID_TO_NAME[d.id] || d.name;
+        if (d.dischCost != null && isFinite(d.dischCost)) out[name] = +d.dischCost;
+      });
+    }
+    return out;
+  }
+  // Phys diffs — main app's CP.phys (per-destination 24-month arrays). Pass
+  // straight through; iframe stores under window.__externalPhysDiffs for
+  // downstream consumers (e.g. DES price hints in the cargo form, future).
+  function _pvBuildPhys(){
+    if (typeof CP === 'undefined' || !CP || !CP.phys) return null;
+    const out = {};
+    Object.keys(CP.phys).forEach(k => {
+      const arr = CP.phys[k];
+      if (Array.isArray(arr) && arr.some(v => v != null)) out[k] = arr.slice();
+    });
+    return out;
+  }
+
   function _pvBuildPayload(reason){
     return {
       reason: reason || 'manual',
       curveSnapshots: _pvBuildCurveSnapshots(),
       freightSnapshots: _pvBuildFreightSnapshots(),
+      nm: _pvBuildNm(),
+      portCosts: _pvBuildPortCosts(),
+      physDiffs: _pvBuildPhys(),
     };
   }
 

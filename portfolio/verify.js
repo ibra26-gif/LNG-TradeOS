@@ -1147,6 +1147,42 @@ setTimeout(() => {
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
+    console.log('SECTION 29 · Phase 2 — NM_DB / PORT_COSTS / phys diffs ingestion');
+    console.log(bar);
+    // applyExternalData merges nm + portCosts into the iframe's NM_DB and
+    // PORT_COSTS const objects (mutated in place; const binds the variable
+    // not the contents). Phys diffs land on window.__externalPhysDiffs.
+    check('getNmDb getter exposed',      typeof w.getNmDb === 'function');
+    check('getPortCosts getter exposed', typeof w.getPortCosts === 'function');
+    const nmBefore    = Object.keys(w.getNmDb() || {}).length;
+    const portsBefore = Object.keys(w.getPortCosts() || {}).length;
+    check('Seeded NM_DB has entries',     nmBefore >= 1);
+    check('Seeded PORT_COSTS has entries',portsBefore >= 1);
+    // Push a tiny payload — one new origin with two destinations + a port
+    // cost for that origin + a phys-diffs blob.
+    const ph2 = {
+      reason: 'phase2-test',
+      nm: {
+        'TestPort A': { 'TestDest X': 1234, 'TestDest Y': 5678 },
+        'Sabine Pass': { 'TestDest X': 9999 },  // merge into existing origin
+      },
+      portCosts: { 'TestPort A': 111111 },
+      physDiffs: { nwe: [-0.40,-0.40,-0.40], jktc: [0.10,0.10,0.10] },
+    };
+    w.applyExternalData(ph2);
+    const nmAfter   = w.getNmDb();
+    const portsAfter= w.getPortCosts();
+    check('NM_DB gained TestPort A',           !!nmAfter['TestPort A']);
+    check('TestPort A → TestDest X = 1234',    nmAfter['TestPort A']?.['TestDest X'] === 1234);
+    check('Sabine Pass merged (kept Gate)',    nmAfter['Sabine Pass']?.['Gate'] === 4902);
+    check('Sabine Pass added TestDest X',      nmAfter['Sabine Pass']?.['TestDest X'] === 9999);
+    check('PORT_COSTS gained TestPort A',      portsAfter['TestPort A'] === 111111);
+    check('PORT_COSTS kept Sabine Pass cost',  portsAfter['Sabine Pass'] === 216342);
+    check('Phys diffs stored on window',       Array.isArray(w.__externalPhysDiffs?.nwe));
+    check('Phys diffs jktc carried through',   w.__externalPhysDiffs?.jktc?.[0] === 0.10);
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
     console.log('SUMMARY');
     console.log(bar);
     console.log(`    Passed: ${passed}`);

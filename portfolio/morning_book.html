@@ -9545,13 +9545,46 @@ function applyExternalData(payload) {
     STATE.freightCurves.baselineDate = dates[dates.length - 2] || dates[dates.length - 1];
     touched = true;
   }
+  // Phase 2 — NM_DB and PORT_COSTS are top-level `const` declarations, but
+  // const binds the *variable*, not the contents. Mutating the object via
+  // Object.assign / per-key writes is fine and the rest of the app sees it.
+  // We MERGE rather than replace so existing iframe-only entries survive.
+  if (payload.nm && typeof payload.nm === 'object') {
+    Object.keys(payload.nm).forEach(loadName => {
+      NM_DB[loadName] = NM_DB[loadName] || {};
+      Object.assign(NM_DB[loadName], payload.nm[loadName] || {});
+    });
+    touched = true;
+  }
+  if (payload.portCosts && typeof payload.portCosts === 'object') {
+    Object.assign(PORT_COSTS, payload.portCosts);
+    touched = true;
+  }
+  // Phys diffs — store on a global for future cargo-form auto-suggest. Not
+  // wired into pricing math yet; trader can read them from the dev console
+  // or we can surface them in a card later.
+  if (payload.physDiffs && typeof payload.physDiffs === 'object') {
+    window.__externalPhysDiffs = payload.physDiffs;
+    touched = true;
+  }
   if (touched) {
     saveState();
     if (typeof renderAll === 'function') renderAll();
-    console.log('[PV] applied external data', { reason: payload.reason || '?' });
+    console.log('[PV] applied external data', {
+      reason: payload.reason || '?',
+      curves: payload.curveSnapshots ? Object.keys(payload.curveSnapshots).length : 0,
+      freight: payload.freightSnapshots ? Object.keys(payload.freightSnapshots).length : 0,
+      nm: payload.nm ? Object.keys(payload.nm).length : 0,
+      ports: payload.portCosts ? Object.keys(payload.portCosts).length : 0,
+      physDiffs: payload.physDiffs ? Object.keys(payload.physDiffs).length : 0,
+    });
   }
 }
 window.applyExternalData = applyExternalData;
+// Read-only getters so verify.js (and future debugging) can inspect the
+// const-bound NM_DB / PORT_COSTS without poking at globals directly.
+window.getNmDb       = () => NM_DB;
+window.getPortCosts  = () => PORT_COSTS;
 
 window.addEventListener('message', (e) => {
   if (!e.data || e.data.type !== 'pv-data') return;
