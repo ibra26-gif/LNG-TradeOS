@@ -9151,7 +9151,7 @@ const CP_SEED_FR={
   });
 })();
 
-const CP_TABS=['PHYS DIFFERENTIALS','DES PRICES','GLOBAL ARB','ATLANTIC BASIN','MEI','PACIFIC BASIN','FREIGHT DIFFERENTIAL vs BASIS','FOB PRICING'];
+const CP_TABS=['PHYS DIFFERENTIALS','DES PRICES','GLOBAL ARB','LNG ARB','ATLANTIC BASIN','MEI','PACIFIC BASIN','FREIGHT DIFFERENTIAL vs BASIS','FOB PRICING'];
 let CP={fp:null,phys:null,freight:null,liqFee:null,histSnaps:null,tab:0,selMonth:0,indexMode:'TTF',hhSlope:1.15,coghMode:false,histSnapDate:new Date().toISOString().slice(0,10)};
 function cpGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
 function cpSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
@@ -9543,11 +9543,12 @@ function renderCargoTab(){const b=document.getElementById('cp-body');if(!b)retur
   if(CP.tab===0)b.innerHTML=cpPhysDiff(d);
   else if(CP.tab===1)b.innerHTML=cpDesPrices(d);
   else if(CP.tab===2)b.innerHTML=cpGlobalArb(d);
-  else if(CP.tab===3)b.innerHTML=cpAtlanticArb(d);
-  else if(CP.tab===4)b.innerHTML=cpMEIArb(d);
-  else if(CP.tab===5)b.innerHTML=cpPacificArb(d);
-  else if(CP.tab===6)b.innerHTML=cpFrDiffBasis(d);
-  else if(CP.tab===7)b.innerHTML=cpFobPricing(d);
+  else if(CP.tab===3)b.innerHTML=cpLngArb(d);
+  else if(CP.tab===4)b.innerHTML=cpAtlanticArb(d);
+  else if(CP.tab===5)b.innerHTML=cpMEIArb(d);
+  else if(CP.tab===6)b.innerHTML=cpPacificArb(d);
+  else if(CP.tab===7)b.innerHTML=cpFrDiffBasis(d);
+  else if(CP.tab===8)b.innerHTML=cpFobPricing(d);
   // Browsers do NOT execute <script> tags injected via innerHTML. The FR Diff
   // vs Basis tab emits a Chart.js init block as an inline <script> — re-insert
   // it so it runs. Harmless for tabs that contain no <script>.
@@ -10250,6 +10251,347 @@ function cpBasinTab(cfg,d){
   ${whyCard}`;
 }
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// LNG ARB — visual netback flow (origins ↔ destinations)
+// ════════════════════════════════════════════════════════════════════════════
+// Mirrors the Excel "LNG Netback Model" diagram. For each origin: ranks the
+// best destinations by FOB-netback spread vs the chosen basis (TTF / JKM /
+// 115%HH for US / HH / Fixed). For each destination: ranks the cheapest
+// origins by DES delivered price.
+//
+// Origin click → drilldown drawer with full per-destination math.
+// Destination click → drilldown drawer with all competing origins.
+// Row click in either drawer → voyage detail modal (read-only freight stack).
+//
+// Index basis lives in CP.lngArbBasis (persisted via cp_lng_arb_basis):
+//   'TTF' | 'JKM' | 'HHSL' (115% HH, US-only) | 'HH' | 'FIXED'
+function cpLngArb(d){
+  const fr   = d.freight;
+  const des  = d.des;
+  const fp   = CP.fp;
+  const sl   = CP.hhSlope || 1.15;
+  const m    = CP.selMonth ?? 0;
+  // Persisted basis selection
+  if (!CP.lngArbBasis) CP.lngArbBasis = cpGet('cp_lng_arb_basis', 'TTF');
+  const BASIS = CP.lngArbBasis;
+  const isFixed = BASIS === 'FIXED';
+
+  // ── Origin definitions ────────────────────────────────────────────────────
+  // basisLabel = the natural pricing reference for this origin (Sabine prices
+  // off HH-slope, all others off TTF or JKM depending on destination).
+  const ORIGINS = [
+    {id:'sabine',     label:'Sabine Pass',  basin:'US',  col:'#4fc3f7', frPrefix:'sabine'},
+    {id:'trinidad',   label:'Trinidad',     basin:'AT',  col:'#29b6f6', frPrefix:'trinidad'},
+    {id:'angola',     label:'Angola',       basin:'WAF', col:'#ff9800', frPrefix:'angola'},
+    {id:'nigeria',    label:'Nigeria',      basin:'WAF', col:'#81c784', frPrefix:'nigeria'},
+    {id:'qatar',      label:'Qatar',        basin:'MEI', col:'#ffb74d', frPrefix:'qatar'},
+    {id:'oman',       label:'Oman',         basin:'MEI', col:'#ffa726', frPrefix:'oman'},
+    {id:'australia_b',label:'Aus (Barrow)', basin:'PAC', col:'#a5d6a7', frPrefix:'australia_b'},
+  ];
+
+  // ── Destination definitions ───────────────────────────────────────────────
+  // hubKey = the destination's natural pricing index (used in TTF/JKM toggle).
+  // desKey = key in d.des. frKey = suffix in fr['<origin>_<frKey>'].
+  // If a route has no freight curve for a given origin, the cell shows '—'.
+  const DESTS = [
+    {id:'nwe',     label:'EU NWE (Gate)',     hub:'TTF', desKey:'nwe',     frKey:'rotterdam'},
+    {id:'iberia',  label:'Iberia',            hub:'TTF', desKey:'iberia',  frKey:'iberia'},
+    {id:'uk',      label:'UK (S.Hook)',       hub:'TTF', desKey:'uk',      frKey:'southhook'},
+    {id:'italy',   label:'Italy (Rovigo)',    hub:'TTF', desKey:'italy',   frKey:'rovigo'},
+    {id:'klaipeda',label:'Klaipeda',          hub:'TTF', desKey:'klaipeda',frKey:'klaipeda'},
+    {id:'inkoo',   label:'Inkoo',             hub:'TTF', desKey:'inkoo',   frKey:'inkoo'},
+    {id:'swino',   label:'Swinoujscie',       hub:'TTF', desKey:'swino',   frKey:'swinoujscie'},
+    {id:'rev',     label:'Revithoussa',       hub:'TTF', desKey:'rev',     frKey:'rev'},
+    {id:'krk',     label:'KRK',               hub:'TTF', desKey:'krk',     frKey:'krk'},
+    {id:'ali',     label:'Aliaga',            hub:'TTF', desKey:'ali',     frKey:'ali'},
+    {id:'ain',     label:'Egypt (Ain Sukhna)',hub:'TTF', desKey:'ain',     frKey:'ain'},
+    {id:'mei',     label:'India (Dahej)',     hub:'JKM', desKey:'mei',     frKey:'dahej'},
+    {id:'jktc',    label:'JKTC (J/K/T/CN)',   hub:'JKM', desKey:'jktc',    frKey:'tokyo'},
+    {id:'thailand',label:'Thailand (Map Ta Phut)', hub:'JKM', desKey:'thailand', frKey:'maptaphut'},
+    {id:'brazil',  label:'Brazil (Guanabara)',hub:'TTF', desKey:'brazil',  frKey:'guanabara', sabineOnly:true},
+    {id:'argentina',label:'Argentina (Escobar)',hub:'TTF', desKey:'argentina', frKey:'escobar', sabineOnly:true},
+  ];
+
+  // ── Basis price for FOB-spread expression ────────────────────────────────
+  // Returns the index price for month m, or null if basis doesn't apply
+  // (e.g., 115% HH for non-Sabine origin → returns null, cell shows '—').
+  function basisPx(origin, dest) {
+    if (BASIS === 'FIXED')   return 0;            // FIXED → return absolute FOB
+    if (BASIS === 'TTF')     return fp.TTF[m];
+    if (BASIS === 'JKM')     return fp.JKM[m];
+    if (BASIS === 'HH')      return fp.HH[m];
+    if (BASIS === 'HHSL')    return origin.id === 'sabine' ? sl * fp.HH[m] : null;
+    return fp.TTF[m];
+  }
+
+  // ── FOB netback compute: FOB spread vs basis (or absolute if FIXED) ──────
+  function fobNetback(origin, dest) {
+    if (dest.sabineOnly && origin.id !== 'sabine') return null;
+    const desPx = des[dest.desKey]?.[m];
+    const frKey = `${origin.frPrefix}_${dest.frKey}`;
+    const frPx  = fr[frKey]?.[m];
+    if (desPx == null || frPx == null) return null;
+    const bPx = basisPx(origin, dest);
+    if (bPx == null) return null;
+    return +(desPx - frPx - bPx).toFixed(3);   // FOB spread (or absolute if bPx=0)
+  }
+
+  // ── Build full origin × destination matrix ───────────────────────────────
+  const matrix = {};
+  ORIGINS.forEach(O => {
+    matrix[O.id] = {};
+    DESTS.forEach(D => { matrix[O.id][D.id] = fobNetback(O, D); });
+  });
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  const fmt = v => v == null || isNaN(v) ? '—' : (+v).toFixed(3);
+  const fmtSp = v => {
+    if (v == null || isNaN(v)) return '—';
+    if (isFixed) return v.toFixed(3);
+    return (v >= 0 ? '+' : '') + v.toFixed(3);
+  };
+  const colorBE = v => v == null ? '#3d5070' : v >= 0 ? '#4ade80' : '#f87171';
+  const basisLbl = isFixed ? '$/MMBtu (abs)'
+                  : BASIS === 'HHSL' ? 'vs 115% HH'
+                  : `vs ${BASIS}`;
+
+  // ── Best NWE netback per origin (for FOB Δ badge — confirmed by user) ──
+  function bestNweNetback(origin) {
+    const nweIds = ['nwe','iberia','uk','italy'];
+    const vals = nweIds.map(id => matrix[origin.id][id]).filter(v => v != null);
+    return vals.length ? Math.max(...vals) : null;
+  }
+
+  // ── Index toggle bar ────────────────────────────────────────────────────
+  const idxBtn = (k, lbl) => {
+    const on = (BASIS === k);
+    return `<button class="f-btn sm${on?' on':''}" onclick="cpSetLngArbBasis('${k}')" style="margin-right:3px">${lbl}</button>`;
+  };
+  const idxToggle = `${idxBtn('TTF','TTF')}${idxBtn('JKM','JKM')}${idxBtn('HHSL','115% HH (US)')}${idxBtn('HH','HH')}${idxBtn('FIXED','Fixed')}`;
+
+  // ── Month selector (matches existing Cargo tab convention) ───────────────
+  const monthSel = `<select class="f-sel" style="width:96px" onchange="CP.selMonth=+this.value;renderCargoTab()">${vML().map((mo,i)=>`<option value="${i}"${i===m?' selected':''}>${mo}</option>`).join('')}</select>`;
+
+  // ── ORIGIN cards ─────────────────────────────────────────────────────────
+  const originCards = ORIGINS.map(O => {
+    const bestNwe = bestNweNetback(O);
+    const ranked = DESTS
+      .map(D => ({ D, v: matrix[O.id][D.id] }))
+      .filter(x => x.v != null)
+      .sort((a,b) => b.v - a.v);
+    const top3 = ranked.slice(0, 3);
+    const fairValue = top3.length
+      ? top3.reduce((acc,x) => acc + x.v, 0) / top3.length
+      : null;
+    const routesHtml = top3.map((x, i) => `
+      <li style="display:flex;justify-content:space-between;font-size:10px;line-height:1.6">
+        <span style="color:#8a9bb5">${i+1}. ${x.D.label}</span>
+        <span style="color:${colorBE(x.v)};font-weight:600">${fmtSp(x.v)}</span>
+      </li>`).join('');
+    return `<div class="lngarb-card" data-orig="${O.id}" onclick="cpLngArbDrawer('origin','${O.id}')"
+      style="background:#070b14;border:1px solid ${O.col}55;border-left:3px solid ${O.col};border-radius:6px;padding:10px 12px;cursor:pointer;transition:transform .1s">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="color:#c8d6e5;font-size:11px;font-weight:700">${O.label}</span>
+        <span title="Best NWE netback (Gate / UK / Iberia / Italy)" style="color:${colorBE(bestNwe)};font-size:9px;padding:2px 6px;border:1px solid ${O.col}33;border-radius:3px;background:${O.col}11;font-weight:600">${isFixed?'NWE':'NWE Δ'} ${fmtSp(bestNwe)}</span>
+      </div>
+      <ol style="list-style:none;padding:0;margin:0">${routesHtml || '<li style="color:#3d5070;font-size:10px">no routes</li>'}</ol>
+      <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1e3a5f;display:flex;justify-content:space-between;align-items:center">
+        <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FAIR (avg top 3)</span>
+        <span style="color:${colorBE(fairValue)};font-size:11px;font-weight:700">${fmtSp(fairValue)}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── DESTINATION cards ────────────────────────────────────────────────────
+  const destCards = DESTS.map(D => {
+    const ranked = ORIGINS
+      .map(O => ({ O, fob: matrix[O.id][D.id], desPx: des[D.desKey]?.[m] }))
+      .filter(x => x.fob != null && x.desPx != null)
+      .sort((a,b) => a.desPx - b.desPx)   // cheapest DES = best for buyer
+      .slice(0, 5);
+    const physDelta = CP.phys[D.desKey]?.[m];
+    const physBadge = physDelta != null
+      ? `<span title="${D.hub} basis · phys diff" style="color:#4fc3f7;font-size:9px;padding:2px 6px;border:1px solid #1e3a5f;border-radius:3px;font-weight:600">${D.hub} Δ ${(physDelta>=0?'+':'')+physDelta.toFixed(3)}</span>`
+      : '';
+    const originsHtml = ranked.map((x, i) => `
+      <li style="display:flex;justify-content:space-between;font-size:10px;line-height:1.6">
+        <span style="color:#8a9bb5">${i+1}. ${x.O.label}</span>
+        <span style="color:#c8d6e5;font-weight:600">${fmt(x.desPx)}</span>
+      </li>`).join('');
+    return `<div class="lngarb-card" data-dest="${D.id}" onclick="cpLngArbDrawer('dest','${D.id}')"
+      style="background:#070b14;border:1px solid #1e3a5f;border-left:3px solid #4fc3f7;border-radius:6px;padding:10px 12px;cursor:pointer;transition:transform .1s">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="color:#c8d6e5;font-size:11px;font-weight:700">${D.label}</span>
+        ${physBadge}
+      </div>
+      <ol style="list-style:none;padding:0;margin:0">${originsHtml || '<li style="color:#3d5070;font-size:10px">no routes</li>'}</ol>
+    </div>`;
+  }).join('');
+
+  // ── Stash data on window for drawer + modal handlers (avoids re-deriving) ──
+  window.__lngArbCtx = { ORIGINS, DESTS, matrix, basis: BASIS, basisLbl, m, monthLbl: ML[m], des, fr, fp, sl };
+
+  return `
+    <div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="color:#546e7a;font-size:9px;letter-spacing:1px;font-weight:700">LNG ARB · GLOBAL NETBACK FLOW</span>
+      <span style="color:#3d5070">|</span>
+      <span style="color:#546e7a;font-size:9px;letter-spacing:1px">MONTH</span>${monthSel}
+      <span style="color:#3d5070">|</span>
+      <span style="color:#546e7a;font-size:9px;letter-spacing:1px">QUOTE BASIS</span>${idxToggle}
+      <span style="margin-left:auto;color:#546e7a;font-size:9px">${ML[m]} · ${basisLbl}</span>
+    </div>
+    <div style="padding:10px 14px;color:#546e7a;font-size:10px;letter-spacing:1px;font-weight:600;border-bottom:1px solid #1e3a5f">ORIGINS — best 3 destinations · FAIR = avg top 3</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding:10px 14px">${originCards}</div>
+    <div style="padding:10px 14px;color:#546e7a;font-size:10px;letter-spacing:1px;font-weight:600;border-bottom:1px solid #1e3a5f;border-top:1px solid #1e3a5f">DESTINATIONS — top 5 origins by DES (cheapest first)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding:10px 14px">${destCards}</div>
+    <div id="lng-arb-drawer" style="display:none;border-top:2px solid #1e3a5f;background:#080e1c"></div>
+    <div id="lng-arb-modal-mount"></div>
+  `;
+}
+
+// ── Index basis setter ────────────────────────────────────────────────────
+function cpSetLngArbBasis(b){
+  CP.lngArbBasis = b;
+  cpSet('cp_lng_arb_basis', b);
+  renderCargoTab();
+}
+
+// ── Click drawer (origin or destination) ──────────────────────────────────
+function cpLngArbDrawer(kind, id){
+  const ctx = window.__lngArbCtx;
+  if (!ctx) return;
+  const { ORIGINS, DESTS, matrix, basis, basisLbl, m, monthLbl, des, fr, fp, sl } = ctx;
+  const drawer = document.getElementById('lng-arb-drawer');
+  if (!drawer) return;
+  const fmt = v => v == null || isNaN(v) ? '—' : (+v).toFixed(3);
+  const fmtSp = v => {
+    if (v == null || isNaN(v)) return '—';
+    if (basis === 'FIXED') return v.toFixed(3);
+    return (v >= 0 ? '+' : '') + v.toFixed(3);
+  };
+  const colorBE = v => v == null ? '#3d5070' : v >= 0 ? '#4ade80' : '#f87171';
+
+  if (kind === 'origin') {
+    const O = ORIGINS.find(x => x.id === id); if (!O) return;
+    const ranked = DESTS
+      .map(D => ({ D, v: matrix[O.id][D.id], desPx: des[D.desKey]?.[m], frPx: fr[`${O.frPrefix}_${D.frKey}`]?.[m] }))
+      .filter(x => x.v != null)
+      .sort((a,b) => b.v - a.v);
+    const basisShow = basis === 'FIXED' ? 0
+                    : basis === 'HHSL' ? (O.id === 'sabine' ? sl * fp.HH[m] : null)
+                    : fp[basis === 'HH' ? 'HH' : basis][m];
+    const basisLabel = basis === 'FIXED' ? '—'
+                     : basis === 'HHSL' ? (O.id === 'sabine' ? `1.15 × HH = ${(sl * fp.HH[m]).toFixed(3)}` : 'N/A (US-only)')
+                     : `${basis} = ${basisShow?.toFixed(3)}`;
+    const rows = ranked.map((x, i) => `<tr ${i < 3 ? 'style="background:#0d1e36"' : ''} onclick="cpLngArbVoyage('${O.id}','${x.D.id}','${x.D.label.replace(/'/g, "\\'")}')" style="cursor:pointer">
+      <td style="color:#546e7a;font-size:9px;text-align:center;padding:4px">${i+1}${i<3?' ★':''}</td>
+      <td style="color:#c8d6e5;font-size:10px;padding:4px 8px">${x.D.label}</td>
+      <td class="tr" style="color:#c8d6e5;font-size:10px">${fmt(x.desPx)}</td>
+      <td class="tr" style="color:#546e7a;font-size:10px">− ${fmt(x.frPx)}</td>
+      <td class="tr" style="color:#546e7a;font-size:10px">− ${fmt(basisShow)}</td>
+      <td class="tr" style="color:${colorBE(x.v)};font-weight:700;font-size:11px">${fmtSp(x.v)}</td>
+    </tr>`).join('');
+    const top3 = ranked.slice(0, 3);
+    const fairValue = top3.length ? top3.reduce((a,x) => a + x.v, 0) / top3.length : null;
+    drawer.innerHTML = `
+      <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1e3a5f">
+        <div>
+          <span style="color:#4fc3f7;font-size:11px;font-weight:700;letter-spacing:1px">ORIGIN DETAIL · ${O.label}</span>
+          <span style="color:#546e7a;font-size:10px;margin-left:10px">${monthLbl} · ${basisLbl} · basis: ${basisLabel} $/MMBtu</span>
+        </div>
+        <button class="f-btn sm" onclick="document.getElementById('lng-arb-drawer').style.display='none'">× Close</button>
+      </div>
+      <div style="padding:0 14px 14px;overflow-x:auto"><table class="f-tbl" style="width:100%;margin-top:8px"><thead><tr>
+        <th style="min-width:24px">#</th><th style="min-width:170px">DESTINATION</th>
+        <th class="tr">DES px</th><th class="tr">Freight</th><th class="tr">Basis</th><th class="tr">FOB ${basis === 'FIXED' ? 'abs' : 'Δ'}</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+      <div style="margin-top:8px;padding:8px 12px;background:#0d1e36;border:1px solid #1e3a5f;border-radius:4px;display:flex;justify-content:space-between;align-items:center">
+        <span style="color:#ffeb3b;font-size:10px;font-weight:600;letter-spacing:1px">FAIR VALUE — avg top 3</span>
+        <span style="color:${colorBE(fairValue)};font-size:13px;font-weight:700">${fmtSp(fairValue)}</span>
+      </div>
+      <div style="margin-top:6px;color:#3d5070;font-size:9px">Click any row to see voyage detail (freight stack)</div></div>`;
+  } else {
+    const D = DESTS.find(x => x.id === id); if (!D) return;
+    const ranked = ORIGINS
+      .map(O => ({ O, fob: matrix[O.id][D.id], desPx: des[D.desKey]?.[m], frPx: fr[`${O.frPrefix}_${D.frKey}`]?.[m] }))
+      .filter(x => x.fob != null && x.desPx != null)
+      .sort((a,b) => a.desPx - b.desPx);
+    const physDelta = CP.phys[D.desKey]?.[m];
+    const physBadge = physDelta != null
+      ? `<span style="color:#4fc3f7;font-size:10px;margin-left:10px">${D.hub} Δ ${(physDelta>=0?'+':'')+physDelta.toFixed(3)}</span>`
+      : '';
+    const rows = ranked.map((x, i) => `<tr ${i === 0 ? 'style="background:#0d1e36"' : ''} onclick="cpLngArbVoyage('${x.O.id}','${D.id}','${D.label.replace(/'/g, "\\'")}')" style="cursor:pointer">
+      <td style="color:#546e7a;font-size:9px;text-align:center;padding:4px">${i+1}${i===0?' ★':''}</td>
+      <td style="color:${x.O.col};font-size:10px;font-weight:600;padding:4px 8px">${x.O.label}</td>
+      <td class="tr" style="color:#c8d6e5;font-size:10px">${fmt(x.desPx)}</td>
+      <td class="tr" style="color:#546e7a;font-size:10px">− ${fmt(x.frPx)}</td>
+      <td class="tr" style="color:${colorBE(x.fob)};font-weight:700;font-size:11px">${fmtSp(x.fob)}</td>
+    </tr>`).join('');
+    drawer.innerHTML = `
+      <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1e3a5f">
+        <div>
+          <span style="color:#4fc3f7;font-size:11px;font-weight:700;letter-spacing:1px">DESTINATION DETAIL · ${D.label}</span>${physBadge}
+          <span style="color:#546e7a;font-size:10px;margin-left:10px">${monthLbl} · ${basisLbl}</span>
+        </div>
+        <button class="f-btn sm" onclick="document.getElementById('lng-arb-drawer').style.display='none'">× Close</button>
+      </div>
+      <div style="padding:0 14px 14px;overflow-x:auto"><table class="f-tbl" style="width:100%;margin-top:8px"><thead><tr>
+        <th style="min-width:24px">#</th><th style="min-width:170px">ORIGIN</th>
+        <th class="tr">DES px</th><th class="tr">Freight (origin→dest)</th><th class="tr">Their FOB ${basis === 'FIXED' ? 'abs' : 'Δ'}</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+      <div style="margin-top:6px;color:#3d5070;font-size:9px">Click any row to see voyage detail. Cheapest DES wins for the buyer.</div></div>`;
+  }
+  drawer.style.display = 'block';
+  drawer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Voyage detail modal (read-only freight stack) ────────────────────────
+function cpLngArbVoyage(originId, destId, destLabel){
+  const ctx = window.__lngArbCtx;
+  if (!ctx) return;
+  const { ORIGINS, DESTS, fr, m, monthLbl } = ctx;
+  const O = ORIGINS.find(x => x.id === originId);
+  const D = DESTS.find(x => x.id === destId);
+  if (!O || !D) return;
+  const frKey = `${O.frPrefix}_${D.frKey}`;
+  const frPx = fr[frKey]?.[m];
+  const nm = (typeof NM !== 'undefined' && NM[O.frPrefix] && NM[O.frPrefix][D.frKey === 'rotterdam' ? 'rotterdam' : D.frKey]) || null;
+  // We don't recompute the voyage here (the freight curves are pre-built);
+  // surface the raw $/MMBtu plus the route metadata so trader can sanity-check.
+  const mount = document.getElementById('lng-arb-modal-mount');
+  if (!mount) return;
+  mount.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)this.remove()">
+    <div style="background:#080e1c;border:1px solid #1e3a5f;border-radius:8px;max-width:560px;width:100%;padding:18px 20px;box-shadow:0 24px 60px rgba(0,0,0,0.5)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="color:#4fc3f7;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase">Voyage detail</div>
+          <div style="color:#c8d6e5;font-size:14px;font-weight:600;margin-top:2px">${O.label} → ${destLabel}</div>
+          <div style="color:#546e7a;font-size:10px;margin-top:2px">${monthLbl} · curve key: <code style="background:#070b14;padding:1px 5px;border-radius:3px">${frKey}</code></div>
+        </div>
+        <button class="f-btn sm" onclick="this.closest('[style*=\\'position:fixed\\']').remove()">×</button>
+      </div>
+      <div style="background:#070b14;border:1px solid #1e3a5f;border-radius:5px;padding:12px;margin-top:10px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;line-height:1.8">
+          <span style="color:#546e7a">Distance (NM)</span>
+          <span style="color:#c8d6e5;font-weight:600">${nm ? nm.toLocaleString() : '—'}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;line-height:1.8">
+          <span style="color:#546e7a">Freight ($/MMBtu)</span>
+          <span style="color:#ffeb3b;font-weight:700">${frPx != null ? frPx.toFixed(3) : '—'}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;line-height:1.8">
+          <span style="color:#546e7a">Curve source</span>
+          <span style="color:#8a9bb5;font-size:10px">CP_SEED_FR (NM-scaled from base) or user override</span>
+        </div>
+      </div>
+      <div style="margin-top:10px;color:#3d5070;font-size:9px;line-height:1.6">
+        Full voyage stack (hire / fuel / ports / ETS / BOG) is computed in the Freight Calculator.
+        Live numbers here come from the freight curves loaded into Cargo tab.
+      </div>
+    </div>
+  </div>`;
+}
 
 function cpAtlanticArb(d){
   const fr=d.freight;
