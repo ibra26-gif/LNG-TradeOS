@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260422a">
-<script src="lngtradeos.js?v=20260425d" defer></script>
+<script src="lngtradeos.js?v=20260425e" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -220,11 +220,11 @@
     </div>
   </div>
   <div class="mod-group">
-    <div class="group-hdr"><div class="group-icon">◈</div><div><div class="group-ttl">LNG PORTFOLIO VALUATION</div><div class="group-sub">Extrinsic &amp; optionality valuation across single deals, strips and portfolios</div></div></div>
+    <div class="group-hdr"><div class="group-icon">◈</div><div><div class="group-ttl">LNG PORTFOLIO VALUATION</div><div class="group-sub">Aggregated P&amp;L, exposure, optionality and scenario testing across the full book</div></div></div>
     <div class="cards-grid">
-      <div class="mod-card" onclick="shellNav('portfolio','single')"><span class="card-num">01</span><div class="card-ttl">Single Deal Valuation</div><div class="card-desc">Full extrinsic and optionality valuation for individual LNG cargo contracts</div><span class="s-tag tag-pv">VALUATION</span></div>
-      <div class="mod-card" onclick="shellNav('portfolio','strips')"><span class="card-num">02</span><div class="card-ttl">Strip Valuation</div><div class="card-desc">Multi-cargo strip optionality decomposition with intrinsic and time value analysis</div><span class="s-tag tag-pv">VALUATION</span></div>
-      <div class="mod-card" onclick="shellNav('portfolio','portfolio')"><span class="card-num">03</span><div class="card-ttl">Portfolio Valuation</div><div class="card-desc">Aggregated P&amp;L, exposure summary and blended optionality across all positions</div><span class="s-tag tag-pv">VALUATION</span></div>
+      <!-- Single Deal + Strip valuation cards removed — Portfolio Valuation
+           (Cowork prototype) covers single, strip, and LT in one workflow. -->
+      <div class="mod-card" onclick="shellNav('portfolio','portfolio')"><span class="card-num">01</span><div class="card-ttl">Portfolio Valuation</div><div class="card-desc">Aggregated P&amp;L, exposure summary, blended optionality, scenarios — single, strip and LT deals in one workflow</div><span class="s-tag tag-pv">VALUATION</span></div>
     </div>
   </div>
   <div class="mod-group">

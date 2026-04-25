@@ -2362,6 +2362,14 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
           <button data-view="hedges">Hedges</button>
           <button data-view="net">Net</button>
         </div>
+        <!-- Unit toggle: TBtu (default, raw) vs Lots (exchange-contract sized).
+             Conversion = TBtu × 1e6 / LOT_SIZE[idx]. HH = 2,500 MMBtu/lot,
+             gas hubs (TTF/JKM/NBP/...) = 10,000 MMBtu/lot. Oil indices show
+             '—' in Lots mode (slope-aware bbl conversion is a future item). -->
+        <div class="view-toggle" id="exp-unit-toggle" style="margin-left:8px">
+          <button class="active" data-unit="tbtu">TBtu</button>
+          <button data-unit="lots">Lots</button>
+        </div>
         <button class="btn ghost">Export grid</button>
       </div>
     </div>
@@ -5770,6 +5778,11 @@ const _LEGACY_EXPOSURE_PHY = {
 // This global is kept as the "last rendered" view state so renderAll() can refresh
 // without the user having to click the view toggle again.
 let currentExposureView = 'physical';
+// Exposure display unit: TBtu (raw, default) or Lots (exchange-contract sized).
+// Read by renderExposureGrid; toggled via #exp-unit-toggle buttons.
+let currentExposureUnit = 'tbtu';
+function getExposureUnit() { return currentExposureUnit; }
+function setExposureUnit(u) { currentExposureUnit = u; renderExposureGrid(); }
 
 function renderExposureGrid(view) {
   if (view) currentExposureView = view;
@@ -5780,6 +5793,7 @@ function renderExposureGrid(view) {
   if (!tbl) return;
   const months = MONTH_ORDER;
   const indices = ['HH','TTF','JKM','Brent','NBP'];
+  const unit = currentExposureUnit;  // 'tbtu' | 'lots'
 
   // Pick data source
   let data;
@@ -5797,35 +5811,64 @@ function renderExposureGrid(view) {
     });
   }
 
-  // Compute row/column totals for highlighting
+  // Per-index TBtu→Lots conversion. tbtu × 1e6 / LOT_SIZE[idx]:
+  //   HH (2,500 MMBtu/lot) : 3.5 TBtu = 1,400 lots
+  //   TTF/JKM/NBP/PEG/...   (10,000 MMBtu/lot) : 3.5 TBtu = 350 lots
+  // Oil indices (Brent/JCC) need a slope-aware bbl conversion; for now we
+  // skip them in lots mode and render '—'.
+  const OIL_IDX = new Set(['Brent','JCC']);
+  const toLots = (idx, tbtu) => {
+    if (OIL_IDX.has(idx)) return null;
+    const lot = LOT_SIZE[idx] || 10000;
+    return tbtu * 1e6 / lot;
+  };
+  const cellValue = (idx, tbtu) => {
+    if (unit === 'lots') return toLots(idx, tbtu);
+    return tbtu;
+  };
+
+  // Compute row/column totals for highlighting (in DISPLAY units)
   let gridMax = 0;
   indices.forEach(i => months.forEach(m => {
-    const v = data[i]?.[m] ?? 0;
+    const v = cellValue(i, data[i]?.[m] ?? 0);
+    if (v == null) return;
     gridMax = Math.max(gridMax, Math.abs(v));
   }));
 
   const colorCell = v => {
-    if (v === 0 || Math.abs(v) < 0.01) return 'zero';
+    if (v == null || v === 0 || Math.abs(v) < (unit === 'lots' ? 1 : 0.01)) return 'zero';
     const rel = Math.abs(v) / (gridMax || 1);
     const big = rel > 0.5;
     return v > 0 ? (big ? 'big-long' : 'long') : (big ? 'big-short' : 'short');
   };
   const fmt = v => {
+    if (v == null) return '—';
+    if (unit === 'lots') {
+      if (Math.abs(v) < 1) return '—';
+      return (v > 0 ? '+' : '') + Math.round(v).toLocaleString();
+    }
     if (Math.abs(v) < 0.01) return '—';
     return (v > 0 ? '+' : '') + v.toFixed(2);
   };
 
-  // Per-row totals
+  // Per-row totals — sum DISPLAY values, skip nulls (oil rows in lots mode).
   const rowTotals = {};
   indices.forEach(i => {
-    rowTotals[i] = months.reduce((a, m) => a + (data[i]?.[m] ?? 0), 0);
+    rowTotals[i] = months.reduce((a, m) => {
+      const v = cellValue(i, data[i]?.[m] ?? 0);
+      return v == null ? a : a + v;
+    }, 0);
+    if (unit === 'lots' && OIL_IDX.has(i)) rowTotals[i] = null;
   });
   // Per-column totals
   const colTotals = {};
   months.forEach(m => {
-    colTotals[m] = indices.reduce((a, i) => a + (data[i]?.[m] ?? 0), 0);
+    colTotals[m] = indices.reduce((a, i) => {
+      const v = cellValue(i, data[i]?.[m] ?? 0);
+      return v == null ? a : a + v;
+    }, 0);
   });
-  const grandTotal = Object.values(rowTotals).reduce((a, v) => a + v, 0);
+  const grandTotal = Object.values(rowTotals).reduce((a, v) => v == null ? a : a + v, 0);
 
   tbl.innerHTML = `
     <thead>
@@ -5836,7 +5879,7 @@ function renderExposureGrid(view) {
         <tr>
           <td>${i}</td>
           ${months.map(m => {
-            const v = data[i]?.[m] ?? 0;
+            const v = cellValue(i, data[i]?.[m] ?? 0);
             return `<td class="${colorCell(v)}">${fmt(v)}</td>`;
           }).join('')}
           <td class="${colorCell(rowTotals[i])}" style="border-left:1px solid var(--border); font-weight:700">${fmt(rowTotals[i])}</td>
@@ -5848,7 +5891,7 @@ function renderExposureGrid(view) {
         <td>Column total</td>
         ${months.map(m => {
           const v = colTotals[m];
-          const cls = Math.abs(v) < 0.01 ? 'zero' : v > 0 ? 'long' : 'short';
+          const cls = colorCell(v);
           return `<td class="${cls}">${fmt(v)}</td>`;
         }).join('')}
         <td class="${colorCell(grandTotal)}" style="border-left:1px solid var(--border)">${fmt(grandTotal)}</td>
@@ -5856,12 +5899,23 @@ function renderExposureGrid(view) {
     </tfoot>
   `;
 
-  // Update card title
-  const titles = { physical: 'Physical exposure · net TBtu by index × month',
-                   hedges: 'Paper hedges · TBtu-equivalent by index × month',
-                   net: 'Net exposure · physical + hedges · TBtu by index × month' };
+  // Update card title — reflects unit + view.
+  const unitLabel = unit === 'lots' ? 'lots (HH=2,500 / gas hubs=10,000 MMBtu/lot · oil rows omitted)' : 'TBtu';
+  const titles = { physical: `Physical exposure · net ${unitLabel} by index × month`,
+                   hedges:   `Paper hedges · ${unitLabel}-equivalent by index × month`,
+                   net:      `Net exposure · physical + hedges · ${unitLabel} by index × month` };
   document.getElementById('grid-title').textContent = titles[view];
 }
+
+// Wire up exposure unit toggle (TBtu / Lots)
+document.querySelectorAll('#exp-unit-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#exp-unit-toggle button').forEach(b =>
+      b.classList.toggle('active', b === btn)
+    );
+    setExposureUnit(btn.dataset.unit);
+  });
+});
 
 // Wire up exposure view toggle
 document.querySelectorAll('#exp-view-toggle button').forEach(btn => {

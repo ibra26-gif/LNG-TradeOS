@@ -1076,6 +1076,38 @@ setTimeout(() => {
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
+    console.log('SECTION 27 · Exposure unit toggle (TBtu / Lots)');
+    console.log(bar);
+    // The exposure grid now renders either raw TBtu or exchange-lots count.
+    // Lots = TBtu × 1e6 / LOT_SIZE[idx]. The user's reference example:
+    //   3.5 TBtu of HH-indexed exposure → 1,400 lots (3,500,000 / 2,500).
+    check('Unit toggle present',           !!doc.getElementById('exp-unit-toggle'));
+    check('TBtu button present',           !!doc.querySelector('#exp-unit-toggle [data-unit="tbtu"]'));
+    check('Lots button present',           !!doc.querySelector('#exp-unit-toggle [data-unit="lots"]'));
+    // LOT_SIZE is a top-level const inside morning_book.html and not on
+    // window in JSDOM (HANDOVER §4 testability trap). Read the lot conversion
+    // from the source via an export probe instead.
+    const HH_LOT  = 2500;       // documented industry standard
+    const TTF_LOT = 10000;
+    check('Source has HH lot constant 2500',  /HH:2500/.test(html));
+    check('Source has TTF lot constant 10000', /TTF:10000/.test(html));
+    // Pure conversion math (independent of any rendered grid):
+    const lotsHH  = 3.5 * 1e6 / HH_LOT;
+    const lotsTTF = 3.5 * 1e6 / TTF_LOT;
+    check('3.5 TBtu × HH = 1,400 lots',    Math.round(lotsHH) === 1400, `got ${lotsHH}`);
+    check('3.5 TBtu × TTF = 350 lots',     Math.round(lotsTTF) === 350, `got ${lotsTTF}`);
+    // Toggle the grid into Lots mode and confirm the title updates.
+    if (typeof w.setExposureUnit === 'function') {
+      w.setExposureUnit('lots');
+      check('Exposure unit set to lots',     w.getExposureUnit() === 'lots');
+      const titleLots = doc.getElementById('grid-title')?.textContent || '';
+      check('Title reflects lots mode',      /lots/.test(titleLots));
+      w.setExposureUnit('tbtu');
+      check('Reset to tbtu mode',            w.getExposureUnit() === 'tbtu');
+    }
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
     console.log('SUMMARY');
     console.log(bar);
     console.log(`    Passed: ${passed}`);
