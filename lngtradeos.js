@@ -10403,10 +10403,13 @@ function cpLngArb(d){
 
   // ── DESTINATION cards ────────────────────────────────────────────────────
   const destCards = DESTS.map(D => {
+    // Rank by FOB Δ (best origin economics) — DES Dahej (and any single-market
+    // destination) is one price for everyone, so sorting by DES is meaningless.
+    // Sorting by FOB Δ surfaces the natural supplier (shortest freight wins).
     const ranked = ORIGINS
       .map(O => ({ O, fob: matrix[O.id][D.id], desPx: des[D.desKey]?.[m] }))
       .filter(x => x.fob != null && x.desPx != null)
-      .sort((a,b) => a.desPx - b.desPx)   // cheapest DES = best for buyer
+      .sort((a,b) => b.fob - a.fob)
       .slice(0, 5);
     const physDelta = CP.phys[D.desKey]?.[m];
     const physBadge = physDelta != null
@@ -10415,7 +10418,7 @@ function cpLngArb(d){
     const originsHtml = ranked.map((x, i) => `
       <li style="display:flex;justify-content:space-between;font-size:10px;line-height:1.6">
         <span style="color:#8a9bb5">${i+1}. ${x.O.label}</span>
-        <span style="color:#c8d6e5;font-weight:600">${fmt(x.desPx)}</span>
+        <span style="color:${colorBE(x.fob)};font-weight:600">${fmtSp(x.fob)}</span>
       </li>`).join('');
     return `<div class="lngarb-card" data-dest="${D.id}" onclick="cpLngArbDrawer('dest','${D.id}')"
       style="background:#070b14;border:1px solid #1e3a5f;border-left:3px solid #4fc3f7;border-radius:6px;padding:10px 12px;cursor:pointer;transition:transform .1s">
@@ -10697,10 +10700,12 @@ function cpLngArbDrawer(kind, id){
       <div style="margin-top:6px;color:#3d5070;font-size:9px">Click any row to see voyage detail (freight stack)</div></div>`;
   } else {
     const D = DESTS.find(x => x.id === id); if (!D) return;
+    // Rank by FOB Δ (best origin economics) — DES is a single market price
+    // for the destination, so sorting by DES would show arbitrary order.
     const ranked = ORIGINS
       .map(O => ({ O, fob: matrix[O.id][D.id], desPx: des[D.desKey]?.[m], frPx: fr[`${O.frPrefix}_${D.frKey}`]?.[m] }))
       .filter(x => x.fob != null && x.desPx != null)
-      .sort((a,b) => a.desPx - b.desPx);
+      .sort((a,b) => b.fob - a.fob);
     const physDelta = CP.phys[D.desKey]?.[m];
     const physBadge = physDelta != null
       ? `<span style="color:#4fc3f7;font-size:10px;margin-left:10px">${D.hub} Δ ${(physDelta>=0?'+':'')+physDelta.toFixed(3)}</span>`
