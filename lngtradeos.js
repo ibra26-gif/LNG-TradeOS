@@ -12546,6 +12546,18 @@ function initRegas(){
 
 function renderRegas(){
   const wrap=document.getElementById('regas-wrap');if(!wrap)return;
+  // Auto-sync from OB EOD on Regas entry whenever the cached curves look stale.
+  // Stale = TTF curve flat (every month equal) AND OB EOD data is loaded.
+  // Without this the user sees the fallback (€17.50/MWh → $6.00/MMBtu) even
+  // though CP.fp.TTF has real numbers.
+  try{
+    const hasOB = typeof sDates!=='undefined' && sDates && sDates.length;
+    const ttf = RG.ttfCurve||[];
+    const flat = ttf.length<2 || (Math.max(...ttf)-Math.min(...ttf))<0.001;
+    if(hasOB && flat && typeof rgAutoLoadFromFinancial==='function'){
+      rgAutoLoadFromFinancial();   // populates RG.ttfCurve + RG.hubCurves
+    }
+  }catch(e){/* silent — fallback to whatever's in RG */}
   wrap.innerHTML=`<div style="background:#070b14;border-bottom:1px solid #1e3a5f;padding:8px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
     <span style="color:#4fc3f7;font-weight:700;font-size:11px;letter-spacing:2px">EU REGAS MODEL</span><span style="flex:1"></span>
     <span style="color:#546e7a;font-size:9px">EUR/USD</span><input class="rg-inp" style="width:58px" type="number" step="0.01" value="${RG.eurUsd}" onchange="rgP('eurUsd',+this.value)">
