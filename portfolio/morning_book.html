@@ -4839,6 +4839,212 @@ function computePhysicalExposure() {
   return out;
 }
 
+// ════════════════════════════════════════════════
+//  EXPOSURE AUDIT — per-cell contribution dump
+// ════════════════════════════════════════════════
+// Mirrors the loop in computePhysicalExposure + computeHedgeExposure but
+// records every contributor instead of summing. Returns a structured object
+// for a single (idx, month, view) cell so the trader can verify what's
+// stacking — Cheniere on HH-Jul26 etc.
+//
+// Console hook: window.exposureAudit('HH','Jul-26')        → physical
+//               window.exposureAudit('HH','Jul-26','net')  → physical + hedges
+//               window.exposureAudit('TTF','Jul-26','hedges')
+//
+// Cell-click handler in renderExposureGrid pops the modal version.
+function auditExposureCell(idx, month, view) {
+  view = view || 'physical';
+  const out = { idx, month, view, contributors: [], totalTBtu: 0 };
+
+  // ── helpers — duplicated from computePhysicalExposure so the two stay
+  //    bit-identical but independent (refactor later if it drifts).
+  const legMonthsHelper = (anchor, leg) => {
+    const periodMonths = periodToMonths(anchor);
+    if (!leg) return periodMonths;
+    const window = leg.window ?? 1;
+    const lag    = leg.lag    ?? 0;
+    if (window <= 1 && lag === 0) return periodMonths;
+    const isMonthly = /^[A-Za-z]{3}-\d{2}$/.test(anchor);
+    if (!isMonthly) return periodMonths;
+    const months = [];
+    for (let k = 0; k < window; k++) {
+      months.push(shiftMonth(anchor, -lag - (window - 1 - k)));
+    }
+    return months;
+  };
+  const legSlopeHelper = (leg) => {
+    if (!leg) return 1;
+    const scalar = leg.scalar ?? 1;
+    const mult = (leg.formula === '% × Index' || leg.formula === '% × Index + Spread')
+      ? (leg.mult || 1) : 1;
+    return scalar * mult;
+  };
+  const legPretty = (leg) => {
+    if (!leg) return '—';
+    const scalar = leg.scalar ?? 1;
+    const mult   = leg.mult ?? 1;
+    const spread = leg.spread ?? 0;
+    const sp = spread === 0 ? '' : (spread > 0 ? ` + ${spread.toFixed(2)}` : ` − ${Math.abs(spread).toFixed(2)}`);
+    if (leg.formula === '% × Index' || leg.formula === '% × Index + Spread') {
+      return `${(mult * 100).toFixed(1)}% × ${leg.idx}${sp}`;
+    }
+    if (scalar !== 1) return `${scalar.toFixed(3)} × ${leg.idx}${sp}`;
+    return `${leg.idx}${sp}`;
+  };
+
+  // ── Physical contributors (cargoes) ──
+  if (view === 'physical' || view === 'net') {
+    for (const c of getCargoes()) {
+      if (!c || !c.incoterm) continue;
+      const v = computeCargoValues(c);
+      const [iBuy, iSell] = c.incoterm.split('/');
+      // Buy leg posts unless the buy is a placeholder (uncovered → buy is fake)
+      if (c.coverage !== 'uncovered' && c.buy?.idx === idx) {
+        const anchor = c.buyPricingAnchor || c.loadMonth;
+        if (anchor) {
+          const months = legMonthsHelper(anchor, c.buy);
+          if (months.includes(month)) {
+            const qty   = (iBuy === 'FOB') ? v.loaded : v.edq;
+            const slope = legSlopeHelper(c.buy);
+            const share = -qty * slope / months.length;
+            out.contributors.push({
+              cargoId: c.id, parentId: c.parentDealId || '—',
+              coverage: c.coverage, side: 'BUY',
+              formula: legPretty(c.buy),
+              anchor, windowMonths: months,
+              qty, qtyBasis: (iBuy === 'FOB') ? 'loaded' : 'edq',
+              slope, share,
+            });
+            out.totalTBtu += share;
+          }
+        }
+      }
+      // Sell leg posts unless the sell is a placeholder (unsold → sell is fake)
+      if (c.coverage !== 'unsold' && c.sell?.idx === idx) {
+        const anchor = c.sellPricingAnchor || c.sellMonth;
+        if (anchor) {
+          const months = legMonthsHelper(anchor, c.sell);
+          if (months.includes(month)) {
+            const qty   = (iSell === 'DES') ? v.edq : v.loaded;
+            const slope = legSlopeHelper(c.sell);
+            const share = +qty * slope / months.length;
+            out.contributors.push({
+              cargoId: c.id, parentId: c.parentDealId || '—',
+              coverage: c.coverage, side: 'SELL',
+              formula: legPretty(c.sell),
+              anchor, windowMonths: months,
+              qty, qtyBasis: (iSell === 'DES') ? 'edq' : 'loaded',
+              slope, share,
+            });
+            out.totalTBtu += share;
+          }
+        }
+      }
+    }
+  }
+
+  // ── Hedge contributors (paper trades) ──
+  if (view === 'hedges' || view === 'net') {
+    for (const t of getHedges()) {
+      if (t.idx !== idx) continue;
+      const months = periodToMonths(t.month);
+      if (!months.includes(month)) continue;
+      const tbtu  = tradeTBtu(t);   // already signed (Buy=+, Sell=−)
+      const share = tbtu / months.length;
+      out.contributors.push({
+        cargoId: t.id, parentId: '—',
+        coverage: 'hedge',
+        side: t.dir.toUpperCase(),  // BUY / SELL
+        formula: `${t.lots} lot${t.lots === 1 ? '' : 's'} ${t.idx}`,
+        anchor: t.month, windowMonths: months,
+        qty: Math.abs(tbtu), qtyBasis: 'lots',
+        slope: 1, share,
+      });
+      out.totalTBtu += share;
+    }
+  }
+
+  // Lots equivalent (oil indices skipped by the grid; we still report)
+  const lot = LOT_SIZE[idx] || 10000;
+  out.totalLots = out.totalTBtu * 1e6 / lot;
+  out.contributors.forEach(r => { r.lots = r.share * 1e6 / lot; });
+  // Largest absolute first — easier to read
+  out.contributors.sort((a, b) => Math.abs(b.share) - Math.abs(a.share));
+  return out;
+}
+
+// Console hook
+if (typeof window !== 'undefined') window.exposureAudit = auditExposureCell;
+
+// Modal renderer — opens a popup with the per-cargo breakdown
+function showExposureAuditModal(idx, month, view) {
+  const audit = auditExposureCell(idx, month, view);
+  const lot = LOT_SIZE[idx] || 10000;
+  const isOil = (idx === 'Brent' || idx === 'JCC');
+  const fmtTBtu = v => (v >= 0 ? '+' : '') + v.toFixed(3);
+  const fmtLots = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
+  const sideColor = s => s === 'BUY' ? 'var(--neg)' : s === 'SELL' ? 'var(--pos)' : 'var(--text-3)';
+  const covColor  = c => c === 'covered' ? 'var(--text-2)' : c === 'unsold' ? 'var(--info)' : c === 'uncovered' ? 'var(--warn)' : 'var(--text-4)';
+  const rows = audit.contributors.length === 0
+    ? `<tr><td colspan="9" style="text-align:center; color:var(--text-3); padding:24px; font-style:italic">No contributors — this cell is zero by construction.</td></tr>`
+    : audit.contributors.map(r => `
+      <tr>
+        <td class="mono" style="font-weight:600">${r.cargoId}</td>
+        <td class="mono" style="color:var(--text-3); font-size:11px">${r.parentId}</td>
+        <td style="color:${covColor(r.coverage)}; font-size:11px">${r.coverage}</td>
+        <td style="color:${sideColor(r.side)}; font-weight:600">${r.side}</td>
+        <td class="mono" style="font-size:11px">${r.formula}</td>
+        <td class="mono" style="font-size:11px">${r.anchor}${r.windowMonths.length > 1 ? ` <span style="color:var(--text-4)">(${r.windowMonths.length}m avg)</span>` : ''}</td>
+        <td class="num mono">${r.qty.toFixed(3)} <span style="color:var(--text-4); font-size:10px">${r.qtyBasis}</span></td>
+        <td class="num mono">${r.slope.toFixed(3)}</td>
+        <td class="num mono" style="font-weight:700; color:${r.share >= 0 ? 'var(--pos)' : 'var(--neg)'}">${fmtTBtu(r.share)}</td>
+        <td class="num mono" style="color:var(--text-3)">${isOil ? '—' : fmtLots(r.lots)}</td>
+      </tr>`).join('');
+  const html = `
+    <div id="exp-audit-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9100; display:flex; align-items:center; justify-content:center; padding:24px" onclick="if(event.target===this)this.remove()">
+      <div style="background:var(--bg-card); border-radius:12px; padding:22px 24px; max-width:1100px; width:100%; max-height:88vh; overflow:auto; box-shadow:0 24px 60px rgba(0,0,0,0.4)">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px">
+          <div>
+            <div style="font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:1px">Exposure audit · ${view}</div>
+            <h2 style="font-size:18px; font-weight:600; margin-top:2px">${idx} · ${month}</h2>
+            <div style="font-size:12px; color:var(--text-3); margin-top:4px">
+              ${audit.contributors.length} contributor${audit.contributors.length === 1 ? '' : 's'} · sorted by absolute share
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:1px">Cell total</div>
+            <div style="font-size:22px; font-weight:700; color:${audit.totalTBtu >= 0 ? 'var(--pos)' : 'var(--neg)'}">${fmtTBtu(audit.totalTBtu)} TBtu</div>
+            ${isOil ? '' : `<div style="font-size:12px; color:var(--text-3); margin-top:2px">${fmtLots(audit.totalLots)} lots <span style="color:var(--text-4)">(${lot.toLocaleString()} MMBtu/lot)</span></div>`}
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="tbl" style="width:100%; font-size:12px">
+            <thead>
+              <tr>
+                <th>Cargo</th><th>Parent</th><th>Coverage</th><th>Side</th>
+                <th>Formula</th><th>Anchor</th>
+                <th class="num">Qty (TBtu)</th><th class="num">Slope</th>
+                <th class="num">Share</th><th class="num">Lots</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:16px; padding-top:12px; border-top:1px solid var(--border)">
+          <div style="font-size:11px; color:var(--text-4); line-height:1.5">
+            BUY (negative) = short price exposure · SELL (positive) = long price exposure · Share = ±qty × slope / window months ·
+            Console: <code style="background:var(--bg-sunken); padding:1px 5px; border-radius:3px">exposureAudit('${idx}','${month}'${view !== 'physical' ? `,'${view}'` : ''})</code>
+          </div>
+          <button class="btn ghost" onclick="document.getElementById('exp-audit-modal').remove()">Close</button>
+        </div>
+      </div>
+    </div>`;
+  // Drop into the DOM
+  const wrap = document.createElement('div');
+  wrap.innerHTML = html;
+  document.body.appendChild(wrap.firstElementChild);
+}
+
 // Re-render everything that depends on state.  Called after every mutation.
 function renderAll() {
   if (typeof renderPaperTable  === 'function') renderPaperTable();
@@ -6089,7 +6295,7 @@ function renderExposureGrid(view) {
           <td>${i}</td>
           ${months.map(m => {
             const v = cellValue(i, data[i]?.[m] ?? 0);
-            return `<td class="${colorCell(v)}">${fmt(v)}</td>`;
+            return `<td class="${colorCell(v)}" style="cursor:pointer" title="Click for per-cargo breakdown" data-aud-idx="${i}" data-aud-month="${m}">${fmt(v)}</td>`;
           }).join('')}
           <td class="${colorCell(rowTotals[i])}" style="border-left:1px solid var(--border); font-weight:700">${fmt(rowTotals[i])}</td>
         </tr>
@@ -6107,6 +6313,14 @@ function renderExposureGrid(view) {
       </tr>
     </tfoot>
   `;
+
+  // Wire per-cell click → audit modal. Re-bind on every render since
+  // tbl.innerHTML wipes prior listeners.
+  tbl.querySelectorAll('td[data-aud-idx]').forEach(td => {
+    td.addEventListener('click', () => {
+      showExposureAuditModal(td.dataset.audIdx, td.dataset.audMonth, currentExposureView);
+    });
+  });
 
   // Update card title — reflects unit + view.
   const unitLabel = unit === 'lots' ? 'lots (HH=2,500 / gas hubs=10,000 MMBtu/lot · oil rows omitted)' : 'TBtu';

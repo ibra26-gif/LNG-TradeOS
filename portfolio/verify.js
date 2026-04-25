@@ -1406,6 +1406,66 @@ setTimeout(() => {
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
+    console.log('SECTION 35 · Exposure audit — per-cell contribution dump');
+    console.log(bar);
+    // The audit must (a) be exposed on window, (b) sum to the same total
+    // the grid renders, (c) include both legs of a covered cargo and only
+    // the real leg of an uncovered/unsold cargo (mirroring the gating fix).
+    check('window.exposureAudit exists', typeof w.exposureAudit === 'function');
+    check('window.auditExposureCell exists (raw alias)',
+          typeof w.auditExposureCell === 'function');
+
+    // Sum across the grid: every (idx,month) audit total must equal the
+    // value computePhysicalExposure() returns for that cell.
+    const phyAll = w.computePhysicalExposure();
+    let mismatchCount = 0, sample = null;
+    for (const idx of Object.keys(phyAll)) {
+      for (const mo of Object.keys(phyAll[idx])) {
+        const expected = phyAll[idx][mo];
+        const actual   = w.exposureAudit(idx, mo, 'physical').totalTBtu;
+        if (Math.abs(expected - actual) > 1e-6) {
+          mismatchCount++;
+          if (!sample) sample = { idx, mo, expected, actual };
+        }
+      }
+    }
+    check('Audit sum matches computePhysicalExposure on every cell',
+          mismatchCount === 0,
+          mismatchCount > 0
+            ? `${mismatchCount} cells off; sample ${sample.idx} ${sample.mo}: audit=${sample.actual.toFixed(4)} vs grid=${sample.expected.toFixed(4)}`
+            : `all ${Object.keys(phyAll).reduce((a,i)=>a+Object.keys(phyAll[i]).length,0)} cells match`);
+
+    // Cheniere child on HH Jul-26 must be present in the audit.
+    const audHHJul = w.exposureAudit('HH', 'Jul-26', 'physical');
+    const hasCheniere = audHHJul.contributors.some(r =>
+      /CHENIERE/i.test(r.parentId || '') || /CHENIERE/i.test(r.cargoId || ''));
+    check('HH Jul-26 audit names a Cheniere contributor', hasCheniere,
+          `found ${audHHJul.contributors.length} contributors, parents: ${audHHJul.contributors.slice(0,5).map(r=>r.parentId).join(', ')}`);
+
+    // Coverage gating proof: an uncovered cargo's BUY leg must NOT appear in
+    // the audit (it's a placeholder ref-buy). We re-use the synthetic from
+    // section 34 — book it, audit, delete.
+    w.bookCargo({
+      id:'TEST-AUDIT-COV', status:'Fixed', cargoType:'Equity', cpty:'Test',
+      dealType:'single', incoterm:'FOB/DES', coverage:'uncovered',
+      loadPort:'Sabine Pass', dischPort:'Gate',
+      loadMonth:'Apr-28', sellMonth:'Apr-28',
+      vesselCbm:174000, fillPct:98.5, energyFactor:23.1, ladenDays:18, bogRate:0.10,
+      buy:null,
+      sell:{ idx:'TTF', formula:'Index + Spread', mult:1.0, spread:-0.25 },
+      refBuy:{ idx:'HH', month:'Apr-28', override:null },
+      freightMode:'manual', freightManual:{freight:0,bog:0,other:0},
+    });
+    const probeHH  = w.exposureAudit('HH',  'Apr-28', 'physical');
+    const probeTTF = w.exposureAudit('TTF', 'Apr-28', 'physical');
+    const stillHasProbeOnHH = probeHH.contributors.some(r => r.cargoId === 'TEST-AUDIT-COV');
+    const stillHasProbeOnTTF = probeTTF.contributors.some(r => r.cargoId === 'TEST-AUDIT-COV');
+    check('Uncovered cargo absent from HH audit (refBuy not posted)', !stillHasProbeOnHH);
+    check('Uncovered cargo present in TTF audit (real sell posted)',  stillHasProbeOnTTF);
+    w.deleteCargo('TEST-AUDIT-COV');
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
     console.log('SUMMARY');
     console.log(bar);
     console.log(`    Passed: ${passed}`);
