@@ -9023,18 +9023,20 @@ function exportMatrixXLS(){if(!F.matrix)return;const fd=F.fOrig==='all'?SUPPLY:S
 const CP_SEED_PRICES={
   HH:[2.90,2.90,3.03,3.28,3.35,3.33,3.39,3.71,4.55,5.02,4.48,3.53,3.23,3.20,3.33,3.53,3.59,3.57,3.65,3.92,4.64,5.10,4.43,3.55],
   TTF:[16.857,16.857,16.876,16.878,16.870,16.868,16.868,16.939,17.022,16.983,16.865,16.080,14.030,13.094,12.866,12.824,12.834,12.743,12.657,12.699,12.926,12.773,12.581,11.813],
-  JKM:[18.157,18.157,18.126,18.303,18.145,17.868,17.318,17.289,17.622,17.358,17.215,16.030,14.380,13.419,13.341,13.299,13.384,13.243,13.257,13.199,13.551,13.523,13.306,12.213],
-  // NBP seasonal pattern (NBP-TTF spread varies: -0.20 to -0.30 summer, -0.60 to -0.90 winter).
-  // Used as fallback when EOD NBP curve isn't loaded; gets overwritten by cpSyncPrices.
-  NBP:[16.557,16.557,16.576,16.578,16.470,16.268,16.068,16.039,16.122,16.183,16.265,15.680,13.730,12.794,12.466,12.524,12.434,12.143,11.757,11.799,12.026,11.973,11.981,11.413]
+  JKM:[18.157,18.157,18.126,18.303,18.145,17.868,17.318,17.289,17.622,17.358,17.215,16.030,14.380,13.419,13.341,13.299,13.384,13.243,13.257,13.199,13.551,13.523,13.306,12.213]
 };
 const CP_SEED_PHYS={
   nwe    :Array(24).fill(-0.40),
-  iberia :Array(24).fill(-0.40),
-  // UK trades on NBP, which typically discounts to TTF (Atlantic premium for NWE).
-  // Seasonal: -0.30 summer (Apr-Sep), -0.60 to -0.90 winter (Oct-Mar). User can
-  // override per cell. cpDerived will recompute dynamically when fp.NBP is loaded.
-  uk     :[-0.30,-0.30,-0.30,-0.30,-0.40,-0.60,-0.80,-0.90,-0.90,-0.80,-0.60,-0.40,-0.30,-0.30,-0.30,-0.30,-0.40,-0.60,-0.80,-0.90,-0.90,-0.80,-0.60,-0.40],
+  // Spain (PVB) currently weaker than NWE (2026-04-25 trader view): storage
+  // brimming, sendout low, cargoes being diverted away from Iberia. Apply
+  // a -$0.10 to -$0.15 discount vs NWE seasonally — most pronounced in
+  // summer when storage fills, narrows in winter as demand returns. User
+  // overrides per cell via Phys Diff tab.
+  iberia :[-0.55,-0.55,-0.55,-0.55,-0.50,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.50,-0.55,-0.55,-0.55,-0.55,-0.50,-0.45,-0.45,-0.45,-0.45,-0.45,-0.45,-0.50],
+  // UK (NBP): parity to NWE in summer, premium in winter (NBP heating-season
+  // pull is stronger than TTF). Trader view 2026-04-25: +$0.10 to +$0.20
+  // above NWE Oct-Mar. Manual override if NBP-TTF spread shifts.
+  uk     :[-0.40,-0.40,-0.40,-0.40,-0.35,-0.30,-0.25,-0.20,-0.20,-0.25,-0.30,-0.40,-0.40,-0.40,-0.40,-0.40,-0.35,-0.30,-0.25,-0.20,-0.20,-0.25,-0.30,-0.40],
   // France, Germany, Belgium — seeded equal to DES NWE; editable overrides per
   // terminal. Feed the Global LNG Netback for FR/DE/BE terminals and the Regas
   // model's TTF-differential tab.
@@ -9237,22 +9239,11 @@ function cpDerived(){
     if(nb == null || fr == null) return withOv('argentina', null, i);
     return withOv('argentina', +(nb + fr).toFixed(3), i);
   });
-  // ── UK phys diff: derive dynamically from real NBP-TTF spread when both
-  // forward curves are loaded (user has synced from EOD). Falls back to the
-  // seasonal seed in CP_SEED_PHYS.uk otherwise. UK trades on NBP, NOT TTF —
-  // so a flat -0.40 placeholder massively underweights the actual NBP discount
-  // and made UK look spuriously profitable on FOB netbacks vs Rotterdam.
-  const phyUkDynamic = ML.map((_,i) => {
-    if(fp.NBP && fp.NBP[i]!=null && fp.TTF[i]!=null && !isNaN(fp.NBP[i]) && !isNaN(fp.TTF[i])){
-      return +(fp.NBP[i] - fp.TTF[i]).toFixed(3);
-    }
-    return phys.uk[i];   // user-set or seasonal seed
-  });
   // ── DES absolute prices ────────────────────────────────────────────────────
   const des={
     nwe:     ML.map((_,i)=>fp.TTF[i]+phys.nwe[i]),
     iberia:  ML.map((_,i)=>fp.TTF[i]+phys.iberia[i]),
-    uk:      ML.map((_,i)=>fp.TTF[i]+phyUkDynamic[i]),
+    uk:      ML.map((_,i)=>fp.TTF[i]+phys.uk[i]),
     italy:   ML.map((_,i)=>fp.TTF[i]+phyItaly[i]),
     klaipeda:ML.map((_,i)=>fp.TTF[i]+phyKlaipeda[i]),
     inkoo:   ML.map((_,i)=>fp.TTF[i]+phyInkoo[i]),
@@ -9572,8 +9563,8 @@ function cpSyncPrices(){
   if(!sDates||!sDates.length){alert('No price data loaded. Load via Financial Trading first.');return;}
   const latest=sDates[sDates.length-1];const row=aD[latest];if(!row){alert('No data for '+latest);return;}
   const mapIdx=pk=>{const found=ML.findIndex(m=>{const ms={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};const p=m.split('-');return '20'+p[1]+'-'+ms[p[0]]===pk;});return found;};
-  const keys=['HH','TTF','JKM','NBP','SP_JT'];
-  const newFp={HH:[...CP.fp.HH],TTF:[...CP.fp.TTF],JKM:[...CP.fp.JKM],NBP:[...(CP.fp.NBP||new Array(24).fill(null))],SP_JT:[...(CP.fp.SP_JT||new Array(24).fill(null))]};
+  const keys=['HH','TTF','JKM','SP_JT'];
+  const newFp={HH:[...CP.fp.HH],TTF:[...CP.fp.TTF],JKM:[...CP.fp.JKM],SP_JT:[...(CP.fp.SP_JT||new Array(24).fill(null))]};
   let count=0;
   if(aD&&sDates.length){
     sDates.forEach(date=>{const r=aD[date];if(!r||!r.rows)return;r.rows.forEach(row=>{const idx=mapIdx(row.pk);if(idx<0||idx>=24)return;keys.forEach(k=>{if(row[k]!=null){newFp[k][idx]=row[k];count++;}});});});
