@@ -2871,6 +2871,19 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
       Re-uploads / curve edits there auto-propagate here on the next sync — no manual edits needed in this view.
     </div>
 
+    <!-- Sub-tab nav -->
+    <div class="curve-subnav" style="display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:14px">
+      <button class="curve-subtab active" data-curve-subtab="financial" onclick="setCurveSubTab('financial')" style="padding:10px 18px; background:transparent; border:0; border-bottom:2px solid var(--accent, #4fc3f7); color:var(--text-1); font-size:12px; font-weight:600; cursor:pointer; letter-spacing:0.04em">Financial Curves</button>
+      <button class="curve-subtab" data-curve-subtab="physical" onclick="setCurveSubTab('physical')" style="padding:10px 18px; background:transparent; border:0; border-bottom:2px solid transparent; color:var(--text-3); font-size:12px; font-weight:600; cursor:pointer; letter-spacing:0.04em">Physical Curves</button>
+      <button class="curve-subtab" data-curve-subtab="des" onclick="setCurveSubTab('des')" style="padding:10px 18px; background:transparent; border:0; border-bottom:2px solid transparent; color:var(--text-3); font-size:12px; font-weight:600; cursor:pointer; letter-spacing:0.04em">DES Curves</button>
+      <button class="curve-subtab" data-curve-subtab="fob" onclick="setCurveSubTab('fob')" style="padding:10px 18px; background:transparent; border:0; border-bottom:2px solid transparent; color:var(--text-3); font-size:12px; font-weight:600; cursor:pointer; letter-spacing:0.04em">FOB Curves</button>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         FINANCIAL CURVES sub-tab — existing content
+         ════════════════════════════════════════════════ -->
+    <div id="curves-pane-financial" class="curves-pane">
+
     <!-- Snapshot picker bar -->
     <div class="card">
       <div class="card-head">
@@ -2950,6 +2963,70 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
           <button class="btn ghost" onclick="previewCurvePaste()">Preview</button>
           <button class="btn primary" onclick="applyCurvePaste()">Import</button>
         </div>
+      </div>
+    </div>
+
+    </div><!-- /curves-pane-financial -->
+
+    <!-- ════════════════════════════════════════════════
+         PHYSICAL CURVES sub-tab
+         ════════════════════════════════════════════════ -->
+    <div id="curves-pane-physical" class="curves-pane" style="display:none">
+      <div class="card">
+        <div class="card-head">
+          <h3>Physical differentials</h3>
+          <span class="meta" id="physical-curves-meta">$/MMBtu vs natural hub · sourced from main dashboard sync</span>
+        </div>
+        <div style="overflow-x:auto"><table class="curve-grid" id="physical-curves-grid"><!-- populated --></table></div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         DES CURVES sub-tab
+         ════════════════════════════════════════════════ -->
+    <div id="curves-pane-des" class="curves-pane" style="display:none">
+      <div class="card">
+        <div class="card-head">
+          <h3>DES delivered prices</h3>
+          <span class="meta" id="des-curves-meta">$/MMBtu absolute · = hub forward + phys diff per destination</span>
+        </div>
+        <div style="overflow-x:auto"><table class="curve-grid" id="des-curves-grid"><!-- populated --></table></div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         FOB CURVES sub-tab
+         ════════════════════════════════════════════════ -->
+    <div id="curves-pane-fob" class="curves-pane" style="display:none">
+      <div class="card">
+        <div class="card-head">
+          <h3>FOB equivalents</h3>
+          <span class="meta" id="fob-curves-meta">DES − freight − basis · select origin + basis below</span>
+        </div>
+        <div style="display:flex; gap:14px; align-items:center; padding:8px 14px; background:var(--bg-sunken); border-bottom:1px solid var(--border); flex-wrap:wrap">
+          <div style="display:flex; align-items:center; gap:6px">
+            <span style="color:var(--text-3); font-size:10px; letter-spacing:1px; font-weight:600">ORIGIN</span>
+            <select id="fob-curves-origin" onchange="renderCurvesTab()" style="padding:4px 8px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--text-1); border-radius:4px; font-size:11px">
+              <option value="sabine">Sabine Pass</option>
+              <option value="trinidad">Trinidad</option>
+              <option value="angola">Angola</option>
+              <option value="nigeria">Nigeria</option>
+              <option value="qatar">Qatar (Ras Laffan)</option>
+              <option value="oman">Oman</option>
+              <option value="australia_b">Australia (Barrow)</option>
+            </select>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px">
+            <span style="color:var(--text-3); font-size:10px; letter-spacing:1px; font-weight:600">QUOTE BASIS</span>
+            <button class="fob-basis-btn active" data-fob-basis="TTF" onclick="setFobBasis('TTF')" style="padding:3px 10px; border:1px solid var(--border); background:var(--accent-bg, #1e40af); color:#fff; font-size:10px; border-radius:3px; cursor:pointer; margin-right:3px">TTF</button>
+            <button class="fob-basis-btn" data-fob-basis="JKM" onclick="setFobBasis('JKM')" style="padding:3px 10px; border:1px solid var(--border); background:transparent; color:var(--text-2); font-size:10px; border-radius:3px; cursor:pointer; margin-right:3px">JKM</button>
+            <button class="fob-basis-btn" data-fob-basis="HHSL" onclick="setFobBasis('HHSL')" style="padding:3px 10px; border:1px solid var(--border); background:transparent; color:var(--text-2); font-size:10px; border-radius:3px; cursor:pointer; margin-right:3px">115% HH (US)</button>
+            <button class="fob-basis-btn" data-fob-basis="HH" onclick="setFobBasis('HH')" style="padding:3px 10px; border:1px solid var(--border); background:transparent; color:var(--text-2); font-size:10px; border-radius:3px; cursor:pointer; margin-right:3px">HH</button>
+            <button class="fob-basis-btn" data-fob-basis="FIXED" onclick="setFobBasis('FIXED')" style="padding:3px 10px; border:1px solid var(--border); background:transparent; color:var(--text-2); font-size:10px; border-radius:3px; cursor:pointer">Fixed</button>
+          </div>
+          <span style="margin-left:auto; color:var(--text-4); font-size:10px" id="fob-curves-basis-hint">FOB Δ vs TTF · negative = FOB below basis</span>
+        </div>
+        <div style="overflow-x:auto"><table class="curve-grid" id="fob-curves-grid"><!-- populated --></table></div>
       </div>
     </div>
 
@@ -3190,6 +3267,17 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
       </div>
     </div>
 
+    <!-- Sub-tab nav -->
+    <div class="opt-subnav" style="display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:14px">
+      <button class="opt-subtab active" data-opt-subtab="cargo-book" onclick="setOptSubTab('cargo-book')" style="padding:10px 18px; background:transparent; border:0; border-bottom:2px solid var(--accent, #4fc3f7); color:var(--text-1); font-size:12px; font-weight:600; cursor:pointer; letter-spacing:0.04em">Cargo Book Optionality</button>
+      <button class="opt-subtab" data-opt-subtab="fair-fob" onclick="setOptSubTab('fair-fob')" style="padding:10px 18px; background:transparent; border:0; border-bottom:2px solid transparent; color:var(--text-3); font-size:12px; font-weight:600; cursor:pointer; letter-spacing:0.04em">Compute Fair FOB Premium</button>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         CARGO BOOK OPTIONALITY sub-tab — existing content
+         ════════════════════════════════════════════════ -->
+    <div id="opt-pane-cargo-book" class="opt-pane">
+
     <!-- KPI strip -->
     <div class="metrics-grid">
       <div class="metric">
@@ -3412,6 +3500,111 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
         <p style="margin-top:14px; padding:10px 12px; background:var(--warn-bg); border:1px solid var(--warn-border); border-radius:6px; font-size:11.5px; color:var(--warn-text);">
           <strong>Numbers are indicative.</strong> Closed-form formulas under-state deep optionality in highly-correlated markets and don't capture path-dependent features (early exercise, time-spread rolls, seasonal storage). For gas-to-power portfolio valuation with full American-exercise treatment, use a Monte Carlo engine. This module is best used to <em>rank</em> flex rights against each other, not to book P&L.
         </p>
+      </div>
+    </div>
+
+    </div><!-- /opt-pane-cargo-book -->
+
+    <!-- ════════════════════════════════════════════════
+         COMPUTE FAIR FOB PREMIUM sub-tab
+         ════════════════════════════════════════════════ -->
+    <div id="opt-pane-fair-fob" class="opt-pane" style="display:none">
+      <div class="card">
+        <div class="card-head">
+          <h3>Compute Fair FOB Premium</h3>
+          <span class="meta">cargo with destination flex · intrinsic + Margrabe extrinsic</span>
+        </div>
+        <div style="font-size: 12px; color: var(--text-3); padding: 0 0 12px; line-height:1.6">
+          For an HH-indexed FOB cargo with the right to choose between N destinations, this computes the "fair" premium over the cost basis as <strong>best intrinsic netback + extrinsic optionality value</strong>. Use for pre-tender pricing on US Gulf cargoes with discretion on routing.
+        </div>
+
+        <!-- Inputs -->
+        <div class="form-row c4" style="align-items:flex-end; padding:10px; background:var(--bg-sunken); border-radius:6px; margin-bottom:14px">
+          <div class="field">
+            <label>Origin</label>
+            <select id="ffp-origin" onchange="renderFairFobPremium()">
+              <option value="sabine">Sabine Pass</option>
+              <option value="trinidad">Trinidad</option>
+              <option value="angola">Angola</option>
+              <option value="nigeria">Nigeria</option>
+              <option value="qatar">Qatar (Ras Laffan)</option>
+              <option value="oman">Oman</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Loading month</label>
+            <select id="ffp-month" onchange="renderFairFobPremium()"><!-- populated --></select>
+          </div>
+          <div class="field">
+            <label>Cargo size <span class="label-hint">TBtu loaded</span></label>
+            <input type="number" id="ffp-cargo" value="3.94" step="0.1" min="1" max="6" onchange="renderFairFobPremium()">
+          </div>
+          <div class="field">
+            <label>Cost basis</label>
+            <select id="ffp-basis" onchange="renderFairFobPremium()">
+              <option value="HHSL" selected>1.15 × HH (Sabine convention)</option>
+              <option value="TTF">TTF</option>
+              <option value="JKM">JKM</option>
+              <option value="HH">HH (no slope)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Destinations multi-select + time-to-expiry -->
+        <div class="form-row c2" style="align-items:flex-end; padding:10px; background:var(--bg-sunken); border-radius:6px; margin-bottom:14px">
+          <div class="field">
+            <label>Destinations on offer <span class="label-hint">tick all that apply</span></label>
+            <div id="ffp-dests" style="display:flex; flex-wrap:wrap; gap:6px; padding:6px 0">
+              <!-- populated -->
+            </div>
+          </div>
+          <div class="field">
+            <label>Time to expiry <span class="label-hint">months from now to load</span></label>
+            <input type="number" id="ffp-expiry" value="3" step="1" min="1" max="24" onchange="renderFairFobPremium()">
+            <div class="hint">Drives the extrinsic option value (T = expiry/12 yrs)</div>
+          </div>
+        </div>
+
+        <!-- Output -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-head"><h3>Per-destination intrinsic FOB Δ</h3><span class="meta" id="ffp-table-meta">DES − Freight − Basis</span></div>
+          <div style="overflow-x:auto"><table class="tbl" id="ffp-table"><!-- populated --></table></div>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric">
+            <div class="metric-label">Best intrinsic FOB Δ</div>
+            <div class="metric-value" id="ffp-intrinsic">—</div>
+            <div class="metric-sub" id="ffp-intrinsic-sub">winning destination</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Extrinsic (Margrabe / Clark)</div>
+            <div class="metric-value" id="ffp-extrinsic">—</div>
+            <div class="metric-sub" id="ffp-extrinsic-sub">option to switch destinations</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Fair FOB Premium</div>
+            <div class="metric-value" id="ffp-total">—</div>
+            <div class="metric-sub" id="ffp-total-sub">$/MMBtu · vs basis</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Total $ value</div>
+            <div class="metric-value" id="ffp-total-usd">—</div>
+            <div class="metric-sub" id="ffp-total-usd-sub">premium × cargo size</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:14px">
+          <div class="card-head"><h3>How it's computed</h3><span class="meta">closed-form, no Monte Carlo</span></div>
+          <div style="font-size:12px; color:var(--text-2); line-height:1.7">
+            <p style="margin-bottom:10px"><strong>Intrinsic per destination</strong> = DES_dest − Freight(origin→dest) − Basis. Best one wins (the "without optionality" baseline).</p>
+            <p style="margin-bottom:10px"><strong>Extrinsic</strong> = value of the right to switch between destinations as prices evolve. For 2 destinations we use the Margrabe formula; for ≥3 destinations we compound iteratively (Clark approximation). Inputs: vol per index (live realized vol from snapshots, or override), correlation (live MKT_CORR), time to expiry T = months/12.</p>
+            <p style="margin-bottom:10px"><strong>Fair FOB Premium</strong> = Best Intrinsic + Extrinsic. Add to cost basis to get the FOB price the seller can quote without giving away optionality.</p>
+            <p style="margin-top:10px; padding:8px 10px; background:var(--info-bg); border:1px solid var(--info-border); border-radius:4px; font-size:11.5px; color:var(--info-text)">
+              For Sabine cargoes with NWE + JKTC + MEI as live arbs, expect extrinsic ≈ $0.30-0.80/MMBtu in normal markets, more when JKM-TTF spread is volatile.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -7367,6 +7560,165 @@ function computeFobPremium() {
   }
 }
 
+// ════════════════════════════════════════════════
+//  Optionality tab — sub-tab state + Fair FOB Premium calculator
+// ════════════════════════════════════════════════
+let optSubTab = 'cargo-book';   // 'cargo-book' | 'fair-fob'
+
+function setOptSubTab(t) {
+  optSubTab = t;
+  document.querySelectorAll('.opt-subtab').forEach(btn => {
+    const active = btn.dataset.optSubtab === t;
+    btn.classList.toggle('active', active);
+    btn.style.borderBottom = active ? '2px solid var(--accent, #4fc3f7)' : '2px solid transparent';
+    btn.style.color = active ? 'var(--text-1)' : 'var(--text-3)';
+  });
+  ['cargo-book','fair-fob'].forEach(k => {
+    const pane = document.getElementById('opt-pane-' + k);
+    if (pane) pane.style.display = (k === t) ? '' : 'none';
+  });
+  // Render the active pane
+  if (t === 'fair-fob') renderFairFobPremium();
+  else renderOptionality();
+}
+window.setOptSubTab = setOptSubTab;
+
+// Fair FOB Premium calculator — closed-form intrinsic + Margrabe/Clark extrinsic.
+// Reuses CURVE_DESTS, CURVE_ORIGINS, MKT_VOLS, MKT_CORR, curveLookup, calcVoyage.
+function renderFairFobPremium() {
+  const g = id => document.getElementById(id);
+  // Populate month selector once if empty
+  const moSel = g('ffp-month');
+  if (moSel && !moSel.options.length) {
+    moSel.innerHTML = MONTH_ORDER.map(m => `<option value="${m}">${m}</option>`).join('');
+    moSel.value = MONTH_ORDER[2] || MONTH_ORDER[0];
+  }
+  // Populate destination checkboxes once if empty
+  const destBox = g('ffp-dests');
+  if (destBox && !destBox.children.length) {
+    const defaults = new Set(['nwe','jktc','mei']);
+    destBox.innerHTML = CURVE_DESTS.map(D => `
+      <label style="display:inline-flex; align-items:center; gap:4px; padding:4px 8px; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; font-size:11px; cursor:pointer">
+        <input type="checkbox" value="${D.key}" ${defaults.has(D.key) ? 'checked' : ''} onchange="renderFairFobPremium()" style="margin:0">
+        ${D.label}
+      </label>`).join('');
+  }
+  // Read inputs
+  const originId = g('ffp-origin')?.value || 'sabine';
+  const month    = g('ffp-month')?.value  || MONTH_ORDER[0];
+  const cargoTBtu = +(g('ffp-cargo')?.value || 3.94);
+  const basis    = g('ffp-basis')?.value  || 'HHSL';
+  const expiryMo = +(g('ffp-expiry')?.value || 3);
+  const T = Math.max(0.05, expiryMo / 12);   // years, floor at 0.05 to avoid div-by-zero
+  const loadPort = CURVE_ORIGINS[originId] || 'Sabine Pass';
+  const sl = 1.15;
+  const selected = Array.from(destBox?.querySelectorAll('input[type=checkbox]:checked') || [])
+    .map(cb => cb.value);
+  const dests = CURVE_DESTS.filter(D => selected.includes(D.key));
+
+  // Basis $/MMBtu for the chosen month
+  const basisPx =
+      basis === 'TTF'   ? curveLookup(month, 'TTF')
+    : basis === 'JKM'   ? curveLookup(month, 'JKM')
+    : basis === 'HH'    ? curveLookup(month, 'HH')
+    : basis === 'HHSL'  ? (sl * (curveLookup(month, 'HH') || 0))
+    : 0;
+
+  // Per-destination intrinsic FOB Δ
+  const rows = dests.map(D => {
+    const hubPx = curveLookup(month, D.hub);
+    const phys = _curvePhysFor(D.key, month) ?? 0;
+    const desPx = (hubPx != null) ? hubPx + phys : null;
+    let frPx = null;
+    try {
+      const v = (typeof calcVoyage === 'function') ? calcVoyage(loadPort, D.loadDest, month, cargoTBtu) : null;
+      if (v && isFinite(v.freightPerMMBtu)) frPx = v.freightPerMMBtu;
+    } catch (e) {}
+    const fob = (desPx != null && frPx != null && basisPx != null) ? +(desPx - frPx - basisPx).toFixed(3) : null;
+    return { D, desPx, frPx, fob };
+  });
+  // Sort intrinsic best → worst
+  rows.sort((a,b) => (b.fob ?? -Infinity) - (a.fob ?? -Infinity));
+
+  // Render the per-destination table
+  const tbl = g('ffp-table');
+  if (tbl) {
+    const header = `<thead><tr>
+      <th>Destination</th><th>Hub</th>
+      <th class="num">DES px</th><th class="num">Freight</th><th class="num">Basis</th>
+      <th class="num">Intrinsic FOB Δ</th>
+    </tr></thead>`;
+    const body = `<tbody>${rows.map((r, i) => `
+      <tr ${i === 0 ? 'style="background:var(--bg-sunken)"' : ''}>
+        <td>${i === 0 ? '★ ' : ''}${r.D.label}</td>
+        <td style="color:var(--text-3); font-size:11px">${r.D.hub}</td>
+        <td class="num mono">${r.desPx != null ? r.desPx.toFixed(3) : '—'}</td>
+        <td class="num mono" style="color:var(--text-3)">${r.frPx != null ? '−' + r.frPx.toFixed(3) : '—'}</td>
+        <td class="num mono" style="color:var(--text-3)">${basisPx != null ? '−' + basisPx.toFixed(3) : '—'}</td>
+        <td class="num mono" style="font-weight:700; color:${r.fob == null ? 'var(--text-3)' : r.fob >= 0 ? 'var(--pos)' : 'var(--neg)'}">${r.fob != null ? ((r.fob >= 0 ? '+' : '') + r.fob.toFixed(3)) : '—'}</td>
+      </tr>`).join('')}</tbody>`;
+    tbl.innerHTML = header + body;
+  }
+
+  // ── Intrinsic + Extrinsic (Margrabe/Clark) ──
+  const valid = rows.filter(r => r.fob != null);
+  const bestIntrinsic = valid.length ? valid[0].fob : null;
+  const bestDest = valid.length ? valid[0].D : null;
+
+  // Extrinsic: Margrabe-style option to switch destinations
+  // For each destination, the underlying volatility (in $/MMBtu absolute terms)
+  // ≈ vol of its natural hub × hub price level.
+  // Margrabe extrinsic on the spread S1 - S2:
+  //   σ_spread = √(σ1² + σ2² − 2ρσ1σ2)
+  //   E_call(0) = (σ_spread × √T / √(2π)) × hub_avg   (ATM Bachelier approximation)
+  // For N≥3 destinations: take the spread between best and 2nd-best intrinsic
+  // and compound with the 3rd via Clark (capped at 0.4 × first switch).
+  function _normPdf0() { return 1 / Math.sqrt(2 * Math.PI); }
+  let extrinsic = 0;
+  let extrinsicSub = 'no extrinsic (single destination)';
+  if (valid.length >= 2) {
+    const v1 = valid[0], v2 = valid[1];
+    const sig1 = (MKT_VOLS[v1.D.hub] ?? 0.40);
+    const sig2 = (MKT_VOLS[v2.D.hub] ?? 0.40);
+    const rho  = (MKT_CORR[v1.D.hub]?.[v2.D.hub] ?? 0.7);
+    const sigSpread = Math.sqrt(sig1*sig1 + sig2*sig2 - 2*rho*sig1*sig2);
+    const refPx = (v1.desPx + v2.desPx) / 2;   // ATM reference
+    const switch12 = sigSpread * Math.sqrt(T) * _normPdf0() * refPx;
+    extrinsic = switch12;
+    extrinsicSub = `${v1.D.label} ↔ ${v2.D.label} · σ_spread=${(sigSpread*100).toFixed(0)}% · ρ=${rho.toFixed(2)}`;
+    // Compound for ≥3 destinations (Clark approximation, conservative)
+    if (valid.length >= 3) {
+      const v3 = valid[2];
+      const sig3 = (MKT_VOLS[v3.D.hub] ?? 0.40);
+      const rho23 = (MKT_CORR[v2.D.hub]?.[v3.D.hub] ?? 0.7);
+      const sigSpread23 = Math.sqrt(sig2*sig2 + sig3*sig3 - 2*rho23*sig2*sig3);
+      const refPx23 = (v2.desPx + v3.desPx) / 2;
+      const switch23 = sigSpread23 * Math.sqrt(T) * _normPdf0() * refPx23;
+      const compound = 0.4 * switch23;   // Clark cap
+      extrinsic += compound;
+      extrinsicSub += ` + ${v3.D.label} (Clark +$${compound.toFixed(3)})`;
+    }
+  }
+
+  // ── Render KPIs ──
+  const fmt = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(3);
+  const total = (bestIntrinsic != null) ? bestIntrinsic + extrinsic : null;
+  const totalUsd = (total != null) ? total * cargoTBtu * 1e6 : null;   // $
+  if (g('ffp-intrinsic'))     g('ffp-intrinsic').textContent = fmt(bestIntrinsic);
+  if (g('ffp-intrinsic-sub')) g('ffp-intrinsic-sub').textContent = bestDest ? `winner: ${bestDest.label}` : '—';
+  if (g('ffp-extrinsic'))     g('ffp-extrinsic').textContent = (valid.length >= 2) ? '+' + extrinsic.toFixed(3) : '—';
+  if (g('ffp-extrinsic-sub')) g('ffp-extrinsic-sub').textContent = extrinsicSub;
+  if (g('ffp-total'))         g('ffp-total').textContent = fmt(total);
+  if (g('ffp-total-sub'))     g('ffp-total-sub').textContent = `${month} · basis ${basis === 'HHSL' ? '1.15×HH' : basis} · ${expiryMo}m to expiry`;
+  if (g('ffp-total-usd')) {
+    if (totalUsd == null) g('ffp-total-usd').textContent = '—';
+    else if (Math.abs(totalUsd) >= 1e6) g('ffp-total-usd').textContent = (totalUsd >= 0 ? '+$' : '−$') + (Math.abs(totalUsd)/1e6).toFixed(2) + 'M';
+    else g('ffp-total-usd').textContent = (totalUsd >= 0 ? '+$' : '−$') + (Math.abs(totalUsd)/1000).toFixed(0) + 'k';
+  }
+  if (g('ffp-total-usd-sub')) g('ffp-total-usd-sub').textContent = `${cargoTBtu.toFixed(2)} TBtu × $${total != null ? total.toFixed(3) : '0'}/MMBtu`;
+}
+window.renderFairFobPremium = renderFairFobPremium;
+
 function renderOptionality() {
   // Refresh MKT_VOLS from the effective vol layer (override > realized > default)
   // so downstream pricing math (Margrabe / Bachelier / Clark) sees the live values.
@@ -9305,7 +9657,191 @@ function curveIndices() {
   return ['JKM', 'TTF', 'NBP', 'HH', 'PEG', 'THE', 'PSV', 'ZTP', 'PVB', 'Brent', 'JCC', 'TFU'];
 }
 
+// ════════════════════════════════════════════════
+//  Curves tab — sub-tab state + switcher
+// ════════════════════════════════════════════════
+let curveSubTab = 'financial';   // 'financial' | 'physical' | 'des' | 'fob'
+let fobBasis    = 'TTF';          // 'TTF' | 'JKM' | 'HHSL' | 'HH' | 'FIXED'
+
+function setCurveSubTab(t) {
+  curveSubTab = t;
+  // Toggle button styling
+  document.querySelectorAll('.curve-subtab').forEach(btn => {
+    const active = btn.dataset.curveSubtab === t;
+    btn.classList.toggle('active', active);
+    btn.style.borderBottom = active ? '2px solid var(--accent, #4fc3f7)' : '2px solid transparent';
+    btn.style.color = active ? 'var(--text-1)' : 'var(--text-3)';
+  });
+  // Toggle pane visibility
+  ['financial','physical','des','fob'].forEach(k => {
+    const pane = document.getElementById('curves-pane-' + k);
+    if (pane) pane.style.display = (k === t) ? '' : 'none';
+  });
+  renderCurvesTab();
+}
+window.setCurveSubTab = setCurveSubTab;
+
+function setFobBasis(b) {
+  fobBasis = b;
+  // Toggle FOB basis button styling
+  document.querySelectorAll('.fob-basis-btn').forEach(btn => {
+    const active = btn.dataset.fobBasis === b;
+    btn.classList.toggle('active', active);
+    btn.style.background = active ? 'var(--accent-bg, #1e40af)' : 'transparent';
+    btn.style.color = active ? '#fff' : 'var(--text-2)';
+  });
+  const hint = document.getElementById('fob-curves-basis-hint');
+  if (hint) {
+    hint.textContent = b === 'FIXED'
+      ? 'FOB absolute ($/MMBtu)'
+      : b === 'HHSL'
+        ? 'FOB Δ vs 115% HH (US-only — non-US origins blank)'
+        : `FOB Δ vs ${b} · negative = FOB below basis`;
+  }
+  if (curveSubTab === 'fob') renderCurvesTab();
+}
+window.setFobBasis = setFobBasis;
+
+// ── Destinations + origins shared by Physical / DES / FOB sub-tabs ───────
+const CURVE_DESTS = [
+  {key:'nwe',     label:'NWE (Gate)',      hub:'TTF',  loadDest:'Gate'},
+  {key:'iberia',  label:'Iberia (Huelva)', hub:'TTF',  loadDest:'Huelva'},
+  {key:'uk',      label:'UK (S.Hook)',     hub:'TTF',  loadDest:'South Hook'},
+  {key:'italy',   label:'Italy (Rovigo)',  hub:'TTF',  loadDest:'Rovigo'},
+  {key:'klaipeda',label:'Klaipeda',        hub:'TTF',  loadDest:'Klaipeda'},
+  {key:'inkoo',   label:'Inkoo',           hub:'TTF',  loadDest:'Inkoo'},
+  {key:'swino',   label:'Swinoujscie',     hub:'TTF',  loadDest:'Swinoujscie'},
+  {key:'rev',     label:'Revithoussa',     hub:'TTF',  loadDest:'Revithoussa'},
+  {key:'krk',     label:'KRK',             hub:'TTF',  loadDest:'Krk'},
+  {key:'ali',     label:'Aliaga',          hub:'TTF',  loadDest:'Aliaga'},
+  {key:'ain',     label:'Egypt (Ain Sukhna)', hub:'TTF', loadDest:'Ain Sukhna'},
+  {key:'mei',     label:'India (Dahej)',   hub:'JKM',  loadDest:'Dahej'},
+  {key:'jktc',    label:'JKTC (Tokyo Bay)',hub:'JKM',  loadDest:'Tokyo Bay'},
+  {key:'thailand',label:'Thailand (Map Ta Phut)', hub:'JKM', loadDest:'Map Ta Phut'},
+];
+const CURVE_ORIGINS = {
+  sabine:      'Sabine Pass',
+  trinidad:    'Trinidad & Tobago',
+  angola:      'Angola',
+  nigeria:     'Nigeria LNG',
+  qatar:       'Ras Laffan',
+  oman:        'Oman LNG',
+  australia_b: 'Barrow Island',
+};
+
+// Helper: phys diff for a destination at a month (from external sync, fallback 0)
+function _curvePhysFor(destKey, monthLabel) {
+  const phys = window.__externalPhysDiffs;
+  if (!phys || !phys[destKey]) return null;
+  const v = phys[destKey][monthLabel];
+  return (v != null && isFinite(v)) ? v : null;
+}
+
+function renderPhysicalCurvesGrid() {
+  const months = MONTH_ORDER;
+  const tbl = document.getElementById('physical-curves-grid');
+  if (!tbl) return;
+  const headRow = `<tr><th style="text-align:left">Destination</th><th>Hub</th>${months.map(m => `<th>${m}</th>`).join('')}</tr>`;
+  const rows = CURVE_DESTS.map(D => {
+    const cells = months.map(m => {
+      const v = _curvePhysFor(D.key, m);
+      if (v == null) return `<td class="zero">—</td>`;
+      const cls = v > 0.05 ? 'long' : v < -0.05 ? 'short' : 'zero';
+      return `<td class="${cls}">${(v >= 0 ? '+' : '') + v.toFixed(3)}</td>`;
+    }).join('');
+    return `<tr><td style="text-align:left">${D.label}</td><td style="color:var(--text-3); font-size:11px">${D.hub}</td>${cells}</tr>`;
+  }).join('');
+  tbl.innerHTML = `<thead>${headRow}</thead><tbody>${rows}</tbody>`;
+  const ext = !!window.__externalPhysDiffs;
+  const meta = document.getElementById('physical-curves-meta');
+  if (meta) meta.textContent = ext
+    ? '$/MMBtu vs natural hub · sourced from main dashboard sync'
+    : '$/MMBtu vs natural hub · ⚠ no external phys diff data — open main dashboard to populate';
+}
+
+function renderDesCurvesGrid() {
+  const months = MONTH_ORDER;
+  const tbl = document.getElementById('des-curves-grid');
+  if (!tbl) return;
+  const headRow = `<tr><th style="text-align:left">Destination</th><th>Hub</th>${months.map(m => `<th>${m}</th>`).join('')}</tr>`;
+  const rows = CURVE_DESTS.map(D => {
+    const cells = months.map(m => {
+      const hubPx = curveLookup(m, D.hub);
+      const phys = _curvePhysFor(D.key, m) ?? 0;
+      if (hubPx == null) return `<td class="zero">—</td>`;
+      return `<td>${(hubPx + phys).toFixed(3)}</td>`;
+    }).join('');
+    return `<tr><td style="text-align:left">${D.label}</td><td style="color:var(--text-3); font-size:11px">${D.hub}</td>${cells}</tr>`;
+  }).join('');
+  tbl.innerHTML = `<thead>${headRow}</thead><tbody>${rows}</tbody>`;
+}
+
+function renderFobCurvesGrid() {
+  const months = MONTH_ORDER;
+  const tbl = document.getElementById('fob-curves-grid');
+  if (!tbl) return;
+  const originSel = document.getElementById('fob-curves-origin');
+  const originId = (originSel && originSel.value) || 'sabine';
+  const loadPort = CURVE_ORIGINS[originId] || 'Sabine Pass';
+
+  // Cargo TBtu — used by calcVoyage to compute freight per MMBtu (same for any
+  // typical cargo size since freight$ scales with cargo). Use a representative 3.94 TBtu.
+  const cargoTBtu = 3.94;
+  const sl = 1.15;   // HH slope for 115% HH basis
+
+  // basisPx: returns the basis $/MMBtu for the chosen basis at month m, or null
+  // if the basis doesn't apply (e.g. 115% HH for non-Sabine origin).
+  function basisPx(m) {
+    if (fobBasis === 'FIXED') return 0;
+    if (fobBasis === 'TTF')   return curveLookup(m, 'TTF');
+    if (fobBasis === 'JKM')   return curveLookup(m, 'JKM');
+    if (fobBasis === 'HH')    return curveLookup(m, 'HH');
+    if (fobBasis === 'HHSL')  {
+      if (originId !== 'sabine') return null;   // 115% HH applies only to US
+      const hh = curveLookup(m, 'HH');
+      return hh != null ? sl * hh : null;
+    }
+    return null;
+  }
+
+  const headRow = `<tr><th style="text-align:left">Destination</th>${months.map(m => `<th>${m}</th>`).join('')}</tr>`;
+  const rows = CURVE_DESTS.map(D => {
+    const cells = months.map(m => {
+      const hubPx = curveLookup(m, D.hub);
+      const phys = _curvePhysFor(D.key, m) ?? 0;
+      const desPx = (hubPx != null) ? hubPx + phys : null;
+      // Freight via calcVoyage if route is in NM_DB; null otherwise (table cell '—').
+      let frPx = null;
+      try {
+        const v = (typeof calcVoyage === 'function')
+          ? calcVoyage(loadPort, D.loadDest, m, cargoTBtu)
+          : null;
+        if (v && isFinite(v.freightPerMMBtu)) frPx = v.freightPerMMBtu;
+      } catch (e) { /* route missing → null */ }
+      const bPx = basisPx(m);
+      if (desPx == null || frPx == null || bPx == null) return `<td class="zero">—</td>`;
+      const fob = +(desPx - frPx - bPx).toFixed(3);
+      const cls = (fobBasis === 'FIXED') ? '' : (fob > 0.05 ? 'long' : fob < -0.05 ? 'short' : 'zero');
+      const txt = (fobBasis === 'FIXED') ? fob.toFixed(3) : ((fob >= 0 ? '+' : '') + fob.toFixed(3));
+      return `<td class="${cls}">${txt}</td>`;
+    }).join('');
+    return `<tr><td style="text-align:left">${D.label}</td>${cells}</tr>`;
+  }).join('');
+  tbl.innerHTML = `<thead>${headRow}</thead><tbody>${rows}</tbody>`;
+  const meta = document.getElementById('fob-curves-meta');
+  if (meta) meta.textContent = `${loadPort} → all destinations · freight from calcVoyage · ${fobBasis === 'FIXED' ? 'absolute $/MMBtu' : 'spread vs ' + (fobBasis === 'HHSL' ? '115% HH' : fobBasis)}`;
+}
+
 function renderCurvesTab() {
+  // Sub-tab dispatch — only render the visible pane to avoid wasted work
+  if (curveSubTab === 'physical') { renderPhysicalCurvesGrid(); return; }
+  if (curveSubTab === 'des')      { renderDesCurvesGrid();      return; }
+  if (curveSubTab === 'fob')      { renderFobCurvesGrid();      return; }
+  // 'financial' sub-tab — original render below
+  _renderFinancialCurvesPane();
+}
+
+function _renderFinancialCurvesPane() {
   const active = getActiveCurveDate();
   const baseline = getBaselineCurveDate();
   const snapshots = listCurveSnapshots();
@@ -10245,10 +10781,23 @@ function _cargoYear(c) {
   const m = (c.loadMonth || c.sellMonth || '').match(/-(\d{2})$/);
   return m ? '20' + m[1] : null;
 }
+// Resolve the EFFECTIVE deal type of a cargo. Children of a parent deal
+// (LT or Strip) are stored as dealType='single' with parentDealId pointing
+// to the parent. Filtering on c.dealType directly would only match the few
+// standalone single cargoes, missing the 392 children of seed parents.
+// This walks the parent chain so a filter on 'lt' surfaces every child of
+// every LT parent, etc.
+function _effectiveDealType(c) {
+  if (c && c.parentDealId) {
+    const parent = (STATE.parentDeals || []).find(p => p.id === c.parentDealId);
+    if (parent && parent.kind) return parent.kind;   // 'lt' | 'strip'
+  }
+  return c.dealType || 'single';
+}
 function _filterCargoes(cargoes) {
   return cargoes.filter(c => {
     if (pnlFilters.year      !== 'all' && _cargoYear(c) !== pnlFilters.year) return false;
-    if (pnlFilters.dealType  !== 'all' && c.dealType   !== pnlFilters.dealType) return false;
+    if (pnlFilters.dealType  !== 'all' && _effectiveDealType(c) !== pnlFilters.dealType) return false;
     if (pnlFilters.cargoType !== 'all' && c.cargoType  !== pnlFilters.cargoType) return false;
     if (pnlFilters.cpty      !== 'all' && c.cpty       !== pnlFilters.cpty) return false;
     if (pnlFilters.status    !== 'all' && c.status     !== pnlFilters.status) return false;
@@ -10417,7 +10966,7 @@ function renderPnlSummary() {
 
   // Build group → sub-rows map for each layer.
   const dealLabels   = { single: 'Single', strip: 'Strip', lt: 'LT' };
-  const groupActivity    = aggregateBy(c => c.dealType || 'single',  (c, k) => dealLabels[k] || k);
+  const groupActivity    = aggregateBy(c => _effectiveDealType(c),    (c, k) => dealLabels[k] || k);
   const groupCargoType   = aggregateBy(c => c.cargoType || 'Equity', (c, k) => k);
   const groupDestination = aggregateBy(c => _regionFor(c.dischPort), (c, k) => k);
   const groupStatus      = aggregateBy(c => c.status === 'Actualized' ? 'delivered' : 'undelivered',
