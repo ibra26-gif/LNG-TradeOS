@@ -5074,6 +5074,7 @@ function showExposureAuditModal(idx, month, view) {
   // Use the audit's month-specific lot (MWh/therm vary by month)
   const lot = audit.lotMMBtu || lotSizeMMBtu(idx, month);
   const isOil = (idx === 'Brent' || idx === 'JCC');
+  const lotUnitLbl = (LOT_SPEC[idx]?.unit) || 'MMBtu';
   const fmtTBtu = v => (v >= 0 ? '+' : '') + v.toFixed(3);
   const fmtLots = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
   const sideColor = s => s === 'BUY' ? 'var(--neg)' : s === 'SELL' ? 'var(--pos)' : 'var(--text-3)';
@@ -5091,7 +5092,7 @@ function showExposureAuditModal(idx, month, view) {
         <td class="num mono">${r.qty.toFixed(3)} <span style="color:var(--text-4); font-size:10px">${r.qtyBasis}</span></td>
         <td class="num mono">${r.slope.toFixed(3)}</td>
         <td class="num mono" style="font-weight:700; color:${r.share >= 0 ? 'var(--pos)' : 'var(--neg)'}">${fmtTBtu(r.share)}</td>
-        <td class="num mono" style="color:var(--text-3)">${isOil ? '—' : fmtLots(r.lots)}</td>
+        <td class="num mono" style="color:var(--text-3)">${fmtLots(r.lots)}</td>
       </tr>`).join('');
   const html = `
     <div id="exp-audit-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9100; display:flex; align-items:center; justify-content:center; padding:24px" onclick="if(event.target===this)this.remove()">
@@ -5106,8 +5107,8 @@ function showExposureAuditModal(idx, month, view) {
           </div>
           <div style="text-align:right">
             <div style="font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:1px">Cell total</div>
-            <div style="font-size:22px; font-weight:700; color:${audit.totalTBtu >= 0 ? 'var(--pos)' : 'var(--neg)'}">${fmtTBtu(audit.totalTBtu)} TBtu</div>
-            ${isOil ? '' : `<div style="font-size:12px; color:var(--text-3); margin-top:2px">${fmtLots(audit.totalLots)} lots <span style="color:var(--text-4)">(${lot.toLocaleString()} MMBtu/lot)</span></div>`}
+            <div style="font-size:22px; font-weight:700; color:${audit.totalTBtu >= 0 ? 'var(--pos)' : 'var(--neg)'}">${fmtTBtu(audit.totalTBtu)} TBtu${isOil ? '-eq' : ''}</div>
+            <div style="font-size:12px; color:var(--text-3); margin-top:2px">${fmtLots(audit.totalLots)} lots <span style="color:var(--text-4)">(${Math.round(lot).toLocaleString()} ${lotUnitLbl}/lot${isOil ? ' · slope-baked' : ''})</span></div>
           </div>
         </div>
         <div style="overflow-x:auto">
@@ -6330,11 +6331,12 @@ function renderExposureGrid(view) {
   //   TTF / THE / PEG / ZEE / ZTP / PSV / PVB (1 MW × hours-in-month × 3.4121 MMBtu/MWh)
   //     → ~2,538 MMBtu/lot (31 d), 2,457 (30 d), 2,375 (28 d feb), DST adj in Mar/Oct
   //   NBP (1,000 therms/day × days × 0.1) → 3,000 (30 d) or 3,100 (31 d) MMBtu/lot
-  // Oil indices (Brent/JCC) need a slope-aware bbl conversion; we skip them
-  // in lots mode and render '—'.
+  //   Brent / JCC (1,000 bbl/lot): the % slope is already baked into the
+  //     stored TBtu-equivalent (share = qty × slope), so the same conversion
+  //     formula applies: a 3.5 TBtu × 13% Brent cargo posts 0.455 TBtu-eq
+  //     → 0.455 × 1e6 / 1000 = 455 Brent swap lots. Same math for Dated Brent.
   const OIL_IDX = new Set(['Brent','JCC']);
   const toLots = (idx, monthLabel, tbtu) => {
-    if (OIL_IDX.has(idx)) return null;
     const lot = lotSizeMMBtu(idx, monthLabel);
     return tbtu * 1e6 / lot;
   };
@@ -6377,7 +6379,6 @@ function renderExposureGrid(view) {
       const v = cellValue(i, m, data[i]?.[m] ?? 0);
       return v == null ? a : a + v;
     }, 0);
-    if (unit === 'lots' && OIL_IDX.has(i)) rowTotals[i] = null;
   });
   // Per-column totals
   const colTotals = {};
@@ -6428,7 +6429,7 @@ function renderExposureGrid(view) {
 
   // Update card title — reflects unit + view.
   const unitLabel = unit === 'lots'
-    ? 'lots (HH 2,500 · JKM/TFU 10,000 · TTF/THE/PEG/ZEE/PSV/PVB ≈ 2,460–2,540 MWh-based · NBP 3,000–3,100 therm-based — month-specific · oil rows omitted)'
+    ? 'lots (HH 2,500 · JKM/TFU 10,000 · TTF/THE/PEG/ZEE/PSV/PVB ≈ 2,460–2,540 MWh-based · NBP 3,000–3,100 therm-based · Brent/JCC 1,000 bbl, slope-baked — all month-specific)'
     : 'TBtu';
   const titles = { physical: `Physical exposure · net ${unitLabel} by index × month`,
                    hedges:   `Paper hedges · ${unitLabel}-equivalent by index × month`,

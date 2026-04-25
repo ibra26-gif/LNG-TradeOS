@@ -1504,6 +1504,53 @@ setTimeout(() => {
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
+    console.log('SECTION 36 · Brent slope-aware exposure → lots conversion');
+    console.log(bar);
+    // User reference example (2026-04-25):
+    //   Cargo 3.5 TBtu × 13% Brent slope
+    //   $ exposure = 3.5e6 × 0.13 = $455,000 per $1/bbl Brent move
+    //   Brent swap lot = 1,000 bbl → 455 lots needed to hedge
+    // The same math holds for Dated Brent (only the hedge instrument differs).
+    // Use vesselCbm × fillPct × energyFactor / 1e6 = 3.5 TBtu loaded EXACTLY:
+    //   174,000 × 0.985 × 20.4188 / 1e6 = 3.50000 TBtu
+    // Set bogRate=0 so v.edq = v.loaded (FOB/DES sell uses edq), matching 3.5 cleanly.
+    const probeBrent = {
+      id:'TEST-BRENT-SLOPE', status:'Fixed', cargoType:'Equity', cpty:'Test',
+      dealType:'single', incoterm:'FOB/DES', coverage:'covered',
+      loadPort:'Sabine Pass', dischPort:'Tokyo Bay',
+      loadMonth:'May-28', sellMonth:'May-28',
+      buyPricingAnchor:'May-28', sellPricingAnchor:'May-28',
+      vesselCbm:174000, fillPct:98.5, energyFactor:20.4188, ladenDays:25, bogRate:0,
+      buy:  { idx:'HH',    formula:'Index + Spread', mult:1.0, spread:0 },
+      sell: { idx:'Brent', formula:'% × Index',      mult:0.13, spread:0 },
+      freightMode:'manual', freightManual:{freight:0,bog:0,other:0},
+    };
+    w.bookCargo(probeBrent);
+    const audBrent = w.exposureAudit('Brent', 'May-28', 'physical');
+    const probeRow = audBrent.contributors.find(r => r.cargoId === 'TEST-BRENT-SLOPE');
+    check('Brent slope cargo present in audit', !!probeRow);
+    if (probeRow) {
+      check('Brent slope = 0.13 (13% × Index)',
+            Math.abs(probeRow.slope - 0.13) < 1e-6, `got ${probeRow.slope}`);
+      check('Brent loaded qty ≈ 3.5 TBtu',
+            Math.abs(probeRow.qty - 3.5) < 0.05, `got ${probeRow.qty.toFixed(3)}`);
+      // share = +qty × slope = +3.5 × 0.13 = +0.455 TBtu-eq (sell leg → positive)
+      check('Brent share = qty × slope ≈ +0.455 TBtu-eq',
+            Math.abs(probeRow.share - 0.455) < 0.01, `got ${probeRow.share.toFixed(4)}`);
+      // lots = share × 1e6 / 1000 (bbl/lot) = 455
+      check('Brent lots ≈ 455 (matches user reference 3.5 TBtu × 13% / 1000 bbl)',
+            Math.abs(probeRow.lots - 455) < 5, `got ${probeRow.lots.toFixed(1)}`);
+    }
+    // Also confirm the cell total reconciles (single contributor)
+    check('Brent May-28 cell total matches share',
+          Math.abs(audBrent.totalTBtu - (probeRow?.share || 0)) < 1e-6,
+          `total=${audBrent.totalTBtu.toFixed(4)} vs share=${(probeRow?.share || 0).toFixed(4)}`);
+    check('Brent May-28 totalLots ≈ 455',
+          Math.abs(audBrent.totalLots - 455) < 5, `got ${audBrent.totalLots.toFixed(1)}`);
+    w.deleteCargo('TEST-BRENT-SLOPE');
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
     console.log('SUMMARY');
     console.log(bar);
     console.log(`    Passed: ${passed}`);
