@@ -4600,6 +4600,36 @@ function cargoLoadedCbm(c) {
 // revenue, supply, shipping, mtm, unitMargin, freight }.
 // Mirrors the math in cargoPreview() — factored into a pure function so derived views
 // (Morning Book, Exposure, etc.) can call it without touching the DOM.
+// Discharge-port → CP.phys key. Used by computeCargoValues to apply the
+// destination-specific phys differential when an FOB/DES cargo is "unsold"
+// (no real sell formula yet — marked against a reference market).
+// Keys here are the iframe's PORT_COSTS / NM_DB display names.
+const DISCH_TO_PHYS = {
+  'Gate':'nwe', 'Rotterdam':'nwe', 'Zeebrugge':'nwe',
+  'Isle of Grain':'uk', 'South Hook':'uk',
+  'Huelva':'iberia',
+  'Krk':'krk', 'Revithoussa':'rev',
+  'Panigaglia LNG':'italy', 'Livorno':'italy', 'Rovigo':'italy',
+  'Piombino':'italy', 'Ravenna':'italy',
+  'Klaipeda':'klaipeda', 'Inkoo':'inkoo', 'Swinoujscie':'swino',
+  'Ain Sukhna':'ain', 'Aliaga':'ali',
+  'Tokyo Bay':'jktc', 'Sodegaura':'jktc', 'Incheon':'jktc',
+  'Caofeidian':'jktc', 'Tianjin':'jktc', 'Gwangyang':'jktc',
+  'Dahej':'mei', 'Port Qasim':'mei',
+  'Map Ta Phut':'thailand', 'Singapore':'jktc',
+  'Guanabara':'brazil', 'Quintero':'brazil',
+  'Escobar':'argentina', 'Bahia Blanca':'argentina',
+};
+function _physForDest(dischPort, monthLabel) {
+  const phys = window.__externalPhysDiffs;
+  if (!phys || !dischPort || !monthLabel) return 0;
+  const key = DISCH_TO_PHYS[dischPort];
+  if (!key || !phys[key]) return 0;
+  const v = phys[key][monthLabel];
+  return (v != null && isFinite(v)) ? v : 0;
+}
+window._physForDest = _physForDest;
+
 function computeCargoValues(c) {
   // Resolve prices.
   //
@@ -4642,10 +4672,26 @@ function computeCargoValues(c) {
   // Buy price: refBuy if coverage is uncovered, else compute from buy leg on loadMonth
   const buyPx  = c.coverage === 'uncovered' ? resolveLeg(null, c.loadMonth, c.refBuy)
                                             : resolveLeg(c.buy,  c.loadMonth,  null, c.buyPricingAnchor);
-  const sellPx = c.coverage === 'unsold'    ? resolveLeg(null, c.sellMonth, c.refSell)
+  let   sellPx = c.coverage === 'unsold'    ? resolveLeg(null, c.sellMonth, c.refSell)
                                             : resolveLeg(c.sell, c.sellMonth, null, c.sellPricingAnchor);
   const [iBuy, iSell] = c.incoterm.split('/');
   const freightApplies = (iBuy === 'FOB' && iSell === 'DES');
+  // ── Auto-apply destination phys diff (DES mark) for UNSOLD FOB/DES cargoes ──
+  // Only one incoterm shape needs voyage + DES math:
+  //   - DES/DES is a pass-through (both legs explicit, no freight in book)
+  //   - FOB/FOB title flips at load (no freight, no BOG)
+  //   - DES/FOB doesn't exist as a real trade
+  //   - FOB/DES is the only one where "where does it deliver" matters.
+  // For FOB/DES UNSOLD we mark sellPx as `index + phys[destination]` so the
+  // P&L reflects the actual DES the cargo is marked against, not a flat
+  // index. User-set `refSell.override` still wins.
+  if (
+    c.coverage === 'unsold' && freightApplies &&
+    (!c.refSell?.override || c.refSell.override <= 0) &&
+    c.refSell?.month
+  ) {
+    sellPx += _physForDest(c.dischPort, c.refSell.month);
+  }
   const loaded = (cargoLoadedCbm(c) * c.energyFactor) / 1e6;   // TBtu
   const bogFrac  = freightApplies ? (c.bogRate / 100) * c.ladenDays : 0;
   const bogLaden = freightApplies ? loaded * bogFrac : 0;
@@ -4658,8 +4704,19 @@ function computeCargoValues(c) {
   let shipping = 0;
   let freightPerMMBtu = 0;
   if (freightApplies) {
-    const fm = c.freightManual || { freight:0, bog:0, other:0 };
-    freightPerMMBtu = (fm.freight || 0) + (fm.bog || 0) + (fm.other || 0);
+    // freightMode='voyage' → derive from calcVoyage (BLNG curve × voyage days
+    // + bunker + port + ETS + canal). Fall back to manual if calcVoyage can't
+    // resolve the route (missing NM, missing port cost, etc).
+    if (c.freightMode === 'voyage' && typeof calcVoyage === 'function') {
+      const v = calcVoyage(c.loadPort, c.dischPort, c.loadMonth, loaded, c.freightVoyage?.charterRate);
+      if (v && isFinite(v.freightPerMMBtu) && v.freightPerMMBtu > 0) {
+        freightPerMMBtu = v.freightPerMMBtu;
+      }
+    }
+    if (freightPerMMBtu === 0) {
+      const fm = c.freightManual || { freight:0, bog:0, other:0 };
+      freightPerMMBtu = (fm.freight || 0) + (fm.bog || 0) + (fm.other || 0);
+    }
     shipping = freightPerMMBtu * edq;  // $M (consistent with cargoPreview's EDQ basis)
   }
   const mtm = revenue - supply - shipping;

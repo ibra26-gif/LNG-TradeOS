@@ -1221,6 +1221,75 @@ setTimeout(() => {
 
     // ══════════════════════════════════════════════
     console.log('\n' + bar);
+    console.log('SECTION 31 · DES auto-mark + voyage freight for FOB/DES MTM');
+    console.log(bar);
+    // For FOB/DES UNSOLD cargoes we mark sellPx as index + phys[destination].
+    // For freightMode='voyage' we replace manual freight with calcVoyage output.
+    check('_physForDest helper exposed', typeof w._physForDest === 'function');
+
+    // Push a phys-diff payload so the iframe has something to look up.
+    w.applyExternalData({
+      reason: 'phys-test',
+      physDiffs: { nwe: { 'Jul-26': -0.40, 'Aug-26': -0.50 }, jktc: { 'Jul-26': 0.10 } },
+    });
+    check('Phys diff lookup nwe Jul-26 = -0.40', Math.abs(w._physForDest('Gate', 'Jul-26') - (-0.40)) < 1e-9);
+    check('Phys diff lookup jktc Jul-26 = +0.10', Math.abs(w._physForDest('Tokyo Bay', 'Jul-26') - 0.10) < 1e-9);
+    check('Unknown port → 0',                     w._physForDest('Mars Base', 'Jul-26') === 0);
+
+    // Build an unsold FOB/DES cargo to NWE (Gate) — sellPx should pick up
+    // the -$0.40 phys diff on top of the TTF curve.
+    const unsoldFobDes = {
+      id:'TEST-UNSOLD-NWE', status:'Fixed', cargoType:'Equity', cpty:'TestCpty',
+      dealType:'single', incoterm:'FOB/DES', coverage:'unsold',
+      loadPort:'Sabine Pass', dischPort:'Gate',
+      loadMonth:'Jul-26', sellMonth:'Jul-26',
+      vesselCbm:174000, fillPct:98.5, energyFactor:23.1, ladenDays:18, bogRate:0.10,
+      buy:{idx:'HH',formula:'% × Index + Spread',mult:1.15,spread:1.90},
+      sell:null,
+      refSell:{idx:'TTF',month:'Jul-26',override:null},
+      freightMode:'manual', freightManual:{freight:1.53,bog:0,other:0},
+    };
+    const ttfJul = w.curveLookup('Jul-26', 'TTF');
+    const vUns = w.computeCargoValues(unsoldFobDes);
+    check('Unsold FOB/DES sellPx = TTF Jul-26 + phys.nwe',
+          Math.abs(vUns.sellPx - (ttfJul + (-0.40))) < 1e-6,
+          `got ${vUns.sellPx?.toFixed(3)}, expected ${(ttfJul - 0.40).toFixed(3)}`);
+    // Override beats auto: setting refSell.override should ignore the phys diff.
+    const overrideCargo = JSON.parse(JSON.stringify(unsoldFobDes));
+    overrideCargo.refSell.override = 99.99;
+    const vOvr = w.computeCargoValues(overrideCargo);
+    check('Override beats phys auto-add', Math.abs(vOvr.sellPx - 99.99) < 1e-6);
+
+    // DES/DES is a pass-through — phys auto-add MUST NOT apply (refSell still
+    // resolves but freightApplies=false means no DES auto-add gating triggers).
+    const desDesUnsold = JSON.parse(JSON.stringify(unsoldFobDes));
+    desDesUnsold.id = 'TEST-DESDES';
+    desDesUnsold.incoterm = 'DES/DES';
+    delete desDesUnsold.refSell.override;
+    const vDD = w.computeCargoValues(desDesUnsold);
+    check('DES/DES unsold: NO phys auto-add (sellPx = bare TTF)',
+          Math.abs(vDD.sellPx - ttfJul) < 1e-6,
+          `got ${vDD.sellPx?.toFixed(3)}, expected ${ttfJul?.toFixed(3)}`);
+
+    // Voyage freight: build a covered FOB/DES with freightMode='voyage' on a
+    // route where calcVoyage has data (Sabine → Gate). The shipping value
+    // should differ from the manual-only path.
+    const voyCargo = JSON.parse(JSON.stringify(unsoldFobDes));
+    voyCargo.id = 'TEST-VOY';
+    voyCargo.coverage = 'covered';
+    voyCargo.sell = { idx:'TTF', formula:'Index + Spread', mult:1.0, spread:0 };
+    voyCargo.refSell = null;
+    voyCargo.freightMode = 'voyage';
+    voyCargo.freightVoyage = { charterRate: 0 };  // let curve drive it
+    const vV = w.computeCargoValues(voyCargo);
+    check('Voyage mode: shipping > 0',  vV.shipping > 0,
+          `shipping = $${vV.shipping?.toFixed(3)}M, freight = $${vV.freight?.toFixed(3)}/MMBtu`);
+    check('Voyage mode: freight differs from 1.53 manual fallback',
+          Math.abs(vV.freight - 1.53) > 0.01,
+          `freight = $${vV.freight?.toFixed(3)}/MMBtu`);
+
+    // ══════════════════════════════════════════════
+    console.log('\n' + bar);
     console.log('SUMMARY');
     console.log(bar);
     console.log(`    Passed: ${passed}`);

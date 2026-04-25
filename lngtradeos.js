@@ -19840,15 +19840,21 @@ SAM.init = function() {
     }
     return out;
   }
-  // Phys diffs — main app's CP.phys (per-destination 24-month arrays). Pass
-  // straight through; iframe stores under window.__externalPhysDiffs for
-  // downstream consumers (e.g. DES price hints in the cargo form, future).
+  // Phys diffs — main app's CP.phys is per-destination 24-month arrays
+  // aligned to ML[0]. Convert to month-keyed objects so the iframe can do
+  // physDiff.nwe['Jul-26'] without re-deriving the ML index. Skips entries
+  // that are all null.
   function _pvBuildPhys(){
     if (typeof CP === 'undefined' || !CP || !CP.phys) return null;
     const out = {};
     Object.keys(CP.phys).forEach(k => {
       const arr = CP.phys[k];
-      if (Array.isArray(arr) && arr.some(v => v != null)) out[k] = arr.slice();
+      if (!Array.isArray(arr)) return;
+      const monthMap = {};
+      ML.forEach((m, i) => {
+        if (arr[i] != null && isFinite(arr[i])) monthMap[m] = +arr[i];
+      });
+      if (Object.keys(monthMap).length) out[k] = monthMap;
     });
     return out;
   }
