@@ -13165,10 +13165,10 @@ const RG_DIFF_DEF={
 };
 const RG_T_DEF=[
   {id:'zeebrugge',name:'Zeebrugge',country:'Belgium',region:'NW Europe',op:'Fluxys',type:'Onshore',hub:'ZEE',gik:1.30,slot:624247,cqs:0.66,mar:0,tt:'lump_sum',trf:0},
-  {id:'dunkerque',name:'Dunkerque',country:'France',region:'NW Europe',op:'Dunkerque LNG',type:'Onshore',hub:'PEG',gik:1.00,gik_cl:1.00,slot:0,cqs:0.75,mar:0,tt:'per_mmbtu',trf:0.3341},
-  {id:'foscavaou',name:'Fos Cavaou',country:'France',region:'S Europe',op:'Elengy',type:'Onshore',hub:'PEG',gik:1.00,gik_cl:1.00,slot:0,cqs:0.70,mar:0,tt:'per_mmbtu',trf:0.3341},
-  {id:'montoir',name:'Montoir',country:'France',region:'NW Europe',op:'Elengy',type:'Onshore',hub:'PEG',gik:1.00,gik_cl:1.00,slot:0,cqs:0.80,mar:0,tt:'per_mmbtu',trf:0.3048},
-  {id:'fostonkin',name:'Fos Tonkin',country:'France',region:'S Europe',op:'Elengy',type:'Onshore',hub:'PEG',gik:1.00,gik_cl:1.00,slot:0,cqs:0.85,mar:0,tt:'per_mmbtu',trf:0.4484},
+  {id:'dunkerque',name:'Dunkerque',country:'France',region:'NW Europe',op:'Dunkerque LNG',type:'Onshore',hub:'PEG',gik:0.00,gik_cl:0.00,slot:0,cqs:0.75,mar:0,tt:'per_mmbtu',trf:0.3341},
+  {id:'foscavaou',name:'Fos Cavaou',country:'France',region:'S Europe',op:'Elengy',type:'Onshore',hub:'PEG',gik:0.10,gik_cl:0.10,slot:0,cqs:0.70,mar:0,tt:'per_mmbtu',trf:0.3283},
+  {id:'montoir',name:'Montoir',country:'France',region:'NW Europe',op:'Elengy',type:'Onshore',hub:'PEG',gik:0.50,gik_cl:0.50,slot:0,cqs:0.80,mar:0,tt:'per_mmbtu',trf:0.2961},
+  {id:'fostonkin',name:'Fos Tonkin',country:'France',region:'S Europe',op:'Elengy',type:'Onshore',hub:'PEG',gik:0.40,gik_cl:0.40,slot:0,cqs:0.85,mar:0,tt:'per_mmbtu',trf:0.4368},
   {id:'brunsbuttel',name:'Brunsbuttel',country:'Germany',region:'NW Europe',op:'RWE/DET',type:'FSRU',hub:'THE',gik:0.70,gik_cl:0.90,slot:700000,cqs:0.85,mar:0,tt:'per_mmbtu',trf:3.86},
   {id:'wilhelmshaven1',name:'Wilhelmshaven 1',country:'Germany',region:'NW Europe',op:'Uniper/DET',type:'FSRU',hub:'THE',gik:0.70,gik_cl:2.50,slot:680000,cqs:0.80,mar:0,tt:'per_mmbtu',trf:1.01},
   {id:'wilhelmshaven2',name:'Wilhelmshaven 2',country:'Germany',region:'NW Europe',op:'TES',type:'FSRU',hub:'THE',gik:1.30,gik_cl:2.30,slot:680000,cqs:0.80,mar:0,tt:'per_mmbtu',trf:2.35},
