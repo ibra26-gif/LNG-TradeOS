@@ -13175,13 +13175,13 @@ const RG_T_DEF=[
   {id:'gate',name:'Gate Terminal',country:'Netherlands',region:'NW Europe',op:'Gasunie/Vopak',type:'Onshore',hub:'TTF',gik:0.50,slot:750000,cqs:0.70,mar:0,tt:'lump_sum',trf:0},
   {id:'adriatic',name:'Adriatic LNG',country:'Italy',region:'Italy',op:'VTTI/Snam',type:'Offshore',hub:'PSV',gik:0.75,slot:700000,cqs:0.55,mar:235394,tt:'lump_sum',trf:0},
   {id:'olttoscana',name:'OLT Toscana',country:'Italy',region:'Italy',op:'OLT Offshore',type:'FSRU',hub:'PSV',gik:0.73,slot:550000,cqs:0.60,mar:0,tt:'lump_sum',trf:0},
-  {id:'panigaglia',name:'Panigaglia',country:'Italy',region:'Italy',op:'Snam',type:'Onshore',hub:'PSV',gik:1.40,slot:450000,cqs:0.65,mar:0,tt:'lump_sum',trf:0},
+  {id:'panigaglia',name:'Panigaglia',country:'Italy',region:'Italy',op:'Snam',type:'Onshore',hub:'PSV',gik:1.20,slot:450000,cqs:0.65,mar:0,tt:'lump_sum',trf:0},
   {id:'piombino',name:'Piombino',country:'Italy',region:'Italy',op:'Snam',type:'FSRU',hub:'PSV',gik:1.10,slot:500000,cqs:0.58,mar:0,tt:'lump_sum',trf:0},
-  {id:'ravenna',name:'Ravenna',country:'Italy',region:'Italy',op:'Snam',type:'FSRU',hub:'PSV',gik:1.10,slot:520000,cqs:0.60,mar:0,tt:'lump_sum',trf:0},
+  {id:'ravenna',name:'Ravenna',country:'Italy',region:'Italy',op:'Snam',type:'FSRU',hub:'PSV',gik:1.40,slot:520000,cqs:0.60,mar:0,tt:'lump_sum',trf:0},
   {id:'revithoussa',name:'Revithoussa',country:'Greece',region:'SE Europe',op:'DESFA',type:'Onshore',hub:'TTF',gik:1.00,slot:600000,cqs:0.75,mar:0,tt:'lump_sum',trf:0},
   {id:'krk',name:'KRK',country:'Croatia',region:'SE Europe',op:'LNG Hrvatska',type:'FSRU',hub:'TTF',gik:1.00,slot:580000,cqs:0.70,mar:0,tt:'lump_sum',trf:0},
-  {id:'klaipeda',name:'Klaipeda',country:'Lithuania',region:'Baltic',op:'KN Energies',type:'FSRU',hub:'TTF',gik:1.00,slot:0,cqs:0.75,mar:0,tt:'per_mmbtu',trf:0.800},
-  {id:'swinoujscie',name:'Swinoujscie',country:'Poland',region:'Baltic',op:'Gaz-System',type:'Onshore',hub:'TTF',gik:0.91,slot:580000,cqs:0.70,mar:0,tt:'lump_sum',trf:0},
+  {id:'klaipeda',name:'Klaipeda',country:'Lithuania',region:'Baltic',op:'KN Energies',type:'FSRU',hub:'TTF',gik:1.00,slot:0,cqs:0.75,mar:0,tt:'per_mmbtu',trf:0.5393},
+  {id:'swinoujscie',name:'Swinoujscie',country:'Poland',region:'Baltic',op:'Gaz-System',type:'Onshore',hub:'TTF',gik:1.50,slot:580000,cqs:0.70,mar:0,tt:'lump_sum',trf:0},
   {id:'inkoo',name:'Inkoo',country:'Finland',region:'Baltic',op:'Gasgrid',type:'FSRU',hub:'TTF',gik:3.00,gik_cl:3.00,slot:650000,cqs:0.80,mar:0,tt:'lump_sum',trf:0},
   {id:'barcelona',name:'Barcelona',country:'Spain',region:'Iberia',op:'Enagas',type:'Onshore',hub:'PVB',gik:0.50,slot:400000,cqs:0.45,mar:0,tt:'lump_sum',trf:0},
   {id:'cartagena',name:'Cartagena',country:'Spain',region:'Iberia',op:'Enagas',type:'Onshore',hub:'PVB',gik:0.50,slot:400000,cqs:0.45,mar:0,tt:'lump_sum',trf:0},
@@ -13191,7 +13191,7 @@ const RG_T_DEF=[
   {id:'sagunto',name:'Sagunto',country:'Spain',region:'Iberia',op:'Saggas',type:'Onshore',hub:'PVB',gik:0.50,slot:420000,cqs:0.48,mar:0,tt:'lump_sum',trf:0},
   {id:'sines',name:'Sines',country:'Portugal',region:'Iberia',op:'REN',type:'Onshore',hub:'PVB',gik:0.75,slot:480000,cqs:0.55,mar:0,tt:'lump_sum',trf:0},
   {id:'dragon',name:'Dragon LNG',country:'UK',region:'UK',op:'Dragon LNG',type:'Onshore',hub:'NBP',gik:0.30,slot:500000,cqs:0.50,mar:0,tt:'lump_sum',trf:0},
-  {id:'isleofgrain',name:'Isle of Grain',country:'UK',region:'UK',op:'Centrica/ECP',type:'Onshore',hub:'NBP',gik:0.25,slot:480000,cqs:0.45,mar:0,tt:'lump_sum',trf:0},
+  {id:'isleofgrain',name:'Isle of Grain',country:'UK',region:'UK',op:'Centrica/ECP',type:'Onshore',hub:'NBP',gik:0.25,slot:480000,cqs:0.45,mar:0,tt:'per_mmbtu',trf:0.4836},
   {id:'southhook',name:'South Hook',country:'UK',region:'UK',op:'QatarEnergy',type:'Onshore',hub:'NBP',gik:0.20,slot:450000,cqs:0.40,mar:0,tt:'lump_sum',trf:0},
   {id:'stade',name:'Stade',country:'Germany',region:'NW Europe',op:'DET',type:'FSRU',hub:'THE',gik:0.50,gik_cl:2.20,slot:0,cqs:0,mar:0,tt:'per_mmbtu',trf:2.42}
 ];
@@ -13750,31 +13750,31 @@ function rgNBK(){
 function rgKB(){
   const data=[
     {n:'Zeebrugge',c:'Belgium',gik:'1.30% — HIGHEST GIK',cost:'€624K/slot — CREG regulated, indexed monthly',hub:'ZEE (TTF proxy)',access:'Annual primary + FCFS spot 60d ahead. Ascending auction (Fluxys EDP).',notes:'Slot ~40 tides (~10.3 days). Connects ZEE/TTF/NBP/PEG.'},
-    {n:'Dunkerque',c:'France',gik:'~1.0%',cost:'CRE-regulated ATTM7 — 4yr framework',hub:'PEG',access:'Short-term if primary unsold. Contact Dunkerque LNG.',notes:'13 bcm/yr. North coast. Access PEG/TTF/ZEE/NBP.'},
-    {n:'Fos Cavaou',c:'France',gik:'~1.0%',cost:'€1.14/MWh (ATTM7 Apr-25)',hub:'PEG',access:'SPOT tariff after D-20 of M-1. FCFS.',notes:'Pooling with Montoir/Fos Tonkin. 10 bcm/yr.'},
-    {n:'Montoir',c:'France',gik:'~1.0%',cost:'€1.04/MWh — CHEAPEST Elengy',hub:'PEG',access:'SPOT after 20th of M-1.',notes:'Atlantic location. Americas/WAF. Project Ulysse €220M 2025-28.'},
-    {n:'Fos Tonkin',c:'France',gik:'~1.0%',cost:'€1.53/MWh — MOST EXPENSIVE Elengy',hub:'PEG',access:'Same SPOT as other Elengy terminals.',notes:'Oldest French terminal (1972). 1.5 bcm/yr. Elengy pooling.'},
-    {n:'Brunsbuttel',c:'Germany',gik:'0.7% OL / 0.9% CL',cost:'€3.86/MMBtu per_mmbtu — MOST EXPENSIVE DET',hub:'THE',access:'DET descending auction.',notes:'PER_MMBTU: cost scales with cargo. Non-delivery penalty 30% min €600K.'},
-    {n:'Wilhelmshaven 1',c:'Germany',gik:'0.7% OL / 2.5% CL — LARGEST JUMP',cost:'€1.01/MMBtu — CHEAPEST DET',hub:'THE',access:'DET descending auction.',notes:'Min slot 125,000 m3. Winter: 2.5% CL — material cost impact.'},
-    {n:'Wilhelmshaven 2',c:'Germany',gik:'1.3% OL / 2.3% CL',cost:'€2.35/MMBtu',hub:'THE',access:'DET descending auction.',notes:'Higher OL GIK (1.3%) than WHV1. H2-ready. TES strategic partner.'},
-    {n:'Stade',c:'Germany',gik:'0.5% OL (LOWEST DET) / 2.2% CL',cost:'€2.42/MMBtu (H2 2026 only)',hub:'THE',access:'DET auction from Jul 2026.',notes:'NOT OPERATIONAL before 01/07/2026. FSRU Energos Force. Min 125,000 m3.'},
+    {n:'Dunkerque',c:'France',gik:'0% confirmed',cost:'TPA-EXEMPT under 2010 ministerial order through 31 Jan 2037',hub:'PEG',access:'Short-term if primary unsold. Contact Dunkerque LNG.',notes:'13 bcm/yr. ORV + Gravelines waste heat → 0% GIK confirmed by Fluxys disclosure. North coast. Access PEG/TTF/ZEE/NBP.'},
+    {n:'Fos Cavaou',c:'France',gik:'0.1%',cost:'€1.12/MWh — CRE Délibération 2025-41 (ATTM7)',hub:'PEG',access:'SPOT tariff after D-20 of M-1. FCFS.',notes:'EU ETS pass-through. Pooling with Montoir/Fos Tonkin. 10 bcm/yr.'},
+    {n:'Montoir',c:'France',gik:'0.5%',cost:'€1.01/MWh — CRE Délibération 2025-41 (ATTM7) — CHEAPEST Elengy',hub:'PEG',access:'SPOT after 20th of M-1.',notes:'EU ETS pass-through. Atlantic location → Americas/WAF. Project Ulysse 2025-2028.'},
+    {n:'Fos Tonkin',c:'France',gik:'0.4%',cost:'€1.49/MWh — CRE Délibération 2025-41 (ATTM7) — MOST EXPENSIVE Elengy',hub:'PEG',access:'Same SPOT as other Elengy terminals.',notes:'EU ETS pass-through. Med-Max only. ⚠ ACTIVITY ENDS end-2028. Oldest French terminal (1972), 1.5 bcm/yr.'},
+    {n:'Brunsbuttel',c:'Germany',gik:'0.7% OL / 0.9% CL',cost:'€3.86/MMBtu (BNetzA BK9-25/102, 18 Dec 2025 — full year 2026) — MOST EXPENSIVE DET',hub:'THE',access:'DET descending auction.',notes:'⚠ BNetzA tariff is auction CEILING — actual clearing 5-10× lower in 2025-26. PER_MMBTU: cost scales with cargo. Non-delivery penalty 30% min €600K.'},
+    {n:'Wilhelmshaven 1',c:'Germany',gik:'0.7% OL / 2.5% CL — LARGEST JUMP',cost:'€1.01/MMBtu (BNetzA BK9-25/101, 18 Dec 2025 — full year 2026) — CHEAPEST DET',hub:'THE',access:'DET descending auction.',notes:'⚠ BNetzA tariff is auction CEILING — actual clearing 5-10× lower in 2025-26. Min slot 125,000 m3. Winter CL 2.5% — material cost impact.'},
+    {n:'Wilhelmshaven 2',c:'Germany',gik:'1.3% OL / 2.3% CL',cost:'€2.35/MMBtu (BNetzA BK9-25/104, 18 Dec 2025 — full year 2026)',hub:'THE',access:'DET descending auction.',notes:'⚠ BNetzA tariff is auction CEILING — actual clearing 5-10× lower in 2025-26. Higher OL GIK (1.3%) than WHV1. H2-ready. TES strategic partner.'},
+    {n:'Stade',c:'Germany',gik:'0.5% OL (LOWEST DET) / 2.2% CL',cost:'€2.42/MMBtu (BNetzA BK9-25/103, 19 Feb 2026)',hub:'THE',access:'DET auction.',notes:'⚠ TARIFF VALID H2-2026 ONLY (01.07.2026–31.12.2026). NOT OPERATIONAL before 01/07/2026, post-2026 tariff TBD. ⚠ BNetzA tariff is auction CEILING — actual clearing 5-10× lower. FSRU Energos Force. Min 125,000 m3.'},
     {n:'Lubmin',c:'Germany',gik:'Not disclosed',cost:'PRIVATE — no regulated tariff',hub:'THE/GASCADE',access:'Direct negotiation with Deutsche ReGas.',notes:'Only private FSRU in Germany. Customers: BASF, Equinor, TotalEnergies, MET.'},
     {n:'Gate Terminal',c:'Netherlands',gik:'~0.5%',cost:'€12.5M/BCM/yr throughput right (TRADEABLE)',hub:'TTF',access:'FCFS short-term. Secondary market.',notes:'Largest EU terminal (→20 bcm, 4th tank 2026). GTS entry tariff +50% in 2026 (ACM).'},
     {n:'Adriatic LNG',c:'Italy',gik:'~0.75%',cost:'ARERA-regulated RTRG 2024-2027. Maritime: €235,394',hub:'PSV',access:'Spot if available. Open Season 2025 for 2029-2050.',notes:'ONLY offshore GBS in Europe. Predominantly Qatari cargoes.'},
     {n:'OLT Toscana',c:'Italy',gik:'~0.73%',cost:'ARERA-regulated RTRG',hub:'PSV',access:'Contact Snam.',notes:'3.75→5 bcm/yr. Snam acquiring 100% (Dec 2025, 7.6× EBITDA).'},
-    {n:'Panigaglia',c:'Italy',gik:'1.40% — HIGHEST Italy',cost:'ARERA-regulated RTRG',hub:'PSV',access:'Contact Snam. Limited spot.',notes:'Oldest Italian terminal (1971). Snam €1bn expansion 2026-30.'},
+    {n:'Panigaglia',c:'Italy',gik:'1.20% — ARERA Delibera 293/2025/R/gas',cost:'ARERA-regulated RTRG · Snam 2026 tariff PDF QCP=1.20%',hub:'PSV',access:'Contact Snam. Limited spot.',notes:'Oldest Italian terminal (1971). Snam €1bn expansion 2026-30.'},
     {n:'Piombino',c:'Italy',gik:'~1.10%',cost:'ARERA-regulated RTRG',hub:'PSV',access:'Contact Snam.',notes:'MOST ACTIVE Italian terminal 2024: 3.59 bcm (39 unloadings). 100% Snam.'},
-    {n:'Ravenna',c:'Italy',gik:'~1.10%',cost:'ARERA-regulated RTRG',hub:'PSV',access:'Contact Snam.',notes:'Online May 2025 — NEWEST Italian terminal. Adriatic Backbone integration 2026.'},
+    {n:'Ravenna',c:'Italy',gik:'1.40% — ARERA Delibera 369/2025/R/gas',cost:'ARERA-regulated RTRG · Snam 2026 tariff PDF QCP=1.40%',hub:'PSV',access:'Contact Snam.',notes:'Online May 2025 — NEWEST Italian terminal. Adriatic Backbone integration 2026.'},
     {n:'Revithoussa',c:'Greece',gik:'~1.0%',cost:'RAAEY-regulated',hub:'TTF (no Greek hub)',access:'Contact DESFA.',notes:'ONLY Greek LNG import — strategic monopoly. Enagás ~20% in DESFA.'},
     {n:'KRK',c:'Croatia',gik:'~1.0%',cost:'~€1.25/MWh GCV (contracted)',hub:'TTF proxy',access:'NO spot on existing. PRISMA auction for expansion.',notes:'ACCESS-CONSTRAINED. Fully booked to 2033. Phase 1 expansion Q3 2025. EU PCI (€101.4M CEF grant).'},
-    {n:'Klaipeda',c:'Lithuania',gik:'~1.0%',cost:'Full stack 2.73 €/MWh = 0.80 €/MMBtu',hub:'TTF',access:'~4 spot cargoes/year in 2026 only.',notes:'ACCESS-CONSTRAINED. LT fully booked to 2033.'},
-    {n:'Swinoujscie',c:'Poland',gik:'~0.91%',cost:'Gaz-System regulated Tariff No.10',hub:'TTF',access:'Short-term FCFS. Polish regulator approval.',notes:'6.2 bcm/yr (expanding). LNG storage 100% discount ENDED 2026.'},
+    {n:'Klaipeda',c:'Lithuania',gik:'~1.0%',cost:'€0.5393/MMBtu (NERC O3E-792, 2026 tariff = 1.84 €/MWh)',hub:'TTF',access:'~4 spot cargoes/year in 2026 only.',notes:'ACCESS-CONSTRAINED. LT fully booked to 2033.'},
+    {n:'Swinoujscie',c:'Poland',gik:'1.50% — Gaz-System official LCR per terminal code',cost:'Gaz-System regulated Tariff No.10',hub:'TTF',access:'Short-term FCFS. Polish regulator approval.',notes:'Source: terminallng.gaz-system.pl. 6.2 bcm/yr (expanding). LNG storage 100% discount ENDED 2026.'},
     {n:'Inkoo',c:'Finland',gik:'0.80% (model) / 3.0% own-use FSRU fuel',cost:'2.46 €/MWh + Gasgrid entry',hub:'TTF (via Balticconnector)',access:'Annual procedure Jul-Aug. ~13 of 20 slots unbooked 2026.',notes:'MOST EXPENSIVE in model. 15-18% utilisation 2025.'},
-    {n:'Spanish Terminals (6)',c:'Spain',gik:'~0.5%',cost:'CNMC: Fixed Term + Variable €17.00/GWh',hub:'PVB',access:'ATR short-term via Enagás. FCFS.',notes:'LARGEST EU LNG infra. LOWEST utilisation (~34%).'},
+    {n:'Spanish Terminals (6)',c:'Spain',gik:'⚠ ESTIMATE 0.05–0.20%',cost:'CNMC: Fixed Term + Variable €17.00/GWh (peajes, not per-terminal GIK%)',hub:'PVB',access:'ATR short-term via Enagás. FCFS.',notes:'⚠ GIK ESTIMATE — no public regulator/operator source. CNMC framework uses peajes (cash €/kWh), not per-terminal GIK%. Values are technology-justified estimates. LARGEST EU LNG infra. LOWEST utilisation (~34%).'},
     {n:'Sines',c:'Portugal',gik:'~0.75%',cost:'ERSE-regulated',hub:'PVB (MIBGAS/Iberian)',access:'Contact REN Gas. FCFS.',notes:'Strategic Atlantic import point. Americas/WAF/Qatar cargoes.'},
-    {n:'Dragon LNG',c:'UK',gik:'0.30%',cost:'Ofgem-regulated + NGGT TSO Capex + TSO Opex',hub:'NBP',access:'NGGT capacity booking + terminal spot. PRISMA secondary.',notes:'UK UNIQUE: 4 cost components. NGGT TSO Opex variable ~0.02 $/MMBtu.'},
-    {n:'Isle of Grain',c:'UK',gik:'0.25%',cost:'Ofgem-regulated + NGGT (Capex + Opex)',hub:'NBP',access:'Secondary market via xoserve/PRISMA.',notes:'Centrica + ECP. NBP at discount to TTF (~1.40 $/MMBtu as of Mar-26).'},
-    {n:'South Hook',c:'UK',gik:'0.20% — LOWEST in Europe',cost:'Formula: max[(Pelec×1.08)+(Peac×2.33)+70.2] £/GWh. NTS Entry = £0/GWh.',hub:'NBP',access:'Long-term Qatari tolling. No spot.',notes:'NTS Entry Capacity = £0/GWh (unique among UK). Regas fee formula-based.'}
+    {n:'Dragon LNG',c:'UK',gik:'⚠ ESTIMATE 0.30%',cost:'Ofgem-regulated + NGGT TSO Capex + TSO Opex',hub:'NBP',access:'NGGT capacity booking + terminal spot. PRISMA secondary.',notes:'⚠ GIK ESTIMATE — TPA-exempt, no regulated GIK. Dragon discloses "up to 250 ktCO2/year" from SCV process; back-calc gives 1.14% at full design (108.7 TWh). UK UNIQUE: 4 cost components. NGGT TSO Opex variable ~0.02 $/MMBtu.'},
+    {n:'Isle of Grain',c:'UK',gik:'⚠ ESTIMATE 0.25%',cost:'€0.4836/MMBtu per_mmbtu (Spark proxy 1.65 €/MWh — TPA-exempt, no operator-published lump sum)',hub:'NBP',access:'Secondary market via xoserve/PRISMA.',notes:'⚠ GIK ESTIMATE — TPA-exempt, no regulated GIK. Centrica + ECP. NBP at discount to TTF (~1.40 $/MMBtu as of Mar-26).'},
+    {n:'South Hook',c:'UK',gik:'⚠ ESTIMATE 0.20% — LOWEST in Europe',cost:'Formula: max[(Pelec×1.08)+(Peac×2.33)+70.2] £/GWh. NTS Entry = £0/GWh.',hub:'NBP',access:'Long-term Qatari tolling. No spot.',notes:'⚠ GIK ESTIMATE — TPA-exempt, no regulated GIK. NTS Entry Capacity = £0/GWh (unique among UK). Regas fee formula-based.'}
   ];
   const rows=data.map(d=>`<tr>
     <td style="color:var(--th);font-size:10px;font-weight:500">${d.n}</td>
@@ -13785,13 +13785,20 @@ function rgKB(){
     <td style="color:#81c784;font-size:9px;max-width:150px;white-space:normal;line-height:1.4">${d.access}</td>
     <td style="color:#546e7a;font-size:9px;max-width:250px;white-space:normal;line-height:1.5">${d.notes}</td>
   </tr>`).join('');
-  return`<div class="f-sec">TERMINAL KNOWLEDGE DATABASE — ASSESSMENT MAR 2026</div>
-    <div style="color:#546e7a;font-size:9px;margin-bottom:10px">PROPRIETARY &amp; CONFIDENTIAL — Ibrahim Mar — LNG TradeOS™ — Internal Use Only</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+  return`<div class="f-sec">TERMINAL KNOWLEDGE DATABASE — REGULATORY AUDIT 2026-04-26</div>
+    <div style="color:#546e7a;font-size:9px;margin-bottom:10px">PROPRIETARY &amp; CONFIDENTIAL — Ibrahim Mar — LNG TradeOS™ — Internal Use Only · sources: BNetzA · ARERA · CRE · Gaz-System · NERC LT · Spark</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
       ${[['COST STRUCTURE','NW Europe: 3 components (Regas Capex + Opex + TSO Capex). UK unique: 4 components (adds variable TSO Opex). German DET: per_mmbtu tariff — cost scales with cargo.','#4fc3f7'],
          ['MONEYNESS FORMULA','Moneyness = Hub Price − Variable Costs − DES Price. ITM > 0. Variable = GIK + Emission + Grid(V). Hub is terminal-specific: PSV for Italy, PVB for Spain, NBP for UK.','#ffeb3b'],
          ['SLOT BIDDING','Intrinsic = Hub − DES − VarCosts. Extrinsic = optionality (70% capture typical). Max Bid = Intrinsic + Extrinsic. Recommended = 90% of max. Only bid if Total Value > Fixed Capacity.','#81c784']
       ].map(([t,d2,c])=>`<div class="f-card"><div style="color:${c};font-size:9px;letter-spacing:1px;margin-bottom:5px">${t}</div><div style="color:#546e7a;font-size:9px;line-height:1.7">${d2}</div></div>`).join('')}
+    </div>
+    <div style="background:#3d2c0d;border:1px solid #ffb74d;color:#ffeb3b;padding:8px 12px;border-radius:4px;margin-bottom:12px;font-size:10px;line-height:1.7">
+      <b>⚠ EPISTEMIC FLAGS</b> · Look for ⚠ in the table:<br>
+      • <b>Spanish + UK terminals</b>: GIK values are technology-justified ESTIMATES — no public regulator/operator source. Spain uses CNMC peajes (€/kWh, not %); UK is TPA-exempt.<br>
+      • <b>German DET (Brunsbüttel, WHV1, WHV2, Stade)</b>: BNetzA-approved tariff is the auction CEILING. Actual auction clearing prices in 2025–2026 have been ~5–10× lower.<br>
+      • <b>Stade tariff valid H2-2026 ONLY</b> (01.07.2026–31.12.2026 per BK9-25/103). Outside this window, all Stade calcs are suppressed.<br>
+      • <b>Fos Tonkin</b>: activity ENDS end-2028 per Elengy plan.
     </div>
     <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
       <th style="min-width:150px">TERMINAL</th><th>COUNTRY</th><th>GIK</th>
@@ -18939,10 +18946,18 @@ function rgHP(hub,mi){
   return rgTTF(mi)+(RG.hubSpreads[hub]||0);
 }
 
-// rgVar: seasonal GIK + Stade suppression
+// Stade tariff validity: BNetzA decision BK9-25/103 (19 Feb 2026) approves
+// 8.25 EUR/MWh for the period 01.07.2026 - 31.12.2026 ONLY. Outside this
+// window the tariff is undetermined - suppress all calcs to avoid using a
+// stale or future-uncertain value. Label-based check (not mi index based)
+// so the suppression stays correct as ML rolls forward.
+const STADE_VALID_MONTHS = new Set(['Jul-26','Aug-26','Sep-26','Oct-26','Nov-26','Dec-26']);
+function _stadeValid(mi){ return ML[mi] && STADE_VALID_MONTHS.has(ML[mi]); }
+
+// rgVar: seasonal GIK + Stade H2-2026-only suppression
 var _orig_rgVar = (typeof rgVar !== 'undefined') ? rgVar : null;
 function rgVar(t,mi){
-  if(t.id==='stade'&&mi<2)return{gik:null,emiss:null,gridV:null,total:null,suppressed:true};
+  if(t.id==='stade'&&!_stadeValid(mi))return{gik:null,emiss:null,gridV:null,total:null,suppressed:true};
   const hp=rgHP(t.hub,mi);
   const isWinter=['Oct','Nov','Dec','Jan','Feb','Mar'].some(m=>ML[mi]&&ML[mi].startsWith(m));
   const gikRate=isWinter&&t.gik_cl?t.gik_cl:t.gik;
@@ -18951,20 +18966,20 @@ function rgVar(t,mi){
   return{gik,emiss,gridV,total:gik+emiss+gridV,gikRate,ukEtsFlagged:t.hub==='NBP'};
 }
 
-// rgFix: GBP/USD for UK NBP lump_sum + Stade suppression
+// rgFix: GBP/USD for UK NBP lump_sum + Stade H2-2026-only suppression
 var _orig_rgFix = (typeof rgFix !== 'undefined') ? rgFix : null;
 function rgFix(t,mi){
-  if(t.id==='stade'&&mi!=null&&mi<2)return{fixCap:null,gridF:null,marit:null,total:null,suppressed:true};
+  if(t.id==='stade'&&mi!=null&&!_stadeValid(mi))return{fixCap:null,gridF:null,marit:null,total:null,suppressed:true};
   const fx=t.hub==='NBP'&&t.tt==='lump_sum'?RG.gbpUsd:RG.eurUsd;
   const fixCap=t.tt==='per_mmbtu'?t.trf*RG.eurUsd:t.slot*fx/RG.cargo;
   const gridF=RG.gridCapex,marit=t.mar*fx/RG.cargo;
   return{fixCap,gridF,marit,total:fixCap+gridF+marit};
 }
 
-// rgDES: null for Stade pre-Jul
+// rgDES: null for Stade outside H2-2026 window
 var _orig_rgDES = (typeof rgDES !== 'undefined') ? rgDES : null;
 function rgDES(tid,mi){
-  if(tid==='stade'&&mi<2)return null;
+  if(tid==='stade'&&!_stadeValid(mi))return null;
   return rgTTF(mi)+((RG.diffs[tid]||[])[mi]||0);
 }
 
