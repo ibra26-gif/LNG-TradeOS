@@ -2756,6 +2756,10 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
               <th>Status</th>
               <th>Load month</th>
               <th class="num" style="text-align:right">TBtu</th>
+              <th class="num" style="text-align:right" title="Sourcing leg price · $/MMBtu">FOB</th>
+              <th class="num" style="text-align:right" title="Shipping cost · $/MMBtu (FOB/DES only)">Freight</th>
+              <th class="num" style="text-align:right" title="Delivery leg price · $/MMBtu">DES</th>
+              <th class="num" style="text-align:right">Unit margin</th>
               <th class="num" style="text-align:right">Physical $M</th>
             </tr></thead>
             <tbody id="pnl-by-contract-body"></tbody>
@@ -11034,23 +11038,54 @@ function renderPnlSummary() {
   const treeMeta = document.getElementById('pnl-tree-meta');
   if (treeMeta) treeMeta.textContent = `${cargoes.length} cargoes · click groups to expand · columns: TOTAL · YTD · MTD · ${pnlFilters.year !== 'all' ? pnlFilters.year : 'rolling 12M'}`;
 
-  // ── PER-CARGO DRILL-DOWN (kept) ──────────────────────────────────────────
+  // ── PER-CARGO DRILL-DOWN (extended with FOB / Freight / DES) ─────────────
+  // Per user 2026-04-26: surface the FOB sourcing price, freight cost, and
+  // DES delivery price for every cargo so the trader sees the full P&L
+  // attribution without opening the cargo form.
+  // Convention by incoterm:
+  //   FOB/DES  → FOB = buy leg ($/MMBtu), Freight = shipping/edq, DES = sell leg
+  //   DES/DES  → FOB = '—' (no FOB, you bought DES), Freight = '—', DES_buy/DES_sell shown in DES column
+  //   FOB/FOB  → FOB shown, Freight = '—' (buyer pays), DES = '—'
   const cBody = document.getElementById('pnl-by-contract-body');
   if (cBody) {
     if (pnlSource === 'hedge') {
-      cBody.innerHTML = `<tr><td colspan="6" style="color:var(--text-3);text-align:center;padding:14px">Hedge view — see paper-trade table on the Paper Book tab</td></tr>`;
+      cBody.innerHTML = `<tr><td colspan="10" style="color:var(--text-3);text-align:center;padding:14px">Hedge view — see paper-trade table on the Paper Book tab</td></tr>`;
     } else {
       const sorted = [...phys].sort((a, b) => Math.abs(b.mtm) - Math.abs(a.mtm));
+      const fmtPx = v => (v == null || isNaN(v)) ? '—' : v.toFixed(3);
+      const fmtUm = v => (v == null || isNaN(v)) ? '—' : (v >= 0 ? '+' : '') + v.toFixed(3);
       cBody.innerHTML = sorted.map(({ c, mtm, loaded }) => {
+        const v = (typeof computeCargoValues === 'function') ? computeCargoValues(c) : null;
+        const incoterm = c.incoterm || 'FOB/DES';
+        const [iBuy, iSell] = incoterm.split('/');
+        // FOB = whichever leg is FOB (buy or sell)
+        let fobPx = null;
+        if (iBuy === 'FOB' && v?.buyPx != null)  fobPx = v.buyPx;
+        else if (iSell === 'FOB' && v?.sellPx != null) fobPx = v.sellPx;
+        // DES = whichever leg is DES
+        let desPx = null;
+        if (iSell === 'DES' && v?.sellPx != null) desPx = v.sellPx;
+        else if (iBuy === 'DES' && v?.buyPx != null) desPx = v.buyPx;
+        // For DES/DES, show both DES legs
+        const desCol = (incoterm === 'DES/DES' && v)
+          ? `<span title="DES buy / DES sell">${fmtPx(v.buyPx)} / ${fmtPx(v.sellPx)}</span>`
+          : fmtPx(desPx);
+        // Freight: only meaningful for FOB/DES (seller pays to deliver)
+        const frPx = (incoterm === 'FOB/DES' && v?.freight != null && v.freightApplies) ? v.freight : null;
+        const um = v?.unitMargin;
         return `<tr>
           <td>${c.id || '—'}</td>
-          <td>${c.dealType || '—'}</td>
+          <td><span title="incoterm: ${incoterm}">${c.dealType || '—'}</span></td>
           <td>${c.status || '—'}</td>
           <td>${c.loadMonth || '—'}</td>
           <td class="num" style="text-align:right">${(loaded || 0).toFixed(2)}</td>
+          <td class="num mono" style="text-align:right">${fmtPx(fobPx)}</td>
+          <td class="num mono" style="text-align:right;color:var(--text-3)">${frPx == null ? '—' : '−' + fmtPx(frPx)}</td>
+          <td class="num mono" style="text-align:right">${desCol}</td>
+          <td class="num mono ${className(um)}" style="text-align:right">${fmtUm(um)}</td>
           <td class="num ${className(mtm)}" style="text-align:right;font-weight:600">${fmtSigned(mtm)}</td>
         </tr>`;
-      }).join('') || `<tr><td colspan="6" style="color:var(--text-3);text-align:center;padding:14px">No cargoes match the current filters</td></tr>`;
+      }).join('') || `<tr><td colspan="10" style="color:var(--text-3);text-align:center;padding:14px">No cargoes match the current filters</td></tr>`;
     }
   }
 }

@@ -20608,6 +20608,8 @@ SAM.init = function() {
   function _pvBuildPhys(){
     if (typeof CP === 'undefined' || !CP || !CP.phys) return null;
     const out = {};
+    // 1. Base phys diffs from CP.phys (nwe, iberia, uk, france, germany,
+    //    belgium, jktc) — directly editable in the Phys Diffs tab.
     Object.keys(CP.phys).forEach(k => {
       const arr = CP.phys[k];
       if (!Array.isArray(arr)) return;
@@ -20617,6 +20619,33 @@ SAM.init = function() {
       });
       if (Object.keys(monthMap).length) out[k] = monthMap;
     });
+    // 2. Derived phys diffs from cpDerived (italy/klaipeda/inkoo/krk/ali/rev/
+    //    swino/ain/mei/thailand/brazil/argentina). These are computed per-render
+    //    via the termFr+localPremium model and aren't in CP.phys directly. The
+    //    portfolio's Physical Curves tab + cargo MTM lookups need them too.
+    if (typeof cpDerived === 'function') {
+      try {
+        const d = cpDerived();
+        const derivedMap = {
+          italy: d.phyItaly, klaipeda: d.phyKlaipeda, inkoo: d.phyInkoo,
+          rev: d.phyRev, krk: d.phyKrk, ain: d.phyAin, ali: d.phyAli,
+          swino: d.phySwino, mei: d.phyMei, thailand: d.phyThailand,
+          brazil: d.phyBrazil, argentina: d.phyArgentina,
+        };
+        Object.keys(derivedMap).forEach(k => {
+          const arr = derivedMap[k];
+          if (!Array.isArray(arr)) return;
+          const monthMap = {};
+          ML.forEach((m, i) => {
+            if (arr[i] != null && isFinite(arr[i])) monthMap[m] = +arr[i];
+          });
+          if (Object.keys(monthMap).length) out[k] = monthMap;
+        });
+      } catch (e) {
+        // cpDerived needs CP.fp + CP.freight populated; if those aren't loaded
+        // yet we just skip the derived layer (base phys still ships).
+      }
+    }
     return out;
   }
 
