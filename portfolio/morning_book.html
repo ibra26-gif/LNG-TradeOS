@@ -3519,7 +3519,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
           <span class="meta">cargo with destination flex · intrinsic + Margrabe extrinsic</span>
         </div>
         <div style="font-size: 12px; color: var(--text-3); padding: 0 0 12px; line-height:1.6">
-          For an HH-indexed FOB cargo with the right to choose between N destinations, this computes the "fair" premium over the cost basis as <strong>best intrinsic netback + extrinsic optionality value</strong>. Use for pre-tender pricing on US Gulf cargoes with discretion on routing.
+          For an HH-indexed FOB cargo with the right to choose between N destinations, this computes the <strong>Fair FOB Premium = extrinsic optionality value only</strong> (the intrinsic netback is already captured in the FOB price the seller quotes against the cost basis). The premium is what the seller charges <em>on top</em> for the right to switch destinations as prices evolve.
         </div>
 
         <!-- Inputs -->
@@ -3587,9 +3587,9 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
             <div class="metric-sub" id="ffp-extrinsic-sub">option to switch destinations</div>
           </div>
           <div class="metric">
-            <div class="metric-label">Fair FOB Premium</div>
+            <div class="metric-label">Fair FOB Premium <span class="label-hint">= extrinsic only</span></div>
             <div class="metric-value" id="ffp-total">—</div>
-            <div class="metric-sub" id="ffp-total-sub">$/MMBtu · vs basis</div>
+            <div class="metric-sub" id="ffp-total-sub">$/MMBtu · charged on top of FOB</div>
           </div>
           <div class="metric">
             <div class="metric-label">Total $ value</div>
@@ -3601,11 +3601,11 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
         <div class="card" style="margin-top:14px">
           <div class="card-head"><h3>How it's computed</h3><span class="meta">closed-form, no Monte Carlo</span></div>
           <div style="font-size:12px; color:var(--text-2); line-height:1.7">
-            <p style="margin-bottom:10px"><strong>Intrinsic per destination</strong> = DES_dest − Freight(origin→dest) − Basis. Best one wins (the "without optionality" baseline).</p>
-            <p style="margin-bottom:10px"><strong>Extrinsic</strong> = value of the right to switch between destinations as prices evolve. For 2 destinations we use the Margrabe formula; for ≥3 destinations we compound iteratively (Clark approximation). Inputs: vol per index (live realized vol from snapshots, or override), correlation (live MKT_CORR), time to expiry T = months/12.</p>
-            <p style="margin-bottom:10px"><strong>Fair FOB Premium</strong> = Best Intrinsic + Extrinsic. Add to cost basis to get the FOB price the seller can quote without giving away optionality.</p>
+            <p style="margin-bottom:10px"><strong>Intrinsic per destination</strong> = DES_dest − Freight(origin→dest) − Basis. Best one wins. Already captured in the FOB price the seller quotes — NOT part of the premium.</p>
+            <p style="margin-bottom:10px"><strong>Extrinsic</strong> = value of the right to switch between destinations as prices evolve. Closed-form Margrabe (1978): for each alternative destination, value of switching from best is S_alt·N(d1) − S_best·N(d2) where d1=(ln(S_alt/S_best)+½σ²T)/(σ√T) and σ=√(σ1²+σ2²−2ρσ1σ2). For N≥3, sum N−1 pairwise terms. Vols from getEffectiveVol layer (override > realized > default), correlation from MKT_CORR.</p>
+            <p style="margin-bottom:10px"><strong>Fair FOB Premium</strong> = Extrinsic only. This is the additional $/MMBtu the seller can quote on top of (cost basis + best intrinsic netback) to be paid for the option, not for the underlying delivery.</p>
             <p style="margin-top:10px; padding:8px 10px; background:var(--info-bg); border:1px solid var(--info-border); border-radius:4px; font-size:11.5px; color:var(--info-text)">
-              For Sabine cargoes with NWE + JKTC + MEI as live arbs, expect extrinsic ≈ $0.30-0.80/MMBtu in normal markets, more when JKM-TTF spread is volatile.
+              For Sabine cargoes with NWE + JKTC + MEI as live arbs, expect Margrabe extrinsic ≈ $0.20–0.60/MMBtu in normal markets, more when JKM-TTF spread is volatile or T is long. Conservative for highly correlated destinations (true max-of-N value &gt; sum of pairwise Margrabe).
             </p>
           </div>
         </div>
@@ -7611,11 +7611,32 @@ function renderFairFobPremium() {
   const originId = g('ffp-origin')?.value || 'sabine';
   const month    = g('ffp-month')?.value  || MONTH_ORDER[0];
   const cargoTBtu = +(g('ffp-cargo')?.value || 3.94);
-  const basis    = g('ffp-basis')?.value  || 'HHSL';
+  let   basis    = g('ffp-basis')?.value  || 'HHSL';
   const expiryMo = +(g('ffp-expiry')?.value || 3);
   const T = Math.max(0.05, expiryMo / 12);   // years, floor at 0.05 to avoid div-by-zero
   const loadPort = CURVE_ORIGINS[originId] || 'Sabine Pass';
   const sl = 1.15;
+
+  // ── Fix HHSL + non-Sabine combo (per user 2026-04-26) ──
+  // 1.15 × HH only makes economic sense for US Gulf (Sabine) cargoes — non-US
+  // origins don't price off HH-slope. Disable the option in the UI when origin
+  // isn't Sabine, and auto-fall-back to HH if previously selected.
+  const basisSel = g('ffp-basis');
+  if (basisSel) {
+    const hhslOpt = basisSel.querySelector('option[value="HHSL"]');
+    if (hhslOpt) {
+      const allow = (originId === 'sabine');
+      hhslOpt.disabled = !allow;
+      hhslOpt.textContent = allow
+        ? '1.15 × HH (Sabine convention)'
+        : '1.15 × HH (Sabine only — disabled)';
+      if (basis === 'HHSL' && !allow) {
+        basis = 'HH';
+        basisSel.value = 'HH';
+      }
+    }
+  }
+
   const selected = Array.from(destBox?.querySelectorAll('input[type=checkbox]:checked') || [])
     .map(cb => cb.value);
   const dests = CURVE_DESTS.filter(D => selected.includes(D.key));
@@ -7669,57 +7690,76 @@ function renderFairFobPremium() {
   const bestIntrinsic = valid.length ? valid[0].fob : null;
   const bestDest = valid.length ? valid[0].D : null;
 
-  // Extrinsic: Margrabe-style option to switch destinations
-  // For each destination, the underlying volatility (in $/MMBtu absolute terms)
-  // ≈ vol of its natural hub × hub price level.
-  // Margrabe extrinsic on the spread S1 - S2:
+  // ── Extrinsic: PROPER MARGRABE for exchange option max(S2 − S1, 0) ──
+  // Closed-form Margrabe (1978):
   //   σ_spread = √(σ1² + σ2² − 2ρσ1σ2)
-  //   E_call(0) = (σ_spread × √T / √(2π)) × hub_avg   (ATM Bachelier approximation)
-  // For N≥3 destinations: take the spread between best and 2nd-best intrinsic
-  // and compound with the 3rd via Clark (capped at 0.4 × first switch).
-  function _normPdf0() { return 1 / Math.sqrt(2 * Math.PI); }
+  //   d1 = (ln(S2/S1) + ½σ²T) / (σ√T)
+  //   d2 = d1 − σ√T
+  //   Value = S2·N(d1) − S1·N(d2)
+  // For N≥3 destinations: sum N−1 pairwise Margrabe values (best vs each
+  // alternative). Slight overestimate (correlation between alternatives
+  // shrinks the true max) — acceptable for trader pricing.
+  // Underlying = DES price (hub + phys). Vol = hub vol from getEffectiveVol.
+  // Correlation = MKT_CORR[hub1][hub2].
+  function _normCDF(x) {
+    // Abramowitz & Stegun 7.1.26 — error < 1.5e-7
+    const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+    const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+    const sign = x < 0 ? -1 : 1;
+    const ax = Math.abs(x) / Math.sqrt(2);
+    const t = 1 / (1 + p * ax);
+    const y = 1 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*Math.exp(-ax*ax);
+    return 0.5 * (1 + sign * y);
+  }
+  function _margrabe(S1, S2, sig1, sig2, rho, Tyrs) {
+    // Value of max(S2 − S1, 0)
+    if (S1 == null || S2 == null || S1 <= 0 || S2 <= 0 || Tyrs <= 0) return 0;
+    const sig = Math.sqrt(Math.max(0, sig1*sig1 + sig2*sig2 - 2*rho*sig1*sig2));
+    if (sig < 1e-6) return Math.max(0, S2 - S1);
+    const sqrtT = Math.sqrt(Tyrs);
+    const d1 = (Math.log(S2/S1) + 0.5*sig*sig*Tyrs) / (sig * sqrtT);
+    const d2 = d1 - sig * sqrtT;
+    return S2 * _normCDF(d1) - S1 * _normCDF(d2);
+  }
   let extrinsic = 0;
-  let extrinsicSub = 'no extrinsic (single destination)';
+  const switchTerms = [];
   if (valid.length >= 2) {
-    const v1 = valid[0], v2 = valid[1];
-    const sig1 = (MKT_VOLS[v1.D.hub] ?? 0.40);
-    const sig2 = (MKT_VOLS[v2.D.hub] ?? 0.40);
-    const rho  = (MKT_CORR[v1.D.hub]?.[v2.D.hub] ?? 0.7);
-    const sigSpread = Math.sqrt(sig1*sig1 + sig2*sig2 - 2*rho*sig1*sig2);
-    const refPx = (v1.desPx + v2.desPx) / 2;   // ATM reference
-    const switch12 = sigSpread * Math.sqrt(T) * _normPdf0() * refPx;
-    extrinsic = switch12;
-    extrinsicSub = `${v1.D.label} ↔ ${v2.D.label} · σ_spread=${(sigSpread*100).toFixed(0)}% · ρ=${rho.toFixed(2)}`;
-    // Compound for ≥3 destinations (Clark approximation, conservative)
-    if (valid.length >= 3) {
-      const v3 = valid[2];
-      const sig3 = (MKT_VOLS[v3.D.hub] ?? 0.40);
-      const rho23 = (MKT_CORR[v2.D.hub]?.[v3.D.hub] ?? 0.7);
-      const sigSpread23 = Math.sqrt(sig2*sig2 + sig3*sig3 - 2*rho23*sig2*sig3);
-      const refPx23 = (v2.desPx + v3.desPx) / 2;
-      const switch23 = sigSpread23 * Math.sqrt(T) * _normPdf0() * refPx23;
-      const compound = 0.4 * switch23;   // Clark cap
-      extrinsic += compound;
-      extrinsicSub += ` + ${v3.D.label} (Clark +$${compound.toFixed(3)})`;
+    const best = valid[0];
+    const sigBest = (MKT_VOLS[best.D.hub] ?? 0.40);
+    // For each alternate, value of switching from best to it
+    for (let k = 1; k < valid.length; k++) {
+      const alt = valid[k];
+      const sigAlt = (MKT_VOLS[alt.D.hub] ?? 0.40);
+      const rho   = (MKT_CORR[best.D.hub]?.[alt.D.hub] ?? 0.7);
+      const v = _margrabe(best.desPx, alt.desPx, sigBest, sigAlt, rho, T);
+      extrinsic += v;
+      switchTerms.push(`${alt.D.label.split(' ')[0]} +$${v.toFixed(3)}`);
     }
   }
+  const extrinsicSub = (valid.length < 2)
+    ? 'no switching value (need ≥2 valid destinations)'
+    : `Margrabe (${valid.length-1} switches): ${switchTerms.join(' · ')}`;
 
   // ── Render KPIs ──
+  // FAIR FOB PREMIUM = EXTRINSIC ONLY (per user clarification 2026-04-26)
+  // The intrinsic netback is captured in the FOB price the seller quotes
+  // against the cost basis. The PREMIUM is what the seller charges on top
+  // for the optionality to switch destinations as prices evolve.
   const fmt = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(3);
-  const total = (bestIntrinsic != null) ? bestIntrinsic + extrinsic : null;
-  const totalUsd = (total != null) ? total * cargoTBtu * 1e6 : null;   // $
+  const premium  = (valid.length >= 2) ? extrinsic : null;        // = extrinsic only
+  const premiumUsd = (premium != null) ? premium * cargoTBtu * 1e6 : null;
   if (g('ffp-intrinsic'))     g('ffp-intrinsic').textContent = fmt(bestIntrinsic);
-  if (g('ffp-intrinsic-sub')) g('ffp-intrinsic-sub').textContent = bestDest ? `winner: ${bestDest.label}` : '—';
+  if (g('ffp-intrinsic-sub')) g('ffp-intrinsic-sub').textContent = bestDest ? `winner: ${bestDest.label} (already in FOB price)` : '—';
   if (g('ffp-extrinsic'))     g('ffp-extrinsic').textContent = (valid.length >= 2) ? '+' + extrinsic.toFixed(3) : '—';
   if (g('ffp-extrinsic-sub')) g('ffp-extrinsic-sub').textContent = extrinsicSub;
-  if (g('ffp-total'))         g('ffp-total').textContent = fmt(total);
-  if (g('ffp-total-sub'))     g('ffp-total-sub').textContent = `${month} · basis ${basis === 'HHSL' ? '1.15×HH' : basis} · ${expiryMo}m to expiry`;
+  if (g('ffp-total'))         g('ffp-total').textContent = (premium != null) ? '+' + premium.toFixed(3) : '—';
+  if (g('ffp-total-sub'))     g('ffp-total-sub').textContent = `= extrinsic only · ${month} · ${basis === 'HHSL' ? '1.15×HH' : basis} · ${expiryMo}m to expiry`;
   if (g('ffp-total-usd')) {
-    if (totalUsd == null) g('ffp-total-usd').textContent = '—';
-    else if (Math.abs(totalUsd) >= 1e6) g('ffp-total-usd').textContent = (totalUsd >= 0 ? '+$' : '−$') + (Math.abs(totalUsd)/1e6).toFixed(2) + 'M';
-    else g('ffp-total-usd').textContent = (totalUsd >= 0 ? '+$' : '−$') + (Math.abs(totalUsd)/1000).toFixed(0) + 'k';
+    if (premiumUsd == null) g('ffp-total-usd').textContent = '—';
+    else if (Math.abs(premiumUsd) >= 1e6) g('ffp-total-usd').textContent = (premiumUsd >= 0 ? '+$' : '−$') + (Math.abs(premiumUsd)/1e6).toFixed(2) + 'M';
+    else g('ffp-total-usd').textContent = (premiumUsd >= 0 ? '+$' : '−$') + (Math.abs(premiumUsd)/1000).toFixed(0) + 'k';
   }
-  if (g('ffp-total-usd-sub')) g('ffp-total-usd-sub').textContent = `${cargoTBtu.toFixed(2)} TBtu × $${total != null ? total.toFixed(3) : '0'}/MMBtu`;
+  if (g('ffp-total-usd-sub')) g('ffp-total-usd-sub').textContent = `${cargoTBtu.toFixed(2)} TBtu × $${premium != null ? premium.toFixed(3) : '0'}/MMBtu (extrinsic only)`;
 }
 window.renderFairFobPremium = renderFairFobPremium;
 
@@ -9722,6 +9762,8 @@ const CURVE_DESTS = [
   {key:'mei',     label:'India (Dahej)',   hub:'JKM',  loadDest:'Dahej'},
   {key:'jktc',    label:'JKTC (Tokyo Bay)',hub:'JKM',  loadDest:'Tokyo Bay'},
   {key:'thailand',label:'Thailand (Map Ta Phut)', hub:'JKM', loadDest:'Map Ta Phut'},
+  {key:'brazil',  label:'Brazil (Guanabara)',hub:'TTF', loadDest:'Guanabara'},
+  {key:'argentina',label:'Argentina (Escobar)',hub:'TTF',loadDest:'Escobar'},
 ];
 const CURVE_ORIGINS = {
   sabine:      'Sabine Pass',
@@ -11070,8 +11112,11 @@ function renderPnlSummary() {
         const desCol = (incoterm === 'DES/DES' && v)
           ? `<span title="DES buy / DES sell">${fmtPx(v.buyPx)} / ${fmtPx(v.sellPx)}</span>`
           : fmtPx(desPx);
-        // Freight: only meaningful for FOB/DES (seller pays to deliver)
-        const frPx = (incoterm === 'FOB/DES' && v?.freight != null && v.freightApplies) ? v.freight : null;
+        // Freight: only meaningful for FOB/DES (seller pays to deliver). Treat
+        // 0 as "voyage didn't compute" → show '—' rather than '−0.000' which
+        // looks like a real freight cost of zero (per user 2026-04-26).
+        const frPxRaw = (incoterm === 'FOB/DES' && v?.freight != null && v.freightApplies) ? v.freight : null;
+        const frPx = (frPxRaw != null && frPxRaw > 0) ? frPxRaw : null;
         const um = v?.unitMargin;
         return `<tr>
           <td>${c.id || '—'}</td>
