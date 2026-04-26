@@ -9092,6 +9092,10 @@ const CP_SEED_FR={
     nigeria_iberia:     nmScale('nigeria_gate',      3359/4432),
     qatar_iberia:       nmScale('qatar_gate',        13000/13600),
     oman_iberia:        nmScale('oman_gate',         11500/12100),
+    // Sabine_gate alias — every other origin uses '*_gate' for Rotterdam,
+    // only Sabine has historically used '*_rotterdam'. Aliasing fixes the LNG
+    // ARB Gate destination card which would otherwise only show Sabine.
+    sabine_gate:        CP_SEED_FR.sabine_rotterdam.slice(),
     // UK (South Hook) — user-confirmed NM 2026-04-25: Sabine→South Hook = 4623 NM
     sabine_southhook:   nmScale('sabine_rotterdam',  4623/5030),
     trinidad_southhook: nmScale('trinidad_gate',     3682/4044),
@@ -9099,6 +9103,23 @@ const CP_SEED_FR={
     nigeria_southhook:  nmScale('nigeria_gate',      4161/4432),
     qatar_southhook:    nmScale('qatar_gate',        12100/12000),
     oman_southhook:     nmScale('oman_gate',         12200/12100),
+    // Australia (Barrow) European destinations — Pacific origin, so NM scaled
+    // from australia_b_tokyo via CoGH NM ratios (Suez avoided, Houthi risk).
+    // NM_DB confirmed: Barrow→tokyo=3788, rotterdam=12500, southhook=12600,
+    // huelva=11750, rovigo=12550, klaipeda=13050, inkoo=13100, swino=12800,
+    // revithoussa=13150, krk=13000, aliaga=13300.
+    australia_b_gate:       nmScale('australia_b_tokyo', 12500/3788),
+    australia_b_southhook:  nmScale('australia_b_tokyo', 12600/3788),
+    australia_b_iberia:     nmScale('australia_b_tokyo', 11750/3788),
+    australia_b_rovigo:     nmScale('australia_b_tokyo', 12550/3788),
+    australia_b_klaipeda:   nmScale('australia_b_tokyo', 13050/3788),
+    australia_b_inkoo:      nmScale('australia_b_tokyo', 13100/3788),
+    australia_b_swinoujscie:nmScale('australia_b_tokyo', 12800/3788),
+    australia_b_rev:        nmScale('australia_b_tokyo', 13150/3788),
+    australia_b_krk:        nmScale('australia_b_tokyo', 13000/3788),
+    australia_b_ali:        nmScale('australia_b_tokyo', 13300/3788),
+    australia_b_dahej:      nmScale('australia_b_tokyo', 3582/3788),
+    australia_b_maptaphut:  nmScale('australia_b_tokyo', 2350/3788),
     // Revithoussa (Greece) — via Gibraltar route
     trinidad_rev:       nmScale('trinidad_gate',     5400/4044),
     angola_rev:         nmScale('angola_gate',       6100/5008),
@@ -10293,7 +10314,7 @@ function cpLngArb(d){
 
   // ── Destination definitions (lat/lon for Map view) ───────────────────────
   const DESTS = [
-    {id:'nwe',     label:'EU NWE (Gate)',     hub:'TTF', desKey:'nwe',     frKey:'rotterdam',  lat: 51.95, lon:  4.06},
+    {id:'nwe',     label:'EU NWE (Gate)',     hub:'TTF', desKey:'nwe',     frKey:'gate',       lat: 51.95, lon:  4.06},
     {id:'iberia',  label:'Iberia',            hub:'TTF', desKey:'iberia',  frKey:'iberia',     lat: 37.20, lon: -7.00},
     {id:'uk',      label:'UK (S.Hook)',       hub:'TTF', desKey:'uk',      frKey:'southhook',  lat: 51.71, lon: -5.07},
     {id:'italy',   label:'Italy (Rovigo)',    hub:'TTF', desKey:'italy',   frKey:'rovigo',     lat: 45.07, lon: 12.59},
@@ -10379,9 +10400,16 @@ function cpLngArb(d){
       .filter(x => x.v != null)
       .sort((a,b) => b.v - a.v);
     const top3 = ranked.slice(0, 3);
-    const fairValue = top3.length
-      ? top3.reduce((acc,x) => acc + x.v, 0) / top3.length
-      : null;
+    // FAIR honestly labels the actual N (avg-of-N), not always "top 3" -
+    // some origins have <3 valid destinations (e.g. Aus when freight curves
+    // are missing). Don't mislead the trader by labeling it "top 3" when
+    // averaging just 1 or 2.
+    const fairN = top3.length;
+    const fairValue = fairN >= 1 ? top3.reduce((acc,x) => acc + x.v, 0) / fairN : null;
+    const fairLabel = fairN >= 3 ? 'FAIR (avg top 3)'
+                    : fairN === 2 ? 'FAIR (avg top 2 - thin)'
+                    : fairN === 1 ? 'best (only 1 dest)'
+                    : 'no destinations';
     const routesHtml = top3.map((x, i) => `
       <li style="display:flex;justify-content:space-between;font-size:10px;line-height:1.6">
         <span style="color:#8a9bb5">${i+1}. ${x.D.label}</span>
@@ -10395,7 +10423,7 @@ function cpLngArb(d){
       </div>
       <ol style="list-style:none;padding:0;margin:0">${routesHtml || '<li style="color:#3d5070;font-size:10px">no routes</li>'}</ol>
       <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1e3a5f;display:flex;justify-content:space-between;align-items:center">
-        <span style="color:#546e7a;font-size:9px;letter-spacing:1px">FAIR (avg top 3)</span>
+        <span style="color:#546e7a;font-size:9px;letter-spacing:1px">${fairLabel}</span>
         <span style="color:${colorBE(fairValue)};font-size:11px;font-weight:700">${fmtSp(fairValue)}</span>
       </div>
     </div>`;
@@ -10680,7 +10708,12 @@ function cpLngArbDrawer(kind, id){
       <td class="tr" style="color:${colorBE(x.v)};font-weight:700;font-size:11px">${fmtSp(x.v)}</td>
     </tr>`).join('');
     const top3 = ranked.slice(0, 3);
-    const fairValue = top3.length ? top3.reduce((a,x) => a + x.v, 0) / top3.length : null;
+    const fairN = top3.length;
+    const fairValue = fairN >= 1 ? top3.reduce((a,x) => a + x.v, 0) / fairN : null;
+    const fairLabel = fairN >= 3 ? 'FAIR VALUE — avg top 3'
+                    : fairN === 2 ? 'FAIR VALUE — avg top 2 (only 2 valid dests)'
+                    : fairN === 1 ? 'BEST (only 1 valid destination)'
+                    : 'NO VALID DESTINATIONS';
     drawer.innerHTML = `
       <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1e3a5f">
         <div>
@@ -10694,7 +10727,7 @@ function cpLngArbDrawer(kind, id){
         <th class="tr">DES px</th><th class="tr">Freight</th><th class="tr">Basis</th><th class="tr">FOB ${basis === 'FIXED' ? 'abs' : 'Δ'}</th>
       </tr></thead><tbody>${rows}</tbody></table>
       <div style="margin-top:8px;padding:8px 12px;background:#0d1e36;border:1px solid #1e3a5f;border-radius:4px;display:flex;justify-content:space-between;align-items:center">
-        <span style="color:#ffeb3b;font-size:10px;font-weight:600;letter-spacing:1px">FAIR VALUE — avg top 3</span>
+        <span style="color:#ffeb3b;font-size:10px;font-weight:600;letter-spacing:1px">${fairLabel}</span>
         <span style="color:${colorBE(fairValue)};font-size:13px;font-weight:700">${fmtSp(fairValue)}</span>
       </div>
       <div style="margin-top:6px;color:#3d5070;font-size:9px">Click any row to see voyage detail (freight stack)</div></div>`;
