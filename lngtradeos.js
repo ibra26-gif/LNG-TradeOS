@@ -12740,27 +12740,30 @@ function dash2FwdPriceAt(inst, contract, dateIdx){
 
 function dash2FwdCellHTML(inst, contract){
   if (sDates.length < 2) {
-    return `<td style="text-align:right;color:#3d5070;padding:6px 8px;font-size:11px">—</td>`;
+    return `<td style="text-align:right;color:#3d5070;padding:6px 8px;font-size:11px;border-bottom:1px solid #0f1824">—</td>`;
   }
   const lat  = dash2FwdPriceAt(inst, contract, sDates.length-1);
   const prev = dash2FwdPriceAt(inst, contract, sDates.length-2);
   if (lat == null) {
-    return `<td style="text-align:right;color:#3d5070;padding:6px 8px;font-size:11px">—</td>`;
+    return `<td style="text-align:right;color:#3d5070;padding:6px 8px;font-size:11px;border-bottom:1px solid #0f1824">—</td>`;
   }
   const dp = INST[inst]?.unit === '$/bbl' ? 2 : 3;
   const valStr = lat.toFixed(dp);
   const change = (prev != null) ? +(lat - prev).toFixed(3) : null;
-  const cls = change == null ? 'neu' : change > 0 ? 'pos' : 'neg';
-  const arr = change == null ? '' : change > 0 ? '▲' : '▼';
-  const col = cls === 'pos' ? '#34d399' : cls === 'neg' ? '#fca5a5' : '#9ca3af';
-  const chgStr = change != null ? `${arr} ${Math.abs(change).toFixed(dp)}` : '';
-  // Cal-YYYY isn't a tenor the Historical tab supports — disable click on
-  // those cells. Everything else routes through dash2GotoHistorical.
+  // Vivid red/green for sign; signed display ("+0.045" / "-0.120") instead of
+  // arrow + magnitude. Subtle cell-bg tint so a column of green/red scans at
+  // a glance without becoming a full heatmap.
+  let col = '#9ca3af', chgStr = '', bg = 'transparent';
+  if (change != null) {
+    if (change > 0)      { col = '#22c55e'; bg = 'rgba(34,197,94,0.07)';  chgStr = '+' + change.toFixed(dp); }
+    else if (change < 0) { col = '#ef4444'; bg = 'rgba(239,68,68,0.07)';  chgStr = change.toFixed(dp); /* keeps the leading '-' */ }
+    else                 { col = '#9ca3af';                                chgStr = '0.000'; }
+  }
   const isCal = contract.startsWith('cal-');
   const onclick = isCal ? '' : `onclick="dash2GotoHistorical('${inst}','${contract}')"`;
   const cursor = isCal ? '' : 'cursor:pointer;';
   const title = isCal ? '' : `title="${INST[inst]?.label||inst} · ${contract} · click to drill"`;
-  return `<td ${onclick} ${title} style="${cursor}text-align:right;padding:6px 10px;font-size:11px;border-bottom:1px solid #0f1824"><div style="color:#fff;font-weight:500">${valStr}</div><div style="color:${col};font-size:9px;margin-top:1px;min-height:11px">${chgStr}</div></td>`;
+  return `<td ${onclick} ${title} style="${cursor}background:${bg};text-align:right;padding:6px 10px;font-size:11px;border-bottom:1px solid #0f1824"><div style="color:#fff;font-weight:500">${valStr}</div><div style="color:${col};font-size:10px;font-weight:500;margin-top:2px;min-height:12px">${chgStr}</div></td>`;
 }
 
 function dash2RenderFwdTable(insts, label, sublabel){
