@@ -12679,7 +12679,8 @@ window.dash2GotoHistorical = function(inst, tenor){
 // Table 2 (European Hubs): THE, PEG, PVB, PSV, ZTP
 
 const DASH2_FWD_LNG_INSTS = ['JKM','TTF','SP_JT','HH','Slope','Brent'];
-const DASH2_FWD_HUB_INSTS = ['THE','PEG','PVB','PSV','ZTP'];
+// User order: TTF + NBP (LNG-EOD reference) alongside the 5 EEX hubs.
+const DASH2_FWD_HUB_INSTS = ['TTF','THE','PSV','NBP','PEG','PVB','ZTP'];
 
 // Contract list. Resolved at render time so "next June/July/August" rolls
 // forward as the year passes. Today (auto-memory) = 2026-04-27 → next three
@@ -12712,13 +12713,20 @@ function dash2BuildFwdContracts(){
   ];
 }
 
-// Resolve a contract code → price for an instrument at a given sDates index.
-// Handles monthly pks ('YYYY-MM'), quarterly/seasonal ('q3-2026'/'win-2026'),
-// and the synthetic 'cal-YYYY' (12-month average for a calendar year).
-function dash2FwdPriceAt(inst, contract, dateIdx){
-  if (dateIdx < 0 || dateIdx >= sDates.length) return null;
-  const ds = sDates[dateIdx];
-  const ent = aD[ds]; if (!ent) return null;
+// Resolve a contract code → price for an instrument.
+// 'which' = 'latest' | 'prior'. Routes EEX hubs (THE/PEG/PVB/PSV/ZTP) through
+// eexD/eexDates and everything else through aD/sDates, since the two stores
+// have independent date arrays — EEX publishes after market close so the
+// latest EEX EOD often lags the latest LNG EOD by a day.
+function dash2FwdPriceAt(inst, contract, which){
+  const isEEX = (typeof EEX_HUBS !== 'undefined') && EEX_HUBS.includes(inst);
+  const dates = isEEX ? (typeof eexDates !== 'undefined' ? eexDates : []) : sDates;
+  const store = isEEX ? (typeof eexD !== 'undefined' ? eexD : {}) : aD;
+  if (!dates.length) return null;
+  const idx = which === 'prior' ? dates.length - 2 : dates.length - 1;
+  if (idx < 0) return null;
+  const ds = dates[idx];
+  const ent = store[ds]; if (!ent) return null;
   if (contract.startsWith('cal-')) {
     const year = contract.slice(4);
     const vals = [];
@@ -12734,16 +12742,16 @@ function dash2FwdPriceAt(inst, contract, dateIdx){
     if (!tObj) return null;
     return gAgg(inst, tObj, ent.rows);
   }
-  // Monthly pk
+  // Monthly pk like '2026-06'
   return ent.rows.find(r => r.pk === contract)?.[inst] ?? null;
 }
 
 function dash2FwdCellHTML(inst, contract){
-  if (sDates.length < 2) {
-    return `<td style="text-align:right;color:#3d5070;padding:6px 8px;font-size:11px;border-bottom:1px solid #0f1824">—</td>`;
-  }
-  const lat  = dash2FwdPriceAt(inst, contract, sDates.length-1);
-  const prev = dash2FwdPriceAt(inst, contract, sDates.length-2);
+  // Don't gate on sDates.length here — EEX hubs are routed through eexDates
+  // inside dash2FwdPriceAt and may have data even when the LNG EOD store
+  // is short. The function returns null gracefully if its store is empty.
+  const lat  = dash2FwdPriceAt(inst, contract, 'latest');
+  const prev = dash2FwdPriceAt(inst, contract, 'prior');
   if (lat == null) {
     return `<td style="text-align:right;color:#3d5070;padding:6px 8px;font-size:11px;border-bottom:1px solid #0f1824">—</td>`;
   }
