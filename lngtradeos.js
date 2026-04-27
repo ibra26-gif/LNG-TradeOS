@@ -12400,25 +12400,17 @@ function dash2Sparkline(values, color = '#3b82f6', w = 70, h = 18){
   </svg>`;
 }
 
-// ── HeadlineBenchmarkCard (Phase 2): big card with z/percentile/spark/P5-P95 ──
+// ── HeadlineBenchmarkCard (Phase 2, simplified per user): label · value ·
+// change · sparkline. Z-score / percentile / P5-P95 removed.
 function dash2RenderHeadlineCard(inst){
   const lat = dash2LatestM1(inst);
   if (!lat) return `<div class="dash2-card" style="padding:14px;background:#0d1322;border:1px solid #1f2937"><div style="font-size:10px;color:#9ca3af">${INST[inst]?.label||inst}</div><div style="font-size:13px;color:#5a6882;margin-top:4px">No data</div></div>`;
   const series = dash2SeriesM1(inst, DASH2_LOOKBACK);
   const values = series.map(p => p.value);
-  const stats = values.length >= 5 ? dash2Stats(values) : null;
   const cls = lat.change == null ? 'neu' : lat.change > 0 ? 'pos' : 'neg';
   const arr = lat.change == null ? '' : lat.change > 0 ? '▲' : '▼';
   const col = cls === 'pos' ? '#34d399' : cls === 'neg' ? '#fca5a5' : '#9ca3af';
   const pct = formatPctChange(lat.latest, lat.prior, DASH2_NM_FLOOR);
-  const zStr  = stats ? (stats.z >= 0 ? '+' : '') + stats.z.toFixed(2) + 'σ' : '—';
-  const pctStr = stats ? (stats.pctile * 100).toFixed(0) + '%ile' : '—';
-  const p5Str  = stats ? stats.p5.toFixed(lat.dp) : '—';
-  const p95Str = stats ? stats.p95.toFixed(lat.dp) : '—';
-  const zCol = stats && Math.abs(stats.z) >= 1.5 ? '#fbbf24' : '#c8cfe0';
-  const pctTagCol = stats && (stats.pctile <= 0.10 || stats.pctile >= 0.90) ? '#fbbf24' : '#9ca3af';
-  // P5/P95 mini bar — show where latest sits in [p5, p95] band
-  const bandPos = stats ? Math.max(0, Math.min(1, (stats.latest - stats.p5) / (stats.p95 - stats.p5 || 1))) * 100 : 0;
   return `
     <div class="dash2-headline-card" style="background:#0d1322;border:1px solid #1f2937;padding:12px 14px">
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
@@ -12428,19 +12420,8 @@ function dash2RenderHeadlineCard(inst){
       <div style="display:flex;align-items:baseline;gap:10px">
         <span style="font-size:20px;color:#fff;font-weight:500">${lat.latest.toFixed(lat.dp)}</span>
         <span style="font-size:11px;color:${col}">${arr} ${lat.change!=null ? Math.abs(lat.change).toFixed(lat.dp) : '—'} ${pct!=='n/m' ? '('+pct+')' : '· n/m'}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <span style="font-size:9px;color:${zCol};background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:2px">z ${zStr}</span>
-        <span style="font-size:9px;color:${pctTagCol};background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:2px">${pctStr}</span>
         <span style="flex:1"></span>
-        ${dash2Sparkline(values, col, 80, 20)}
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:8px;color:#6b7280">
-        <span>30D P5 ${p5Str}</span>
-        <div style="flex:1;position:relative;height:3px;background:#1f2937;border-radius:1px">
-          <div style="position:absolute;left:${bandPos.toFixed(1)}%;top:-2px;width:2px;height:7px;background:${col}"></div>
-        </div>
-        <span>P95 ${p95Str}</span>
+        ${dash2Sparkline(values, col, 80, 22)}
       </div>
     </div>
   `;
@@ -12460,6 +12441,49 @@ function dash2RenderMacroCard(inst){
       <div style="font-size:9px;color:#9ca3af">${lbl}</div>
       <div style="font-size:13px;color:#fff;font-weight:500;margin-top:2px">${lat.latest.toFixed(lat.dp)}</div>
       <div style="font-size:9px;color:${col};margin-top:1px">${arr} ${lat.change!=null ? Math.abs(lat.change).toFixed(lat.dp) : '—'} ${pct!=='n/m' ? '('+pct+')' : '· n/m'}</div>
+    </div>
+  `;
+}
+
+// ── HubCard (Phase 3): EEX hub M+1 with EOD date suffix ────────────────────
+// Uses the legacy mcEEX last-observable-change pattern: PSV/PVB/ZTP often
+// miss settlements on a given day, so we walk the EEX history backwards and
+// take the last two non-null M+1 values rather than literal latest-vs-prior
+// from EEX dates. The date suffix on the card label is the latest EEX EOD
+// date that produced a value (so users see e.g. "PSV · 25 Apr" if Friday
+// was the last print).
+function dash2RenderHubCard(hubInst){
+  const lbl = INST[hubInst]?.label || hubInst;
+  if (!eexDates.length) {
+    return `<div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px"><div style="font-size:9px;color:#9ca3af">${lbl}</div><div style="font-size:13px;color:#3d5070;margin-top:3px">Add EEX file</div></div>`;
+  }
+  const eld = eexDates[eexDates.length-1];
+  const em1 = rPK(eexD[eld].date, 1);
+  // Collect chronological non-null M+1 values WITH their EOD dates.
+  const samples = [];
+  for (const d of eexDates){
+    const v = eexD[d].rows.find(r => r.pk === em1)?.[hubInst];
+    if (v != null) samples.push({ date: eexD[d].date, value: v });
+  }
+  if (!samples.length) {
+    return `<div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px"><div style="font-size:9px;color:#9ca3af">${lbl}</div><div style="font-size:13px;color:#5a6882;margin-top:3px">—</div></div>`;
+  }
+  const last = samples[samples.length-1];
+  const prev = samples.length >= 2 ? samples[samples.length-2] : null;
+  const change = (prev != null) ? +(last.value - prev.value).toFixed(3) : null;
+  const cls = change == null ? 'neu' : change > 0 ? 'pos' : 'neg';
+  const arr = change == null ? '' : change > 0 ? '▲' : '▼';
+  const col = cls === 'pos' ? '#34d399' : cls === 'neg' ? '#fca5a5' : '#9ca3af';
+  const pct = formatPctChange(last.value, prev?.value, DASH2_NM_FLOOR);
+  const dateLbl = last.date.toLocaleDateString('en-GB', { day:'2-digit', month:'short' });
+  return `
+    <div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <span style="font-size:9px;color:#9ca3af">${lbl}</span>
+        <span style="font-size:8px;color:#5a6882">· ${dateLbl}</span>
+      </div>
+      <div style="font-size:13px;color:#fff;font-weight:500;margin-top:2px">${last.value.toFixed(3)}</div>
+      <div style="font-size:9px;color:${col};margin-top:1px">${arr} ${change!=null ? Math.abs(change).toFixed(3) : '—'} ${pct!=='n/m' ? '('+pct+')' : '· n/m'}</div>
     </div>
   `;
 }
@@ -12492,13 +12516,26 @@ function dash2RenderSpreadCard(hubInst, label){
 function dash2RenderCards(){
   if (sDates.length < 2) return;
 
-  // Headline (3 cards): JKM · TTF · HH (big, with z + percentile + spark + P5/P95)
+  // Headline (3 cards): JKM · TTF · HH (label + value + change + sparkline)
   const headEl = $id('dash2-headline');
   if (headEl) {
     headEl.innerHTML = `
-      <div class="ctitle">HEADLINE BENCHMARKS · M+1<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:9px;color:#5a6882">30D context</span></div>
+      <div class="ctitle">HEADLINE BENCHMARKS · M+1<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span></div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px">
         ${['JKM','TTF','HH'].map(dash2RenderHeadlineCard).join('')}
+      </div>
+    `;
+  }
+
+  // European hubs (5 cards): THE · PEG · PVB · PSV · ZTP — each with EOD date suffix.
+  // EEX publishes after market close so dates can lag LNG-EOD by 1 day; the
+  // per-card date makes that explicit. No "D-1 banner" in the EOD-only model.
+  const hubsEl = $id('dash2-eu-hubs');
+  if (hubsEl) {
+    hubsEl.innerHTML = `
+      <div class="ctitle">EUROPEAN HUBS · M+1<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:9px;color:#5a6882">EEX EOD · per-card date suffix</span></div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px">
+        ${['THE','PEG','PVB','PSV','ZTP'].map(dash2RenderHubCard).join('')}
       </div>
     `;
   }
