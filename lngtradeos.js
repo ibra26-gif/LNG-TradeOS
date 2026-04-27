@@ -12669,6 +12669,138 @@ window.dash2GotoHistorical = function(inst, tenor){
 };
 
 // ════════════════════════════════════════════════════════════════════════════
+// FORWARD CURVE TABLES (replaces Phase 4 heatmap per user direction)
+// ════════════════════════════════════════════════════════════════════════════
+// Two stacked tables. Rows = contract months/seasons, columns = instruments.
+// Cell = price (large) + DoD change (small). Click any data cell → drill into
+// Historical tab pre-loaded with that (instrument, contract).
+//
+// Table 1 (LNG / Macro): JKM, TTF, JKM/TTF, HH, Slope, Brent
+// Table 2 (European Hubs): THE, PEG, PVB, PSV, ZTP
+
+const DASH2_FWD_LNG_INSTS = ['JKM','TTF','SP_JT','HH','Slope','Brent'];
+const DASH2_FWD_HUB_INSTS = ['THE','PEG','PVB','PSV','ZTP'];
+
+// Contract list. Resolved at render time so "next June/July/August" rolls
+// forward as the year passes. Today (auto-memory) = 2026-04-27 → next three
+// monthlies are Jun-26, Jul-26, Aug-26.
+function dash2BuildFwdContracts(){
+  if (!sDates.length) return [];
+  const ld = sDates[sDates.length-1];
+  const refDate = aD[ld].date;
+  const refY = refDate.getFullYear();
+  const refM = refDate.getMonth() + 1; // 1..12
+  // Three nearest forward monthlies starting from refM+1 (skip current month
+  // since front-month is already on the headline + macro/spreads cards).
+  const monthly = [];
+  for (let i = 1; i <= 3; i++){
+    let m = refM + i, y = refY;
+    while (m > 12) { m -= 12; y += 1; }
+    monthly.push({
+      v: `${y}-${String(m).padStart(2,'0')}`,
+      label: `${['January','February','March','April','May','June','July','August','September','October','November','December'][m-1]} ${String(y).slice(2)}`,
+    });
+  }
+  // Aggregate buckets — Q4 of refY, Winter of refY (refY/refY+1), Summer of
+  // refY+1, Cal of refY+1.
+  return [
+    ...monthly,
+    { v: `q4-${refY}`,      label: `Q4 ${String(refY).slice(2)}` },
+    { v: `win-${refY}`,     label: `Winter ${String(refY).slice(2)}/${String(refY+1).slice(2)}` },
+    { v: `sum-${refY+1}`,   label: `Summer ${String(refY+1).slice(2)}` },
+    { v: `cal-${refY+1}`,   label: `Cal ${String(refY+1).slice(2)}` },
+  ];
+}
+
+// Resolve a contract code → price for an instrument at a given sDates index.
+// Handles monthly pks ('YYYY-MM'), quarterly/seasonal ('q3-2026'/'win-2026'),
+// and the synthetic 'cal-YYYY' (12-month average for a calendar year).
+function dash2FwdPriceAt(inst, contract, dateIdx){
+  if (dateIdx < 0 || dateIdx >= sDates.length) return null;
+  const ds = sDates[dateIdx];
+  const ent = aD[ds]; if (!ent) return null;
+  if (contract.startsWith('cal-')) {
+    const year = contract.slice(4);
+    const vals = [];
+    for (let m = 1; m <= 12; m++){
+      const pk = `${year}-${String(m).padStart(2,'0')}`;
+      const v = ent.rows.find(r => r.pk === pk)?.[inst];
+      if (v != null) vals.push(v);
+    }
+    return vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : null;
+  }
+  if (contract.startsWith('q') || contract.startsWith('win-') || contract.startsWith('sum-')) {
+    const tObj = gSeaP().find(s => s.v === contract);
+    if (!tObj) return null;
+    return gAgg(inst, tObj, ent.rows);
+  }
+  // Monthly pk
+  return ent.rows.find(r => r.pk === contract)?.[inst] ?? null;
+}
+
+function dash2FwdCellHTML(inst, contract){
+  if (sDates.length < 2) {
+    return `<td style="text-align:right;color:#3d5070;padding:6px 8px;font-size:11px">—</td>`;
+  }
+  const lat  = dash2FwdPriceAt(inst, contract, sDates.length-1);
+  const prev = dash2FwdPriceAt(inst, contract, sDates.length-2);
+  if (lat == null) {
+    return `<td style="text-align:right;color:#3d5070;padding:6px 8px;font-size:11px">—</td>`;
+  }
+  const dp = INST[inst]?.unit === '$/bbl' ? 2 : 3;
+  const valStr = lat.toFixed(dp);
+  const change = (prev != null) ? +(lat - prev).toFixed(3) : null;
+  const cls = change == null ? 'neu' : change > 0 ? 'pos' : 'neg';
+  const arr = change == null ? '' : change > 0 ? '▲' : '▼';
+  const col = cls === 'pos' ? '#34d399' : cls === 'neg' ? '#fca5a5' : '#9ca3af';
+  const chgStr = change != null ? `${arr} ${Math.abs(change).toFixed(dp)}` : '';
+  // Cal-YYYY isn't a tenor the Historical tab supports — disable click on
+  // those cells. Everything else routes through dash2GotoHistorical.
+  const isCal = contract.startsWith('cal-');
+  const onclick = isCal ? '' : `onclick="dash2GotoHistorical('${inst}','${contract}')"`;
+  const cursor = isCal ? '' : 'cursor:pointer;';
+  const title = isCal ? '' : `title="${INST[inst]?.label||inst} · ${contract} · click to drill"`;
+  return `<td ${onclick} ${title} style="${cursor}text-align:right;padding:6px 10px;font-size:11px;border-bottom:1px solid #0f1824"><div style="color:#fff;font-weight:500">${valStr}</div><div style="color:${col};font-size:9px;margin-top:1px;min-height:11px">${chgStr}</div></td>`;
+}
+
+function dash2RenderFwdTable(insts, label, sublabel){
+  const contracts = dash2BuildFwdContracts();
+  if (!contracts.length) return '';
+  const headers = `
+    <tr>
+      <th style="text-align:left;padding:7px 10px;font-size:9px;color:#9ca3af;background:#0a0f1e;border-bottom:1px solid #1f2937;letter-spacing:.04em">CONTRACT</th>
+      ${insts.map(k => `<th style="text-align:right;padding:7px 10px;font-size:9px;color:#9ca3af;background:#0a0f1e;border-bottom:1px solid #1f2937;letter-spacing:.04em">${INST[k]?.label||k}</th>`).join('')}
+    </tr>`;
+  const rows = contracts.map(c => `
+    <tr>
+      <td style="padding:6px 10px;font-size:10px;color:#c8cfe0;border-bottom:1px solid #0f1824;font-weight:500;white-space:nowrap">${c.label}</td>
+      ${insts.map(k => dash2FwdCellHTML(k, c.v)).join('')}
+    </tr>
+  `).join('');
+  return `
+    <div class="acard" style="margin-bottom:10px">
+      <div class="ctitle">${label}<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:9px;color:#5a6882">${sublabel}</span></div>
+      <table style="width:100%;border-collapse:collapse;font-family:inherit">
+        <thead>${headers}</thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function dash2RenderForwardCurveTables(){
+  const el = $id('dash2-fwd-tables');
+  if (!el) return;
+  if (sDates.length < 2) {
+    el.innerHTML = `<div class="acard"><div class="ctitle">FORWARD CURVE</div><div class="cnote" style="color:#5a6882">Need at least 2 EOD dates to compute change vs prior session.</div></div>`;
+    return;
+  }
+  el.innerHTML =
+    dash2RenderFwdTable(DASH2_FWD_LNG_INSTS, 'FORWARD CURVE · LNG / MACRO', 'EOD price · DoD change · click cell to drill') +
+    dash2RenderFwdTable(DASH2_FWD_HUB_INSTS, 'FORWARD CURVE · EUROPEAN HUBS', 'EEX EOD · DoD change · click cell to drill');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // PHASE 5 — SCRATCHPAD (auto-saving textarea, localStorage persistence)
 // ════════════════════════════════════════════════════════════════════════════
 // 2-second debounced save on input; immediate save on blur. Loads on mount.
@@ -12778,13 +12910,9 @@ function dash2RenderCards(){
     `;
   }
 
-  // Phase 4 — Curve heatmap (centerpiece, full-width)
-  dash2RenderCurveHeatmap();
-
-  // Phase 5 — Scratchpad (auto-saving textarea, persists via localStorage).
-  // Only initialised once per page load so re-renders on data load don't
-  // wipe in-progress text or steal focus mid-typing.
-  dash2RenderScratchpad();
+  // Forward curve tables (replaces the original DoD heatmap and scratchpad
+  // per user direction). Two stacked tables: LNG/macro then European hubs.
+  dash2RenderForwardCurveTables();
 }
 
 function buildGasSnapshot(){
