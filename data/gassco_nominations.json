@@ -8,13 +8,13 @@
     "Dornum": 66.3,
     "Emden": 76.1,
     "Nybro": 18.2,
-    "Dunkerque": 48.9,
+    "Dunkerque": 48.8,
     "Zeebrugge": 43.8,
     "Easington": 37.0
   },
   "today_total_mcm": 308.3,
   "_meta": {
-    "updated": "2026-04-27T15:36:47Z",
+    "updated": "2026-04-27T21:45:11Z",
     "source": "gassco homepage scrape"
   }
 }
