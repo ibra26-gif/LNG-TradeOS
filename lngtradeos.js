@@ -12294,6 +12294,8 @@ function buildDash(){
 
   buildGasSnapshot();
   buildEuHubChart();
+  // ── Financial Dashboard v2: Phase-2 cards (Headline / Macro / Spreads) ──
+  if (typeof dash2RenderCards === 'function') dash2RenderCards();
   // ── Correlation matrix ───────────────────────────────────────────────────
   const ck=CI,cs={};ck.forEach(k=>cs[k]=gSF(k,m1));
   let cm=`<table class="ctbl"><thead><tr><th></th>${ck.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
@@ -12304,6 +12306,226 @@ function buildDash(){
   let dod=`<table class="stbl" style="font-size:10px"><thead><tr><th>Contract</th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
   for(const pk of pks){const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);dod+=`<tr><td>${pkL(pk)}</td>${keys.map(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null,d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null,dp=(k==='Brent'||k==='Dated')?2:3;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;}).join('')}</tr>`;}
   const dd=$id('dash-dod');if(dd)dd.innerHTML=dod+'</tbody></table>';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FINANCIAL DASHBOARD v2 — PHASE 2 cards (Headline / Macro / Spreads)
+// ════════════════════════════════════════════════════════════════════════════
+// EOD-only data (no live ticker — confirmed with user). All values come from
+// front-month (M+1) rolling series via existing gSR helper. Sparkline +
+// z-score + 30D percentile + 30D P5/P95 use the last 30 EOD rows.
+
+const DASH2_LOOKBACK = 30; // sessions for stats window
+const DASH2_NM_FLOOR = 0.10; // formatPctChange threshold
+
+// Sparkline charts kept indexed by card ID so we can destroy on re-render
+const _dash2SparkCharts = {};
+
+// Latest + prior front-month value, change, decimal places for an instrument.
+// Returns null if data missing. Shared by all card types.
+function dash2LatestM1(inst){
+  if (sDates.length < 2) return null;
+  const ld = sDates[sDates.length-1];
+  const pd = sDates[sDates.length-2];
+  const m1 = rPK(aD[ld].date, 1);
+  const lv = aD[ld].rows.find(r => r.pk === m1)?.[inst] ?? null;
+  const pv = aD[pd].rows.find(r => r.pk === m1)?.[inst] ?? null;
+  if (lv == null) return null;
+  const change = (lv != null && pv != null) ? +(lv - pv).toFixed(4) : null;
+  const dp = INST[inst]?.unit === '$/bbl' ? 2 : 3;
+  return { latest: lv, prior: pv, change, dp, m1 };
+}
+
+// 30D series of front-month values, oldest→newest. Used for stats + sparkline.
+function dash2SeriesM1(inst, n = DASH2_LOOKBACK){
+  const series = gSR(inst, 1); // {date, value}[]
+  if (!series.length) return [];
+  return series.slice(-n);
+}
+
+// Hub-vs-TTF spread series (front-month). Used for SpreadCard sparkline.
+function dash2SpreadSeriesM1(hubInst, n = DASH2_LOOKBACK){
+  if (!eexDates.length) return [];
+  const out = [];
+  for (const ed of eexDates){
+    const em1 = rPK(eexD[ed].date, 1);
+    const hv = eexD[ed].rows.find(r => r.pk === em1)?.[hubInst];
+    if (hv == null) continue;
+    const tv = (typeof aDval === 'function') ? aDval('TTF', ed) : null;
+    if (tv == null) continue;
+    out.push({ date: eexD[ed].date, value: +(hv - tv).toFixed(4) });
+  }
+  return out.slice(-n);
+}
+
+// Statistics over a values array (mean, sigma, P5, P95, z-score, percentile
+// of latest, change abs/pct). All cards use this; n/m guard is applied at the
+// formatter, not here.
+function dash2Stats(values){
+  if (!values.length) return null;
+  const sorted = [...values].sort((a,b) => a - b);
+  const mean = values.reduce((s,v) => s + v, 0) / values.length;
+  const variance = values.reduce((s,v) => s + (v - mean)**2, 0) / values.length;
+  const sigma = Math.sqrt(variance);
+  const pIdx = (q) => sorted[Math.max(0, Math.min(sorted.length-1, Math.floor(q * (sorted.length-1))))];
+  const p5  = pIdx(0.05);
+  const p95 = pIdx(0.95);
+  const latest = values[values.length-1];
+  const prior  = values.length >= 2 ? values[values.length-2] : null;
+  const z = sigma > 0 ? (latest - mean) / sigma : 0;
+  // Percentile of latest among the window: count of values <= latest / N
+  const pctile = sorted.filter(v => v <= latest).length / sorted.length;
+  return { mean, sigma, p5, p95, latest, prior, z, pctile };
+}
+
+// Global %-change formatter with n/m guard (Master-AC#9 bug fix).
+// |prior| < 0.10 → 'n/m' regardless of value. Returns formatted "X.X%".
+function formatPctChange(value, prior, threshold = DASH2_NM_FLOOR){
+  if (value == null || prior == null) return 'n/m';
+  if (Math.abs(prior) < threshold) return 'n/m';
+  return ((value - prior) / Math.abs(prior) * 100).toFixed(1) + '%';
+}
+
+// Tiny SVG sparkline, ~70x18, neutral grey baseline + colored line.
+// Preferring inline SVG over Chart.js for the card spark — 30 points each
+// across 8+ cards is heavy with Chart.js but trivial as raw SVG paths.
+function dash2Sparkline(values, color = '#3b82f6', w = 70, h = 18){
+  if (!values || values.length < 2) return '';
+  const min = Math.min(...values), max = Math.max(...values);
+  const span = max - min || 1;
+  const step = w / (values.length - 1);
+  const pts = values.map((v, i) => `${(i*step).toFixed(2)},${(h - ((v - min)/span)*h).toFixed(2)}`).join(' ');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.2"/>
+  </svg>`;
+}
+
+// ── HeadlineBenchmarkCard (Phase 2): big card with z/percentile/spark/P5-P95 ──
+function dash2RenderHeadlineCard(inst){
+  const lat = dash2LatestM1(inst);
+  if (!lat) return `<div class="dash2-card" style="padding:14px;background:#0d1322;border:1px solid #1f2937"><div style="font-size:10px;color:#9ca3af">${INST[inst]?.label||inst}</div><div style="font-size:13px;color:#5a6882;margin-top:4px">No data</div></div>`;
+  const series = dash2SeriesM1(inst, DASH2_LOOKBACK);
+  const values = series.map(p => p.value);
+  const stats = values.length >= 5 ? dash2Stats(values) : null;
+  const cls = lat.change == null ? 'neu' : lat.change > 0 ? 'pos' : 'neg';
+  const arr = lat.change == null ? '' : lat.change > 0 ? '▲' : '▼';
+  const col = cls === 'pos' ? '#34d399' : cls === 'neg' ? '#fca5a5' : '#9ca3af';
+  const pct = formatPctChange(lat.latest, lat.prior, DASH2_NM_FLOOR);
+  const zStr  = stats ? (stats.z >= 0 ? '+' : '') + stats.z.toFixed(2) + 'σ' : '—';
+  const pctStr = stats ? (stats.pctile * 100).toFixed(0) + '%ile' : '—';
+  const p5Str  = stats ? stats.p5.toFixed(lat.dp) : '—';
+  const p95Str = stats ? stats.p95.toFixed(lat.dp) : '—';
+  const zCol = stats && Math.abs(stats.z) >= 1.5 ? '#fbbf24' : '#c8cfe0';
+  const pctTagCol = stats && (stats.pctile <= 0.10 || stats.pctile >= 0.90) ? '#fbbf24' : '#9ca3af';
+  // P5/P95 mini bar — show where latest sits in [p5, p95] band
+  const bandPos = stats ? Math.max(0, Math.min(1, (stats.latest - stats.p5) / (stats.p95 - stats.p5 || 1))) * 100 : 0;
+  return `
+    <div class="dash2-headline-card" style="background:#0d1322;border:1px solid #1f2937;padding:12px 14px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:10px;color:#9ca3af;letter-spacing:.04em">${INST[inst]?.label||inst} · M+1</span>
+        <span style="font-size:9px;color:#5a6882">${pkL(lat.m1)}</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-size:20px;color:#fff;font-weight:500">${lat.latest.toFixed(lat.dp)}</span>
+        <span style="font-size:11px;color:${col}">${arr} ${lat.change!=null ? Math.abs(lat.change).toFixed(lat.dp) : '—'} ${pct!=='n/m' ? '('+pct+')' : '· n/m'}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <span style="font-size:9px;color:${zCol};background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:2px">z ${zStr}</span>
+        <span style="font-size:9px;color:${pctTagCol};background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:2px">${pctStr}</span>
+        <span style="flex:1"></span>
+        ${dash2Sparkline(values, col, 80, 20)}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:8px;color:#6b7280">
+        <span>30D P5 ${p5Str}</span>
+        <div style="flex:1;position:relative;height:3px;background:#1f2937;border-radius:1px">
+          <div style="position:absolute;left:${bandPos.toFixed(1)}%;top:-2px;width:2px;height:7px;background:${col}"></div>
+        </div>
+        <span>P95 ${p95Str}</span>
+      </div>
+    </div>
+  `;
+}
+
+// ── MacroCard / SpreadCard (Phase 2): label · value · change. NO percentile. ──
+function dash2RenderMacroCard(inst){
+  const lat = dash2LatestM1(inst);
+  const lbl = INST[inst]?.label || inst;
+  if (!lat) return `<div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px"><div style="font-size:9px;color:#9ca3af">${lbl}</div><div style="font-size:13px;color:#5a6882;margin-top:3px">—</div></div>`;
+  const cls = lat.change == null ? 'neu' : lat.change > 0 ? 'pos' : 'neg';
+  const arr = lat.change == null ? '' : lat.change > 0 ? '▲' : '▼';
+  const col = cls === 'pos' ? '#34d399' : cls === 'neg' ? '#fca5a5' : '#9ca3af';
+  const pct = formatPctChange(lat.latest, lat.prior, DASH2_NM_FLOOR);
+  return `
+    <div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px">
+      <div style="font-size:9px;color:#9ca3af">${lbl}</div>
+      <div style="font-size:13px;color:#fff;font-weight:500;margin-top:2px">${lat.latest.toFixed(lat.dp)}</div>
+      <div style="font-size:9px;color:${col};margin-top:1px">${arr} ${lat.change!=null ? Math.abs(lat.change).toFixed(lat.dp) : '—'} ${pct!=='n/m' ? '('+pct+')' : '· n/m'}</div>
+    </div>
+  `;
+}
+
+// Spread card — same shape as Macro but pulls the spread-vs-TTF series
+// instead of the raw front-month, and lets the n/m guard fire when the
+// spread's prior absolute value is small (<0.10).
+function dash2RenderSpreadCard(hubInst, label){
+  const series = dash2SpreadSeriesM1(hubInst, 2);
+  if (!series.length) {
+    return `<div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px"><div style="font-size:9px;color:#9ca3af">${label}</div><div style="font-size:13px;color:#5a6882;margin-top:3px">—</div></div>`;
+  }
+  const latest = series[series.length-1].value;
+  const prior  = series.length >= 2 ? series[series.length-2].value : null;
+  const change = prior != null ? +(latest - prior).toFixed(3) : null;
+  const cls = change == null ? 'neu' : change > 0 ? 'pos' : 'neg';
+  const arr = change == null ? '' : change > 0 ? '▲' : '▼';
+  const col = cls === 'pos' ? '#34d399' : cls === 'neg' ? '#fca5a5' : '#9ca3af';
+  const pct = formatPctChange(latest, prior, DASH2_NM_FLOOR);
+  return `
+    <div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px">
+      <div style="font-size:9px;color:#9ca3af">${label}</div>
+      <div style="font-size:13px;color:#fff;font-weight:500;margin-top:2px">${latest.toFixed(3)}</div>
+      <div style="font-size:9px;color:${col};margin-top:1px">${arr} ${change!=null ? Math.abs(change).toFixed(3) : '—'} ${pct!=='n/m' ? '('+pct+')' : '· n/m'}</div>
+    </div>
+  `;
+}
+
+// ── Phase-2 orchestrator: populates 3 placeholder slots ─────────────────────
+function dash2RenderCards(){
+  if (sDates.length < 2) return;
+
+  // Headline (3 cards): JKM · TTF · HH (big, with z + percentile + spark + P5/P95)
+  const headEl = $id('dash2-headline');
+  if (headEl) {
+    headEl.innerHTML = `
+      <div class="ctitle">HEADLINE BENCHMARKS · M+1<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:9px;color:#5a6882">30D context</span></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px">
+        ${['JKM','TTF','HH'].map(dash2RenderHeadlineCard).join('')}
+      </div>
+    `;
+  }
+
+  // Macro + Spreads (1fr / 1.6fr) — Macro: Brent · Dated · Slope
+  // Spreads: THE/TTF · PEG/TTF · PVB/TTF · PSV/TTF · ZTP/TTF
+  const ms = $id('dash2-macro-spreads');
+  if (ms) {
+    ms.innerHTML = `
+      <div class="acard">
+        <div class="ctitle">MACRO<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px">
+          ${['Brent','Dated','Slope'].map(dash2RenderMacroCard).join('')}
+        </div>
+      </div>
+      <div class="acard">
+        <div class="ctitle">SPREADS · M+1 vs TTF<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:9px;color:#5a6882">n/m guard active when |prior| < 0.10</span></div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px">
+          ${dash2RenderSpreadCard('THE','THE/TTF')}
+          ${dash2RenderSpreadCard('PEG','PEG/TTF')}
+          ${dash2RenderSpreadCard('PVB','PVB/TTF')}
+          ${dash2RenderSpreadCard('PSV','PSV/TTF')}
+          ${dash2RenderSpreadCard('ZTP','ZTP/TTF')}
+        </div>
+      </div>
+    `;
+  }
 }
 
 function buildGasSnapshot(){
