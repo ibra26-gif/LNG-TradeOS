@@ -13256,9 +13256,29 @@ let RG={tab:0,eurUsd:1.17,gbpUsd:1.34,eua:72.59,cargo:3800000,ttfCurve:Array(24)
 function rgg(k,d){try{const v=localStorage.getItem('rg_'+k);return v?JSON.parse(v):d;}catch{return d;}}
 function rgs(k,v){try{localStorage.setItem('rg_'+k,JSON.stringify(v));}catch{}}
 
+// Bump this when RG_T_DEF changes substantively (audits, new terminals,
+// regulatory updates). Existing users' cached RG.terminals will be auto-
+// refreshed from the new RG_T_DEF on next page load.
+//   v1 = original
+//   v2 = 2026-04-26 regulatory audit (Klaipeda/IoG/Świnoujście/Panigaglia/
+//        Ravenna data + French gik/trf refresh + Stade H2-2026 gate)
+const RG_T_DEF_VERSION = 2;
+
 function initRegas(){
   // NOTE: RG_UNLOCK NOT reset here — lock state persists within session
-  RG.terminals=rgg('terminals',JSON.parse(JSON.stringify(RG_T_DEF)));
+  // Auto-refresh RG.terminals from RG_T_DEF when the version constant
+  // bumps — ensures audited values flow through to all 6 dependent tabs
+  // (Terminal Tariffs / Regas Costs / Cost Graph / ITM / Netback /
+  // BREAKEVEN) without requiring the user to click "RESET TO DEFAULTS".
+  const cachedVersion = rgg('terminals_version', 1);
+  if (cachedVersion !== RG_T_DEF_VERSION) {
+    RG.terminals = JSON.parse(JSON.stringify(RG_T_DEF));
+    rgs('terminals', RG.terminals);
+    rgs('terminals_version', RG_T_DEF_VERSION);
+    console.log('[regas] Terminal database refreshed from RG_T_DEF v' + RG_T_DEF_VERSION + ' (was v' + cachedVersion + ')');
+  } else {
+    RG.terminals = rgg('terminals', JSON.parse(JSON.stringify(RG_T_DEF)));
+  }
   RG.ttfCurve=rgg('ttfCurve',Array(24).fill(17.50));
   RG.hubSpreads=rgg('hubSpreads',{...RG_SPREAD_DEF});
   RG.eurUsd=rgg('eurUsd',1.17);RG.gbpUsd=rgg('gbpUsd',1.34);RG.eua=rgg('eua',72.59);RG.cargo=rgg('cargo',3800000);
