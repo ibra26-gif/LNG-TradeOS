@@ -12512,17 +12512,231 @@ function dash2RenderSpreadCard(hubInst, label){
   `;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 4 — CURVE HEATMAP (TTF/JKM/HH × M+1, M+2, M+3, Q3-26, Q4-26, Win-26/27)
+// ════════════════════════════════════════════════════════════════════════════
+// Two display modes via toggle (persisted in localStorage):
+//   'absolute' — DoD change in $/MMBtu, signed (default)
+//   'vsM1'    — DoD change in (this tenor − M+1) spread, so the M+1 column
+//               is always 0 and the rest shows curve-shape DoD shifts
+// Click any cell → navigate to Historical tab pre-loaded with (instrument, tenor).
+
+const DASH2_CURVE_MODE_KEY = 'lng_tradeos_dash2_curve_mode_v1';
+
+const DASH2_CURVE_TENORS = [
+  { code:'r1',       label:'M+1' },
+  { code:'r2',       label:'M+2' },
+  { code:'r3',       label:'M+3' },
+  { code:'q3-2026',  label:'Q3-26' },
+  { code:'q4-2026',  label:'Q4-26' },
+  { code:'win-2026', label:'Win-26/27' },
+];
+const DASH2_CURVE_INSTS = ['TTF','JKM','HH'];
+
+// Resolve a tenor code → price for an instrument at a given sDates index.
+// Rolling tenors (r1..r6) read row[pk] directly; quarterly/seasonal go through
+// gAgg via the season descriptor returned by gSeaP.
+function dash2TenorPrice(inst, tenorCode, dateIdx){
+  if (dateIdx < 0 || dateIdx >= sDates.length) return null;
+  const ds = sDates[dateIdx];
+  const ent = aD[ds]; if (!ent) return null;
+  if (tenorCode.startsWith('r')) {
+    const n = parseInt(tenorCode.slice(1), 10);
+    const pk = rPK(ent.date, n);
+    return ent.rows.find(r => r.pk === pk)?.[inst] ?? null;
+  }
+  if (tenorCode.startsWith('q') || tenorCode.startsWith('win-') || tenorCode.startsWith('sum-')) {
+    const tObj = gSeaP().find(s => s.v === tenorCode);
+    if (!tObj) return null;
+    return gAgg(inst, tObj, ent.rows);
+  }
+  return null;
+}
+
+// Build the 3×6 grid of cell values per the active mode.
+function dash2BuildCurveGrid(mode){
+  if (sDates.length < 2) return null;
+  const lastIdx = sDates.length - 1;
+  const prevIdx = sDates.length - 2;
+  return DASH2_CURVE_INSTS.map(inst => DASH2_CURVE_TENORS.map(t => {
+    const lat = dash2TenorPrice(inst, t.code, lastIdx);
+    const prev = dash2TenorPrice(inst, t.code, prevIdx);
+    const m1Lat = dash2TenorPrice(inst, 'r1', lastIdx);
+    const m1Prev = dash2TenorPrice(inst, 'r1', prevIdx);
+    let value = null;
+    if (mode === 'vsM1') {
+      if (lat == null || m1Lat == null || prev == null || m1Prev == null) value = null;
+      else value = +((lat - m1Lat) - (prev - m1Prev)).toFixed(3);
+    } else {
+      if (lat == null || prev == null) value = null;
+      else value = +(lat - prev).toFixed(3);
+    }
+    return { inst, tenor: t.code, tenorLabel: t.label, value };
+  }));
+}
+
+// Heatmap cell color/intensity. Thresholds match spec:
+// 0–0.05 light, 0.05–0.15 medium, 0.15–0.30 strong, 0.30+ deep.
+function dash2HeatmapStyle(value){
+  if (value == null) return { bg:'rgba(255,255,255,0.02)', color:'#3d5070' };
+  const abs = Math.abs(value);
+  let alpha;
+  if (abs < 0.05) alpha = 0.10;
+  else if (abs < 0.15) alpha = 0.30;
+  else if (abs < 0.30) alpha = 0.55;
+  else alpha = 0.85;
+  // Near-zero rendered grey neutral; spec mock used a grey ramp for low magnitudes.
+  if (abs < 0.02) {
+    return { bg:`rgba(156,163,175,${alpha})`, color:'#9ca3af' };
+  }
+  if (value >= 0) {
+    return { bg:`rgba(52,211,153,${alpha})`, color: alpha >= 0.55 ? '#0a0f1e' : '#34d399' };
+  }
+  return { bg:`rgba(239,68,68,${alpha})`, color: alpha >= 0.55 ? '#fff' : '#fca5a5' };
+}
+
+function dash2GetCurveMode(){
+  try {
+    const saved = localStorage.getItem(DASH2_CURVE_MODE_KEY);
+    return saved === 'vsM1' ? 'vsM1' : 'absolute';
+  } catch (e) { return 'absolute'; }
+}
+
+window.dash2SetCurveMode = function(mode){
+  if (mode !== 'absolute' && mode !== 'vsM1') return;
+  try { localStorage.setItem(DASH2_CURVE_MODE_KEY, mode); } catch(e) {}
+  dash2RenderCurveHeatmap();
+};
+
+function dash2RenderCurveHeatmap(){
+  const el = $id('dash2-curve-heatmap');
+  if (!el) return;
+  const mode = dash2GetCurveMode();
+  const grid = dash2BuildCurveGrid(mode);
+  const titleSuffix = mode === 'vsM1' ? '· DoD change vs M+1 spread' : '· DoD absolute change ($/MMBtu)';
+  if (!grid) {
+    el.innerHTML = `
+      <div class="ctitle">CURVE VIEW · DAY-ON-DAY<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span></div>
+      <div class="cnote" style="color:#5a6882">Need at least 2 EOD dates to compute day-on-day changes.</div>
+    `;
+    return;
+  }
+  // Toggle row
+  const toggle = `
+    <div style="display:flex;gap:6px;align-items:center;margin-left:auto">
+      <button class="cr-pill ${mode==='absolute'?'on':''}" onclick="dash2SetCurveMode('absolute')" style="font-size:9px">ABSOLUTE</button>
+      <button class="cr-pill ${mode==='vsM1'?'on':''}" onclick="dash2SetCurveMode('vsM1')" style="font-size:9px">vs M+1</button>
+    </div>`;
+  // Table
+  let html = `
+    <div class="ctitle">CURVE VIEW · DAY-ON-DAY ${titleSuffix}<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span>${toggle}</div>
+    <div class="cnote" style="color:#5a6882;margin-bottom:6px">Click any cell to drill into that contract's history.</div>
+    <table style="width:100%;border-collapse:separate;border-spacing:3px;font-family:inherit">
+      <thead><tr>
+        <th style="text-align:left;padding:4px 6px;font-size:9px;color:#3d5070">—</th>
+        ${DASH2_CURVE_TENORS.map(t => `<th style="padding:4px 6px;font-size:9px;color:#9ca3af;text-align:center">${t.label}</th>`).join('')}
+      </tr></thead>
+      <tbody>
+  `;
+  DASH2_CURVE_INSTS.forEach((inst, i) => {
+    html += `<tr><th style="text-align:left;padding:6px;font-size:10px;color:#fff;background:#0d1322;border:1px solid #1f2937">${INST[inst]?.label||inst}</th>`;
+    grid[i].forEach(cell => {
+      const sty = dash2HeatmapStyle(cell.value);
+      const valStr = cell.value == null ? '—'
+        : (cell.value > 0 ? '+' : '') + cell.value.toFixed(3);
+      const tip = cell.value == null
+        ? `${INST[inst]?.label||inst} ${cell.tenorLabel} — no data`
+        : `${INST[inst]?.label||inst} ${cell.tenorLabel} · click to view history`;
+      html += `<td onclick="dash2GotoHistorical('${inst}','${cell.tenor}')" title="${tip}" style="cursor:pointer;padding:8px 6px;background:${sty.bg};color:${sty.color};text-align:center;font-size:11px;font-weight:500;border:1px solid rgba(255,255,255,0.04)">${valStr}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table>`;
+  el.innerHTML = html;
+}
+
+// Click cell → navigate to Historical tab with (inst, tenor) pre-loaded.
+window.dash2GotoHistorical = function(inst, tenor){
+  // Resolve tenor code to a Historical-tab-compatible value. Rolling stays
+  // r1..r6, quarterly/seasonal stays as-is (bTS in Historical tab supports
+  // both via wS=true).
+  const i1 = $id('h-i1'); if (i1) i1.value = inst;
+  const t1 = $id('h-t1'); if (t1) t1.value = tenor;
+  // Disable second series so the chart shows just the clicked one
+  const i2 = $id('h-i2'); if (i2) i2.value = 'none';
+  if (typeof showSec === 'function') showSec('historical');
+  if (typeof updHist === 'function') setTimeout(updHist, 80);
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 5 — SCRATCHPAD (auto-saving textarea, localStorage persistence)
+// ════════════════════════════════════════════════════════════════════════════
+// 2-second debounced save on input; immediate save on blur. Loads on mount.
+// Replaces the Phase-1 placeholder in #dash2-since-visit (the slot is named
+// "since-visit" historically; the time-window panel was descoped per user
+// direction so the slot now hosts the scratchpad alone).
+
+const DASH2_SCRATCHPAD_KEY = 'lng_tradeos_dash2_scratchpad_v1';
+let _dash2ScratchTimer = null;
+
+function dash2ScratchLoad(){
+  try { return localStorage.getItem(DASH2_SCRATCHPAD_KEY) || ''; }
+  catch (e) { return ''; }
+}
+
+function dash2ScratchSave(text){
+  try { localStorage.setItem(DASH2_SCRATCHPAD_KEY, text); }
+  catch (e) { console.warn('Scratchpad save failed:', e.message); }
+}
+
+window.dash2ScratchInput = function(value){
+  const status = $id('dash2-scratch-status');
+  if (status) { status.textContent = 'unsaved…'; status.style.color = '#fbbf24'; }
+  if (_dash2ScratchTimer) clearTimeout(_dash2ScratchTimer);
+  _dash2ScratchTimer = setTimeout(() => {
+    dash2ScratchSave(value);
+    if (status) { status.textContent = 'saved'; status.style.color = '#5a6882'; }
+  }, 2000);
+};
+
+window.dash2ScratchBlur = function(value){
+  // Flush immediately on blur — don't wait for the debounce.
+  if (_dash2ScratchTimer) { clearTimeout(_dash2ScratchTimer); _dash2ScratchTimer = null; }
+  dash2ScratchSave(value);
+  const status = $id('dash2-scratch-status');
+  if (status) { status.textContent = 'saved'; status.style.color = '#5a6882'; }
+};
+
+function dash2RenderScratchpad(){
+  const el = $id('dash2-since-visit');
+  if (!el) return;
+  const text = dash2ScratchLoad();
+  // Render only once — re-rendering on every buildDash would lose focus mid-typing.
+  if (el.dataset.scratchInitialised === '1') return;
+  el.dataset.scratchInitialised = '1';
+  el.innerHTML = `
+    <div class="ctitle" style="color:#fbbf24">SCRATCHPAD<span style="flex:1;height:1px;background:rgba(251,191,36,0.10);margin:0 8px;display:inline-block"></span><span style="font-size:9px;color:#5a6882" id="dash2-scratch-status">saved</span></div>
+    <textarea id="dash2-scratch-text"
+              oninput="dash2ScratchInput(this.value)"
+              onblur="dash2ScratchBlur(this.value)"
+              placeholder="Notes for the day. Auto-saves to your browser (localStorage)."
+              style="width:100%;background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-family:inherit;font-size:11px;padding:8px;margin-top:6px;min-height:80px;resize:vertical;box-sizing:border-box">${text.replace(/</g,'&lt;')}</textarea>
+  `;
+}
+
 // ── Phase-2 orchestrator: populates 3 placeholder slots ─────────────────────
 function dash2RenderCards(){
   if (sDates.length < 2) return;
 
-  // Headline (3 cards): JKM · TTF · HH (label + value + change + sparkline)
+  // Headline (4 cards): JKM · TTF · JKM/TTF spread · HH
+  // SP_JT lives in INST list as a regular instrument keyed off rows[*].SP_JT,
+  // so dash2LatestM1 / dash2SeriesM1 work without changes.
   const headEl = $id('dash2-headline');
   if (headEl) {
     headEl.innerHTML = `
       <div class="ctitle">HEADLINE BENCHMARKS · M+1<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span></div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px">
-        ${['JKM','TTF','HH'].map(dash2RenderHeadlineCard).join('')}
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px">
+        ${['JKM','TTF','SP_JT','HH'].map(dash2RenderHeadlineCard).join('')}
       </div>
     `;
   }
@@ -12563,6 +12777,14 @@ function dash2RenderCards(){
       </div>
     `;
   }
+
+  // Phase 4 — Curve heatmap (centerpiece, full-width)
+  dash2RenderCurveHeatmap();
+
+  // Phase 5 — Scratchpad (auto-saving textarea, persists via localStorage).
+  // Only initialised once per page load so re-renders on data load don't
+  // wipe in-progress text or steal focus mid-typing.
+  dash2RenderScratchpad();
 }
 
 function buildGasSnapshot(){
