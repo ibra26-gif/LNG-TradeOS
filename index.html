@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260422a">
-<script src="lngtradeos.js?v=20260427-domprod-fix" defer></script>
+<script src="lngtradeos.js?v=20260427-correlation-monitor" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -335,11 +335,14 @@
       </div>
       <div id="sec-correlation" class="asec">
         <div style="display:flex;border-bottom:1px solid #151e30;background:#070b14;overflow-x:auto;margin-bottom:0">
-          <button class="anl active" id="ctab-rolling" onclick="cShowTab('rolling',this)" style="font-size:9px;padding:10px 14px">ROLLING</button>
-          <button class="anl" id="ctab-analysis" onclick="cShowTab('analysis',this)" style="font-size:9px;padding:10px 14px">ANALYSIS</button>
-          <button class="anl" id="ctab-matrix" onclick="cShowTab('matrix',this)" style="font-size:9px;padding:10px 14px">MATRIX</button>
+          <button class="anl active" id="ctab-monitor"  onclick="crxShowTab('monitor',this)"  style="font-size:9px;padding:10px 14px">MONITOR</button>
+          <button class="anl"        id="ctab-pair"     onclick="crxShowTab('pair',this)"     style="font-size:9px;padding:10px 14px">PAIR</button>
+          <button class="anl"        id="ctab-universe" onclick="crxShowTab('universe',this)" style="font-size:9px;padding:10px 14px">UNIVERSE</button>
         </div>
-        <div id="csec-rolling" class="csec" style="padding:14px 0 0">
+        <!-- Monitor pane (Phase 1, new). Content rendered by crxRenderMonitor() -->
+        <div id="csec-monitor" class="csec" style="padding:14px 0 0"></div>
+        <!-- Legacy Rolling pane — retired; folded into Monitor focus chart. Kept hidden for any DOM references. -->
+        <div id="csec-rolling" class="csec" style="padding:14px 0 0;display:none">
           <div class="ctrl">
             <span class="cl">WINDOW</span>
             <input type="range" min="5" max="60" value="20" id="cr-win" oninput="document.getElementById('cr-win-val').textContent=this.value+'D';cUpdRolling()" style="width:120px;accent-color:#2d7cff">

@@ -12157,7 +12157,7 @@ async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.m
   if(eexAdded>0){buildEuHubChart();buildDash();const st=document.getElementById('eex-status');if(st)st.textContent=`${eexDates.length} dates · last ${eexDates[eexDates.length-1]||'—'}`;}
   if(!lngFiles.length){if(eexAdded>0)return;alert('No LNG curve files found (EEX files processed separately).');return;}
   if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$id('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of lngFiles){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}try{const buf=await toAB(file);if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$id('progfill2');if(pf)pf.style.width=Math.round(done/lngFiles.length*100)+'%';const pt=$id('progtxt2');if(pt)pt.textContent=`${done}/${lngFiles.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
-function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();buildEuHubChart();updHist();cInit();updSpread();updFC();updSea();}
+function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();buildEuHubChart();updHist();if(typeof crxInvalidateCache==='function')crxInvalidateCache();cInit();updSpread();updFC();updSea();}
 function rPK(d,t){const r=new Date(d.getFullYear(),d.getMonth()+parseInt(t),1);return`${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}`;}
 function aPKs(){const s=new Set();for(const ds of sDates)aD[ds].rows.forEach(r=>s.add(r.pk));return[...s].sort();}
 function gSR(inst,t){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const pk=rPK(date,t);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
@@ -13077,6 +13077,809 @@ function cInit(){
   cInitAnalysis();
   cInitMatrix();
   cUpdRolling();
+  // CRX = Correlation v3 (Monitor / Pair / Universe). cInit is called both
+  // on first analytics-UI activation and when the user navigates to the
+  // Correlation section, so crxBoot is idempotent and safe to call N times.
+  if(typeof crxBoot === 'function') crxBoot();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CRX — CORRELATION v3 (MONITOR / PAIR / UNIVERSE)
+// ════════════════════════════════════════════════════════════════════════════
+// Phase 1 ships the Monitor tab. Pair and Universe navigate to the existing
+// Analysis / Matrix panes (legacy fallback) so no functional regression.
+//
+// Engine: builds on the existing cRCorr / cCrossCorr / pear / cPval / cStability
+// helpers. New additions live under the CRX.* namespace.
+// Persistence: localStorage key 'lng_tradeos_correlation_v1'. Watchlist,
+// thresholds, default tab, monitor windows, last-viewed pair.
+// ════════════════════════════════════════════════════════════════════════════
+
+const CRX_PREFS_KEY = 'lng_tradeos_correlation_v1';
+const CRX_AVAIL_WINDOWS = [5, 20, 30, 90, 250]; // matches monitorWindows
+const CRX_WIN_COLORS = {
+  5:   '#fbbf24', // yellow — short-term sensitivity
+  20:  '#fca5a5', // soft red
+  30:  '#3b82f6', // blue — primary structural window
+  90:  '#a78bfa', // purple — slower drift
+  250: '#34d399', // green — long-run / structural anchor
+};
+const CRX_STATE_COLORS = {
+  breaking: { bg:'rgba(239,68,68,0.06)',  border:'rgba(239,68,68,0.40)',  badge:'#ef4444', text:'#fca5a5' },
+  weakening:{ bg:'rgba(251,191,36,0.06)', border:'rgba(251,191,36,0.40)', badge:'#fbbf24', text:'#fbbf24' },
+  stable:   { bg:'rgba(52,211,153,0.05)', border:'rgba(52,211,153,0.40)', badge:'#34d399', text:'#34d399' },
+};
+
+const CRX = {
+  prefs: null,
+  charts: { focus: null, spark: {} }, // sparkline charts keyed by pair id
+  // Memoization — invalidated on data load via crxInvalidateCache()
+  rcCache: new Map(), // key=`${i1}-${t1}-${i2}-${t2}-${win}` → cRCorr result
+};
+
+function crxInvalidateCache(){
+  CRX.rcCache.clear();
+}
+
+// ── Persistence ─────────────────────────────────────────────────────────────
+function crxDefaultPrefs(){
+  return {
+    version: 1,
+    watchlist: [
+      { id:'jkm-ttf-r1',   i1:'JKM',   t1:'r1', i2:'TTF', t2:'r1', thresholds:null },
+      { id:'hh-ttf-r1',    i1:'HH',    t1:'r1', i2:'TTF', t2:'r1', thresholds:null },
+      { id:'hh-jkm-r1',    i1:'HH',    t1:'r1', i2:'JKM', t2:'r1', thresholds:null },
+      { id:'brent-ttf-r1', i1:'Brent', t1:'r1', i2:'TTF', t2:'r1', thresholds:null },
+      { id:'brent-jkm-r1', i1:'Brent', t1:'r1', i2:'JKM', t2:'r1', thresholds:null },
+    ],
+    defaultTab: 'monitor',
+    globalThresholds: { break: 0.25, drift: 0.10 },
+    monitorWindows: [5, 20, 30, 90, 250],
+    lastViewedPair: { i1:'JKM', t1:'r1', i2:'TTF', t2:'r1' },
+    monitorFocusId: 'jkm-ttf-r1',
+  };
+}
+
+function crxLoadPrefs(){
+  try {
+    const raw = localStorage.getItem(CRX_PREFS_KEY);
+    if (!raw) {
+      const def = crxDefaultPrefs();
+      crxSavePrefs(def);
+      return def;
+    }
+    const parsed = JSON.parse(raw);
+    // Migration: ensure all default keys present
+    const def = crxDefaultPrefs();
+    return { ...def, ...parsed,
+      globalThresholds: { ...def.globalThresholds, ...(parsed.globalThresholds||{}) },
+      // Coerce window list to numeric if older versions stored strings
+      monitorWindows: (parsed.monitorWindows || def.monitorWindows).map(w =>
+        typeof w === 'string' ? parseInt(w.replace(/D$/,''),10) : w
+      ).filter(w => CRX_AVAIL_WINDOWS.includes(w)),
+    };
+  } catch (e) {
+    console.warn('CRX prefs load failed:', e.message);
+    return crxDefaultPrefs();
+  }
+}
+
+function crxSavePrefs(p){
+  try { localStorage.setItem(CRX_PREFS_KEY, JSON.stringify(p)); }
+  catch (e) { console.warn('CRX prefs save failed:', e.message); }
+}
+
+function crxPairThresholds(pair){
+  if (pair.thresholds) return pair.thresholds;
+  return CRX.prefs.globalThresholds;
+}
+
+function crxIsCustom(pair){ return pair.thresholds != null; }
+
+// ── Engine — extends existing cRCorr / pear / cPval ─────────────────────────
+
+// Cached rolling correlation. Critical because Monitor renders 5 windows × N
+// pairs on every render; without caching the page stalls on watchlists > 8.
+function crxRCorr(pair, win){
+  const key = `${pair.i1}-${pair.t1}-${pair.i2}-${pair.t2}-${win}`;
+  if (CRX.rcCache.has(key)) return CRX.rcCache.get(key);
+  const s1 = (typeof gS === 'function') ? gS(pair.i1, pair.t1) : [];
+  const s2 = (typeof gS === 'function') ? gS(pair.i2, pair.t2) : [];
+  if (!s1.length || !s2.length) { CRX.rcCache.set(key, []); return []; }
+  const rc = cRCorr(s1, s2, win, pear);
+  // Defensive sort by Date object (BUG FIX: AC bug list — date axis sorted
+  // by Date, not by stringified label). cRCorr already returns dates in
+  // input order, but we re-sort to guarantee chronology even if input was
+  // shuffled (which can happen if data loaders interleave).
+  rc.sort((a, b) => new Date(a.date) - new Date(b.date));
+  CRX.rcCache.set(key, rc);
+  return rc;
+}
+
+// classifyState — 'stable' | 'weakening' | 'breaking'
+// Logic:
+//   breaking: latest 5D r is below trailing 30D r by ≥ break threshold
+//   weakening: 30D r drifted below 90D r by ≥ drift threshold over the last
+//              11 sessions (gradual decoupling, not sudden break)
+//   stable: otherwise
+function crxClassifyState(pair){
+  const th = crxPairThresholds(pair);
+  const rc5  = crxRCorr(pair, 5);
+  const rc30 = crxRCorr(pair, 30);
+  const rc90 = crxRCorr(pair, 90);
+  const lat = arr => arr.length ? arr[arr.length-1].value : null;
+  const r5  = lat(rc5),  r30 = lat(rc30), r90 = lat(rc90);
+  const delta = (r5 != null && r30 != null) ? (r5 - r30) : 0;
+  const driftDelta = (r30 != null && r90 != null) ? (r30 - r90) : 0;
+  // Drift duration: how many of last 11 sessions had 30D r below 90D r
+  let driftDays = 0;
+  if (rc30.length >= 11 && rc90.length >= 11) {
+    const tail30 = rc30.slice(-11);
+    const map90 = new Map(rc90.map(d => [+new Date(d.date), d.value]));
+    for (const r of tail30) {
+      const v90 = map90.get(+new Date(r.date));
+      if (v90 != null && r.value < v90) driftDays++;
+    }
+  }
+  let cls;
+  if (r5 == null || r30 == null) cls = 'stable'; // insufficient data → don't alarm
+  else if (delta < -th.break) cls = 'breaking';
+  else if (driftDelta < -th.drift && driftDays >= 6) cls = 'weakening';
+  else cls = 'stable';
+  // sigma stability over 30D rolling window
+  const vals30 = rc30.map(d => d.value);
+  const m = vals30.reduce((a,b)=>a+b,0) / Math.max(vals30.length, 1);
+  const sigma = vals30.length ? Math.sqrt(vals30.reduce((s,v)=>s+(v-m)**2,0) / vals30.length) : 0;
+  return { cls, r5, r30, r90, delta, driftDelta, driftDays, sigma };
+}
+
+// detectRegimeChanges — find points in rolling-r series where r drops
+// > breakThreshold below trailing 60D mean. Returns chronological list with
+// magnitude (negative = drop) and recoveryDays (days until r returned within
+// half the drop, or null if not yet recovered).
+function crxDetectRegimeChanges(pair, lookbackWin = 30, threshold = null){
+  const th = threshold != null ? threshold : crxPairThresholds(pair).break;
+  const rc = crxRCorr(pair, lookbackWin);
+  if (rc.length < 70) return [];
+  const breaks = [];
+  for (let i = 60; i < rc.length; i++) {
+    const trailing = rc.slice(i-60, i).map(d => d.value);
+    const mean = trailing.reduce((a,b)=>a+b,0) / trailing.length;
+    const cur = rc[i].value;
+    if (cur - mean < -th) {
+      // Avoid duplicate breaks within 5 sessions of a previous one
+      if (breaks.length && (i - breaks[breaks.length-1]._idx) < 5) continue;
+      // Find recovery: first j > i where rc[j] >= mean - th/2
+      let recoveryDays = null;
+      for (let j = i+1; j < rc.length; j++) {
+        if (rc[j].value >= mean - th/2) { recoveryDays = j - i; break; }
+      }
+      breaks.push({
+        date: rc[i].date,
+        magnitude: +(cur - mean).toFixed(3),
+        recoveryDays,
+        _idx: i,
+      });
+    }
+  }
+  return breaks.map(b => { const { _idx, ...rest } = b; return rest; });
+}
+
+// Tradeable score — r × (1 − σ/σ_max) where σ_max is the max σ in the
+// reference set (defaults to current watchlist).
+function crxGetTradeableScore(pair, sigmaMax = null){
+  const st = crxClassifyState(pair);
+  if (st.r30 == null) return null;
+  if (sigmaMax == null) {
+    sigmaMax = Math.max(...CRX.prefs.watchlist.map(p => crxClassifyState(p).sigma || 0), 0.001);
+  }
+  const score = st.r30 * (1 - (st.sigma / Math.max(sigmaMax, 0.001)));
+  return +score.toFixed(3);
+}
+
+// Residual series — for use by Pair tab later, but exposed in Phase 1 for
+// completeness. Linear regression of log-returns of i2 on i1, returns
+// per-date residuals over the alignment.
+function crxGetResidualSeries(pair){
+  const s1 = gS(pair.i1, pair.t1), s2 = gS(pair.i2, pair.t2);
+  if (!s1.length || !s2.length) return [];
+  const { v1, v2, dates } = al2(s1, s2);
+  const l1 = lRet(v1), l2 = lRet(v2);
+  const pts = [];
+  for (let i = 0; i < Math.min(l1.length, l2.length); i++) {
+    if (l1[i]!=null && l2[i]!=null && isFinite(l1[i]) && isFinite(l2[i]))
+      pts.push({ x:l1[i], y:l2[i], date: dates[i+1] });
+  }
+  if (pts.length < 5) return [];
+  const mx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
+  const my = pts.reduce((s,p)=>s+p.y,0)/pts.length;
+  const num = pts.reduce((s,p)=>s+(p.x-mx)*(p.y-my),0);
+  const den = pts.reduce((s,p)=>s+(p.x-mx)**2,0);
+  const beta = den !== 0 ? num/den : 0;
+  const alpha = my - beta*mx;
+  return pts.map(p => ({ date: p.date, residual: +(p.y - (alpha + beta*p.x)).toFixed(6) }));
+}
+
+// % change with floor — BUG FIX: when |prior| < 0.10, % change is
+// numerically unreliable, so render 'n/m' instead of a wild number.
+function crxPctChange(now, prior, floor = 0.10) {
+  if (now == null || prior == null) return 'n/m';
+  if (Math.abs(prior) < floor) return 'n/m';
+  return ((now - prior) / Math.abs(prior) * 100).toFixed(0) + '%';
+}
+
+// ── Routing & tab activation ────────────────────────────────────────────────
+function crxBoot(){
+  if (!CRX.prefs) CRX.prefs = crxLoadPrefs();
+  // Ensure focus pair exists in current watchlist (could be removed)
+  if (!CRX.prefs.watchlist.find(p => p.id === CRX.prefs.monitorFocusId)) {
+    CRX.prefs.monitorFocusId = CRX.prefs.watchlist[0]?.id || null;
+    crxSavePrefs(CRX.prefs);
+  }
+  // Activate the saved default tab. If user has just clicked into the
+  // Correlation section for the first time this session, the active tab
+  // class is on the Rolling button (legacy default). Override that.
+  const tab = CRX.prefs.defaultTab || 'monitor';
+  crxShowTab(tab, null, /*persist=*/false);
+}
+
+function crxShowTab(tab, btn, persist = true){
+  if (!CRX.prefs) CRX.prefs = crxLoadPrefs();
+  // Hide all four panes (legacy rolling stays hidden permanently)
+  ['monitor','rolling','analysis','matrix'].forEach(t => {
+    const s = $id('csec-' + t); if (s) s.style.display = 'none';
+  });
+  // Tab → pane mapping. monitor → csec-monitor (new). pair → csec-analysis
+  // (legacy fallback, will be replaced in Phase 2). universe → csec-matrix
+  // (legacy fallback, replaced in Phase 3).
+  const PANE_MAP = { monitor:'csec-monitor', pair:'csec-analysis', universe:'csec-matrix' };
+  const paneId = PANE_MAP[tab];
+  if (paneId) { const p = $id(paneId); if (p) p.style.display = 'block'; }
+  // Toggle button active state across both old and new nav rows
+  document.querySelectorAll('#sec-correlation .anl').forEach(b => b.classList.remove('active'));
+  const id = 'ctab-' + tab;
+  const tBtn = btn || $id(id);
+  if (tBtn) tBtn.classList.add('active');
+  // Persist user-driven switches only — boot activations don't count
+  if (persist) {
+    CRX.prefs.defaultTab = tab;
+    crxSavePrefs(CRX.prefs);
+  }
+  // Render
+  setTimeout(() => {
+    if (tab === 'monitor') crxRenderMonitor();
+    else if (tab === 'pair' && typeof cUpdAnalysis === 'function') cUpdAnalysis();
+    else if (tab === 'universe' && typeof cUpdMatrix === 'function') cUpdMatrix();
+  }, 30);
+}
+
+// ── Monitor tab — render orchestrator ───────────────────────────────────────
+function crxRenderMonitor(){
+  if (!CRX.prefs) CRX.prefs = crxLoadPrefs();
+  const pane = $id('csec-monitor');
+  if (!pane) return;
+  const sigmaMax = Math.max(
+    ...CRX.prefs.watchlist.map(p => crxClassifyState(p).sigma || 0),
+    0.001
+  );
+  // Counts for status line
+  const stateCounts = { breaking:0, weakening:0, stable:0 };
+  CRX.prefs.watchlist.forEach(p => { stateCounts[crxClassifyState(p).cls]++; });
+  const lastDate = (sDates && sDates.length)
+    ? new Date(sDates[sDates.length-1]).toLocaleDateString('en-GB', { day:'2-digit', month:'short' })
+    : '—';
+  const focusPair = CRX.prefs.watchlist.find(p => p.id === CRX.prefs.monitorFocusId)
+                  || CRX.prefs.watchlist[0];
+
+  pane.innerHTML = `
+    <!-- Header status -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #151e30">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-size:11px;color:#c8cfe0;font-weight:500">Correlation · Monitor</span>
+        <span style="font-size:9px;color:#34d399">● ${sDates?.length||0} dates · EOD ${lastDate}</span>
+      </div>
+      <span style="font-size:9px;color:#3d5070">click any card to focus · click ⚙ for per-pair thresholds</span>
+    </div>
+
+    <!-- Watchlist summary bar -->
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#0a0f1e;border:1px solid #151e30;padding:8px 10px;margin-bottom:10px">
+      <span style="font-size:9px;letter-spacing:.06em;color:#3d5070;text-transform:uppercase">Watchlist</span>
+      <span style="font-size:10px;color:#c8cfe0">${CRX.prefs.watchlist.length} pairs · ${stateCounts.breaking} breaking · ${stateCounts.weakening} weakening · ${stateCounts.stable} stable</span>
+      <span style="flex:1"></span>
+      <span style="font-size:10px;color:#5a6882">Break threshold <span style="background:rgba(45,124,255,0.10);border:1px solid rgba(45,124,255,0.30);padding:1px 6px;color:#4fc3f7">±${CRX.prefs.globalThresholds.break.toFixed(2)}</span></span>
+      <span style="font-size:10px;color:#5a6882">Drift <span style="background:rgba(45,124,255,0.10);border:1px solid rgba(45,124,255,0.30);padding:1px 6px;color:#4fc3f7">±${CRX.prefs.globalThresholds.drift.toFixed(2)}</span></span>
+      <button class="cr-pill" onclick="crxOpenAddPair()" style="font-size:9px">+ ADD PAIR</button>
+      <button class="cr-pill" onclick="crxOpenGlobalSettings()" style="font-size:9px">⚙ CONFIGURE</button>
+    </div>
+
+    <!-- Cards grid -->
+    <div id="crx-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:10px">
+      ${CRX.prefs.watchlist.map(p => crxRenderPairCardHTML(p, sigmaMax)).join('')}
+      <button onclick="crxOpenAddPair()" style="background:transparent;border:1px dashed #3d5070;border-radius:4px;padding:14px;color:#5a6882;cursor:pointer;font-family:inherit;font-size:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:88px">
+        <span style="font-size:18px;line-height:1">+</span>
+        <span>add pair</span>
+      </button>
+    </div>
+
+    <!-- Add-pair / settings popovers (hidden by default) -->
+    <div id="crx-popover" style="display:none"></div>
+
+    <!-- Focus chart -->
+    ${focusPair ? `
+    <div class="acard" style="margin-bottom:10px">
+      <div class="ctitle" style="display:flex;align-items:center">
+        <span>FOCUS · <span id="crx-focus-pair-label" style="color:#4fc3f7">${crxPairLabel(focusPair)}</span></span>
+        <span id="crx-focus-state-badge" style="margin-left:8px"></span>
+        <span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span>
+        <span id="crx-window-toggles" style="display:flex;gap:3px"></span>
+      </div>
+      <div class="cw" style="height:200px"><canvas id="crxFocusChart"></canvas></div>
+      <div id="crx-focus-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid #0f1824"></div>
+    </div>
+
+    <!-- Synthesis callout -->
+    <div id="crx-synthesis" style="background:rgba(167,139,250,0.04);border-left:2px solid #a78bfa;padding:8px 12px;margin-bottom:10px;font-size:10px;color:#c8cfe0;line-height:1.6"></div>
+    ` : `
+    <div style="padding:30px;text-align:center;color:#3d5070;font-size:11px">Add a pair to start monitoring.</div>
+    `}
+
+    <!-- DETECT findings list across watchlist -->
+    <div class="acard">
+      <div class="ctitle">
+        <span>DETECTED · ACROSS WATCHLIST</span>
+        <span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span>
+        <button class="cr-pill" onclick="crxRenderDetected()" style="font-size:9px">↻ RESCAN</button>
+      </div>
+      <div id="crx-detected-list" style="margin-top:8px;font-size:10px"></div>
+    </div>
+  `;
+  if (focusPair) {
+    crxRenderWindowToggles();
+    crxRenderFocusChart(focusPair);
+    crxRenderFocusStats(focusPair);
+    crxRenderSynthesis(focusPair);
+  }
+  crxRenderDetected();
+  // Sparkline charts on cards — kick off after cards mount
+  setTimeout(() => CRX.prefs.watchlist.forEach(p => crxRenderSparkline(p)), 50);
+}
+
+// ── Card HTML ───────────────────────────────────────────────────────────────
+function crxPairLabel(p){
+  const t1Lbl = (typeof tvL === 'function') ? tvL(p.t1) : p.t1;
+  const t2Lbl = (typeof tvL === 'function') ? tvL(p.t2) : p.t2;
+  const i1Lbl = INST[p.i1]?.label || p.i1;
+  const i2Lbl = INST[p.i2]?.label || p.i2;
+  return `${i1Lbl}-${i2Lbl}` + (t1Lbl===t2Lbl ? ` ${t1Lbl}` : ` ${t1Lbl}/${t2Lbl}`);
+}
+
+function crxRenderPairCardHTML(pair, sigmaMax){
+  const st = crxClassifyState(pair);
+  const col = CRX_STATE_COLORS[st.cls];
+  const isFocus = (pair.id === CRX.prefs.monitorFocusId);
+  const customTag = crxIsCustom(pair)
+    ? `<span title="Per-pair thresholds set" style="font-size:8px;color:#a78bfa;margin-left:4px">●</span>`
+    : '';
+  const r30Disp = st.r30 != null ? st.r30.toFixed(2) : '—';
+  // Δpp uses 5D − 30D (sudden shift signal). Floor on absolute prior is the
+  // n/m guard. Here we display absolute pp delta (not relative %) so floor
+  // applies differently — we always show pp.
+  let deltaCopy = '';
+  if (st.r5 != null && st.r30 != null) {
+    const pp = (st.delta * 100);
+    const sign = pp >= 0 ? '+' : '';
+    deltaCopy = `${sign}${pp.toFixed(0)}pp · 5D vs 30D`;
+  } else {
+    deltaCopy = '<span style="opacity:0.6">n/m</span>';
+  }
+  const stateBadge = {
+    breaking: 'BREAKING',
+    weakening:'WEAKENING',
+    stable:   'STABLE',
+  }[st.cls];
+  return `
+    <div data-pair-id="${pair.id}"
+         onclick="crxFocusPair('${pair.id}')"
+         style="position:relative;cursor:pointer;background:${col.bg};border:1px solid ${col.border};border-radius:4px;padding:9px 10px;${isFocus?'outline:1px solid #4fc3f7;outline-offset:-1px;':''}">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px">
+        <span style="font-size:10px;color:#fff;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${crxPairLabel(pair)}${customTag}</span>
+        <span style="background:${col.badge};color:#0a0f1e;font-size:8px;font-weight:600;padding:1px 5px;border-radius:2px;letter-spacing:.06em;flex-shrink:0">${stateBadge}</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px">
+        <span style="font-size:14px;color:#fff;font-weight:500">r ${r30Disp}</span>
+        <span style="font-size:9px;color:${col.text}">${deltaCopy}</span>
+        <span style="flex:1"></span>
+        <button class="crx-card-cog" title="Per-pair thresholds"
+                onclick="event.stopPropagation();crxOpenPairSettings('${pair.id}')"
+                style="background:none;border:none;color:#3d5070;cursor:pointer;font-size:11px;padding:0 2px;line-height:1">⚙</button>
+      </div>
+      <div style="height:18px;margin-top:4px"><canvas id="crx-spark-${pair.id}" height="18"></canvas></div>
+      <div style="font-size:8px;color:#3d5070;margin-top:2px">σ ${st.sigma.toFixed(3)} · score ${(crxGetTradeableScore(pair, sigmaMax)??0).toFixed(2)}</div>
+    </div>
+  `;
+}
+
+// ── Sparkline (last 60D of 30D rolling r) ───────────────────────────────────
+function crxRenderSparkline(pair){
+  const cv = $id('crx-spark-' + pair.id);
+  if (!cv) return;
+  const rc = crxRCorr(pair, 30);
+  if (!rc.length) return;
+  const tail = rc.slice(-60);
+  const data = tail.map(d => d.value);
+  const labels = tail.map(d => d.date);
+  if (CRX.charts.spark[pair.id]) CRX.charts.spark[pair.id].destroy();
+  const st = crxClassifyState(pair);
+  const col = CRX_STATE_COLORS[st.cls].badge;
+  CRX.charts.spark[pair.id] = new Chart(cv, {
+    type: 'line',
+    data: { labels, datasets: [{
+      data, borderColor: col, borderWidth: 1.2,
+      pointRadius: 0, tension: 0.3, fill: false,
+    }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: false,
+      plugins: { legend: { display:false }, tooltip: { enabled:false } },
+      scales: { x: { display:false }, y: { display:false, min:-1, max:1 } },
+    },
+  });
+}
+
+// ── Focus chart with multi-window lines + regime markers ────────────────────
+function crxRenderWindowToggles(){
+  const wrap = $id('crx-window-toggles'); if (!wrap) return;
+  wrap.innerHTML = '';
+  CRX_AVAIL_WINDOWS.forEach(w => {
+    const on = CRX.prefs.monitorWindows.includes(w);
+    const b = document.createElement('button');
+    b.className = 'cr-pill' + (on ? ' on' : '');
+    b.style.cssText = 'font-size:8px;padding:2px 6px;letter-spacing:.04em';
+    b.textContent = `${w}D`;
+    b.onclick = () => {
+      const has = CRX.prefs.monitorWindows.includes(w);
+      if (has && CRX.prefs.monitorWindows.length > 1) {
+        CRX.prefs.monitorWindows = CRX.prefs.monitorWindows.filter(x => x !== w);
+      } else if (!has) {
+        CRX.prefs.monitorWindows = [...CRX.prefs.monitorWindows, w].sort((a,b)=>a-b);
+      }
+      crxSavePrefs(CRX.prefs);
+      crxRenderWindowToggles();
+      const fp = CRX.prefs.watchlist.find(p => p.id === CRX.prefs.monitorFocusId);
+      if (fp) crxRenderFocusChart(fp);
+    };
+    wrap.appendChild(b);
+  });
+}
+
+function crxRenderFocusChart(pair){
+  const cv = $id('crxFocusChart'); if (!cv) return;
+  if (CRX.charts.focus) CRX.charts.focus.destroy();
+  // Build datasets — one line per active window
+  const datasets = [];
+  let allDates = new Set();
+  CRX.prefs.monitorWindows.forEach(w => {
+    const rc = crxRCorr(pair, w);
+    rc.forEach(d => allDates.add(+new Date(d.date)));
+    datasets.push({
+      win: w,
+      data: rc.map(d => ({ x:+new Date(d.date), y:+d.value.toFixed(4) })),
+      borderColor: CRX_WIN_COLORS[w],
+      borderWidth: w === 30 ? 2 : 1.2,
+      borderDash: (w === 5 || w === 250) ? [4,3] : undefined,
+      pointRadius: 0,
+      tension: 0.3,
+      fill: false,
+      label: `${w}D r`,
+    });
+  });
+  const labels = [...allDates].sort((a,b)=>a-b)
+    .map(t => new Date(t).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' }));
+  // Regime markers (annotation plugin not available — use background segment colors via shadow dataset)
+  const regimes = crxDetectRegimeChanges(pair, 30);
+  // For regime markers, draw vertical line via a synthetic dataset (point at top + bottom)
+  const markerDs = regimes.slice(-5).map((r, i) => ({
+    label: `Break ${new Date(r.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,
+    data: labels.map(l => {
+      const dStr = new Date(r.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' });
+      return l === dStr ? 1 : null;
+    }),
+    type: 'bar',
+    backgroundColor: 'rgba(239,68,68,0.18)',
+    barThickness: 1,
+    borderWidth: 0,
+    pointRadius: 0,
+    yAxisID: 'y',
+    skipLegend: true,
+  }));
+  const fullDatasets = [
+    ...markerDs,
+    ...datasets.map(ds => ({
+      ...ds,
+      data: labels.map(l => {
+        const matched = ds.data.find(d => new Date(d.x).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' }) === l);
+        return matched ? matched.y : null;
+      }),
+    })),
+  ];
+  CRX.charts.focus = new Chart(cv, {
+    type: 'line',
+    data: { labels, datasets: fullDatasets },
+    options: {
+      ...CD,
+      animation: false,
+      plugins: {
+        ...CD.plugins,
+        legend: {
+          labels: {
+            color:'#5a6882', font:{size:9,family:'IBM Plex Mono'},
+            boxWidth:8, padding:6,
+            filter: (item) => !fullDatasets[item.datasetIndex]?.skipLegend,
+          },
+        },
+        tooltip: {
+          ...CD.plugins.tooltip,
+          filter: (item) => !fullDatasets[item.datasetIndex]?.skipLegend,
+        },
+      },
+      scales: {
+        x: { ...CD.scales.x, ticks: { ...CD.scales.x.ticks, maxTicksLimit: 12 } },
+        y: { min:-1, max:1, ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}}, grid:{color:'#0f1824'} },
+      },
+    },
+  });
+  // Update focus state badge in title
+  const st = crxClassifyState(pair);
+  const badgeEl = $id('crx-focus-state-badge');
+  if (badgeEl) {
+    const col = CRX_STATE_COLORS[st.cls];
+    badgeEl.innerHTML = `<span style="background:${col.badge};color:#0a0f1e;font-size:8px;font-weight:600;padding:1px 5px;border-radius:2px;letter-spacing:.06em">${st.cls.toUpperCase()}</span>`;
+  }
+  // Update label
+  const labelEl = $id('crx-focus-pair-label');
+  if (labelEl) labelEl.textContent = crxPairLabel(pair);
+}
+
+// ── Focus stats — labelled with the pair so multi-pair UI isn't ambiguous ──
+function crxRenderFocusStats(pair){
+  const el = $id('crx-focus-stats'); if (!el) return;
+  const st = crxClassifyState(pair);
+  const sigmaMax = Math.max(...CRX.prefs.watchlist.map(p => crxClassifyState(p).sigma || 0), 0.001);
+  const score = crxGetTradeableScore(pair, sigmaMax);
+  const breaks = crxDetectRegimeChanges(pair, 30);
+  const lastBreak = breaks.length ? breaks[breaks.length-1] : null;
+  const lastBreakAge = lastBreak
+    ? Math.floor((new Date(sDates[sDates.length-1]) - new Date(lastBreak.date)) / 86400000) + 'd ago'
+    : '—';
+  const stmt = (lbl, val, color = '#c8cfe0') =>
+    `<div class="cr-stat"><div class="cr-stat-val" style="color:${color}">${val}</div><div class="cr-stat-lbl">${lbl}</div></div>`;
+  el.innerHTML = [
+    stmt(`<span style="color:#5a6882">${crxPairLabel(pair)} · </span>5D r`, st.r5!=null?st.r5.toFixed(3):'—', '#fbbf24'),
+    stmt('30D r', st.r30!=null?st.r30.toFixed(3):'—', '#3b82f6'),
+    stmt('90D r', st.r90!=null?st.r90.toFixed(3):'—', '#a78bfa'),
+    stmt('Δ 5D−30D', (st.delta!=null && (st.r5!=null && st.r30!=null)) ? ((st.delta>=0?'+':'') + (st.delta*100).toFixed(0) + 'pp') : 'n/m'),
+    stmt('Stability σ', st.sigma.toFixed(3), st.sigma > 0.15 ? '#fbbf24' : '#c8cfe0'),
+    stmt('Tradeable', score!=null?score.toFixed(2):'—'),
+    stmt('Last break', lastBreakAge),
+  ].join('');
+}
+
+// ── Synthesis callout ──────────────────────────────────────────────────────
+function crxRenderSynthesis(pair){
+  const el = $id('crx-synthesis'); if (!el) return;
+  const st = crxClassifyState(pair);
+  const lbl = crxPairLabel(pair);
+  let copy;
+  if (st.cls === 'breaking') {
+    const breaks = crxDetectRegimeChanges(pair, 30);
+    const last = breaks.length ? breaks[breaks.length-1] : null;
+    const ndays = last ? Math.floor((new Date(sDates[sDates.length-1]) - new Date(last.date))/86400000) + 1 : '?';
+    copy = `<span style="color:#a78bfa">▸</span> <strong>${lbl}</strong> decoupled. 5D r ${st.r5!=null?st.r5.toFixed(2):'—'} vs 30D r ${st.r30!=null?st.r30.toFixed(2):'—'} (Δ ${(st.delta*100).toFixed(0)}pp). Active break ${ndays}d. Cross-hedges calibrated on 30D+ data are now loose — recheck before adding exposure.`;
+  } else if (st.cls === 'weakening') {
+    copy = `<span style="color:#a78bfa">▸</span> <strong>${lbl}</strong> drifting weaker. 30D r ${st.r30!=null?st.r30.toFixed(2):'—'} vs 90D r ${st.r90!=null?st.r90.toFixed(2):'—'} (drift ${st.driftDays}d). Gradual decoupling — relationship not broken but eroding.`;
+  } else {
+    copy = `<span style="color:#a78bfa">▸</span> <strong>${lbl}</strong> stable regime. 30D r ${st.r30!=null?st.r30.toFixed(2):'—'}, σ ${st.sigma.toFixed(3)}. Cross-hedge ratios reliable; no current decoupling signal.`;
+  }
+  el.innerHTML = copy;
+}
+
+// ── Detected findings list across watchlist ─────────────────────────────────
+function crxRenderDetected(){
+  const el = $id('crx-detected-list'); if (!el) return;
+  const findings = [];
+  CRX.prefs.watchlist.forEach(p => {
+    const st = crxClassifyState(p);
+    if (st.cls === 'breaking') {
+      const breaks = crxDetectRegimeChanges(p, 30);
+      const last = breaks.length ? breaks[breaks.length-1] : null;
+      findings.push({
+        date: last?.date || (sDates && sDates[sDates.length-1]),
+        type: 'Breakdown',
+        col: '#fca5a5',
+        pair: p,
+        copy: `5D r ${st.r5?.toFixed(2)} vs 30D r ${st.r30?.toFixed(2)}`,
+        magnitude: `${(st.delta*100).toFixed(0)}pp`,
+        magCol: '#fca5a5',
+      });
+    } else if (st.cls === 'weakening') {
+      findings.push({
+        date: sDates && sDates[sDates.length-1],
+        type: 'Drift',
+        col: '#fbbf24',
+        pair: p,
+        copy: `30D r ${st.r30?.toFixed(2)} vs 90D r ${st.r90?.toFixed(2)} (${st.driftDays}d)`,
+        magnitude: `${(st.driftDelta*100).toFixed(0)}pp`,
+        magCol: '#fbbf24',
+      });
+    }
+  });
+  if (!findings.length) {
+    el.innerHTML = `<div style="color:#5a6882;font-size:10px;padding:8px 0">No anomalies across watchlist. All correlations stable.</div>`;
+    return;
+  }
+  // Sort by recency desc
+  findings.sort((a,b) => +new Date(b.date) - +new Date(a.date));
+  el.innerHTML = findings.map(f => `
+    <div onclick="crxFocusPair('${f.pair.id}')" style="display:grid;grid-template-columns:80px 90px 1fr 70px;gap:8px;padding:5px 0;border-bottom:1px solid #0f1824;cursor:pointer;align-items:center">
+      <span style="color:#5a6882">${new Date(f.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span>
+      <span style="color:${f.col};font-size:9px;letter-spacing:.04em">${f.type}</span>
+      <span style="color:#c8cfe0">${crxPairLabel(f.pair)} · ${f.copy}</span>
+      <span style="color:${f.magCol};text-align:right">${f.magnitude}</span>
+    </div>
+  `).join('');
+}
+
+// ── Interactions ────────────────────────────────────────────────────────────
+window.crxFocusPair = function(id){
+  CRX.prefs.monitorFocusId = id;
+  const pair = CRX.prefs.watchlist.find(p => p.id === id);
+  if (pair) {
+    CRX.prefs.lastViewedPair = { i1:pair.i1, t1:pair.t1, i2:pair.i2, t2:pair.t2 };
+  }
+  crxSavePrefs(CRX.prefs);
+  // Re-render the cards (to update focus outline) + focus chart + synthesis
+  crxRenderMonitor();
+};
+
+window.crxOpenAddPair = function(){
+  const pop = $id('crx-popover'); if (!pop) return;
+  const indices = ['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH','SP_JN','SP_HN','SP_TN'];
+  const tenors = [['r1','M+1'],['r2','M+2'],['r3','M+3'],['r6','M+6']];
+  const opts = (vals) => vals.map(v => `<option value="${v[0]||v}">${v[1]||(INST[v]?.label||v)}</option>`).join('');
+  pop.style.cssText = 'display:block;background:#0a0f1e;border:1px solid #4fc3f7;padding:10px 12px;margin-bottom:10px';
+  pop.innerHTML = `
+    <div style="font-size:9px;letter-spacing:.06em;color:#4fc3f7;margin-bottom:8px">ADD PAIR</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <select id="crx-add-i1" style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit">${opts(indices)}</select>
+      <select id="crx-add-t1" style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit">${opts(tenors)}</select>
+      <span style="color:#3d5070;font-size:9px;letter-spacing:.1em">VS</span>
+      <select id="crx-add-i2" style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit">${opts(indices)}</select>
+      <select id="crx-add-t2" style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit">${opts(tenors)}</select>
+      <button class="cr-pill on" onclick="crxConfirmAddPair()" style="font-size:9px">+ ADD</button>
+      <button class="cr-pill" onclick="crxClosePopover()" style="font-size:9px">CANCEL</button>
+    </div>
+  `;
+  $id('crx-add-i1').value = 'JKM'; $id('crx-add-i2').value = 'TTF';
+};
+
+window.crxConfirmAddPair = function(){
+  const i1 = $id('crx-add-i1')?.value, t1 = $id('crx-add-t1')?.value;
+  const i2 = $id('crx-add-i2')?.value, t2 = $id('crx-add-t2')?.value;
+  if (!i1 || !i2 || !t1 || !t2) { crxClosePopover(); return; }
+  if (i1 === i2 && t1 === t2) {
+    alert('Pair must be two different series.'); return;
+  }
+  const id = `${i1}-${t1}-${i2}-${t2}`.toLowerCase();
+  if (CRX.prefs.watchlist.find(p => p.id === id)) {
+    alert('Pair already in watchlist.'); return;
+  }
+  CRX.prefs.watchlist.push({ id, i1, t1, i2, t2, thresholds: null });
+  crxSavePrefs(CRX.prefs);
+  crxClosePopover();
+  crxRenderMonitor();
+};
+
+window.crxOpenPairSettings = function(id){
+  const pair = CRX.prefs.watchlist.find(p => p.id === id);
+  if (!pair) return;
+  const pop = $id('crx-popover'); if (!pop) return;
+  const cur = pair.thresholds || CRX.prefs.globalThresholds;
+  const isCustom = pair.thresholds != null;
+  pop.style.cssText = 'display:block;background:#0a0f1e;border:1px solid #a78bfa;padding:10px 12px;margin-bottom:10px';
+  pop.innerHTML = `
+    <div style="font-size:9px;letter-spacing:.06em;color:#a78bfa;margin-bottom:8px">PAIR THRESHOLDS · ${crxPairLabel(pair)} ${isCustom?'<span style="color:#a78bfa">· CUSTOM</span>':'<span style="color:#5a6882">· using globals</span>'}</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <label style="font-size:10px;color:#c8cfe0">Break <input id="crx-set-break" type="number" step="0.01" min="0" max="2" value="${cur.break}" style="width:60px;background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit"></label>
+      <label style="font-size:10px;color:#c8cfe0">Drift <input id="crx-set-drift" type="number" step="0.01" min="0" max="2" value="${cur.drift}" style="width:60px;background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit"></label>
+      <button class="cr-pill on" onclick="crxSavePairSettings('${id}')" style="font-size:9px">SAVE</button>
+      <button class="cr-pill" onclick="crxResetPairSettings('${id}')" style="font-size:9px">USE GLOBALS</button>
+      <button class="cr-pill" onclick="crxRemovePair('${id}')" style="font-size:9px;color:#fca5a5">REMOVE</button>
+      <button class="cr-pill" onclick="crxClosePopover()" style="font-size:9px">CANCEL</button>
+    </div>
+  `;
+};
+
+window.crxSavePairSettings = function(id){
+  const pair = CRX.prefs.watchlist.find(p => p.id === id);
+  if (!pair) return;
+  const br = parseFloat($id('crx-set-break')?.value);
+  const dr = parseFloat($id('crx-set-drift')?.value);
+  if (isNaN(br) || isNaN(dr) || br <= 0 || dr <= 0) { alert('Thresholds must be positive numbers.'); return; }
+  pair.thresholds = { break: br, drift: dr };
+  crxSavePrefs(CRX.prefs);
+  crxClosePopover();
+  crxRenderMonitor();
+};
+
+window.crxResetPairSettings = function(id){
+  const pair = CRX.prefs.watchlist.find(p => p.id === id);
+  if (!pair) return;
+  pair.thresholds = null;
+  crxSavePrefs(CRX.prefs);
+  crxClosePopover();
+  crxRenderMonitor();
+};
+
+window.crxRemovePair = function(id){
+  if (CRX.prefs.watchlist.length <= 1) { alert('Watchlist must have at least one pair.'); return; }
+  if (!confirm('Remove this pair from watchlist?')) return;
+  CRX.prefs.watchlist = CRX.prefs.watchlist.filter(p => p.id !== id);
+  if (CRX.prefs.monitorFocusId === id) {
+    CRX.prefs.monitorFocusId = CRX.prefs.watchlist[0].id;
+  }
+  crxSavePrefs(CRX.prefs);
+  crxClosePopover();
+  crxRenderMonitor();
+};
+
+window.crxOpenGlobalSettings = function(){
+  const pop = $id('crx-popover'); if (!pop) return;
+  const g = CRX.prefs.globalThresholds;
+  pop.style.cssText = 'display:block;background:#0a0f1e;border:1px solid #4fc3f7;padding:10px 12px;margin-bottom:10px';
+  pop.innerHTML = `
+    <div style="font-size:9px;letter-spacing:.06em;color:#4fc3f7;margin-bottom:8px">GLOBAL CONFIGURATION</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start">
+      <div>
+        <div style="font-size:9px;color:#5a6882;margin-bottom:4px">Thresholds (apply to pairs without custom override)</div>
+        <label style="font-size:10px;color:#c8cfe0;display:block;margin-bottom:4px">Break <input id="crx-g-break" type="number" step="0.01" min="0" max="2" value="${g.break}" style="width:60px;background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;margin-left:6px"></label>
+        <label style="font-size:10px;color:#c8cfe0;display:block">Drift <input id="crx-g-drift" type="number" step="0.01" min="0" max="2" value="${g.drift}" style="width:60px;background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;margin-left:6px"></label>
+      </div>
+      <div>
+        <div style="font-size:9px;color:#5a6882;margin-bottom:4px">Default landing tab</div>
+        <select id="crx-g-default" style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit">
+          <option value="monitor"${CRX.prefs.defaultTab==='monitor'?' selected':''}>Monitor</option>
+          <option value="pair"${CRX.prefs.defaultTab==='pair'?' selected':''}>Pair</option>
+          <option value="universe"${CRX.prefs.defaultTab==='universe'?' selected':''}>Universe</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:6px">
+      <button class="cr-pill on" onclick="crxSaveGlobalSettings()" style="font-size:9px">SAVE</button>
+      <button class="cr-pill" onclick="crxClosePopover()" style="font-size:9px">CANCEL</button>
+    </div>
+  `;
+};
+
+window.crxSaveGlobalSettings = function(){
+  const br = parseFloat($id('crx-g-break')?.value);
+  const dr = parseFloat($id('crx-g-drift')?.value);
+  const def = $id('crx-g-default')?.value;
+  if (isNaN(br) || isNaN(dr) || br <= 0 || dr <= 0) { alert('Thresholds must be positive numbers.'); return; }
+  CRX.prefs.globalThresholds = { break: br, drift: dr };
+  if (['monitor','pair','universe'].includes(def)) CRX.prefs.defaultTab = def;
+  crxSavePrefs(CRX.prefs);
+  crxClosePopover();
+  crxRenderMonitor();
+};
+
+window.crxClosePopover = function(){
+  const pop = $id('crx-popover'); if (!pop) return;
+  pop.style.display = 'none'; pop.innerHTML = '';
+};
+
+// Cache invalidation hook — wire to data load/refresh.
+if (typeof window !== 'undefined') {
+  window.crxInvalidateCache = crxInvalidateCache;
 }
 
 
