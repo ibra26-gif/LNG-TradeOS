@@ -1,7 +1,7 @@
 {
   "gasday": "2026-04-27",
   "by_terminal": {
-    "Sum Exit Nominations NCS": 308.2,
+    "Sum Exit Nominations NCS": 308.3,
     "Fields Delivering into SEGAL": 14.9,
     "Other Exit Nominations": 1.5,
     "St.Fergus": 1.6,
@@ -12,9 +12,9 @@
     "Zeebrugge": 43.8,
     "Easington": 37.0
   },
-  "today_total_mcm": 308.2,
+  "today_total_mcm": 308.3,
   "_meta": {
-    "updated": "2026-04-27T08:13:40Z",
+    "updated": "2026-04-27T15:36:47Z",
     "source": "gassco homepage scrape"
   }
 }
