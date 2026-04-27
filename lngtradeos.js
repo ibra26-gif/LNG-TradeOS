@@ -13622,6 +13622,216 @@ function rgCostGraph(){
 // dashMonth1/dashMonth2. Keeps the month sticky across tab switches.
 function rgSetSelMonth(v){RG.selMonth=+v;rgs('selMonth',RG.selMonth);rgRT();}
 
+// ════════════════════════════════════════════════════════════════════════════
+// BID RANGE BY COUNTRY — slot-holder economics view (per user 2026-04-27)
+// ════════════════════════════════════════════════════════════════════════════
+// For each country (multi-terminal countries grouped, single-terminal shown
+// alone), shows the breakeven RANGE [cheapest=max bid, most expensive=min bid]
+// and the current market clearing bid. Lets the trader see where the market
+// sits in the supply stack and which terminals are ITM/OTM at that level.
+//
+// Market bid resolution per country:
+//   1. RG.bidRangeOverride[country] if user-set
+//   2. Average of RG.diffs[t.id][mi] across non-suppressed terminals in country
+//
+// State (lazily initialized on first render):
+//   RG.bidRangeOpen = Set of country names currently expanded
+//   RG.bidRangeOverride = { country: number } per-country market bid override
+function rgBidRangeSection(){
+  if (!RG.bidRangeOpen) RG.bidRangeOpen = new Set();
+  if (!RG.bidRangeOverride) RG.bidRangeOverride = {};
+  const mi = RG.selMonth;
+  const ttf = rgTTF(mi);
+
+  // Group terminals by country
+  const byCountry = {};
+  RG.terminals.forEach(t => {
+    const v = rgVar(t, mi);
+    if (v.suppressed) return;   // Stade out-of-window etc.
+    const hp = rgHP(t.hub, mi);
+    const phys = (RG.diffs[t.id] || [])[mi] || 0;
+    const be = +(hp - v.total - ttf).toFixed(4);
+    if (!byCountry[t.country]) byCountry[t.country] = [];
+    byCountry[t.country].push({ t, hp, phys, be, varC: v.total });
+  });
+
+  // Stable country order (rough geographic flow N→S→E)
+  const countryOrder = ['Belgium','Netherlands','France','Germany','Italy','Greece','Croatia','Lithuania','Poland','Finland','Spain','Portugal','UK'];
+  const countries = countryOrder.filter(c => byCountry[c] && byCountry[c].length);
+
+  const fmtSp = v => (v == null || isNaN(v)) ? '—' : (v >= 0 ? '+' : '') + v.toFixed(3);
+  const colorBE = v => v == null ? '#3d5070' : v >= 0 ? '#81c784' : '#ef9a9a';
+
+  // Build one row per country
+  const rows = countries.map(country => {
+    const terms = byCountry[country].slice().sort((a,b) => b.be - a.be);   // best (highest) breakeven first
+    const best = terms[0], worst = terms[terms.length - 1];
+    const range = (terms.length >= 2) ? +(best.be - worst.be).toFixed(3) : null;
+    // Market bid: override OR average phys diff across country's terminals
+    const ovr = RG.bidRangeOverride[country];
+    const avgPhys = +(terms.reduce((a,x) => a + x.phys, 0) / terms.length).toFixed(4);
+    const market = (ovr != null && !isNaN(ovr)) ? ovr : avgPhys;
+    const isOverride = (ovr != null && !isNaN(ovr));
+    // ITM count: terminals where breakeven > market (terminal can absorb the market price)
+    const itmCount = terms.filter(x => x.be > market).length;
+    const allItm = itmCount === terms.length;
+    const allOtm = itmCount === 0;
+    const itmTag = allItm ? `<span style="color:#4ade80;font-weight:700">${itmCount}/${terms.length} ✓</span>`
+                  : allOtm ? `<span style="color:#f87171;font-weight:700">${itmCount}/${terms.length} ✗</span>`
+                  : `<span style="color:#facc15;font-weight:700">${itmCount}/${terms.length}</span>`;
+    const isOpen = RG.bidRangeOpen.has(country);
+    const isMulti = terms.length > 1;
+    const expandIcon = isMulti ? (isOpen ? '▼' : '▶') : '·';
+
+    const rowMain = `<tr style="cursor:${isMulti?'pointer':'default'};border-bottom:1px solid #1e3a5f"
+      ${isMulti ? `onclick="rgToggleBidRange('${country}')"` : ''}>
+      <td style="padding:6px 8px;color:#546e7a;font-size:11px;width:18px">${expandIcon}</td>
+      <td style="padding:6px 8px;color:var(--th);font-size:10px;font-weight:600">${country}</td>
+      <td class="tr" style="color:#546e7a;font-size:10px">${terms.length}</td>
+      <td style="padding:6px 8px;color:#c8d6e5;font-size:9px"><b style="color:${colorBE(best.be)}">${fmtSp(best.be)}</b><br><span style="color:#546e7a;font-size:9px">${best.t.name}</span></td>
+      <td style="padding:6px 8px;color:#c8d6e5;font-size:9px">${isMulti ? `<b style="color:${colorBE(worst.be)}">${fmtSp(worst.be)}</b><br><span style="color:#546e7a;font-size:9px">${worst.t.name}</span>` : '<span style="color:#3d5070">—</span>'}</td>
+      <td class="tr" style="color:#c8d6e5;font-size:10px">${range != null ? range.toFixed(3) : '—'}</td>
+      <td class="tr" style="color:${isOverride?'#facc15':'#4fc3f7'};font-size:10px;font-weight:600">
+        ${fmtSp(market)}${isOverride ? ' <span title="user override">*</span>' : ''}
+      </td>
+      <td class="tr" style="font-size:10px">${itmTag}</td>
+    </tr>`;
+
+    // Expanded detail row
+    let expandedHtml = '';
+    if (isOpen && isMulti) {
+      // Per-terminal table
+      const detailRows = terms.map(x => {
+        const isTermItm = x.be > market;
+        const vsMkt = +(x.be - market).toFixed(3);
+        return `<tr>
+          <td style="padding:4px 8px;color:#c8d6e5;font-size:10px">${x.t.name}</td>
+          <td style="color:#4fc3f7;font-size:9px">${x.t.hub}</td>
+          <td class="tr" style="color:#c8d6e5;font-size:10px">${x.hp.toFixed(3)}</td>
+          <td class="tr" style="color:#546e7a;font-size:10px">${x.varC.toFixed(3)}</td>
+          <td class="tr" style="color:${colorBE(x.be)};font-weight:700;font-size:10px">${fmtSp(x.be)}</td>
+          <td class="tr" style="color:${vsMkt>0?'#4ade80':'#f87171'};font-weight:600;font-size:10px">${fmtSp(vsMkt)}</td>
+          <td style="text-align:center;font-size:11px">${isTermItm?'<span style="color:#4ade80">✓</span>':'<span style="color:#f87171">✗</span>'}</td>
+        </tr>`;
+      }).join('');
+
+      // Horizontal bar visualization (SVG)
+      const allBE = terms.map(x => x.be);
+      const xMin = Math.min(...allBE, market) - 0.05;
+      const xMax = Math.max(...allBE, market) + 0.05;
+      const xRange = xMax - xMin;
+      const W = 800, H = 80, padX = 40;
+      const xs = v => padX + ((v - xMin) / xRange) * (W - 2*padX);
+      const tickLabels = [];
+      const tickStep = xRange < 0.5 ? 0.10 : xRange < 1.5 ? 0.20 : 0.50;
+      const tickStart = Math.floor(xMin / tickStep) * tickStep;
+      for (let v = tickStart; v <= xMax + 0.001; v += tickStep) {
+        tickLabels.push({ v: +v.toFixed(2), x: xs(v) });
+      }
+      const svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;display:block;background:#0a1628;border-radius:4px;margin:8px 0">
+        <line x1="${padX}" y1="40" x2="${W-padX}" y2="40" stroke="#243a55" stroke-width="1.5"/>
+        ${tickLabels.map(t => `
+          <line x1="${t.x.toFixed(1)}" y1="36" x2="${t.x.toFixed(1)}" y2="44" stroke="#2a3850"/>
+          <text x="${t.x.toFixed(1)}" y="60" fill="#546e7a" font-size="10" text-anchor="middle">${t.v >= 0 ? '+' : ''}${t.v.toFixed(2)}</text>
+        `).join('')}
+        ${terms.map(x => {
+          const cx = xs(x.be);
+          const isItm = x.be > market;
+          const col = isItm ? '#4ade80' : '#f87171';
+          return `<g>
+            <circle cx="${cx.toFixed(1)}" cy="40" r="6" fill="${col}" stroke="#0a1628" stroke-width="2"/>
+            <text x="${cx.toFixed(1)}" y="22" fill="#c8d6e5" font-size="9" text-anchor="middle" font-weight="600">${x.t.name.slice(0,8)}</text>
+          </g>`;
+        }).join('')}
+        <line x1="${xs(market).toFixed(1)}" y1="20" x2="${xs(market).toFixed(1)}" y2="60" stroke="#facc15" stroke-width="2" stroke-dasharray="3,2"/>
+        <text x="${xs(market).toFixed(1)}" y="76" fill="#facc15" font-size="10" text-anchor="middle" font-weight="700">MARKET ${market >= 0 ? '+' : ''}${market.toFixed(3)}</text>
+      </svg>
+      <div style="font-size:9px;color:#546e7a;text-align:center;margin-bottom:6px">← MORE ITM (cheaper market)  ·  DES vs Hub spread $/MMBtu  ·  MORE OTM (more expensive) →</div>`;
+
+      const overrideHtml = isOverride
+        ? `<button class="f-btn sm" onclick="event.stopPropagation();rgClearBidOverride('${country}')" style="font-size:9px;padding:3px 8px">Reset to auto</button>`
+        : '';
+      const marketSrc = isOverride
+        ? `<span style="color:#facc15">user override</span>`
+        : `<span style="color:#4fc3f7">auto-pulled (avg of ${terms.length} terminal phys diffs)</span>`;
+
+      expandedHtml = `<tr><td colspan="8" style="padding:0;background:#070b14">
+        <div style="padding:12px 16px;border-bottom:1px solid #1e3a5f">
+          ${svg}
+          <table style="width:100%;border-collapse:collapse;margin-top:8px">
+            <thead><tr style="background:#0d1929;color:#546e7a;font-size:9px;letter-spacing:1px">
+              <th style="padding:6px 8px;text-align:left">TERMINAL</th>
+              <th style="text-align:left;padding:6px">HUB</th>
+              <th class="tr" style="padding:6px">HUB PRICE</th>
+              <th class="tr" style="padding:6px">VAR COST</th>
+              <th class="tr" style="padding:6px">BREAKEVEN</th>
+              <th class="tr" style="padding:6px">vs MARKET</th>
+              <th style="text-align:center;padding:6px">ITM</th>
+            </tr></thead>
+            <tbody>${detailRows}</tbody>
+          </table>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:8px;border-top:1px solid #1e3a5f">
+            <span style="color:#546e7a;font-size:9px;letter-spacing:1px">MARKET BID</span>
+            <span style="color:${isOverride?'#facc15':'#4fc3f7'};font-weight:700">${fmtSp(market)}</span>
+            <span style="color:#546e7a;font-size:9px">${marketSrc}</span>
+            <input type="number" step="0.01" placeholder="override..." value="${isOverride?ovr:''}" style="width:80px;padding:3px 6px;background:#0a1628;border:1px solid #1e3a5f;color:#c8d6e5;font-size:10px;border-radius:3px"
+              onclick="event.stopPropagation()"
+              onchange="rgSetBidOverride('${country}',this.value)">
+            ${overrideHtml}
+          </div>
+        </div>
+      </td></tr>`;
+    }
+    return rowMain + expandedHtml;
+  }).join('');
+
+  return `<div style="margin-bottom:16px">
+    <div class="f-sec" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      BID RANGE BY COUNTRY — ${ML[mi]} · slot-holder economics
+      <span style="color:#546e7a;font-size:9px;font-weight:400;margin-left:auto">
+        ▶ click multi-terminal countries to expand · per-country market bid auto-pulled or override
+      </span>
+    </div>
+    <div style="overflow-x:auto"><table class="rg-tbl" style="width:100%">
+      <thead><tr>
+        <th style="width:18px"></th>
+        <th style="min-width:100px">COUNTRY</th>
+        <th class="tr">#TERMS</th>
+        <th>CHEAPEST<br><span style="font-weight:400;color:#546e7a;font-size:8px">max bid</span></th>
+        <th>MOST EXP<br><span style="font-weight:400;color:#546e7a;font-size:8px">min bid</span></th>
+        <th class="tr">RANGE</th>
+        <th class="tr">MARKET</th>
+        <th style="text-align:center">ITM</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+}
+
+// State setters (persisted via rgs())
+function rgToggleBidRange(country){
+  if (!RG.bidRangeOpen) RG.bidRangeOpen = new Set();
+  if (RG.bidRangeOpen.has(country)) RG.bidRangeOpen.delete(country);
+  else RG.bidRangeOpen.add(country);
+  rgRT();
+}
+function rgSetBidOverride(country, val){
+  if (!RG.bidRangeOverride) RG.bidRangeOverride = {};
+  if (val === '' || val == null || isNaN(+val)) {
+    delete RG.bidRangeOverride[country];
+  } else {
+    RG.bidRangeOverride[country] = +val;
+  }
+  rgs('bidRangeOverride', RG.bidRangeOverride);
+  rgRT();
+}
+function rgClearBidOverride(country){
+  if (!RG.bidRangeOverride) RG.bidRangeOverride = {};
+  delete RG.bidRangeOverride[country];
+  rgs('bidRangeOverride', RG.bidRangeOverride);
+  rgRT();
+}
+
 function rgImplied(){
   const mi=RG.selMonth;
   const ttf=rgTTF(mi);
@@ -13655,7 +13865,8 @@ function rgImplied(){
     <span style="color:#4fc3f7;font-size:10px;margin-left:auto;font-weight:600">TTF ${ML[mi]}: ${ttf.toFixed(3)} $/MMBtu (€${(RG.ttfCurve[mi]||0).toFixed(2)}/MWh)</span>
   </div>
   ${flatHint}
-  <div class="f-sec">BREAKEVEN — ${ML[mi]} · All values $/MMBtu</div>
+  ${rgBidRangeSection()}
+  <div class="f-sec">BREAKEVEN — ${ML[mi]} · All values $/MMBtu (full ranking)</div>
   <div style="color:#546e7a;font-size:9px;margin-bottom:10px">Terminals ordered from lowest breakeven (tightest) to highest (most ITM). Phys diff = current physical differential vs TTF.</div>
   <div style="overflow-x:auto"><table class="rg-tbl"><thead><tr>
     <th style="min-width:150px">TERMINAL</th><th>HUB</th>
