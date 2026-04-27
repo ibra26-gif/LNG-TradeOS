@@ -13504,6 +13504,9 @@ function crxRenderPairCardHTML(pair, sigmaMax){
         <button class="crx-card-cog" title="Per-pair thresholds"
                 onclick="event.stopPropagation();crxOpenPairSettings('${pair.id}')"
                 style="background:none;border:none;color:#3d5070;cursor:pointer;font-size:11px;padding:0 2px;line-height:1">⚙</button>
+        <button class="crx-card-rm" title="Remove pair from watchlist"
+                onclick="event.stopPropagation();crxRemovePair('${pair.id}')"
+                style="background:none;border:none;color:#3d5070;cursor:pointer;font-size:13px;padding:0 2px;line-height:1">×</button>
       </div>
       <div style="height:18px;margin-top:4px"><canvas id="crx-spark-${pair.id}" height="18"></canvas></div>
       <div style="font-size:8px;color:#3d5070;margin-top:2px">σ ${st.sigma.toFixed(3)} · score ${(crxGetTradeableScore(pair, sigmaMax)??0).toFixed(2)}</div>
