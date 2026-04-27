@@ -13804,7 +13804,12 @@ window.crxOpenAddPair = function(){
   // Tenors: array of [code, label] tuples → render <option value="r1">M+1</option>.
   // Earlier code passed strings through a tuple-aware helper which destructured
   // each character as v[0]/v[1] and produced single-letter options.
-  const indices = ['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH','SP_JN','SP_HN','SP_TN'];
+  // EEX_HUBS (THE/PEG/PVB/PSV/ZTP) routed through eexGS — same r1..r6 tenor codes
+  const indices = [
+    'JKM','TTF','HH','NBP','Brent','Dated','Slope',
+    ...EEX_HUBS,                                            // THE PEG PVB PSV ZTP
+    'SP_JT','SP_JH','SP_TH','SP_JN','SP_HN','SP_TN',
+  ];
   const tenors = [['r1','M+1'],['r2','M+2'],['r3','M+3'],['r6','M+6']];
   const optStr  = (arr) => arr.map(v => `<option value="${v}">${INST[v]?.label||v}</option>`).join('');
   const optPair = (arr) => arr.map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
