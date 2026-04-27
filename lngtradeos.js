@@ -13143,6 +13143,10 @@ function crxDefaultPrefs(){
     pairWindow: 20,
     pairMethod: 'pearson',  // 'pearson' | 'spearman'
     pairRange: '1Y',
+    // Universe-tab state — index selection, per-index tenor, method.
+    universeIndices: ['JKM','TTF','HH','NBP','Brent','Dated'],
+    universeTenors:  { JKM:'r1', TTF:'r1', HH:'r1', NBP:'r1', Brent:'r1', Dated:'r1' },
+    universeMethod:  'pearson',
   };
 }
 
@@ -13343,9 +13347,10 @@ function crxShowTab(tab, btn, persist = true){
   ['monitor','pair','rolling','analysis','matrix'].forEach(t => {
     const s = $id('csec-' + t); if (s) s.style.display = 'none';
   });
-  // monitor → csec-monitor (Phase 1). pair → csec-pair (Phase 2, new).
-  // universe → csec-matrix (legacy fallback until Phase 3).
-  const PANE_MAP = { monitor:'csec-monitor', pair:'csec-pair', universe:'csec-matrix' };
+  // monitor → csec-monitor (Phase 1). pair → csec-pair (Phase 2).
+  // universe → csec-universe (Phase 3). Legacy panes (rolling/analysis/matrix)
+  // stay hidden in DOM until Phase 4 cleanup.
+  const PANE_MAP = { monitor:'csec-monitor', pair:'csec-pair', universe:'csec-universe' };
   const paneId = PANE_MAP[tab];
   if (paneId) { const p = $id(paneId); if (p) p.style.display = 'block'; }
   document.querySelectorAll('#sec-correlation .anl').forEach(b => b.classList.remove('active'));
@@ -14571,6 +14576,388 @@ function crxRenderPairDetect(pair){
     </div>
   `).join('');
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// UNIVERSE TAB (Phase 3)
+// ════════════════════════════════════════════════════════════════════════════
+// Configurator (chip group of indices + per-index tenor) + N×N upper-triangular
+// correlation matrix with click-through to Pair tab + Most-tradeable list +
+// Decoupled callout + DETECT findings + XLSX export.
+//
+// Persistence: universeIndices, universeTenors, universeMethod under CRX.prefs.
+
+CRX.charts.universe = {};
+
+const CRX_UNIVERSE_INDICES = [
+  'JKM','TTF','HH','NBP','Brent','Dated','Slope',
+  ...EEX_HUBS,
+  'SP_JT','SP_JH','SP_TH','SP_JN','SP_HN','SP_TN',
+];
+
+// Compute one cell — pair correlation (Pearson or Spearman) + p-value + sigma.
+// Memoized via a per-render cache because matrix renders trigger N² cells and
+// the same series fetches/log-returns are reused across cells.
+function crxUniverseCell(a, b, fn, serCache, _matWin = 20){
+  if (a === b) return { r:1, n:0, pv:0, sigma:0, sig:true, diag:true };
+  const sA = serCache[a], sB = serCache[b];
+  if (!sA?.length || !sB?.length) return null;
+  const { v1, v2 } = al2(sA, sB);
+  const l1 = lRet(v1), l2 = lRet(v2);
+  const filt = [];
+  for (let i=0;i<Math.min(l1.length,l2.length);i++)
+    if (l1[i]!=null && l2[i]!=null && isFinite(l1[i]) && isFinite(l2[i])) filt.push([l1[i],l2[i]]);
+  const n = filt.length;
+  if (n < 3) return null;
+  const r = fn(filt.map(x=>x[0]), filt.map(x=>x[1]));
+  if (isNaN(r)) return null;
+  const pv = cPval(r, n);
+  const sigma = cStability(sA, sB, _matWin);
+  return { r, n, pv, sigma, sig: cSig(pv), diag:false };
+}
+
+// ── Universe orchestrator ───────────────────────────────────────────────────
+function crxRenderUniverse(){
+  if (!CRX.prefs) CRX.prefs = crxLoadPrefs();
+  const pane = $id('csec-universe');
+  if (!pane) return;
+  const lastDate = (sDates && sDates.length)
+    ? new Date(sDates[sDates.length-1]).toLocaleDateString('en-GB', { day:'2-digit', month:'short' })
+    : '—';
+
+  pane.innerHTML = `
+    <!-- Header status -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #151e30">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-size:11px;color:#c8cfe0;font-weight:500">Correlation · Universe</span>
+        <span style="font-size:9px;color:#34d399">● ${sDates?.length||0} dates · EOD ${lastDate}</span>
+      </div>
+      <span style="font-size:9px;color:#3d5070">click any cell to drill into Pair tab pre-loaded with that pair</span>
+    </div>
+
+    <!-- Configurator -->
+    <div style="background:#0a0f1e;border:1px solid #151e30;padding:10px;margin-bottom:10px">
+      <div style="font-size:9px;letter-spacing:.06em;color:#3d5070;text-transform:uppercase;margin-bottom:6px">Configurator</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <span class="cl" style="font-size:9px;color:#3d5070;letter-spacing:.06em">METHOD</span>
+        <button class="cr-pill ${CRX.prefs.universeMethod==='pearson'?'on':''}" onclick="crxUniverseSetMethod('pearson')" style="font-size:9px">PEARSON</button>
+        <button class="cr-pill ${CRX.prefs.universeMethod==='spearman'?'on':''}" onclick="crxUniverseSetMethod('spearman')" style="font-size:9px">SPEARMAN</button>
+        <span style="width:1px;height:14px;background:#151e30;margin:0 6px"></span>
+        <span class="cl" style="font-size:9px;color:#3d5070;letter-spacing:.06em">INDICES</span>
+        <span id="crx-universe-chips" style="display:flex;gap:4px;flex-wrap:wrap"></span>
+        <span style="flex:1"></span>
+        <button class="cr-pill" onclick="crxUniverseExport()" style="font-size:9px;color:#22c55e;border-color:#22c55e">↓ XLSX</button>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span class="cl" style="font-size:9px;color:#3d5070;letter-spacing:.06em;white-space:nowrap">TENOR PER INDEX</span>
+        <span id="crx-universe-tenors" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"></span>
+      </div>
+    </div>
+
+    <!-- Matrix card -->
+    <div class="acard" style="margin-bottom:10px">
+      <div class="ctitle">CROSS-PAIR CORRELATION MATRIX<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:9px;color:#3d5070">★ = highest r in matrix</span></div>
+      <div class="cnote" style="margin-bottom:8px;font-size:9px">Each cell: r (top, larger), σ stability over 20D rolling (bottom). Background intensity = |r|; opacity dimmed when not statistically significant. Diagonal blank, lower triangle dashed (matrix is symmetric).</div>
+      <div id="crx-universe-matrix-wrap" style="overflow-x:auto"><table id="crx-universe-matrix" style="font-size:10px;border-collapse:collapse;width:100%"></table></div>
+    </div>
+
+    <!-- Tradeable + Decoupled side by side -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="acard" style="border-left:2px solid #34d399">
+        <div class="ctitle"><span>MOST TRADEABLE · r × (1−σ/σ_max)</span><span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+        <div class="cnote" style="margin-bottom:6px;font-size:9px">Pairs with high r AND low σ (relationship is strong AND stable). Click row → Pair tab.</div>
+        <div id="crx-universe-tradeable" style="font-size:10px"></div>
+      </div>
+      <div class="acard" style="border-left:2px solid #fca5a5">
+        <div class="ctitle"><span>DECOUPLED · weakest links</span><span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+        <div class="cnote" style="margin-bottom:6px;font-size:9px">Indices with low max |r| across the universe — moves on their own dynamics, no cross-hedge available.</div>
+        <div id="crx-universe-decoupled" style="font-size:10px"></div>
+      </div>
+    </div>
+
+    <!-- DETECT findings -->
+    <div class="acard">
+      <div class="ctitle"><span>DETECT FINDINGS · ACROSS UNIVERSE</span><span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><button class="cr-pill" onclick="crxRenderUniverseDetect()" style="font-size:9px">↻ RESCAN</button></div>
+      <div id="crx-universe-detect" style="margin-top:6px;font-size:10px"></div>
+    </div>
+  `;
+  crxRenderUniverseChips();
+  crxRenderUniverseTenors();
+  crxRenderUniverseMatrix();
+  crxRenderUniverseTradeable();
+  crxRenderUniverseDecoupled();
+  crxRenderUniverseDetect();
+}
+
+// ── Index chip group ────────────────────────────────────────────────────────
+function crxRenderUniverseChips(){
+  const wrap = $id('crx-universe-chips'); if (!wrap) return;
+  wrap.innerHTML = '';
+  CRX_UNIVERSE_INDICES.forEach(k => {
+    const on = CRX.prefs.universeIndices.includes(k);
+    const b = document.createElement('button');
+    b.className = 'cr-pill' + (on ? ' on' : '');
+    b.style.cssText = 'font-size:9px;padding:3px 8px';
+    b.textContent = INST[k]?.label || k;
+    b.onclick = () => {
+      const has = CRX.prefs.universeIndices.includes(k);
+      if (has) {
+        if (CRX.prefs.universeIndices.length > 2) {
+          CRX.prefs.universeIndices = CRX.prefs.universeIndices.filter(x => x !== k);
+        }
+      } else {
+        CRX.prefs.universeIndices = [...CRX.prefs.universeIndices, k];
+        if (!CRX.prefs.universeTenors[k]) CRX.prefs.universeTenors[k] = 'r1';
+      }
+      crxSavePrefs(CRX.prefs);
+      crxRenderUniverse();
+    };
+    wrap.appendChild(b);
+  });
+}
+
+// ── Per-index tenor selectors ───────────────────────────────────────────────
+function crxRenderUniverseTenors(){
+  const wrap = $id('crx-universe-tenors'); if (!wrap) return;
+  wrap.innerHTML = '';
+  const tenors = [['r1','M+1'],['r2','M+2'],['r3','M+3'],['r6','M+6']];
+  CRX.prefs.universeIndices.forEach(k => {
+    const span = document.createElement('span');
+    span.style.cssText = 'font-size:10px;color:#c8cfe0;display:flex;align-items:center;gap:4px;white-space:nowrap';
+    const cur = CRX.prefs.universeTenors[k] || 'r1';
+    span.innerHTML = `<span style="color:#5a6882">${INST[k]?.label||k}</span>`;
+    const sel = document.createElement('select');
+    sel.style.cssText = 'background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:9px;padding:2px 5px;font-family:inherit';
+    sel.innerHTML = tenors.map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+    sel.value = cur;
+    sel.onchange = () => {
+      CRX.prefs.universeTenors[k] = sel.value;
+      crxSavePrefs(CRX.prefs);
+      crxRenderUniverseMatrix();
+      crxRenderUniverseTradeable();
+      crxRenderUniverseDecoupled();
+      crxRenderUniverseDetect();
+    };
+    span.appendChild(sel);
+    wrap.appendChild(span);
+  });
+}
+
+// ── Matrix render — upper-triangular with click-to-Pair ─────────────────────
+function crxRenderUniverseMatrix(){
+  const tbl = $id('crx-universe-matrix'); if (!tbl) return;
+  const keys = CRX.prefs.universeIndices;
+  const fn = CRX.prefs.universeMethod === 'spearman' ? cSpearman : pear;
+  // Pre-fetch all series once
+  const serCache = {};
+  keys.forEach(k => { serCache[k] = gS(k, CRX.prefs.universeTenors[k] || 'r1'); });
+  // Compute all pairs first to find the max for the star marker
+  const cells = {};
+  let maxKey = null, maxR = -Infinity;
+  for (let i=0; i<keys.length; i++) {
+    for (let j=i+1; j<keys.length; j++) {
+      const a = keys[i], b = keys[j];
+      const c = crxUniverseCell(a, b, fn, serCache);
+      cells[`${a}|${b}`] = c;
+      if (c && c.r > maxR && c.sig) { maxR = c.r; maxKey = `${a}|${b}`; }
+    }
+  }
+  // Render upper triangular
+  let html = `<thead><tr><th style="text-align:left;padding:5px 6px;color:#3d5070;font-size:9px;letter-spacing:.06em">—</th>`;
+  keys.forEach((k, i) => {
+    if (i === 0) return; // first index never appears as a column header (no cell would be above the diagonal in column 0)
+    html += `<th style="padding:5px 6px;color:#c8cfe0;font-size:9px;text-align:center;border-bottom:1px solid #151e30">${INST[k]?.label||k}<br><span style="font-size:8px;color:#3d5070">${tvL(CRX.prefs.universeTenors[k]||'r1')}</span></th>`;
+  });
+  html += `</tr></thead><tbody>`;
+  for (let i=0; i<keys.length-1; i++) {
+    const a = keys[i];
+    html += `<tr><th style="text-align:left;padding:5px 6px;color:#c8cfe0;font-size:9px;border-right:1px solid #151e30">${INST[a]?.label||a}<br><span style="font-size:8px;color:#3d5070">${tvL(CRX.prefs.universeTenors[a]||'r1')}</span></th>`;
+    for (let j=1; j<keys.length; j++) {
+      const b = keys[j];
+      if (j <= i) {
+        html += `<td style="padding:6px;background:rgba(255,255,255,0.02);color:#374151;text-align:center">—</td>`;
+        continue;
+      }
+      const c = cells[`${a}|${b}`];
+      if (!c) {
+        html += `<td style="padding:6px;color:#1e2d45;text-align:center">—</td>`;
+        continue;
+      }
+      const ab = Math.abs(c.r);
+      const alpha = (c.sig ? ab*0.85 : ab*0.20).toFixed(2);
+      const bg = c.r >= 0 ? `rgba(45,124,255,${alpha})` : `rgba(239,68,68,${alpha})`;
+      const textCol = (ab > 0.5 && c.sig) ? '#fff' : '#c8cfe0';
+      const star = (`${a}|${b}` === maxKey) ? ' <span style="color:#fbbf24">★</span>' : '';
+      const sigmaTxt = (c.sigma != null && !isNaN(c.sigma)) ? `σ ${c.sigma.toFixed(2)}` : '—';
+      const outline = c.sig && ab > 0.95 ? 'outline:1px solid #34d399;outline-offset:-1px;' : '';
+      html += `<td onclick="crxUniverseClickCell('${a}','${b}')" title="Click → Pair tab" style="cursor:pointer;padding:6px;background:${bg};color:${textCol};text-align:center;${outline}border:1px solid rgba(255,255,255,0.04)"><div style="font-size:11px;font-weight:500">${c.r.toFixed(2)}${star}</div><div style="font-size:8px;color:${textCol==='#fff'?'rgba(255,255,255,0.7)':'#3d5070'};margin-top:1px">${sigmaTxt}</div></td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody>`;
+  tbl.innerHTML = html;
+}
+
+// ── Most tradeable list ─────────────────────────────────────────────────────
+function crxRenderUniverseTradeable(){
+  const el = $id('crx-universe-tradeable'); if (!el) return;
+  const keys = CRX.prefs.universeIndices;
+  const fn = CRX.prefs.universeMethod === 'spearman' ? cSpearman : pear;
+  const serCache = {};
+  keys.forEach(k => { serCache[k] = gS(k, CRX.prefs.universeTenors[k] || 'r1'); });
+  const items = [];
+  for (let i=0; i<keys.length; i++) {
+    for (let j=i+1; j<keys.length; j++) {
+      const a = keys[i], b = keys[j];
+      const c = crxUniverseCell(a, b, fn, serCache);
+      if (!c || !c.sig || c.r <= 0) continue;
+      items.push({ a, b, r: c.r, sigma: c.sigma, n: c.n });
+    }
+  }
+  if (!items.length) { el.innerHTML = `<div style="color:#5a6882;padding:8px 0">No statistically significant positive correlations in the current universe.</div>`; return; }
+  // Score = r × (1 − σ/σ_max)
+  const sigmaMax = Math.max(...items.map(x => x.sigma || 0), 0.001);
+  items.forEach(x => { x.score = +(x.r * (1 - (x.sigma||0)/sigmaMax)).toFixed(3); });
+  items.sort((x,y) => y.score - x.score);
+  const top = items.slice(0, 6);
+  const star = (idx) => idx < 2 ? '<span style="color:#fbbf24">★</span>' : `<span style="color:#5a6882">${idx+1}</span>`;
+  el.innerHTML = top.map((x, idx) => `
+    <div onclick="crxUniverseClickCell('${x.a}','${x.b}')" style="cursor:pointer;display:grid;grid-template-columns:18px 1fr 50px 70px 50px;gap:6px;padding:5px 0;border-bottom:1px solid #0f1824;align-items:center">
+      <span style="text-align:center">${star(idx)}</span>
+      <span style="color:#fff">${INST[x.a]?.label||x.a}–${INST[x.b]?.label||x.b}</span>
+      <span style="color:#34d399;text-align:right">${x.r.toFixed(2)}</span>
+      <span style="color:#9ca3af;text-align:right;font-size:9px">σ ${(x.sigma||0).toFixed(3)}</span>
+      <span style="color:#a78bfa;text-align:right">${x.score.toFixed(2)}</span>
+    </div>
+  `).join('');
+}
+
+// ── Decoupled callout ───────────────────────────────────────────────────────
+function crxRenderUniverseDecoupled(){
+  const el = $id('crx-universe-decoupled'); if (!el) return;
+  const keys = CRX.prefs.universeIndices;
+  if (keys.length < 3) { el.innerHTML = `<div style="color:#5a6882;padding:8px 0">Add at least 3 indices to see decoupling.</div>`; return; }
+  const fn = CRX.prefs.universeMethod === 'spearman' ? cSpearman : pear;
+  const serCache = {};
+  keys.forEach(k => { serCache[k] = gS(k, CRX.prefs.universeTenors[k] || 'r1'); });
+  // For each index, find max |r| with any other
+  const decoupling = keys.map(k => {
+    let maxAbs = 0, partner = null, partnerR = 0;
+    keys.forEach(j => {
+      if (j === k) return;
+      const c = crxUniverseCell(k, j, fn, serCache);
+      if (c && c.sig && Math.abs(c.r) > maxAbs) { maxAbs = Math.abs(c.r); partner = j; partnerR = c.r; }
+    });
+    return { k, maxAbs, partner, partnerR };
+  });
+  decoupling.sort((x,y) => x.maxAbs - y.maxAbs);
+  const worst = decoupling.slice(0, 3);
+  el.innerHTML = worst.map(d => {
+    if (d.maxAbs === 0) {
+      return `<div style="padding:5px 0;border-bottom:1px solid #0f1824"><span style="color:#fca5a5;font-weight:500">${INST[d.k]?.label||d.k}</span> · no significant correlation in current universe.</div>`;
+    }
+    const partnerLbl = d.partner ? `${INST[d.partner]?.label||d.partner}` : '—';
+    const interp = d.maxAbs < 0.30
+      ? `effectively decoupled — moves on its own dynamics`
+      : d.maxAbs < 0.50
+      ? `weak max coupling — limited cross-hedge value`
+      : `loose max coupling — usable cross-hedge`;
+    return `
+      <div style="padding:5px 0;border-bottom:1px solid #0f1824">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="color:#fff;font-weight:500">${INST[d.k]?.label||d.k}</span>
+          <span style="color:#9ca3af;font-size:9px">max r ${d.partnerR.toFixed(2)} (${partnerLbl})</span>
+        </div>
+        <div style="color:#9ca3af;font-size:9px;margin-top:1px">${interp}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── DETECT findings across the matrix ───────────────────────────────────────
+function crxRenderUniverseDetect(){
+  const el = $id('crx-universe-detect'); if (!el) return;
+  const keys = CRX.prefs.universeIndices;
+  const findings = [];
+  keys.forEach(a => keys.forEach(b => {
+    if (a >= b) return;
+    const pair = { i1:a, t1:CRX.prefs.universeTenors[a]||'r1', i2:b, t2:CRX.prefs.universeTenors[b]||'r1' };
+    const st = crxClassifyState(pair);
+    const lbl = `${INST[a]?.label||a}-${INST[b]?.label||b}`;
+    if (st.cls === 'breaking') {
+      findings.push({ type:'Breakdown', col:'#fca5a5', lbl, copy:`5D r ${st.r5?.toFixed(2)} vs 30D r ${st.r30?.toFixed(2)} (Δ ${(st.delta*100).toFixed(0)}pp)`, mag:`${(st.delta*100).toFixed(0)}pp`, magCol:'#fca5a5', a, b });
+    } else if (st.cls === 'weakening') {
+      findings.push({ type:'Drift', col:'#fbbf24', lbl, copy:`30D r ${st.r30?.toFixed(2)} vs 90D r ${st.r90?.toFixed(2)} (drift ${st.driftDays}d)`, mag:`${(st.driftDelta*100).toFixed(0)}pp`, magCol:'#fbbf24', a, b });
+    }
+  }));
+  // Lag flags — scan for non-zero peak r > sync r by >0.10
+  keys.forEach(a => keys.forEach(b => {
+    if (a >= b) return;
+    const s1 = gS(a, CRX.prefs.universeTenors[a]||'r1');
+    const s2 = gS(b, CRX.prefs.universeTenors[b]||'r1');
+    if (!s1.length || !s2.length) return;
+    const lag = cCrossCorr(s1, s2, 5);
+    const peak = lag.reduce((best, d) => (!isNaN(d.r) && Math.abs(d.r) > Math.abs(best.r||0)) ? d : best, { r:0 });
+    const sync = lag.find(d => d.lag === 0)?.r;
+    if (!isNaN(peak.r) && sync != null && peak.lag !== 0 && (Math.abs(peak.r) - Math.abs(sync)) > 0.10) {
+      const lbl = `${INST[a]?.label||a}-${INST[b]?.label||b}`;
+      const dir = peak.lag > 0 ? `${INST[a]?.label||a} leads by ${peak.lag}d` : `${INST[b]?.label||b} leads by ${Math.abs(peak.lag)}d`;
+      findings.push({ type:'Lag', col:'#4fc3f7', lbl, copy:`${dir} · peak r ${peak.r.toFixed(2)} vs sync ${sync.toFixed(2)}`, mag:`+${(Math.abs(peak.r)-Math.abs(sync)).toFixed(2)}`, magCol:'#4fc3f7', a, b });
+    }
+  }));
+  if (!findings.length) {
+    el.innerHTML = `<div style="color:#5a6882;padding:8px 0">No anomalies detected across this universe. All correlations within normal regimes.</div>`;
+    return;
+  }
+  el.innerHTML = findings.slice(0, 12).map(f => `
+    <div onclick="crxUniverseClickCell('${f.a}','${f.b}')" style="cursor:pointer;display:grid;grid-template-columns:90px 100px 1fr 70px;gap:8px;padding:5px 0;border-bottom:1px solid #0f1824;align-items:center">
+      <span style="color:${f.col};font-size:9px;letter-spacing:.04em">${f.type}</span>
+      <span style="color:#fff;font-size:10px">${f.lbl}</span>
+      <span style="color:#c8cfe0">${f.copy}</span>
+      <span style="color:${f.magCol};text-align:right">${f.mag}</span>
+    </div>
+  `).join('');
+}
+
+// ── Click cell → Pair tab pre-loaded (AC#3) ─────────────────────────────────
+window.crxUniverseClickCell = function(a, b){
+  CRX.prefs.lastViewedPair = {
+    i1: a, t1: CRX.prefs.universeTenors[a] || 'r1',
+    i2: b, t2: CRX.prefs.universeTenors[b] || 'r1',
+  };
+  crxSavePrefs(CRX.prefs);
+  crxShowTab('pair', null, true);
+};
+
+window.crxUniverseSetMethod = function(m){
+  if (m !== 'pearson' && m !== 'spearman') return;
+  CRX.prefs.universeMethod = m;
+  crxSavePrefs(CRX.prefs);
+  crxRenderUniverse();
+};
+
+// ── XLSX export ─────────────────────────────────────────────────────────────
+window.crxUniverseExport = function(){
+  if (!sDates || !sDates.length) { alert('No data loaded.'); return; }
+  if (typeof XLSX === 'undefined') { alert('XLSX library not loaded.'); return; }
+  const keys = CRX.prefs.universeIndices;
+  const fn = CRX.prefs.universeMethod === 'spearman' ? cSpearman : pear;
+  const serCache = {};
+  keys.forEach(k => { serCache[k] = gS(k, CRX.prefs.universeTenors[k] || 'r1'); });
+  const headers = ['Pair', ...keys.map(k => `${INST[k]?.label||k} ${tvL(CRX.prefs.universeTenors[k]||'r1')}`)];
+  const rows = [headers];
+  keys.forEach(a => {
+    const row = [`${INST[a]?.label||a} ${tvL(CRX.prefs.universeTenors[a]||'r1')}`];
+    keys.forEach(b => {
+      if (a === b) { row.push(1); return; }
+      const c = crxUniverseCell(a, b, fn, serCache);
+      row.push(c ? +c.r.toFixed(4) : '—');
+    });
+    rows.push(row);
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Universe Matrix');
+  XLSX.writeFile(wb, `LNG_TradeOS_Universe_${CRX.prefs.universeMethod}_${new Date().toISOString().slice(0,10)}.xlsx`);
+};
 
 // Cache invalidation hook — wire to data load/refresh.
 if (typeof window !== 'undefined') {
