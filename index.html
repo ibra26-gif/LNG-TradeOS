@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260422a">
-<script src="lngtradeos.js?v=20260427-correlation-full-tenors" defer></script>
+<script src="lngtradeos.js?v=20260427-fin-dash-phase1" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -301,10 +301,67 @@
     </div>
     <div class="amin">
       <div id="sec-dashboard" class="asec active">
-        <div id="dash-metrics"></div>
-        <!-- Two charts side by side: Global Snapshot LEFT, EU Hub RIGHT -->
-        <div class="two-col" style="margin-bottom:12px">
-          <div class="acard"><div class="ctitle">GLOBAL GAS SNAPSHOT — M+1 · $/MMBTU · FROM JAN 2026</div><div class="cw" style="height:280px"><canvas id="gas-snapshot-chart"></canvas></div></div>
+        <!-- ═══════════════════════════════════════════════════════════════════
+             FINANCIAL DASHBOARD v2 (workflow-driven morning view)
+             Phase 1: layout scaffold. Existing charts (Global Gas Snapshot,
+             European Gas Hub, Correlation Matrix) repositioned into their
+             new slots. Phase 2-5 sections render as labelled placeholders
+             until their phase ships.
+             ═════════════════════════════════════════════════════════════ -->
+
+        <!-- 1. Header strip: title + freshness pill + (decorative) time-window
+                hint. Real time-window toggle descoped per user direction —
+                default semantics = since-last-close. -->
+        <div id="dash2-header" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #151e30">
+          <span style="font-size:12px;color:#c8cfe0;font-weight:500;letter-spacing:.04em">Financial Dashboard</span>
+          <span id="dash2-freshness" style="font-size:9px;color:#34d399">●</span>
+          <span style="flex:1"></span>
+          <span style="font-size:9px;color:#3d5070">comparison · since last close</span>
+        </div>
+
+        <!-- 2. Since-last-visit panel — Phase 5 placeholder
+                (scratchpad only; time-window toggle descoped) -->
+        <div id="dash2-since-visit" class="acard dash2-ph" style="border-color:rgba(251,191,36,0.30);border-left:2px solid #fbbf24;margin-bottom:12px">
+          <div class="ctitle" style="color:#fbbf24">SCRATCHPAD<span style="flex:1;height:1px;background:rgba(251,191,36,0.10);margin:0 8px;display:inline-block"></span></div>
+          <div class="cnote" style="color:#5a6882">Phase 5 — auto-saving scratchpad. Wired in a later commit.</div>
+        </div>
+
+        <!-- 3. Headline benchmarks — Phase 2 placeholder -->
+        <div id="dash2-headline" class="acard dash2-ph" style="margin-bottom:12px">
+          <div class="ctitle">HEADLINE BENCHMARKS · M+1 · LIVE<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span></div>
+          <div class="cnote" style="color:#5a6882">Phase 2 — JKM · TTF · HH big cards with z-score · 30D %ile · 30D P5/P95 · sparkline.</div>
+        </div>
+
+        <!-- 4. European hubs — Phase 3 placeholder -->
+        <div id="dash2-eu-hubs" class="acard dash2-ph" style="margin-bottom:12px">
+          <div class="ctitle">EUROPEAN HUBS · M+1<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span></div>
+          <div class="cnote" style="color:#5a6882">Phase 3 — D-1 banner ("published next-day morning") + 5 hub cards (THE · PEG · PVB · PSV · ZTP) with date suffix.</div>
+        </div>
+
+        <!-- 5. Macro + Spreads — Phase 2 placeholder, side-by-side 1fr / 1.6fr -->
+        <div id="dash2-macro-spreads" style="display:grid;grid-template-columns:1fr 1.6fr;gap:10px;margin-bottom:12px">
+          <div class="acard dash2-ph">
+            <div class="ctitle">MACRO · LIVE<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span></div>
+            <div class="cnote" style="color:#5a6882">Phase 2 — Brent · Dated Brent · Slope.</div>
+          </div>
+          <div class="acard dash2-ph">
+            <div class="ctitle">SPREADS · LIVE<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span></div>
+            <div class="cnote" style="color:#5a6882">Phase 2 — THE/TTF · PEG/TTF · PVB/TTF · PSV/TTF · ZTP/TTF (n/m guard for low-base spreads).</div>
+          </div>
+        </div>
+
+        <!-- 6. Curve view · day-on-day — Phase 4 placeholder (centerpiece) -->
+        <div id="dash2-curve-heatmap" class="acard dash2-ph" style="margin-bottom:12px;border-color:rgba(45,124,255,0.20)">
+          <div class="ctitle">CURVE VIEW · DAY-ON-DAY<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:9px;color:#5a6882">absolute · vs M+1 spread</span></div>
+          <div class="cnote" style="color:#5a6882">Phase 4 — TTF · JKM · HH × (M+1, M+2, M+3, Q3-26, Q4-26, Win-26/27) heatmap with click-through to history.</div>
+        </div>
+
+        <!-- 7. KEPT: Global Gas Snapshot LEFT, EU Hub RIGHT -->
+        <div id="dash2-charts" class="two-col" style="margin-bottom:12px">
+          <div class="acard">
+            <div class="ctitle">GLOBAL GAS SNAPSHOT — M+1 · $/MMBTU · FROM JAN 2026<span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+            <div class="cw" style="height:280px"><canvas id="gas-snapshot-chart"></canvas></div>
+          </div>
           <div class="acard">
             <div class="ctitle" style="display:flex;align-items:center;gap:8px">
               <span>EUROPEAN GAS HUB — M+1 · $/MMBTU · FROM JAN 2026</span>
@@ -314,11 +371,19 @@
             <div style="font-size:8px;color:#3d5070;margin-top:4px">EEX Market Data Hub · EUR/MWh × 0.293071 × EUR/USD (from LNG EOD)</div>
           </div>
         </div>
-        <!-- Correlation + DoD below -->
-        <div class="two-col">
-          <div class="acard"><div class="ctitle">CORRELATION MATRIX — M+1 · LOG RETURNS</div><div class="cnote">Pearson r on daily log returns. Blue = positive, red = negative.</div><div id="dash-corr" style="overflow-x:auto"></div></div>
-          <div class="acard"><div class="ctitle">DAY-ON-DAY CHANGES — ALL INSTRUMENTS</div><div id="dash-dod" style="overflow-x:auto"></div></div>
+
+        <!-- 8. KEPT: Correlation Matrix (full width, will be tightened to 5x5 + click-through in a later phase) -->
+        <div class="acard" style="margin-bottom:12px">
+          <div class="ctitle">CORRELATION MATRIX — M+1 · LOG RETURNS<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:9px;color:#5a6882">click cell → Universe</span></div>
+          <div class="cnote">Pearson r on daily log returns. Blue = positive, red = negative.</div>
+          <div id="dash-corr" style="overflow-x:auto"></div>
         </div>
+
+        <!-- LEGACY CONTAINERS — kept in DOM so existing build helpers don't
+             throw, but hidden until Phase 2-4 reuse the data via the new
+             card components. Will be removed in a final cleanup pass. -->
+        <div id="dash-metrics" style="display:none"></div>
+        <div id="dash-dod" style="display:none"></div>
       </div>
       <div id="sec-historical" class="asec">
         <div class="ctrl"><span class="cl">SERIES 1</span><select id="h-i1" onchange="updHist()"></select><select id="h-t1" onchange="updHist()"></select><span class="d1"></span><div class="csep"></div><span class="cl">SERIES 2</span><select id="h-i2" onchange="updHist()"></select><select id="h-t2" onchange="updHist()"></select><span class="d2"></span><div class="csep"></div><span class="cl">RANGE</span><div id="h-range-btns" style="display:flex;gap:3px">

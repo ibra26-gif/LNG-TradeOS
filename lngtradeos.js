@@ -12202,6 +12202,15 @@ function aDval(inst, dateStr){
 function buildDash(){
   if(sDates.length<2) return;
   const ld=sDates[sDates.length-1],pd=sDates[sDates.length-2],lR=aD[ld].rows,pR=aD[pd].rows,m1=rPK(aD[ld].date,1);
+  // Phase-1 header freshness pill — shows latest EOD date. The full
+  // freshness/staleness logic (LIVE vs D-1, stale-Nd badges) lands with the
+  // card components in Phase 2/3.
+  const fp=$id('dash2-freshness');
+  if(fp){
+    const ldt=aD[ld]?.date;
+    const lbl=ldt ? ldt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : ld;
+    fp.textContent=`● EOD ${lbl} · ${sDates.length} dates`;
+  }
   const mg=$id('dash-metrics'); if(!mg) return;
 
   // ── Helper: LNG/global card ────────────────────────────────────────────
