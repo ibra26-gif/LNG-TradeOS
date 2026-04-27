@@ -13138,6 +13138,11 @@ function crxDefaultPrefs(){
     monitorRange: '1Y',  // '90D' | '1Y' | 'All' — x-axis time slice
     lastViewedPair: { i1:'JKM', t1:'r1', i2:'TTF', t2:'r1' },
     monitorFocusId: 'jkm-ttf-r1',
+    // Pair-tab state — configurator persistence so user lands on the
+    // last pair/window/method they were analyzing.
+    pairWindow: 20,
+    pairMethod: 'pearson',  // 'pearson' | 'spearman'
+    pairRange: '1Y',
   };
 }
 
@@ -13332,30 +13337,28 @@ function crxBoot(){
 
 function crxShowTab(tab, btn, persist = true){
   if (!CRX.prefs) CRX.prefs = crxLoadPrefs();
-  // Hide all four panes (legacy rolling stays hidden permanently)
-  ['monitor','rolling','analysis','matrix'].forEach(t => {
+  // Hide all panes. monitor + pair are new; analysis/matrix are legacy
+  // fallbacks (analysis was Pair's Phase 1 fallback, replaced now in Phase 2;
+  // matrix is still Universe's Phase 2 fallback until Phase 3 lands).
+  ['monitor','pair','rolling','analysis','matrix'].forEach(t => {
     const s = $id('csec-' + t); if (s) s.style.display = 'none';
   });
-  // Tab → pane mapping. monitor → csec-monitor (new). pair → csec-analysis
-  // (legacy fallback, will be replaced in Phase 2). universe → csec-matrix
-  // (legacy fallback, replaced in Phase 3).
-  const PANE_MAP = { monitor:'csec-monitor', pair:'csec-analysis', universe:'csec-matrix' };
+  // monitor → csec-monitor (Phase 1). pair → csec-pair (Phase 2, new).
+  // universe → csec-matrix (legacy fallback until Phase 3).
+  const PANE_MAP = { monitor:'csec-monitor', pair:'csec-pair', universe:'csec-matrix' };
   const paneId = PANE_MAP[tab];
   if (paneId) { const p = $id(paneId); if (p) p.style.display = 'block'; }
-  // Toggle button active state across both old and new nav rows
   document.querySelectorAll('#sec-correlation .anl').forEach(b => b.classList.remove('active'));
   const id = 'ctab-' + tab;
   const tBtn = btn || $id(id);
   if (tBtn) tBtn.classList.add('active');
-  // Persist user-driven switches only — boot activations don't count
   if (persist) {
     CRX.prefs.defaultTab = tab;
     crxSavePrefs(CRX.prefs);
   }
-  // Render
   setTimeout(() => {
     if (tab === 'monitor') crxRenderMonitor();
-    else if (tab === 'pair' && typeof cUpdAnalysis === 'function') cUpdAnalysis();
+    else if (tab === 'pair') crxRenderPair();
     else if (tab === 'universe' && typeof cUpdMatrix === 'function') cUpdMatrix();
   }, 30);
 }
@@ -13947,6 +13950,627 @@ window.crxClosePopover = function(){
   const pop = $id('crx-popover'); if (!pop) return;
   pop.style.display = 'none'; pop.innerHTML = '';
 };
+
+// ════════════════════════════════════════════════════════════════════════════
+// PAIR TAB (Phase 2)
+// ════════════════════════════════════════════════════════════════════════════
+// Configurator + 4 charts (rolling, lag/lead, scatter, residuals) + stats +
+// synthesis + soft mean-reversion backtest + DETECT findings panel.
+//
+// "Active pair" lives in CRX.prefs.lastViewedPair (persisted across reloads
+// and writable by Universe-cell click in Phase 3).
+
+CRX.charts.pair = {}; // { rolling, lag, scatter, residuals }
+
+// ── Backtest engine (correlation-space, soft) ────────────────────────────────
+// Rationale: a dollar-P&L backtest needs spread-price data and direction-of-
+// trade rules (which side of the spread to take, sizing, stops). That's
+// substantial extra design surface and gates on infrastructure that doesn't
+// exist yet (Implied Trade panel + portfolio wire). Phase 2 ships a
+// correlation-space backtest answering: "When this pair breaks, how often
+// does the relationship recover, and how fast?" — useful as a DETECT-quality
+// signal even without converting to dollars.
+function crxBacktestMeanReversion(pair, threshold = null){
+  const win = CRX.prefs.pairWindow || 20;
+  const breaks = crxDetectRegimeChanges(pair, win, threshold);
+  const triggers = breaks.length;
+  const reverted = breaks.filter(b => b.recoveryDays != null);
+  const hitRate = triggers > 0 ? +(reverted.length / triggers).toFixed(3) : null;
+  const avgPayoff = reverted.length > 0
+    ? +(reverted.reduce((s,b) => s + Math.abs(b.magnitude), 0) / reverted.length).toFixed(3)
+    : null;
+  const avgHoldDays = reverted.length > 0
+    ? +(reverted.reduce((s,b) => s + b.recoveryDays, 0) / reverted.length).toFixed(1)
+    : null;
+  return { triggers, reverted: reverted.length, hitRate, avgPayoff, avgHoldDays };
+}
+
+// ── Helpers shared across Pair charts ───────────────────────────────────────
+function crxPairActive(){
+  if (!CRX.prefs) CRX.prefs = crxLoadPrefs();
+  return { ...CRX.prefs.lastViewedPair };
+}
+
+function crxPairRangeCutoff(){
+  return crxRangeCutoffDate(CRX.prefs.pairRange || '1Y');
+}
+
+// Pair-tab range cutoff applies to display, not computation. Same idea as
+// Monitor: rolling-r is computed across full history (so the trailing window
+// is correct), then sliced for the chart.
+
+// ── Pair-tab orchestrator ───────────────────────────────────────────────────
+function crxRenderPair(){
+  if (!CRX.prefs) CRX.prefs = crxLoadPrefs();
+  const pane = $id('csec-pair');
+  if (!pane) return;
+  const pair = crxPairActive();
+  const lastDate = (sDates && sDates.length)
+    ? new Date(sDates[sDates.length-1]).toLocaleDateString('en-GB', { day:'2-digit', month:'short' })
+    : '—';
+
+  pane.innerHTML = `
+    <!-- Header status -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #151e30">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-size:11px;color:#c8cfe0;font-weight:500">Correlation · Pair</span>
+        <span style="font-size:9px;color:#34d399">● ${sDates?.length||0} dates · EOD ${lastDate}</span>
+      </div>
+      <span style="font-size:9px;color:#3d5070" id="crx-pair-active-label">${crxPairLabel(pair)}</span>
+    </div>
+
+    <!-- Configurator bar -->
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#0a0f1e;border:1px solid #151e30;padding:8px 10px;margin-bottom:10px">
+      <span style="font-size:9px;letter-spacing:.06em;color:#3d5070;text-transform:uppercase">Pair</span>
+      <select id="crx-pair-i1" onchange="crxPairChangeConfig()"
+              style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:74px"></select>
+      <select id="crx-pair-t1" onchange="crxPairChangeConfig()"
+              style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:60px"></select>
+      <span style="color:#3d5070;font-size:9px;letter-spacing:.1em;margin:0 4px">VS</span>
+      <select id="crx-pair-i2" onchange="crxPairChangeConfig()"
+              style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:74px"></select>
+      <select id="crx-pair-t2" onchange="crxPairChangeConfig()"
+              style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:60px"></select>
+      <span style="width:1px;height:14px;background:#151e30;margin:0 4px"></span>
+      <span class="cl" style="font-size:9px;color:#3d5070;letter-spacing:.06em">WINDOW</span>
+      <input type="range" min="5" max="60" value="${CRX.prefs.pairWindow}" id="crx-pair-win"
+             oninput="document.getElementById('crx-pair-win-val').textContent=this.value+'D';crxPairChangeWindow(this.value)"
+             style="width:100px;accent-color:#2d7cff">
+      <span id="crx-pair-win-val" style="font-size:10px;color:#4fc3f7;min-width:28px">${CRX.prefs.pairWindow}D</span>
+      <span style="width:1px;height:14px;background:#151e30;margin:0 4px"></span>
+      <button class="cr-pill ${CRX.prefs.pairMethod==='pearson'?'on':''}" onclick="crxPairSetMethod('pearson')" style="font-size:9px">PEARSON</button>
+      <button class="cr-pill ${CRX.prefs.pairMethod==='spearman'?'on':''}" onclick="crxPairSetMethod('spearman')" style="font-size:9px">SPEARMAN</button>
+      <span style="width:1px;height:14px;background:#151e30;margin:0 4px"></span>
+      <span class="cl" style="font-size:9px;color:#3d5070;letter-spacing:.06em">RANGE</span>
+      <span id="crx-pair-range-toggles" style="display:flex;gap:3px"></span>
+      <span style="flex:1"></span>
+      <button class="cr-pill" onclick="crxPairAddToWatchlist()" style="font-size:9px">+ ADD TO WATCHLIST</button>
+    </div>
+
+    <!-- Stats row -->
+    <div id="crx-pair-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;margin-bottom:10px"></div>
+
+    <!-- Rolling chart full-width -->
+    <div class="acard" style="margin-bottom:10px">
+      <div class="ctitle" style="display:flex;align-items:center">
+        <span id="crx-pair-rolling-title">ROLLING CORRELATION — ${CRX.prefs.pairWindow}D</span>
+        <span id="crx-pair-rolling-badge" style="margin-left:8px"></span>
+        <span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span>
+      </div>
+      <div class="cw" style="height:180px"><canvas id="crxPairRollingChart"></canvas></div>
+    </div>
+
+    <!-- Two-column: lag/lead + scatter -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="acard">
+        <div class="ctitle">LAG / LEAD<span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+        <div class="cnote" style="margin-bottom:8px;font-size:9px">+lag = A leads B. Shaded ±2/√n band = white-noise null. Bars outside the band are statistically significant.</div>
+        <div style="height:140px"><canvas id="crxPairLagChart"></canvas></div>
+        <div id="crx-pair-lag-readout" style="font-size:9px;color:#5a6882;margin-top:6px;padding:5px 8px;background:#070b14;border:1px solid #0f1824">—</div>
+      </div>
+      <div class="acard">
+        <div class="ctitle">SCATTER + REGRESSION<span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+        <div class="cnote" style="margin-bottom:8px;font-size:9px">Each dot = one day's log-returns. Orange line = regression. Shaded = ±2σ residual band. Last point in red.</div>
+        <div style="height:140px"><canvas id="crxPairScatterChart"></canvas></div>
+        <div id="crx-pair-scatter-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- Residuals over time -->
+    <div class="acard" style="margin-bottom:10px">
+      <div class="ctitle">RESIDUALS OVER TIME<span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+      <div class="cnote" style="margin-bottom:8px;font-size:9px">Daily residuals from regression line. Vertical red bars = regime breaks (rolling-r dropped &gt; threshold). Cluster of large residuals near a marker = the relationship broke down.</div>
+      <div style="height:120px"><canvas id="crxPairResidualsChart"></canvas></div>
+    </div>
+
+    <!-- Synthesis callout -->
+    <div id="crx-pair-synthesis" style="background:rgba(167,139,250,0.04);border-left:2px solid #a78bfa;padding:8px 12px;margin-bottom:10px;font-size:10px;color:#c8cfe0;line-height:1.6"></div>
+
+    <!-- Two-column: backtest panel + DETECT findings -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="acard" style="border-left:2px solid #a78bfa">
+        <div class="ctitle"><span>BACKTEST · MEAN REVERSION</span><span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+        <div class="cnote" style="margin-bottom:8px;font-size:9px">Soft backtest in correlation space — when rolling-r drops &gt; threshold below trailing baseline, did it recover within the data? Magnitude in pp = size of mean-reversion opportunity.</div>
+        <div id="crx-pair-backtest" style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px"></div>
+      </div>
+      <div class="acard">
+        <div class="ctitle"><span>DETECT</span><span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span><button class="cr-pill" onclick="crxRenderPair()" style="font-size:9px">↻ RESCAN</button></div>
+        <div id="crx-pair-detect" style="margin-top:6px;font-size:10px"></div>
+      </div>
+    </div>
+  `;
+
+  // Populate selectors
+  crxPairBuildSelectors(pair);
+  crxRenderPairRangeToggles();
+  // Render every panel
+  crxRenderPairStats(pair);
+  crxRenderPairRollingChart(pair);
+  crxRenderPairLagChart(pair);
+  crxRenderPairScatterChart(pair);
+  crxRenderPairResidualsChart(pair);
+  crxRenderPairSynthesis(pair);
+  crxRenderPairBacktest(pair);
+  crxRenderPairDetect(pair);
+}
+
+// ── Selectors ───────────────────────────────────────────────────────────────
+function crxPairBuildSelectors(pair){
+  const indices = [
+    'JKM','TTF','HH','NBP','Brent','Dated','Slope',
+    ...EEX_HUBS,
+    'SP_JT','SP_JH','SP_TH','SP_JN','SP_HN','SP_TN',
+  ];
+  const tenors = [['r1','M+1'],['r2','M+2'],['r3','M+3'],['r6','M+6']];
+  const optStr  = (arr) => arr.map(v => `<option value="${v}">${INST[v]?.label||v}</option>`).join('');
+  const optPair = (arr) => arr.map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+  const i1 = $id('crx-pair-i1'), t1 = $id('crx-pair-t1');
+  const i2 = $id('crx-pair-i2'), t2 = $id('crx-pair-t2');
+  if (i1) { i1.innerHTML = optStr(indices); i1.value = pair.i1; }
+  if (t1) { t1.innerHTML = optPair(tenors); t1.value = pair.t1; }
+  if (i2) { i2.innerHTML = optStr(indices); i2.value = pair.i2; }
+  if (t2) { t2.innerHTML = optPair(tenors); t2.value = pair.t2; }
+}
+
+window.crxPairChangeConfig = function(){
+  const i1 = $id('crx-pair-i1')?.value, t1 = $id('crx-pair-t1')?.value;
+  const i2 = $id('crx-pair-i2')?.value, t2 = $id('crx-pair-t2')?.value;
+  if (!i1 || !i2 || !t1 || !t2) return;
+  CRX.prefs.lastViewedPair = { i1, t1, i2, t2 };
+  crxSavePrefs(CRX.prefs);
+  crxRenderPair();
+};
+
+window.crxPairChangeWindow = function(v){
+  const w = parseInt(v, 10);
+  if (isNaN(w) || w < 5 || w > 60) return;
+  CRX.prefs.pairWindow = w;
+  crxSavePrefs(CRX.prefs);
+  // Re-render charts that depend on the rolling window
+  const pair = crxPairActive();
+  crxRenderPairStats(pair);
+  crxRenderPairRollingChart(pair);
+  crxRenderPairBacktest(pair);
+  crxRenderPairDetect(pair);
+  const t = $id('crx-pair-rolling-title');
+  if (t) t.textContent = `ROLLING CORRELATION — ${w}D`;
+};
+
+window.crxPairSetMethod = function(m){
+  if (m !== 'pearson' && m !== 'spearman') return;
+  CRX.prefs.pairMethod = m;
+  crxSavePrefs(CRX.prefs);
+  crxRenderPair();
+};
+
+window.crxPairAddToWatchlist = function(){
+  const p = crxPairActive();
+  const id = `${p.i1}-${p.t1}-${p.i2}-${p.t2}`.toLowerCase();
+  if (CRX.prefs.watchlist.find(w => w.id === id)) {
+    alert(`${crxPairLabel(p)} is already in your watchlist.`);
+    return;
+  }
+  if (p.i1 === p.i2 && p.t1 === p.t2) {
+    alert('Pair must be two different series.');
+    return;
+  }
+  CRX.prefs.watchlist.push({ id, i1:p.i1, t1:p.t1, i2:p.i2, t2:p.t2, thresholds: null });
+  crxSavePrefs(CRX.prefs);
+  alert(`${crxPairLabel(p)} added to watchlist. Switch to Monitor to see the card.`);
+};
+
+// ── Range toggles for Pair tab ──────────────────────────────────────────────
+function crxRenderPairRangeToggles(){
+  const wrap = $id('crx-pair-range-toggles'); if (!wrap) return;
+  wrap.innerHTML = '';
+  const cur = CRX.prefs.pairRange || '1Y';
+  CRX_RANGE_OPTIONS.forEach(r => {
+    const b = document.createElement('button');
+    b.className = 'cr-pill' + (cur === r ? ' on' : '');
+    b.style.cssText = 'font-size:8px;padding:2px 6px;letter-spacing:.04em';
+    b.textContent = r;
+    b.onclick = () => {
+      CRX.prefs.pairRange = r;
+      crxSavePrefs(CRX.prefs);
+      const pair = crxPairActive();
+      crxRenderPairRangeToggles();
+      crxRenderPairRollingChart(pair);
+      crxRenderPairResidualsChart(pair);
+    };
+    wrap.appendChild(b);
+  });
+}
+
+// ── Stats row ───────────────────────────────────────────────────────────────
+function crxRenderPairStats(pair){
+  const el = $id('crx-pair-stats'); if (!el) return;
+  const win = CRX.prefs.pairWindow || 20;
+  const fn = CRX.prefs.pairMethod === 'spearman' ? cSpearman : pear;
+  const s1 = gS(pair.i1, pair.t1), s2 = gS(pair.i2, pair.t2);
+  let r = NaN, n = 0, beta = NaN, r2 = NaN, pv = NaN, sigma = NaN;
+  if (s1.length && s2.length) {
+    const { v1, v2 } = al2(s1, s2);
+    const l1 = lRet(v1), l2 = lRet(v2);
+    const filt = [];
+    for (let i=0;i<Math.min(l1.length,l2.length);i++)
+      if (l1[i]!=null && l2[i]!=null && isFinite(l1[i]) && isFinite(l2[i])) filt.push([l1[i],l2[i]]);
+    n = filt.length;
+    if (n >= 3) {
+      r = fn(filt.map(x=>x[0]), filt.map(x=>x[1]));
+      r2 = isNaN(r) ? NaN : +(r*r).toFixed(4);
+      pv = cPval(r, n);
+      // β slope
+      const xs = filt.map(x=>x[0]), ys = filt.map(x=>x[1]);
+      const mx = xs.reduce((s,v)=>s+v,0)/n, my = ys.reduce((s,v)=>s+v,0)/n;
+      const num = xs.reduce((s,v,i)=>s+(v-mx)*(ys[i]-my),0);
+      const den = xs.reduce((s,v)=>s+(v-mx)**2,0);
+      beta = den !== 0 ? +(num/den).toFixed(4) : NaN;
+    }
+    sigma = cStability(s1, s2, win);
+  }
+  const stmt = (lbl, val, color = '#c8cfe0') =>
+    `<div class="cr-stat"><div class="cr-stat-val" style="color:${color};font-size:13px">${val}</div><div class="cr-stat-lbl">${lbl}</div></div>`;
+  el.innerHTML = [
+    stmt(`<span style="color:#5a6882">${crxPairLabel(pair)} · </span>r`, isNaN(r) ? '—' : r.toFixed(4), '#4fc3f7'),
+    stmt('R²', isNaN(r2) ? '—' : r2.toFixed(4)),
+    stmt('β slope', isNaN(beta) ? '—' : beta.toFixed(4) + 'x'),
+    stmt('p-value', isNaN(pv) ? '—' : (pv<0.001 ? '<0.001' : pv.toFixed(3)), cSig(pv) ? '#22c55e' : '#f59e0b'),
+    stmt('Stability σ', sigma!=null && !isNaN(sigma) ? sigma.toFixed(3) : '—', sigma>0.15 ? '#fbbf24' : '#c8cfe0'),
+    stmt('n', n),
+  ].join('');
+}
+
+// ── Rolling chart (single window, with regime markers + range slice) ────────
+function crxRenderPairRollingChart(pair){
+  const cv = $id('crxPairRollingChart'); if (!cv) return;
+  if (CRX.charts.pair.rolling) CRX.charts.pair.rolling.destroy();
+  const win = CRX.prefs.pairWindow || 20;
+  const cutoff = crxPairRangeCutoff();
+  const inRange = (d) => cutoff ? new Date(d) >= cutoff : true;
+  const rcFull = crxRCorr(pair, win);
+  const rc = rcFull.filter(d => inRange(d.date));
+  if (!rc.length) return;
+  const labels = rc.map(d => new Date(d.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' }));
+  const values = rc.map(d => +d.value.toFixed(4));
+  const regimes = crxDetectRegimeChanges(pair, win).filter(r => inRange(r.date));
+  const markerDs = regimes.slice(-8).map(r => ({
+    label: `Break ${new Date(r.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,
+    type: 'bar',
+    data: labels.map(l => l === new Date(r.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' }) ? 1 : null),
+    backgroundColor: 'rgba(239,68,68,0.18)',
+    barThickness: 1, borderWidth: 0, pointRadius: 0,
+    skipLegend: true,
+  }));
+  const ds = [
+    ...markerDs,
+    {
+      label: `${win}D r`,
+      type: 'line',
+      data: values,
+      borderColor: '#3b82f6',
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.3,
+      fill: false,
+    },
+  ];
+  CRX.charts.pair.rolling = new Chart(cv, {
+    type: 'line',
+    data: { labels, datasets: ds },
+    options: {
+      ...CD,
+      animation: false,
+      plugins: {
+        ...CD.plugins,
+        legend: { display: false },
+        tooltip: { ...CD.plugins.tooltip, filter: (item) => !ds[item.datasetIndex]?.skipLegend },
+      },
+      scales: {
+        x: { ...CD.scales.x, ticks: { ...CD.scales.x.ticks, maxTicksLimit: 12 } },
+        y: { min:-1, max:1, ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}}, grid:{color:'#0f1824'} },
+      },
+    },
+  });
+  // State badge
+  const st = crxClassifyState(pair);
+  const col = CRX_STATE_COLORS[st.cls];
+  const badge = $id('crx-pair-rolling-badge');
+  if (badge) badge.innerHTML = `<span style="background:${col.badge};color:#0a0f1e;font-size:8px;font-weight:600;padding:1px 5px;border-radius:2px;letter-spacing:.06em">${st.cls.toUpperCase()}</span>`;
+}
+
+// ── Lag/lead chart with ±2σ noise band ──────────────────────────────────────
+function crxRenderPairLagChart(pair){
+  const cv = $id('crxPairLagChart'); if (!cv) return;
+  if (CRX.charts.pair.lag) CRX.charts.pair.lag.destroy();
+  const s1 = gS(pair.i1, pair.t1), s2 = gS(pair.i2, pair.t2);
+  if (!s1.length || !s2.length) return;
+  const lagData = cCrossCorr(s1, s2, 10);
+  const labels = lagData.map(d => d.lag === 0 ? '0' : (d.lag>0 ? '+'+d.lag : String(d.lag)));
+  const vals = lagData.map(d => isNaN(d.r) ? null : d.r);
+  // ±2/sqrt(n) Bartlett bound — null distribution for white noise
+  const meanN = lagData.reduce((s,d)=>s+d.n,0) / Math.max(lagData.length, 1);
+  const band = meanN > 0 ? 2 / Math.sqrt(meanN) : 0.2;
+  const peak = lagData.reduce((best, d) => (!isNaN(d.r) && Math.abs(d.r) > Math.abs(best.r||0)) ? d : best, { r:0 });
+  const colors = lagData.map(d => d.lag === peak.lag ? '#fbbf24'
+    : Math.abs(d.r) <= band ? 'rgba(125,138,164,0.30)'
+    : (d.r >= 0 ? 'rgba(45,124,255,0.7)' : 'rgba(239,68,68,0.7)'));
+  // Band as background dataset (line at +band, line at -band, fill between)
+  const bandDs = [
+    { label:'+2/√n', data: labels.map(()=>+band), type:'line', borderColor:'rgba(251,191,36,0.30)', borderWidth:1, borderDash:[3,3], pointRadius:0, fill:false, skipLegend:true },
+    { label:'-2/√n', data: labels.map(()=>-band), type:'line', borderColor:'rgba(251,191,36,0.30)', borderWidth:1, borderDash:[3,3], pointRadius:0, fill:false, skipLegend:true },
+  ];
+  const ds = [
+    ...bandDs,
+    { label:'r at lag', type:'bar', data: vals, backgroundColor: colors, borderWidth:0 },
+  ];
+  CRX.charts.pair.lag = new Chart(cv, {
+    data: { labels, datasets: ds },
+    options: {
+      ...CD,
+      animation: false,
+      plugins: {
+        ...CD.plugins,
+        legend: { display: false },
+        tooltip: { ...CD.plugins.tooltip, filter: (it) => !ds[it.datasetIndex]?.skipLegend },
+      },
+      scales: {
+        x: CD.scales.x,
+        y: { min:-1, max:1, ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}}, grid:{color:'#0f1824'} },
+      },
+    },
+  });
+  // Readout
+  const lbl1 = `${INST[pair.i1]?.label||pair.i1} ${tvL(pair.t1)}`;
+  const lbl2 = `${INST[pair.i2]?.label||pair.i2} ${tvL(pair.t2)}`;
+  const rd = $id('crx-pair-lag-readout');
+  if (rd) {
+    if (isNaN(peak.r)) {
+      rd.textContent = 'Insufficient data for lag analysis';
+    } else {
+      const dir = peak.lag > 0 ? `${lbl1} leads ${lbl2} by ${peak.lag}D`
+                : peak.lag < 0 ? `${lbl2} leads ${lbl1} by ${Math.abs(peak.lag)}D`
+                : 'Synchronous (no lag)';
+      const syncR = lagData.find(d => d.lag === 0)?.r;
+      const gain = !isNaN(peak.r) && syncR != null ? Math.abs(peak.r) - Math.abs(syncR) : NaN;
+      const sig = (gain > 0.10) ? '<span style="color:#fbbf24"> · tradeable timing edge</span>' : '';
+      rd.innerHTML = `${dir} · peak r = ${peak.r.toFixed(4)} · sync r = ${syncR?.toFixed(4)||'—'}${sig}`;
+    }
+  }
+}
+
+// ── Scatter + regression with ±2σ residual band ─────────────────────────────
+function crxRenderPairScatterChart(pair){
+  const cv = $id('crxPairScatterChart'); if (!cv) return;
+  if (CRX.charts.pair.scatter) CRX.charts.pair.scatter.destroy();
+  const s1 = gS(pair.i1, pair.t1), s2 = gS(pair.i2, pair.t2);
+  if (!s1.length || !s2.length) return;
+  const { v1, v2, dates } = al2(s1, s2);
+  const l1 = lRet(v1), l2 = lRet(v2);
+  const pts = [];
+  for (let i=0;i<Math.min(l1.length,l2.length);i++)
+    if (l1[i]!=null && l2[i]!=null && isFinite(l1[i]) && isFinite(l2[i])) pts.push({ x:+l1[i].toFixed(6), y:+l2[i].toFixed(6), date: dates[i+1] });
+  if (pts.length < 3) return;
+  const mx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
+  const my = pts.reduce((s,p)=>s+p.y,0)/pts.length;
+  const num = pts.reduce((s,p)=>s+(p.x-mx)*(p.y-my),0);
+  const den = pts.reduce((s,p)=>s+(p.x-mx)**2,0);
+  const beta = den !== 0 ? num/den : 0;
+  const alpha = my - beta*mx;
+  // Residuals → σ_resid
+  const resids = pts.map(p => p.y - (alpha + beta*p.x));
+  const meanR = resids.reduce((s,v)=>s+v,0)/resids.length;
+  const sigmaR = Math.sqrt(resids.reduce((s,v)=>s+(v-meanR)**2,0)/resids.length);
+  const xMin = Math.min(...pts.map(p=>p.x)), xMax = Math.max(...pts.map(p=>p.x));
+  const regLine = [{ x:xMin, y: alpha + beta*xMin }, { x:xMax, y: alpha + beta*xMax }];
+  const bandUpper = [{ x:xMin, y: alpha + beta*xMin + 2*sigmaR }, { x:xMax, y: alpha + beta*xMax + 2*sigmaR }];
+  const bandLower = [{ x:xMin, y: alpha + beta*xMin - 2*sigmaR }, { x:xMax, y: alpha + beta*xMax - 2*sigmaR }];
+  const lastPt = pts[pts.length-1];
+  // Highlight last point in red
+  const otherPts = pts.slice(0, -1);
+  const ds = [
+    { label:'+2σ', type:'line', data: bandUpper, borderColor:'rgba(251,191,36,0.30)', borderWidth:1, borderDash:[3,3], pointRadius:0, fill:false, showLine:true, skipLegend:true },
+    { label:'-2σ', type:'line', data: bandLower, borderColor:'rgba(251,191,36,0.30)', borderWidth:1, borderDash:[3,3], pointRadius:0, fill:false, showLine:true, skipLegend:true },
+    { label:'Log returns', type:'scatter', data: otherPts, backgroundColor:'rgba(45,124,255,0.50)', pointRadius:2.5, pointHoverRadius:4 },
+    { label:'Latest', type:'scatter', data:[lastPt], backgroundColor:'#ef4444', borderColor:'#fff', borderWidth:1, pointRadius:4, pointHoverRadius:5 },
+    { label:'Regression', type:'line', data: regLine, borderColor:'#f59e0b', borderWidth:1.5, pointRadius:0, fill:false, showLine:true },
+  ];
+  CRX.charts.pair.scatter = new Chart(cv, {
+    type: 'scatter',
+    data: { datasets: ds },
+    options: {
+      ...CD, animation: false,
+      plugins: {
+        ...CD.plugins,
+        legend: { display:false },
+        tooltip: { ...CD.plugins.tooltip,
+          filter: (it) => !ds[it.datasetIndex]?.skipLegend,
+          callbacks: {
+            label: (ctx) => {
+              const p = ctx.raw;
+              const dStr = p?.date ? new Date(p.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}) : '';
+              return `${dStr} · x=${p?.x?.toFixed(4)} y=${p?.y?.toFixed(4)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: { ...CD.scales.x, title:{ display:true, text:`${INST[pair.i1]?.label||pair.i1} log-return`, color:'#3d5070', font:{size:9} } },
+        y: { ...CD.scales.y, title:{ display:true, text:`${INST[pair.i2]?.label||pair.i2} log-return`, color:'#3d5070', font:{size:9} },
+              ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}}, grid:{color:'#0f1824'} },
+      },
+    },
+  });
+  // Stats below
+  const r = pear(pts.map(p=>p.x), pts.map(p=>p.y));
+  const r2 = isNaN(r) ? NaN : r*r;
+  const pv = cPval(r, pts.length);
+  const stmt = (lbl, val, color = '#c8cfe0') =>
+    `<div class="cr-stat"><div class="cr-stat-val" style="color:${color};font-size:11px">${val}</div><div class="cr-stat-lbl">${lbl}</div></div>`;
+  const ss = $id('crx-pair-scatter-stats');
+  if (ss) ss.innerHTML = [
+    stmt('r', isNaN(r) ? '—' : r.toFixed(4), '#4fc3f7'),
+    stmt('R²', isNaN(r2) ? '—' : r2.toFixed(4)),
+    stmt('β', isNaN(beta) ? '—' : beta.toFixed(4)+'x'),
+    stmt('p', isNaN(pv) ? '—' : (pv<0.001 ? '<0.001' : pv.toFixed(3)), cSig(pv) ? '#22c55e' : '#f59e0b'),
+  ].join('');
+}
+
+// ── Residuals over time ─────────────────────────────────────────────────────
+function crxRenderPairResidualsChart(pair){
+  const cv = $id('crxPairResidualsChart'); if (!cv) return;
+  if (CRX.charts.pair.residuals) CRX.charts.pair.residuals.destroy();
+  const cutoff = crxPairRangeCutoff();
+  const inRange = (d) => cutoff ? new Date(d) >= cutoff : true;
+  const fullSeries = crxGetResidualSeries(pair);
+  const series = fullSeries.filter(d => inRange(d.date));
+  if (!series.length) return;
+  const labels = series.map(d => new Date(d.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' }));
+  const values = series.map(d => d.residual);
+  // ±2σ band on residuals (computed from full series for stability, displayed across slice)
+  const all = fullSeries.map(d => d.residual);
+  const m = all.reduce((s,v)=>s+v,0)/Math.max(all.length,1);
+  const sigma = all.length ? Math.sqrt(all.reduce((s,v)=>s+(v-m)**2,0)/all.length) : 0;
+  const win = CRX.prefs.pairWindow || 20;
+  const regimes = crxDetectRegimeChanges(pair, win).filter(r => inRange(r.date));
+  const markerDs = regimes.slice(-8).map(r => ({
+    label: `Break ${new Date(r.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,
+    type: 'bar',
+    data: labels.map(l => l === new Date(r.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' }) ? Math.max(...values.map(Math.abs))*1.2 : null),
+    backgroundColor: 'rgba(239,68,68,0.18)',
+    barThickness: 1, borderWidth: 0, pointRadius: 0, skipLegend: true,
+  }));
+  // Residual series — color extreme values
+  const colors = values.map(v => Math.abs(v) > 2*sigma ? '#fca5a5' : '#3b82f6');
+  const ds = [
+    ...markerDs,
+    { label:'+2σ', type:'line', data: labels.map(()=>+2*sigma), borderColor:'rgba(251,191,36,0.30)', borderWidth:1, borderDash:[3,3], pointRadius:0, fill:false, skipLegend:true },
+    { label:'-2σ', type:'line', data: labels.map(()=>-2*sigma), borderColor:'rgba(251,191,36,0.30)', borderWidth:1, borderDash:[3,3], pointRadius:0, fill:false, skipLegend:true },
+    { label:'Residual', type:'bar', data: values, backgroundColor: colors, borderWidth:0 },
+  ];
+  CRX.charts.pair.residuals = new Chart(cv, {
+    type: 'bar',
+    data: { labels, datasets: ds },
+    options: {
+      ...CD, animation:false,
+      plugins: { ...CD.plugins, legend:{display:false}, tooltip:{...CD.plugins.tooltip, filter:(it)=>!ds[it.datasetIndex]?.skipLegend} },
+      scales: {
+        x: { ...CD.scales.x, ticks:{...CD.scales.x.ticks, maxTicksLimit:12} },
+        y: { ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}}, grid:{color:'#0f1824'} },
+      },
+    },
+  });
+}
+
+// ── Pair-tab synthesis (richer than Monitor's because we have lag + scatter info) ──
+function crxRenderPairSynthesis(pair){
+  const el = $id('crx-pair-synthesis'); if (!el) return;
+  const st = crxClassifyState(pair);
+  const lbl = crxPairLabel(pair);
+  // Try to glean lag insight
+  const s1 = gS(pair.i1, pair.t1), s2 = gS(pair.i2, pair.t2);
+  let lagBlurb = '';
+  if (s1.length && s2.length) {
+    const lagData = cCrossCorr(s1, s2, 10);
+    const peak = lagData.reduce((best, d) => (!isNaN(d.r) && Math.abs(d.r) > Math.abs(best.r||0)) ? d : best, { r:0 });
+    const syncR = lagData.find(d => d.lag === 0)?.r;
+    const gain = !isNaN(peak.r) && syncR != null ? Math.abs(peak.r) - Math.abs(syncR) : 0;
+    if (peak.lag !== 0 && gain > 0.10) {
+      const lbl1 = INST[pair.i1]?.label || pair.i1;
+      const lbl2 = INST[pair.i2]?.label || pair.i2;
+      const dir = peak.lag > 0 ? `${lbl1} leads ${lbl2}` : `${lbl2} leads ${lbl1}`;
+      lagBlurb = ` Lag/lead shows ${dir} by ${Math.abs(peak.lag)}d (peak r ${peak.r.toFixed(2)} vs sync ${syncR.toFixed(2)}) — possible timing signal.`;
+    } else if (peak.lag === 0 && !isNaN(peak.r)) {
+      lagBlurb = ` Lag/lead peak at 0 — synchronous, no predictive edge.`;
+    }
+  }
+  let copy;
+  if (st.cls === 'breaking') {
+    copy = `<span style="color:#a78bfa">▸</span> <strong>${lbl}</strong> decoupled. 5D r ${st.r5!=null?st.r5.toFixed(2):'—'} vs 30D r ${st.r30!=null?st.r30.toFixed(2):'—'} (Δ ${(st.delta*100).toFixed(0)}pp).${lagBlurb} Cross-hedges loose — recheck before adding exposure.`;
+  } else if (st.cls === 'weakening') {
+    copy = `<span style="color:#a78bfa">▸</span> <strong>${lbl}</strong> drifting weaker. 30D r ${st.r30!=null?st.r30.toFixed(2):'—'} vs 90D r ${st.r90!=null?st.r90.toFixed(2):'—'} (drift ${st.driftDays}d).${lagBlurb}`;
+  } else {
+    copy = `<span style="color:#a78bfa">▸</span> <strong>${lbl}</strong> stable regime. 30D r ${st.r30!=null?st.r30.toFixed(2):'—'}, σ ${st.sigma.toFixed(3)}.${lagBlurb}`;
+  }
+  el.innerHTML = copy;
+}
+
+// ── Backtest panel ──────────────────────────────────────────────────────────
+function crxRenderPairBacktest(pair){
+  const el = $id('crx-pair-backtest'); if (!el) return;
+  const bt = crxBacktestMeanReversion(pair);
+  const stmt = (lbl, val, sub, color = '#c8cfe0') =>
+    `<div class="cr-stat"><div class="cr-stat-val" style="color:${color};font-size:13px">${val}</div><div class="cr-stat-lbl">${lbl}</div>${sub?`<div style="font-size:8px;color:#5a6882;margin-top:1px">${sub}</div>`:''}</div>`;
+  el.innerHTML = [
+    stmt('Triggers', bt.triggers, `at ${CRX.prefs.pairWindow}D rolling`),
+    stmt('Reverted', bt.reverted, bt.triggers > 0 ? `${(100*bt.hitRate).toFixed(0)}% hit rate` : '—', bt.hitRate >= 0.6 ? '#22c55e' : bt.hitRate != null ? '#fbbf24' : '#c8cfe0'),
+    stmt('Avg payoff', bt.avgPayoff != null ? (100*bt.avgPayoff).toFixed(0) + 'pp' : '—', 'mean reversion gap'),
+    stmt('Avg hold', bt.avgHoldDays != null ? bt.avgHoldDays + 'd' : '—', 'time to recovery'),
+  ].join('');
+}
+
+// ── DETECT findings (this pair only) ────────────────────────────────────────
+function crxRenderPairDetect(pair){
+  const el = $id('crx-pair-detect'); if (!el) return;
+  const win = CRX.prefs.pairWindow || 20;
+  const breaks = crxDetectRegimeChanges(pair, win);
+  const findings = [];
+  if (!breaks.length) {
+    findings.push({ type:'OK', col:'#22c55e', copy:`No regime breaks at ${win}D rolling. Relationship stable.` });
+  } else {
+    breaks.slice(-5).reverse().forEach(b => {
+      findings.push({
+        date: b.date,
+        type: 'Break',
+        col: '#fca5a5',
+        copy: `r dropped ${(b.magnitude*100).toFixed(0)}pp below trailing baseline · recovery ${b.recoveryDays != null ? b.recoveryDays + 'd' : 'not yet'}`,
+      });
+    });
+  }
+  // Lag/lead anomaly
+  const s1 = gS(pair.i1, pair.t1), s2 = gS(pair.i2, pair.t2);
+  if (s1.length && s2.length) {
+    const lagData = cCrossCorr(s1, s2, 10);
+    const peak = lagData.reduce((best, d) => (!isNaN(d.r) && Math.abs(d.r) > Math.abs(best.r||0)) ? d : best, { r:0 });
+    const syncR = lagData.find(d => d.lag === 0)?.r;
+    if (peak.lag !== 0 && !isNaN(peak.r) && syncR != null && (Math.abs(peak.r) - Math.abs(syncR)) > 0.10) {
+      findings.push({ type:'Lag', col:'#fbbf24', copy:`Peak r at lag ${peak.lag>0?'+':''}${peak.lag} — timing edge worth investigating.` });
+    }
+  }
+  // Significance check
+  const { v1, v2 } = al2(s1, s2);
+  const r = pear(lRet(v1), lRet(v2));
+  const pv = cPval(r, v1.length);
+  if (!isNaN(pv) && !cSig(pv)) {
+    findings.push({ type:'Insig', col:'#5a6882', copy:`p=${pv.toFixed(3)} — relationship not statistically significant. Treat r as zero.` });
+  }
+  el.innerHTML = findings.map(f => `
+    <div style="display:grid;grid-template-columns:60px 60px 1fr;gap:6px;padding:4px 0;border-bottom:1px solid #0f1824;align-items:center">
+      <span style="color:#5a6882;font-size:9px">${f.date ? new Date(f.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : ''}</span>
+      <span style="color:${f.col};font-size:9px;letter-spacing:.04em">${f.type}</span>
+      <span style="color:#c8cfe0;font-size:10px">${f.copy}</span>
+    </div>
+  `).join('');
+}
 
 // Cache invalidation hook — wire to data load/refresh.
 if (typeof window !== 'undefined') {
