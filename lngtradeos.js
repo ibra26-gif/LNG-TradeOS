@@ -12909,7 +12909,7 @@ function dash2RenderCards(){
         </div>
       </div>
       <div class="acard">
-        <div class="ctitle">SPREADS · M+1 vs TTF<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:9px;color:#5a6882">n/m guard active when |prior| < 0.10</span></div>
+        <div class="ctitle">SPREADS · M+1 vs TTF<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span></div>
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px">
           ${dash2RenderSpreadCard('THE','THE/TTF')}
           ${dash2RenderSpreadCard('PEG','PEG/TTF')}
