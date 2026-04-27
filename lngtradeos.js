@@ -13135,6 +13135,7 @@ function crxDefaultPrefs(){
     defaultTab: 'monitor',
     globalThresholds: { break: 0.25, drift: 0.10 },
     monitorWindows: [5, 20, 30, 90, 250],
+    monitorRange: '1Y',  // '90D' | '1Y' | 'All' — x-axis time slice
     lastViewedPair: { i1:'JKM', t1:'r1', i2:'TTF', t2:'r1' },
     monitorFocusId: 'jkm-ttf-r1',
   };
@@ -13240,16 +13241,22 @@ function crxClassifyState(pair){
 function crxDetectRegimeChanges(pair, lookbackWin = 30, threshold = null){
   const th = threshold != null ? threshold : crxPairThresholds(pair).break;
   const rc = crxRCorr(pair, lookbackWin);
-  if (rc.length < 70) return [];
+  // Trailing-mean window scales with rolling-window size: a 5D rolling r
+  // is much noisier than 90D, so its baseline reference also needs to be
+  // shorter to catch sharp dips before the trailing mean drifts down to
+  // match. Floor of 30 sessions to keep the baseline meaningful.
+  const trailWin = Math.max(30, Math.min(60, 3 * lookbackWin));
+  if (rc.length < trailWin + 5) return [];
   const breaks = [];
-  for (let i = 60; i < rc.length; i++) {
-    const trailing = rc.slice(i-60, i).map(d => d.value);
+  // Dedup window also scales with rolling window — short windows allow
+  // closer breaks to fire (visible spikes are real signal at that scale).
+  const dedupSessions = Math.max(3, Math.floor(lookbackWin / 3));
+  for (let i = trailWin; i < rc.length; i++) {
+    const trailing = rc.slice(i-trailWin, i).map(d => d.value);
     const mean = trailing.reduce((a,b)=>a+b,0) / trailing.length;
     const cur = rc[i].value;
     if (cur - mean < -th) {
-      // Avoid duplicate breaks within 5 sessions of a previous one
-      if (breaks.length && (i - breaks[breaks.length-1]._idx) < 5) continue;
-      // Find recovery: first j > i where rc[j] >= mean - th/2
+      if (breaks.length && (i - breaks[breaks.length-1]._idx) < dedupSessions) continue;
       let recoveryDays = null;
       for (let j = i+1; j < rc.length; j++) {
         if (rc[j].value >= mean - th/2) { recoveryDays = j - i; break; }
@@ -13407,10 +13414,14 @@ function crxRenderMonitor(){
     <!-- Focus chart -->
     ${focusPair ? `
     <div class="acard" style="margin-bottom:10px">
-      <div class="ctitle" style="display:flex;align-items:center">
+      <div class="ctitle" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px">
         <span>FOCUS · <span id="crx-focus-pair-label" style="color:#4fc3f7">${crxPairLabel(focusPair)}</span></span>
-        <span id="crx-focus-state-badge" style="margin-left:8px"></span>
-        <span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span>
+        <span id="crx-focus-state-badge"></span>
+        <span style="flex:1;height:1px;background:#151e30;margin:0 4px;display:inline-block"></span>
+        <span style="font-size:8px;color:#3d5070;letter-spacing:.06em;margin-right:4px">RANGE</span>
+        <span id="crx-range-toggles" style="display:flex;gap:3px"></span>
+        <span style="width:1px;height:14px;background:#151e30;margin:0 6px"></span>
+        <span style="font-size:8px;color:#3d5070;letter-spacing:.06em;margin-right:4px">WINDOWS</span>
         <span id="crx-window-toggles" style="display:flex;gap:3px"></span>
       </div>
       <div class="cw" style="height:200px"><canvas id="crxFocusChart"></canvas></div>
@@ -13434,6 +13445,7 @@ function crxRenderMonitor(){
     </div>
   `;
   if (focusPair) {
+    crxRenderRangeToggles();
     crxRenderWindowToggles();
     crxRenderFocusChart(focusPair);
     crxRenderFocusStats(focusPair);
@@ -13527,6 +13539,39 @@ function crxRenderSparkline(pair){
 }
 
 // ── Focus chart with multi-window lines + regime markers ────────────────────
+const CRX_RANGE_OPTIONS = ['90D', '1Y', 'All'];
+
+function crxRangeCutoffDate(range){
+  if (!sDates || !sDates.length) return null;
+  const lastDate = new Date(sDates[sDates.length - 1]);
+  if (range === 'All') return null;
+  const cutoff = new Date(lastDate);
+  if (range === '90D')  cutoff.setDate(cutoff.getDate() - 90);
+  else if (range === '1Y') cutoff.setFullYear(cutoff.getFullYear() - 1);
+  else return null;
+  return cutoff;
+}
+
+function crxRenderRangeToggles(){
+  const wrap = $id('crx-range-toggles'); if (!wrap) return;
+  wrap.innerHTML = '';
+  const cur = CRX.prefs.monitorRange || '1Y';
+  CRX_RANGE_OPTIONS.forEach(r => {
+    const b = document.createElement('button');
+    b.className = 'cr-pill' + (cur === r ? ' on' : '');
+    b.style.cssText = 'font-size:8px;padding:2px 6px;letter-spacing:.04em';
+    b.textContent = r;
+    b.onclick = () => {
+      CRX.prefs.monitorRange = r;
+      crxSavePrefs(CRX.prefs);
+      crxRenderRangeToggles();
+      const fp = CRX.prefs.watchlist.find(p => p.id === CRX.prefs.monitorFocusId);
+      if (fp) crxRenderFocusChart(fp);
+    };
+    wrap.appendChild(b);
+  });
+}
+
 function crxRenderWindowToggles(){
   const wrap = $id('crx-window-toggles'); if (!wrap) return;
   wrap.innerHTML = '';
@@ -13534,7 +13579,7 @@ function crxRenderWindowToggles(){
     const on = CRX.prefs.monitorWindows.includes(w);
     const b = document.createElement('button');
     b.className = 'cr-pill' + (on ? ' on' : '');
-    b.style.cssText = 'font-size:8px;padding:2px 6px;letter-spacing:.04em';
+    b.style.cssText = `font-size:8px;padding:2px 6px;letter-spacing:.04em;${on?`color:${CRX_WIN_COLORS[w]};border-color:${CRX_WIN_COLORS[w]}`:''}`;
     b.textContent = `${w}D`;
     b.onclick = () => {
       const has = CRX.prefs.monitorWindows.includes(w);
@@ -13555,11 +13600,18 @@ function crxRenderWindowToggles(){
 function crxRenderFocusChart(pair){
   const cv = $id('crxFocusChart'); if (!cv) return;
   if (CRX.charts.focus) CRX.charts.focus.destroy();
-  // Build datasets — one line per active window
+  // Range cutoff applies to the x-axis. Each rolling-r series is computed
+  // over the full history (so the trailing window is correct), then
+  // sliced for display. Without this, e.g. "90D" range on a 250D rolling
+  // r would only have a tiny visible segment.
+  const cutoff = crxRangeCutoffDate(CRX.prefs.monitorRange || '1Y');
+  const inRange = (d) => cutoff ? new Date(d) >= cutoff : true;
+  // Build datasets — one line per active window. Filter each by range.
   const datasets = [];
   let allDates = new Set();
   CRX.prefs.monitorWindows.forEach(w => {
-    const rc = crxRCorr(pair, w);
+    const rcFull = crxRCorr(pair, w);
+    const rc = rcFull.filter(d => inRange(d.date));
     rc.forEach(d => allDates.add(+new Date(d.date)));
     datasets.push({
       win: w,
@@ -13575,10 +13627,15 @@ function crxRenderFocusChart(pair){
   });
   const labels = [...allDates].sort((a,b)=>a-b)
     .map(t => new Date(t).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' }));
-  // Regime markers (annotation plugin not available — use background segment colors via shadow dataset)
-  const regimes = crxDetectRegimeChanges(pair, 30);
+  // Regime markers — detect on the SHORTEST currently-active window so
+  // visible dips on the chart correspond to visible markers. Earlier code
+  // hard-coded 30D detection, which missed sharp spikes the user could
+  // clearly see on a 5D / 20D line.
+  const detectWin = Math.min(...CRX.prefs.monitorWindows);
+  const regimes = crxDetectRegimeChanges(pair, detectWin)
+    .filter(r => inRange(r.date));
   // For regime markers, draw vertical line via a synthetic dataset (point at top + bottom)
-  const markerDs = regimes.slice(-5).map((r, i) => ({
+  const markerDs = regimes.slice(-8).map((r, i) => ({
     label: `Break ${new Date(r.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,
     data: labels.map(l => {
       const dStr = new Date(r.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' });
@@ -13646,7 +13703,7 @@ function crxRenderFocusStats(pair){
   const st = crxClassifyState(pair);
   const sigmaMax = Math.max(...CRX.prefs.watchlist.map(p => crxClassifyState(p).sigma || 0), 0.001);
   const score = crxGetTradeableScore(pair, sigmaMax);
-  const breaks = crxDetectRegimeChanges(pair, 30);
+  const breaks = crxDetectRegimeChanges(pair, Math.min(...CRX.prefs.monitorWindows));
   const lastBreak = breaks.length ? breaks[breaks.length-1] : null;
   const lastBreakAge = lastBreak
     ? Math.floor((new Date(sDates[sDates.length-1]) - new Date(lastBreak.date)) / 86400000) + 'd ago'
@@ -13671,7 +13728,7 @@ function crxRenderSynthesis(pair){
   const lbl = crxPairLabel(pair);
   let copy;
   if (st.cls === 'breaking') {
-    const breaks = crxDetectRegimeChanges(pair, 30);
+    const breaks = crxDetectRegimeChanges(pair, Math.min(...CRX.prefs.monitorWindows));
     const last = breaks.length ? breaks[breaks.length-1] : null;
     const ndays = last ? Math.floor((new Date(sDates[sDates.length-1]) - new Date(last.date))/86400000) + 1 : '?';
     copy = `<span style="color:#a78bfa">▸</span> <strong>${lbl}</strong> decoupled. 5D r ${st.r5!=null?st.r5.toFixed(2):'—'} vs 30D r ${st.r30!=null?st.r30.toFixed(2):'—'} (Δ ${(st.delta*100).toFixed(0)}pp). Active break ${ndays}d. Cross-hedges calibrated on 30D+ data are now loose — recheck before adding exposure.`;
@@ -13690,7 +13747,7 @@ function crxRenderDetected(){
   CRX.prefs.watchlist.forEach(p => {
     const st = crxClassifyState(p);
     if (st.cls === 'breaking') {
-      const breaks = crxDetectRegimeChanges(p, 30);
+      const breaks = crxDetectRegimeChanges(p, Math.min(...CRX.prefs.monitorWindows));
       const last = breaks.length ? breaks[breaks.length-1] : null;
       findings.push({
         date: last?.date || (sDates && sDates[sDates.length-1]),
@@ -13743,18 +13800,24 @@ window.crxFocusPair = function(id){
 
 window.crxOpenAddPair = function(){
   const pop = $id('crx-popover'); if (!pop) return;
+  // Indices: array of strings → render each as <option value="JKM">JKM</option>.
+  // Tenors: array of [code, label] tuples → render <option value="r1">M+1</option>.
+  // Earlier code passed strings through a tuple-aware helper which destructured
+  // each character as v[0]/v[1] and produced single-letter options.
   const indices = ['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH','SP_JN','SP_HN','SP_TN'];
   const tenors = [['r1','M+1'],['r2','M+2'],['r3','M+3'],['r6','M+6']];
-  const opts = (vals) => vals.map(v => `<option value="${v[0]||v}">${v[1]||(INST[v]?.label||v)}</option>`).join('');
+  const optStr  = (arr) => arr.map(v => `<option value="${v}">${INST[v]?.label||v}</option>`).join('');
+  const optPair = (arr) => arr.map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+  const inputCss = 'background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:74px';
   pop.style.cssText = 'display:block;background:#0a0f1e;border:1px solid #4fc3f7;padding:10px 12px;margin-bottom:10px';
   pop.innerHTML = `
     <div style="font-size:9px;letter-spacing:.06em;color:#4fc3f7;margin-bottom:8px">ADD PAIR</div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-      <select id="crx-add-i1" style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit">${opts(indices)}</select>
-      <select id="crx-add-t1" style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit">${opts(tenors)}</select>
+      <select id="crx-add-i1" style="${inputCss}">${optStr(indices)}</select>
+      <select id="crx-add-t1" style="${inputCss};min-width:60px">${optPair(tenors)}</select>
       <span style="color:#3d5070;font-size:9px;letter-spacing:.1em">VS</span>
-      <select id="crx-add-i2" style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit">${opts(indices)}</select>
-      <select id="crx-add-t2" style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit">${opts(tenors)}</select>
+      <select id="crx-add-i2" style="${inputCss}">${optStr(indices)}</select>
+      <select id="crx-add-t2" style="${inputCss};min-width:60px">${optPair(tenors)}</select>
       <button class="cr-pill on" onclick="crxConfirmAddPair()" style="font-size:9px">+ ADD</button>
       <button class="cr-pill" onclick="crxClosePopover()" style="font-size:9px">CANCEL</button>
     </div>
