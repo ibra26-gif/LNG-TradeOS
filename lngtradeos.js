@@ -14720,54 +14720,90 @@ async function gaLoadENTSOGExits(from,to){
   }catch(e){console.warn('ENTSOG exits failed:',e.message);}
 }
 // ─────────────────────────────────────────────────────────────────────────────
-// ENTSOG — DOMESTIC PRODUCTION (adjacentSystemTypeLabel=Production per country)
+// ENTSOG — DOMESTIC PRODUCTION (pointType=Aggregated production point)
 // ─────────────────────────────────────────────────────────────────────────────
-async function gaLoadDomProductionLive(from, to){
-  // ENTSOG removed the `adjacentSystemTypeLabel` query parameter at some
-  // point — the old call silently returned 0 rows and the chart/row went
-  // blank. Correct filter now is
-  //   pointType=Aggregated production point - TP            (EU)
-  //   pointType=Aggregated production point - TP ExtEU      (UK post-Brexit etc.)
-  // Country code lives on operatorKey (e.g. "NL-TSO-0001" → "NL"), not on
-  // the first two chars of tsoEicCode (those are the registry prefix "21").
-  const CODE_TO_LABEL = {
-    NL:'netherlands', UK:'uk', GB:'uk', RO:'romania', DE:'germany',
-    IT:'italy', PL:'poland', FR:'france', ES:'spain', HU:'hungary',
-    HR:'croatia', LV:'latvia', DK:'denmark',
-  };
-  // Proxy through /api/entsog-prod — ENTSOG dropped CORS so direct browser
-  // fetches are silently blocked.
-  const cacheKey = `dom_prod_eu_v3_${from.slice(0,7)}_${to.slice(0,7)}`;
-  let raw = gaCacheGet(cacheKey);
-  if(!raw){
-    try{
-      const r = await fetch(`/api/entsog-prod?from=${from}&to=${to}`);
-      if(!r.ok) throw new Error(`proxy ${r.status}`);
-      const j = await r.json();
-      raw = { rows: j.rows || [] };
-      gaCacheSet(cacheKey, raw, 24);
-    } catch(e){
-      console.warn('Dom prod (proxy):', e.message, '— using static fallback');
-      return;
+// Country code lives on operatorKey (e.g. "NL-TSO-0001" → "NL"), not on the
+// first two chars of tsoEicCode (those are the registry prefix "21").
+const DOMPROD_CODE_TO_LABEL = {
+  NL:'netherlands', UK:'uk', GB:'uk', RO:'romania', DE:'germany',
+  IT:'italy', PL:'poland', FR:'france', ES:'spain', HU:'hungary',
+  HR:'croatia', LV:'latvia', DK:'denmark',
+};
+
+// Per-year loader. ENTSOG's API plus Vercel's 30s function ceiling means a
+// single 5-year fetch reliably 504s — 1y at a time keeps each round-trip
+// under 25s and lets us re-render progressively as years arrive.
+const _domYearInflight = {}; // year → Promise (so concurrent calls don't double-fetch)
+
+async function gaLoadDomProductionYear(year){
+  if(_domYearInflight[year]) return _domYearInflight[year];
+  const today = new Date().toISOString().slice(0,10);
+  const yStart = `${year}-01-01`;
+  const yEnd   = year < new Date().getFullYear() ? `${year}-12-31` : today;
+  const cacheKey = `dom_prod_eu_v4_${year}`;
+  const ttlH = year < new Date().getFullYear() ? 720 : 6; // closed years: 30d, current: 6h
+
+  _domYearInflight[year] = (async () => {
+    let raw = gaCacheGet(cacheKey);
+    if(!raw){
+      try{
+        const r = await fetch(`/api/entsog-prod?from=${yStart}&to=${yEnd}`,
+          { signal: AbortSignal.timeout(28000) });
+        if(!r.ok) throw new Error(`proxy ${r.status}`);
+        const j = await r.json();
+        raw = { rows: j.rows || [] };
+        gaCacheSet(cacheKey, raw, ttlH);
+      } catch(e){
+        console.warn(`Dom prod ${year}:`, e.message);
+        return false;
+      }
     }
-  }
-  const rows = raw?.rows || raw?.operationalDatas || raw?.operationaldatas || [];
-  if(!rows.length) return;
-  rows.forEach(d => {
-    const cc = (d.operatorKey||'').slice(0,2).toUpperCase();
-    const label = CODE_TO_LABEL[cc];
-    if(!label) return;
-    const valMCM = (parseFloat(d.value||0)||0) * ENTSOG_KWH_TO_MCM;
-    const date = (d.periodFrom||d.from||'').slice(0,10);
-    const mo = date.slice(0,7);
-    if(!mo||mo.length<7) return;
-    if(!GA_LIVE.domestic[label]) GA_LIVE.domestic[label] = {};
-    GA_LIVE.domestic[label][mo] = (GA_LIVE.domestic[label][mo]||0) + valMCM;
-  });
-  if(Object.values(GA_LIVE.domestic).some(d=>Object.keys(d).length>0)){
-    GA_LIVE.ok.domestic = true;
-    console.log('ENTSOG domestic production: OK,', rows.length, 'rows');
-  }
+    const rows = raw?.rows || [];
+    if(!rows.length) return false;
+    rows.forEach(d => {
+      const cc = (d.operatorKey||'').slice(0,2).toUpperCase();
+      const label = DOMPROD_CODE_TO_LABEL[cc];
+      if(!label) return;
+      const valMCM = (parseFloat(d.value||0)||0) * ENTSOG_KWH_TO_MCM;
+      const date = (d.periodFrom||d.from||'').slice(0,10);
+      const mo = date.slice(0,7);
+      if(!mo||mo.length<7) return;
+      if(!GA_LIVE.domestic[label]) GA_LIVE.domestic[label] = {};
+      GA_LIVE.domestic[label][mo] = (GA_LIVE.domestic[label][mo]||0) + valMCM;
+    });
+    if(Object.values(GA_LIVE.domestic).some(d=>Object.keys(d).length>0)){
+      GA_LIVE.ok.domestic = true;
+    }
+    console.log(`ENTSOG dom prod ${year}: OK, ${rows.length} rows`);
+    // Re-draw if user is sitting on the Domestic Production sub-tab right now.
+    if(typeof drawDomProductionCharts === 'function'){
+      const eu = document.getElementById('ga-tab-eugas');
+      const onDomTab = document.querySelector('#ga-eugas-subtabs .ga-stab.active');
+      const txt = (onDomTab?.textContent||'').toLowerCase();
+      if(eu?.classList.contains('active') && (txt.includes('domestic') || txt.includes('production'))){
+        try { drawDomProductionCharts(); } catch(e){}
+      }
+    }
+    gaUpdateStatusDots();
+    return true;
+  })();
+
+  try { return await _domYearInflight[year]; }
+  finally { delete _domYearInflight[year]; }
+}
+
+// Default loader: current year first (fast first paint), then last 2 years in
+// background. Older years (curY-3, curY-4) load lazily on year-button click.
+async function gaLoadDomProductionLive(from, to){
+  const curY = new Date().getFullYear();
+  // Fast path — current year, awaited.
+  await gaLoadDomProductionYear(curY);
+  // Background fill — don't block the orchestrator.
+  (async () => {
+    for(const y of [curY-1, curY-2]){
+      await gaLoadDomProductionYear(y);
+    }
+  })();
 }
 
 
@@ -15445,8 +15481,13 @@ function gdRerenderActive(){
     renderLngVC();
   } else if(id==='ga-tab-eugas'){
     const activeSub = document.querySelector('#ga-eugas-subtabs .ga-stab.active');
-    const sub = activeSub?.textContent?.toLowerCase().includes('pipeline')?'pipeline':
-                activeSub?.textContent?.toLowerCase().includes('lng')?'lngimp':'balance';
+    const txt = (activeSub?.textContent || '').toLowerCase();
+    // Match against current tab labels: 'PIPELINE IMPORTS', 'DOMESTIC PRODUCTION',
+    // 'GAS BALANCE TABLE'. Old code looked for 'lng' (stale LNG IMPORTS tab) and
+    // had no domprod branch, so re-renders silently flipped the user to Balance.
+    const sub = txt.includes('pipeline') ? 'pipeline'
+              : txt.includes('domestic') || txt.includes('production') ? 'domprod'
+              : 'balance';
     eugasTab(sub);
   } else if(id==='ga-tab-storage'){
     const activeSub = document.querySelector('#ga-stor-subtabs .ga-stab.active');
@@ -16529,6 +16570,17 @@ window.gdToggleDomYear = function(y, btn){
   if(!_domYears.length) _domYears = [y];
   btn.classList.toggle('active', _domYears.includes(y));
   drawDomProductionCharts();
+  // Lazy-load: if the year just got toggled ON and we don't yet have any
+  // months for it in GA_LIVE.domestic, fetch it. The fetch will re-render
+  // when it lands (see gaLoadDomProductionYear).
+  if(_domYears.includes(y)){
+    const haveYear = Object.values(GA_LIVE.domestic||{}).some(ctry =>
+      Object.keys(ctry||{}).some(mo => mo.startsWith(`${y}-`))
+    );
+    if(!haveYear && typeof gaLoadDomProductionYear === 'function'){
+      gaLoadDomProductionYear(y);
+    }
+  }
 };
 
 function drawDomProductionCharts(){
