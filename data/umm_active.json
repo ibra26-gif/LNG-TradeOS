@@ -31,16 +31,6 @@
       "msg_id": "2026-28___________________002"
     },
     {
-      "title": "Gas production field unavailability · Planned",
-      "asset": "Gullfaks",
-      "impact": "-5.3 mcm/d",
-      "from": "2026-04-19",
-      "to": "2026-04-27",
-      "type": "planned",
-      "published": "2026-04-16T16:11:57.797000",
-      "msg_id": "2026-187__________________001"
-    },
-    {
       "title": "Other unavailability · Planned",
       "asset": "Dornum",
       "impact": "+0.0 mcm/d",
@@ -52,9 +42,9 @@
     }
   ],
   "_meta": {
-    "updated": "2026-04-26T23:25:35Z",
+    "updated": "2026-04-27T08:13:39Z",
     "source": "gassco xlexport",
-    "total_messages": 159,
-    "active_count": 5
+    "total_messages": 158,
+    "active_count": 4
   }
 }
