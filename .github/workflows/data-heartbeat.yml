@@ -55,5 +55,9 @@ jobs:
           # scrapers don't run Sat/Sun, so Fri-evening push is the newest thing.
           check_file "data/EEX_Gas_Curves.xlsx"       "EEX curves"      36 80
           check_file "data/acer_historical.csv"       "ACER curves"     36 80
+          # China SHPGX scrapes Tue + Fri at 14:00 UTC. 8 days = catches both
+          # missed runs (GitHub Actions silently drops scheduled runs under
+          # load — confirmed 2026-04-20 + 2026-04-27 Mon-morning fails).
+          check_file "data/china_shpgx.json"          "China SHPGX"    192 192
 
           exit $FAIL

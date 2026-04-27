@@ -1,10 +1,15 @@
 name: China SHPGX weekly scrape
 
-# Runs every Monday at 06:00 UTC (08:00 Paris summer / 07:00 winter)
+# Runs Tue + Fri at 14:00 UTC (~16:00 Paris) — off-peak, lower chance of
+# GitHub Actions silently dropping the scheduled run (Mon 06:00 UTC was
+# being skipped by GitHub infra under load — confirmed 2026-04-20 + 2026-04-27).
+# Two attempts per week with skip-if-fresh logic = at most 1 commit per week
+# but 2x chance of catching the data refresh.
 # Also supports manual trigger via GitHub Actions UI (workflow_dispatch).
 on:
   schedule:
-    - cron: '0 6 * * 1'
+    - cron: '0 14 * * 2'   # Tuesday 14:00 UTC (primary)
+    - cron: '0 14 * * 5'   # Friday  14:00 UTC (fallback if Tuesday skipped)
   workflow_dispatch:
 
 # Needed so the workflow can push commits back to main.
@@ -31,18 +36,41 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need history to read file-level commit timestamp
+
+      - name: Skip if data fresh (scheduled runs only)
+        id: freshness
+        run: |
+          set -e
+          LAST_TS=$(git log -1 --format=%ct -- data/china_shpgx.json 2>/dev/null || echo 0)
+          NOW_TS=$(date -u +%s)
+          AGE_DAYS=$(( (NOW_TS - LAST_TS) / 86400 ))
+          echo "China SHPGX last updated $AGE_DAYS days ago"
+          # On schedule: skip if <5 days old (Friday backup won't double-commit
+          # if Tuesday already ran). On workflow_dispatch: always run.
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$AGE_DAYS" -lt 5 ]; then
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Data is fresh (<5 days). Skipping scheduled scrape."
+          else
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Will run scrape (event=${{ github.event_name }}, age=${AGE_DAYS}d)"
+          fi
 
       - name: Set up Python 3.11
+        if: steps.freshness.outputs.should_run == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install Python deps
+        if: steps.freshness.outputs.should_run == 'true'
         run: |
           python -m pip install --upgrade pip
           pip install playwright==1.47.0
 
       - name: Cache Playwright browsers
+        if: steps.freshness.outputs.should_run == 'true'
         id: pw-cache
         uses: actions/cache@v4
         with:
@@ -50,17 +78,19 @@ jobs:
           key: playwright-chromium-1.47.0-${{ runner.os }}
 
       - name: Install Chromium (if not cached)
-        if: steps.pw-cache.outputs.cache-hit != 'true'
+        if: steps.freshness.outputs.should_run == 'true' && steps.pw-cache.outputs.cache-hit != 'true'
         run: playwright install chromium --with-deps
 
       - name: Install Chromium system deps (always — fast if already installed)
-        if: steps.pw-cache.outputs.cache-hit == 'true'
+        if: steps.freshness.outputs.should_run == 'true' && steps.pw-cache.outputs.cache-hit == 'true'
         run: playwright install-deps chromium
 
       - name: Run SHPGX scraper
+        if: steps.freshness.outputs.should_run == 'true'
         run: python scripts/fetch_china_shpgx.py
 
       - name: Commit data if changed (rebase-retry on push)
+        if: steps.freshness.outputs.should_run == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
