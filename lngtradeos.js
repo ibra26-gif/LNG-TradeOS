@@ -13811,34 +13811,35 @@ window.crxFocusPair = function(id){
 
 window.crxOpenAddPair = function(){
   const pop = $id('crx-popover'); if (!pop) return;
-  // Indices: array of strings → render each as <option value="JKM">JKM</option>.
-  // Tenors: array of [code, label] tuples → render <option value="r1">M+1</option>.
-  // Earlier code passed strings through a tuple-aware helper which destructured
-  // each character as v[0]/v[1] and produced single-letter options.
   // EEX_HUBS (THE/PEG/PVB/PSV/ZTP) routed through eexGS — same r1..r6 tenor codes
   const indices = [
     'JKM','TTF','HH','NBP','Brent','Dated','Slope',
     ...EEX_HUBS,                                            // THE PEG PVB PSV ZTP
     'SP_JT','SP_JH','SP_TH','SP_JN','SP_HN','SP_TN',
   ];
-  const tenors = [['r1','M+1'],['r2','M+2'],['r3','M+3'],['r6','M+6']];
-  const optStr  = (arr) => arr.map(v => `<option value="${v}">${INST[v]?.label||v}</option>`).join('');
-  const optPair = (arr) => arr.map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+  const optStr = (arr) => arr.map(v => `<option value="${v}">${INST[v]?.label||v}</option>`).join('');
   const inputCss = 'background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:74px';
   pop.style.cssText = 'display:block;background:#0a0f1e;border:1px solid #4fc3f7;padding:10px 12px;margin-bottom:10px';
   pop.innerHTML = `
     <div style="font-size:9px;letter-spacing:.06em;color:#4fc3f7;margin-bottom:8px">ADD PAIR</div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
       <select id="crx-add-i1" style="${inputCss}">${optStr(indices)}</select>
-      <select id="crx-add-t1" style="${inputCss};min-width:60px">${optPair(tenors)}</select>
+      <select id="crx-add-t1" style="${inputCss};min-width:90px"></select>
       <span style="color:#3d5070;font-size:9px;letter-spacing:.1em">VS</span>
       <select id="crx-add-i2" style="${inputCss}">${optStr(indices)}</select>
-      <select id="crx-add-t2" style="${inputCss};min-width:60px">${optPair(tenors)}</select>
+      <select id="crx-add-t2" style="${inputCss};min-width:90px"></select>
       <button class="cr-pill on" onclick="crxConfirmAddPair()" style="font-size:9px">+ ADD</button>
       <button class="cr-pill" onclick="crxClosePopover()" style="font-size:9px">CANCEL</button>
     </div>
   `;
+  // Full tenor list via shared helper bTS — rolling M+1..M+6, monthly YYYY-MM
+  // pks, seasonal Win/Sum, quarterly Q1..Q4. wS=true includes seasonal+quarterly.
+  if (typeof bTS === 'function') {
+    bTS($id('crx-add-t1'), true);
+    bTS($id('crx-add-t2'), true);
+  }
   $id('crx-add-i1').value = 'JKM'; $id('crx-add-i2').value = 'TTF';
+  $id('crx-add-t1').value = 'r1';  $id('crx-add-t2').value = 'r1';
 };
 
 window.crxConfirmAddPair = function(){
@@ -14030,12 +14031,12 @@ function crxRenderPair(){
       <select id="crx-pair-i1" onchange="crxPairChangeConfig()"
               style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:74px"></select>
       <select id="crx-pair-t1" onchange="crxPairChangeConfig()"
-              style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:60px"></select>
+              style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:90px"></select>
       <span style="color:#3d5070;font-size:9px;letter-spacing:.1em;margin:0 4px">VS</span>
       <select id="crx-pair-i2" onchange="crxPairChangeConfig()"
               style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:74px"></select>
       <select id="crx-pair-t2" onchange="crxPairChangeConfig()"
-              style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:60px"></select>
+              style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:10px;padding:3px 6px;font-family:inherit;min-width:90px"></select>
       <span style="width:1px;height:14px;background:#151e30;margin:0 4px"></span>
       <span class="cl" style="font-size:9px;color:#3d5070;letter-spacing:.06em">WINDOW</span>
       <input type="range" min="5" max="60" value="${CRX.prefs.pairWindow}" id="crx-pair-win"
@@ -14126,15 +14127,16 @@ function crxPairBuildSelectors(pair){
     ...EEX_HUBS,
     'SP_JT','SP_JH','SP_TH','SP_JN','SP_HN','SP_TN',
   ];
-  const tenors = [['r1','M+1'],['r2','M+2'],['r3','M+3'],['r6','M+6']];
-  const optStr  = (arr) => arr.map(v => `<option value="${v}">${INST[v]?.label||v}</option>`).join('');
-  const optPair = (arr) => arr.map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+  const optStr = (arr) => arr.map(v => `<option value="${v}">${INST[v]?.label||v}</option>`).join('');
   const i1 = $id('crx-pair-i1'), t1 = $id('crx-pair-t1');
   const i2 = $id('crx-pair-i2'), t2 = $id('crx-pair-t2');
   if (i1) { i1.innerHTML = optStr(indices); i1.value = pair.i1; }
-  if (t1) { t1.innerHTML = optPair(tenors); t1.value = pair.t1; }
   if (i2) { i2.innerHTML = optStr(indices); i2.value = pair.i2; }
-  if (t2) { t2.innerHTML = optPair(tenors); t2.value = pair.t2; }
+  // Tenor selectors: full menu (rolling + monthly + seasonal + quarterly)
+  if (typeof bTS === 'function') {
+    if (t1) { bTS(t1, true); t1.value = pair.t1; }
+    if (t2) { bTS(t2, true); t2.value = pair.t2; }
+  }
 }
 
 window.crxPairChangeConfig = function(){
@@ -14719,16 +14721,23 @@ function crxRenderUniverseChips(){
 function crxRenderUniverseTenors(){
   const wrap = $id('crx-universe-tenors'); if (!wrap) return;
   wrap.innerHTML = '';
-  const tenors = [['r1','M+1'],['r2','M+2'],['r3','M+3'],['r6','M+6']];
   CRX.prefs.universeIndices.forEach(k => {
     const span = document.createElement('span');
     span.style.cssText = 'font-size:10px;color:#c8cfe0;display:flex;align-items:center;gap:4px;white-space:nowrap';
     const cur = CRX.prefs.universeTenors[k] || 'r1';
     span.innerHTML = `<span style="color:#5a6882">${INST[k]?.label||k}</span>`;
     const sel = document.createElement('select');
-    sel.style.cssText = 'background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:9px;padding:2px 5px;font-family:inherit';
-    sel.innerHTML = tenors.map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+    sel.style.cssText = 'background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-size:9px;padding:2px 5px;font-family:inherit;min-width:84px';
+    // Full tenor menu via shared bTS — rolling + monthly pks + seasonal + quarterly
+    if (typeof bTS === 'function') bTS(sel, true);
     sel.value = cur;
+    // Defensive: if cur is no longer a valid option (e.g., expired monthly pk),
+    // fall back to r1 silently rather than letting the select stay blank.
+    if (sel.value !== cur) {
+      sel.value = 'r1';
+      CRX.prefs.universeTenors[k] = 'r1';
+      crxSavePrefs(CRX.prefs);
+    }
     sel.onchange = () => {
       CRX.prefs.universeTenors[k] = sel.value;
       crxSavePrefs(CRX.prefs);
