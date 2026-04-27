@@ -13344,7 +13344,7 @@ function crxShowTab(tab, btn, persist = true){
   // Hide all panes. monitor + pair are new; analysis/matrix are legacy
   // fallbacks (analysis was Pair's Phase 1 fallback, replaced now in Phase 2;
   // matrix is still Universe's Phase 2 fallback until Phase 3 lands).
-  ['monitor','pair','rolling','analysis','matrix'].forEach(t => {
+  ['monitor','pair','universe','rolling','analysis','matrix'].forEach(t => {
     const s = $id('csec-' + t); if (s) s.style.display = 'none';
   });
   // monitor → csec-monitor (Phase 1). pair → csec-pair (Phase 2).
@@ -13364,7 +13364,7 @@ function crxShowTab(tab, btn, persist = true){
   setTimeout(() => {
     if (tab === 'monitor') crxRenderMonitor();
     else if (tab === 'pair') crxRenderPair();
-    else if (tab === 'universe' && typeof cUpdMatrix === 'function') cUpdMatrix();
+    else if (tab === 'universe') crxRenderUniverse();
   }, 30);
 }
 
