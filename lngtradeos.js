@@ -20975,37 +20975,223 @@ function gaussImpliedVol(F,K,T,r,isCall,targetPrice){
   return(lo+hi)/2;
 }
 
-// ── Payoff chart ─────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// Payoff chart — works across all 3 models × 4 type/position combinations.
+// ════════════════════════════════════════════════════════════════════════════
+// Per-model x-axis range, K always included, model-specific line color, plus
+// a custom Chart.js plugin that draws K + current-price reference lines, the
+// negative-zone shading (Bachelier xMin<0, Spread xMin<K), and the zero
+// baseline. Earlier version computed range as F*0.5 which silently put K off
+// screen for Bachelier-with-K=0 and Spread-with-K-far-from-fwdSpread, making
+// the chart appear empty. Spec required all 12 combinations to render a
+// proper hockey-stick.
 let _optPayoffChart=null;
-function optDrawPayoff(canvasId,F,K,premium,isCall,notional,model,extra){
-  if(_optPayoffChart){_optPayoffChart.destroy();_optPayoffChart=null;}
-  const c=document.getElementById(canvasId);if(!c)return;
-  const sign=extra?.sign ?? 1;
-  const posLbl=extra?.posLbl || 'LONG';
-  const range=model==='spread'?Math.abs(extra?.fwdSpread||F)*0.5:F*0.5;
-  const center=model==='spread'?(extra?.fwdSpread||0):F;
-  const lo=center-range,hi=center+range;
-  const step=range/40;
-  const labels=[],payoffData=[],intrinsicData=[];
-  for(let s=lo;s<=hi+0.01;s+=step){
-    labels.push(s.toFixed(1));
-    // Intrinsic payoff at expiry (unsigned, in premium-per-unit space)
-    const intr=isCall?Math.max(s-K,0):Math.max(K-s,0);
-    // P&L = (payoff − premium) × N × sign
-    // Buy: long intrinsic, paid premium → positive at high F for call
-    // Sell: short intrinsic, received premium → positive at low F for call (capped at +premium)
-    intrinsicData.push(+(intr*notional*sign).toFixed(2));
-    payoffData.push(+((intr-premium)*notional*sign).toFixed(2));
+
+function _optComputeXRange(model, F, K, T, extra){
+  const Tpos = Math.max(T, 0.001);
+  let center, halfWidth;
+  if (model === 'spread') {
+    center = extra?.fwdSpread ?? 0;
+    const sigSpAnn = extra?.sigSpAnn ?? 1;
+    halfWidth = 2 * sigSpAnn * Math.sqrt(Tpos);
+    if (halfWidth < 1) halfWidth = 1;
+  } else if (model === 'gauss') {
+    // sigD is daily $ vol → expiry std dev = sigD * √(T·252)
+    center = F;
+    const sigD = extra?.sigD ?? 1;
+    halfWidth = 2 * sigD * Math.sqrt(Tpos * 252);
+    if (halfWidth < 1) halfWidth = 1;
+  } else { // bs
+    center = F;
+    const sig = extra?.sig ?? 0.2;
+    const widthFromVol = F * 2 * sig * Math.sqrt(Tpos);
+    const widthFromStrike = K * 0.5;
+    halfWidth = Math.max(widthFromVol, widthFromStrike, 1);
   }
-  _optPayoffChart=new Chart(c,{type:'line',data:{labels,datasets:[
-    {label:`P&L (${posLbl})`,data:payoffData,borderColor:sign>0?'#2d7cff':'#f59e0b',backgroundColor:sign>0?'rgba(45,124,255,0.08)':'rgba(245,158,11,0.08)',borderWidth:2,pointRadius:0,fill:true,tension:0},
-    {label:'Intrinsic',data:intrinsicData,borderColor:'#3d5070',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false,tension:0},
-  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-    plugins:{legend:{display:true,position:'top',labels:{color:'#5a6882',font:{size:9,family:'IBM Plex Mono'},boxWidth:10}},
-      tooltip:{backgroundColor:'#0c1120',borderColor:'#1e2d45',borderWidth:1,titleColor:'#c8cfe0',bodyColor:'#8a9bb5',padding:8,titleFont:{family:'IBM Plex Mono',size:10},bodyFont:{family:'IBM Plex Mono',size:9}}},
-    scales:{x:{title:{display:true,text:model==='spread'?'Spread at expiry':'Underlying at expiry',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:12},grid:{color:'#0f1824'}},
-      y:{title:{display:true,text:`P&L (${posLbl})`,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:8}},grid:{color:'#0f1824'}}}
-  }});
+  let xMin = center - halfWidth;
+  let xMax = center + halfWidth;
+  // BS Lognormal: forwards must be ≥ 0
+  if (model === 'bs' && xMin < 0) xMin = 0;
+  // Always include K — pad by 10% of the existing span so K isn't on the edge
+  if (K < xMin) xMin = K - (xMax - xMin) * 0.1;
+  if (K > xMax) xMax = K + (xMax - xMin) * 0.1;
+  return { xMin, xMax, center };
+}
+
+function optDrawPayoff(canvasId, F, K, premium, isCall, notional, model, extra){
+  if (_optPayoffChart) { _optPayoffChart.destroy(); _optPayoffChart = null; }
+  const c = document.getElementById(canvasId); if (!c) return;
+  const sign = extra?.sign ?? 1;
+  const posLbl = extra?.posLbl || 'LONG';
+  const T = extra?.T ?? 0;
+  const isSpread = model === 'spread';
+  const { xMin, xMax, center } = _optComputeXRange(model, F, K, T, extra);
+
+  // Sample 80 points across the range
+  const SAMPLES = 80;
+  const labels = [], pnlData = [], intrinsicData = [];
+  for (let i = 0; i <= SAMPLES; i++) {
+    const x = xMin + (xMax - xMin) * i / SAMPLES;
+    labels.push(x.toFixed(2));
+    const intrRaw = isCall ? Math.max(x - K, 0) : Math.max(K - x, 0);
+    const pnl  = (intrRaw - premium) * notional * sign;
+    const intr =  intrRaw            * notional * sign;
+    pnlData.push(+pnl.toFixed(2));
+    intrinsicData.push(+intr.toFixed(2));
+  }
+
+  // Color per model (spec)
+  const lineCol = model === 'gauss' ? '#34d399'
+                : isSpread          ? '#a78bfa'
+                                    : '#3b82f6';
+
+  // Negative-zone shading
+  let negFrom = null, negTo = null, negCaption = '';
+  if (model === 'gauss' && xMin < 0) {
+    negFrom = xMin; negTo = 0;
+    negCaption = 'F can be negative';
+  } else if (isSpread && xMin < K) {
+    negFrom = xMin; negTo = K;
+    negCaption = 'spread negative · F₁ < F₂ + K';
+  }
+
+  const xLabel = isSpread ? 'Spread F₁ − F₂ at expiry' : 'Underlying F at expiry';
+  const cLabel = isSpread ? 'spread = ' + center.toFixed(2) : 'F = ' + F.toFixed(2);
+
+  _optPayoffChart = new Chart(c, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: `P&L (${posLbl}) · ${notional}× notional`,
+          data: pnlData,
+          borderColor: lineCol,
+          backgroundColor: lineCol + '22',
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 2,
+        },
+        {
+          label: 'Intrinsic',
+          data: intrinsicData,
+          borderColor: '#9ca3af',
+          borderWidth: 1,
+          borderDash: [3, 3],
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 3,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true, position: 'top',
+          labels: { color: '#5a6882', font: { size: 9, family: 'IBM Plex Mono' }, boxWidth: 10 },
+        },
+        tooltip: {
+          backgroundColor: '#0c1120', borderColor: '#1e2d45', borderWidth: 1,
+          titleColor: '#c8cfe0', bodyColor: '#8a9bb5', padding: 8,
+          titleFont: { family: 'IBM Plex Mono', size: 10 },
+          bodyFont:  { family: 'IBM Plex Mono', size: 9 },
+        },
+      },
+      scales: {
+        x: {
+          title: { display: true, text: xLabel, color: '#3d5070', font: { size: 9 } },
+          ticks: { color: '#3d5070', font: { size: 8 }, maxTicksLimit: 8 },
+          grid: { color: '#0f1824' },
+        },
+        y: {
+          title: { display: true, text: `P&L (${posLbl})`, color: '#3d5070', font: { size: 9 } },
+          ticks: { color: '#3d5070', font: { size: 8 } },
+          grid: { color: '#0f1824' },
+        },
+      },
+    },
+    plugins: [
+      {
+        id: 'optPayoffOverlays',
+        beforeDatasetsDraw: (chart) => {
+          const { ctx, chartArea: ca, scales } = chart;
+          if (!ca || !scales.x) return;
+          const xScale = scales.x;
+          const idxFor = (val) => {
+            // Category-axis: find first label whose numeric value ≥ val
+            for (let i = 0; i < labels.length; i++) {
+              if (parseFloat(labels[i]) >= val) return i;
+            }
+            return labels.length - 1;
+          };
+          // Negative-zone shade
+          if (negFrom != null && negTo != null) {
+            const x1 = xScale.getPixelForValue(idxFor(negFrom));
+            const x2 = xScale.getPixelForValue(idxFor(negTo));
+            ctx.save();
+            ctx.fillStyle = 'rgba(167,139,250,0.06)';
+            ctx.fillRect(Math.min(x1,x2), ca.top, Math.abs(x2-x1), ca.bottom-ca.top);
+            ctx.fillStyle = '#a78bfa';
+            ctx.font = '9px "IBM Plex Mono"';
+            ctx.fillText(negCaption, Math.min(x1, x2) + 4, ca.bottom - 4);
+            ctx.restore();
+          }
+        },
+        afterDatasetsDraw: (chart) => {
+          const { ctx, chartArea: ca, scales } = chart;
+          if (!ca || !scales.x || !scales.y) return;
+          const xScale = scales.x, yScale = scales.y;
+          const idxFor = (val) => {
+            for (let i = 0; i < labels.length; i++) {
+              if (parseFloat(labels[i]) >= val) return i;
+            }
+            return labels.length - 1;
+          };
+          // Zero P&L baseline
+          if (yScale.min <= 0 && yScale.max >= 0) {
+            const y0 = yScale.getPixelForValue(0);
+            ctx.save();
+            ctx.strokeStyle = '#374151'; ctx.lineWidth = 0.6;
+            ctx.beginPath(); ctx.moveTo(ca.left, y0); ctx.lineTo(ca.right, y0); ctx.stroke();
+            ctx.restore();
+          }
+          // K vertical line
+          if (K >= xMin && K <= xMax) {
+            const xK = xScale.getPixelForValue(idxFor(K));
+            ctx.save();
+            ctx.strokeStyle = '#fbbf24'; ctx.globalAlpha = 0.6; ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath(); ctx.moveTo(xK, ca.top); ctx.lineTo(xK, ca.bottom); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#fbbf24'; ctx.globalAlpha = 0.95;
+            ctx.font = '9px "IBM Plex Mono"';
+            ctx.fillText('K = ' + K.toFixed(2), xK + 4, ca.top + 12);
+            ctx.restore();
+          }
+          // Current-price (F or spread) vertical line
+          if (center >= xMin && center <= xMax) {
+            const xC = xScale.getPixelForValue(idxFor(center));
+            ctx.save();
+            ctx.strokeStyle = '#fff'; ctx.globalAlpha = 0.4; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(xC, ca.top); ctx.lineTo(xC, ca.bottom); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.85;
+            ctx.font = '9px "IBM Plex Mono"';
+            // Offset the F label vertically so it doesn't collide with K label
+            const offsetY = Math.abs(xC - xScale.getPixelForValue(idxFor(K))) < 60 ? 26 : 12;
+            ctx.fillText(cLabel, xC + 4, ca.top + offsetY);
+            ctx.restore();
+          }
+        },
+      },
+    ],
+  });
 }
 
 // ── UI Render ────────────────────────────────────────────────────────────────
@@ -21288,10 +21474,17 @@ function optCalc(){
     // ── BS v2 Result card — 8 tiles, single position by default. Optional
     //    "show put values too" parallel column when _opt2ShowPut is on.
     const dailyMove = F * sig / Math.sqrt(252);
-    const tile = (lbl, val, sub, accent) => `
+    // Color helper for Greek tiles per polarity brief: positive green,
+    // negative red, zero/NaN grey. Applied to Delta/Gamma/Vega/Theta values
+    // AFTER the position sign has already been multiplied in.
+    const greekCol = (v) => (v == null || isNaN(v)) ? '#6b7280'
+                          : v > 0 ? '#34d399'
+                          : v < 0 ? '#fca5a5'
+                                  : '#6b7280';
+    const tile = (lbl, val, sub, accent, valColor) => `
       <div style="background:${accent==='primary'?'rgba(59,130,246,0.08)':'#0d1322'};border:1px solid ${accent==='primary'?'rgba(59,130,246,0.30)':'#1f2937'};border-radius:4px;padding:8px 10px">
         <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">${lbl}</div>
-        <div style="font-size:14px;font-weight:500;color:#fff;margin-top:2px">${val}</div>
+        <div style="font-size:14px;font-weight:500;color:${valColor || '#fff'};margin-top:2px">${val}</div>
         ${sub?`<div style="font-size:9px;color:#6b7280;margin-top:1px">${sub}</div>`:''}
       </div>`;
     function tilesForLeg(isC){
@@ -21307,17 +21500,19 @@ function optCalc(){
       const mnyCol = isC ? mnyColC : mnyColP;
       const cfStr = (cf>=0?'+':'')+cf.toFixed(2);
       const cfCol = cf >= 0 ? '#34d399' : '#fca5a5';
-      const thetaCol = the >= 0 ? '#34d399' : '#fca5a5';
+      // del/gam/veg/the already have position sign applied (× sign upstream);
+      // greekCol picks green/red/grey from the displayed value, matching the
+      // polarity brief: short call's negative Delta renders red, etc.
       return `
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
           ${tile('Premium', sel.price.toFixed(4), 'per unit', 'primary')}
           ${tile('Total · N='+N, (sel.price*N).toFixed(2), '<span style="color:'+cfCol+'">cash flow '+cfStr+'</span>')}
           ${tile('Intrinsic / Extrinsic', `<span style="color:#6b7280">${intr.toFixed(2)}</span> / <span style="font-weight:500">${ext.toFixed(2)}</span>`, '<span style="color:'+mnyCol+'">'+mny+(intr<=0?' · all time value':'')+'</span>')}
           ${tile('Daily 1σ $-move', '±'+dailyMove.toFixed(3), 'on F = '+F.toFixed(2))}
-          ${tile('Delta', (del>=0?'+':'')+(del*100).toFixed(2)+'%', '∂Price/∂F · '+posLbl.toLowerCase())}
-          ${tile('Gamma', gam.toFixed(4), '')}
-          ${tile('Vega · +1pp σ', (veg>=0?'+':'')+veg.toFixed(4), '')}
-          <div style="background:#0d1322;border:1px solid #1f2937;border-radius:4px;padding:8px 10px"><div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Theta · /day</div><div style="font-size:14px;font-weight:500;color:${thetaCol};margin-top:2px">${the.toFixed(4)}</div></div>
+          ${tile('Delta', (del>=0?'+':'')+(del*100).toFixed(2)+'%', '∂Price/∂F · '+posLbl.toLowerCase(), null, greekCol(del))}
+          ${tile('Gamma', (gam>=0?'+':'')+gam.toFixed(4), '', null, greekCol(gam))}
+          ${tile('Vega · +1pp σ', (veg>=0?'+':'')+veg.toFixed(4), '', null, greekCol(veg))}
+          ${tile('Theta · /day', (the>=0?'+':'')+the.toFixed(4), '', null, greekCol(the))}
         </div>
       `;
     }
@@ -21345,11 +21540,11 @@ function optCalc(){
     // Phase 2 / 3 / 4 renderers
     if (typeof opt2RenderMoneyness === 'function')      opt2RenderMoneyness();
     if (typeof opt2RenderSensitivity === 'function')    opt2RenderSensitivity(F, K, sig, T, r, isCall, sign);
-    if (typeof opt2RenderGreeksVsF === 'function')      opt2RenderGreeksVsF(F, K, sig, T, r, isCall);
+    if (typeof opt2RenderGreeksVsF === 'function')      opt2RenderGreeksVsF(F, K, sig, T, r, isCall, sign);
     if (typeof opt2RenderIntermediates === 'function')  opt2RenderIntermediates(F, K, sig, T, r, c);
     if (typeof opt2UpdateButtonStates === 'function')   opt2UpdateButtonStates();
 
-    optDrawPayoff('opt-payoff',F,K,isCallSide?c.price:p.price,isCallSide,N,'bs',{sign,posLbl});
+    optDrawPayoff('opt-payoff',F,K,isCallSide?c.price:p.price,isCallSide,N,'bs',{sign,posLbl,T,sig});
     const ptt = $id('opt2-payoff-title');
     if (ptt) ptt.textContent = `Payoff at expiry · ${typeLbl} · ${posLbl}`;
 
@@ -21406,7 +21601,7 @@ function optCalc(){
       <div class="mc"><div class="mc-name">Moneyness (Call)</div><div class="mc-val" style="font-size:14px;color:${mnyColC}">${mnyC}</div></div>
     </div></div>`;
 
-    optDrawPayoff('opt-payoff',F,K,isCall?c.price:p.price,isCall,N,'gauss',{sign,posLbl});
+    optDrawPayoff('opt-payoff',F,K,isCall?c.price:p.price,isCall,N,'gauss',{sign,posLbl,T,sigD});
 
   } else { // spread
     const F1=parseFloat(document.getElementById('opt-F1')?.value)||0;
@@ -21467,7 +21662,7 @@ function optCalc(){
       <div class="mc"><div class="mc-name">ρ</div><div class="mc-val" style="font-size:14px">${rho.toFixed(2)}</div></div>
     </div></div>`;
 
-    optDrawPayoff('opt-payoff',F1,K,isCall?c.price:p.price,isCall,N,'spread',{fwdSpread:c.fwdSpread,sign,posLbl});
+    optDrawPayoff('opt-payoff',F1,K,isCall?c.price:p.price,isCall,N,'spread',{fwdSpread:c.fwdSpread,sign,posLbl,T,sigSpAnn:c.sigSpAnn});
   }
 }
 
@@ -21678,9 +21873,12 @@ window.opt2RenderSensitivity = function(F, K, sig, T, r, isCall, sign){
 // ── Phase 3 — Greeks vs F panel (2×2 small multiples) ──────────────────────
 // Sample 50 points across K ± 2σ√T (with hard floor at 0.01). Each greek gets
 // a tiny SVG line chart with 3 y-ticks, K dashed yellow gridline, F dashed
-// white gridline, and a green dot marking current value at F.
-window.opt2RenderGreeksVsF = function(F, K, sig, T, r, isCall){
+// white gridline, and a green dot marking current value at F. Position
+// polarity (sign = +1 long / -1 short) is applied to every plotted Greek so
+// short-call Delta mirrors below zero, short Theta mirrors above zero, etc.
+window.opt2RenderGreeksVsF = function(F, K, sig, T, r, isCall, sign){
   const el = document.getElementById('opt2-greeks-vs-f'); if (!el) return;
+  const polarity = (sign === -1) ? -1 : 1; // default long
   const sT = sig * Math.sqrt(T);
   const span = K * 2 * sT;
   let fMin = K - span, fMax = K + span;
@@ -21691,9 +21889,23 @@ window.opt2RenderGreeksVsF = function(F, K, sig, T, r, isCall){
   for (let i = 0; i < N; i++) {
     const f = fMin + (fMax - fMin) * i / (N-1);
     const g = bsPrice(f, K, sig, T, r, isCall);
-    samples.push({ F:f, delta:g.delta, gamma:g.gamma, vega:g.vega, theta:g.theta });
+    // Apply position polarity so the curves match what the holder
+    // experiences. Long: pass-through. Short: flip every value.
+    samples.push({
+      F: f,
+      delta: g.delta * polarity,
+      gamma: g.gamma * polarity,
+      vega:  g.vega  * polarity,
+      theta: g.theta * polarity,
+    });
   }
-  const cur = bsPrice(F, K, sig, T, r, isCall);
+  const curRaw = bsPrice(F, K, sig, T, r, isCall);
+  const cur = {
+    delta: curRaw.delta * polarity,
+    gamma: curRaw.gamma * polarity,
+    vega:  curRaw.vega  * polarity,
+    theta: curRaw.theta * polarity,
+  };
   const greeks = [
     { key:'delta', label:'Delta',                color:'#3b82f6', cur:cur.delta },
     { key:'gamma', label:'Gamma',                color:'#3b82f6', cur:cur.gamma },
