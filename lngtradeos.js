@@ -21038,7 +21038,10 @@ function optRender(){
       <button class="cr-pill" onclick="opt2ExportXLSX()" style="font-size:9px;color:#22c55e;border-color:#22c55e">↓ XLSX</button>
     </div>
 
-    <!-- Configurator: Type + Position (Model dropdown stays in the global ctrl bar) -->
+    <!-- Configurator: Type + Position (Model dropdown stays in the global ctrl bar).
+         Hidden opt-pos select persists the Position value — the legacy optCalc
+         reads from #opt-pos via getElementById, and removing the visible select
+         in the redesign meant the Position toggle clicks went nowhere. -->
     <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:10px;margin-bottom:12px">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span style="font-size:10px;color:#6b7280;letter-spacing:.04em">Model</span>
@@ -21051,6 +21054,10 @@ function optRender(){
         <span style="font-size:10px;color:#6b7280;letter-spacing:.04em">Position</span>
         <button class="cr-pill" id="opt2-pos-long"  onclick="opt2SetPos('buy')"  style="font-size:10px">LONG</button>
         <button class="cr-pill" id="opt2-pos-short" onclick="opt2SetPos('sell')" style="font-size:10px">SHORT</button>
+        <select id="opt-pos" style="display:none">
+          <option value="buy">BUY (Long)</option>
+          <option value="sell">SELL (Short)</option>
+        </select>
       </div>
     </div>
 
@@ -21619,8 +21626,6 @@ window.opt2RenderMoneyness = function(){
     </div>
     <svg width="100%" height="36" viewBox="0 0 ${W} 36" preserveAspectRatio="none" style="display:block">
       <line x1="20" y1="22" x2="${W-20}" y2="22" stroke="#1f2937" stroke-width="0.5"/>
-      <rect x="20" y="16" width="${cx-20}" height="12" fill="rgba(167,139,250,0.10)"/>
-      <rect x="${cx}" y="16" width="${cx-20}" height="12" fill="rgba(251,191,36,0.10)"/>
       <line x1="${cx}" y1="13" x2="${cx}" y2="31" stroke="#fff" stroke-width="0.6" opacity="0.5"/>
       <text x="${cx+4}" y="11" font-size="9" fill="#9ca3af">ATM</text>
       <circle cx="${xF}" cy="22" r="3.5" fill="#3b82f6" stroke="#fff" stroke-width="0.5"/>
