@@ -21459,11 +21459,33 @@ function korLatestPrices(){
   return { jkmM1, brent };
 }
 
+// ── Live data fetch (data/korea.json from GitHub Action) ──────────────────
+// Loaded once per page visit — daily-cadence data, no need to re-poll.
+// Overrides KOR_SEED for sources that have shipped scrapers (FX + KHNP).
+// KOGAS tariff/imports/DART stay seeded with amber badges until those
+// scrapers land (KR-only sources require either a Korean proxy or manual
+// entry — see scripts/fetch_korea.py for the rationale).
+let _korLive = null, _korLivePromise = null;
+function korFetchLive(){
+  if (_korLivePromise) return _korLivePromise;
+  _korLivePromise = fetch('/data/korea.json?v=' + Date.now(), { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { _korLive = d; return d; })
+    .catch(() => null);
+  return _korLivePromise;
+}
+
 // ── Shell ──────────────────────────────────────────────────────────────────
 function korInit(){
   const c = document.getElementById('kor-container'); if (!c) return;
   if (!c.innerHTML.trim()) c.innerHTML = korBuildShell();
   korShowTab(_korTab);
+  // Kick off live data fetch in background — re-renders active tab when it lands
+  korFetchLive().then(d => {
+    if (d) {
+      try { korShowTab(_korTab); } catch (e) {}
+    }
+  });
 }
 window.korInit = korInit;
 
@@ -21516,21 +21538,35 @@ function korKpiCard(opts){
 // ────────────────────────────────────────────────────────────────────────────
 function renderKorBalance(el){
   const s = KOR_SEED;
+  // Live PRIS data overrides the seeded nuclear values when present.
+  const liveK = _korLive?.khnp;
+  const nuclearGW = liveK?.totalOnlineGW ?? s.nuclearGW;
+  const nuclearOn = liveK?.onlineCount ?? s.nuclearOnlineCount;
+  const nuclearTot= liveK?.totalCount ?? s.nuclearTotalCount;
+  const nuclearAsOf = liveK?.asOf;
+  const nuclearLive = !!liveK;
+  // Site list: live if available, otherwise seeded
+  const siteList = liveK?.bySite?.length ? liveK.bySite.map(b => ({
+    site: b.site, cap: b.onlineCap_GW, online: b.online, total: b.totalCount,
+  })) : s.nuclearBySite;
   const lngYoY = (s.lngImportsYoY*100).toFixed(0) + '% YoY';
   const powYoY = (s.powerSalesYoY*100).toFixed(0) + '% YoY';
-  const nucPct = (s.nuclearGW / 24.2 * 100).toFixed(0) + '%';
+  const nucPct = (nuclearOn / Math.max(nuclearTot, 1) * 100).toFixed(0) + '%';
   const nucYoYpp = '+' + (s.nuclearUtilYoYpp*100).toFixed(0) + 'pp YoY';
+  const khnpFreshness = nuclearLive
+    ? { label:'IAEA PRIS', meta:nuclearAsOf, color:'#34d399' }
+    : { label:'KHNP daily', meta:'27 Apr · seed', color:'#fbbf24' };
 
   el.innerHTML = `
     ${korFreshness([
-      { label:'KHNP daily',     meta:'27 Apr',                color:'#34d399' },
-      { label:'KOGAS imports',  meta:'monthly · Mar · 12d lag', color:'#fbbf24' },
-      { label:'DART',           meta:'quarterly · Q4-25',     color:'#fbbf24' },
+      khnpFreshness,
+      { label:'KOGAS imports',  meta:'monthly · Mar · seed', color:'#fbbf24' },
+      { label:'DART',           meta:'quarterly · Q4-25 · seed', color:'#fbbf24' },
     ])}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
       ${korKpiCard({ label:'LNG imports · Mar',   value:s.lngImportsMtMar+' mt',  sub:'▼ '+Math.abs(s.lngImportsYoY*100).toFixed(0)+'% YoY · monthly', badge:'seed' })}
       ${korKpiCard({ label:'Power sales · Q4-25', value:s.powerSalesQ4+' mt',     sub:'▼ '+Math.abs(s.powerSalesYoY*100).toFixed(0)+'% YoY · DART', badge:'seed' })}
-      ${korKpiCard({ label:'Nuclear · now',       value:s.nuclearGW+' GW',        sub:nucPct+' · KHNP daily',  badge:'seed', color:'#34d399' })}
+      ${korKpiCard({ label:'Nuclear · now',       value:nuclearGW.toFixed(2)+' GW', sub:nucPct+' · '+(nuclearLive?'IAEA PRIS':'KHNP daily'), badge: nuclearLive?null:'seed', color:'#34d399' })}
       ${korKpiCard({ label:'Nuclear util · YTD',  value:(s.nuclearUtilYtd*100).toFixed(0)+'%', sub:nucYoYpp,    badge:'seed', color:'#34d399' })}
     </div>
 
@@ -21544,11 +21580,14 @@ function renderKorBalance(el){
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
-        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:8px">Nuclear by site · KHNP live</div>
-        ${s.nuclearBySite.map(r => `
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="font-size:11px;color:#fff;font-weight:500">Nuclear by site</span>
+          <span style="font-size:8px;padding:1px 5px;border-radius:2px;background:${nuclearLive?'rgba(52,211,153,0.10)':'rgba(251,191,36,0.10)'};color:${nuclearLive?'#34d399':'#fbbf24'}">${nuclearLive?'IAEA PRIS · live':'seed'}</span>
+        </div>
+        ${siteList.map(r => `
           <div style="display:grid;grid-template-columns:1fr auto auto;gap:14px;font-size:11px;padding:4px 0;border-bottom:1px solid #0f1824">
             <span style="color:#c8cfe0">${r.site}</span>
-            <span style="color:#fff;text-align:right">${r.cap.toFixed(1)} GW</span>
+            <span style="color:#fff;text-align:right">${(r.cap||0).toFixed(2)} GW</span>
             <span style="color:${r.online === r.total ? '#34d399' : '#fbbf24'};text-align:right">${r.online}/${r.total}</span>
           </div>`).join('')}
       </div>
@@ -21637,13 +21676,18 @@ function renderKorPrices(el){
   const brent11 = +(brent * 0.11).toFixed(2);
   const jkmVsBand = +(jkmM1 - brent14).toFixed(2);
   const kogas = s.kogasTariffApr;
+  // Live ECB FX overrides the seeded KRW/USD when available
+  const liveFx = _korLive?.fx;
+  const krwUsd = liveFx?.krwUsd ?? s.krwUsd;
+  const fxAsOf = liveFx?.asOf;
+  const fxLive = !!liveFx;
 
   el.innerHTML = `
     ${korFreshness([
-      { label:'KOGAS tariff', meta:'monthly · Apr',     color:'#fbbf24' },
-      { label:'JKM',          meta:live?'live · ICE 27 Apr':'load EOD', color: live?'#34d399':'#fca5a5' },
-      { label:'Brent',        meta:live?'live · ICE 27 Apr':'load EOD', color: live?'#34d399':'#fca5a5' },
-      { label:'KRW/USD',      meta:s.krwUsd,            color:'#fbbf24' },
+      { label:'KOGAS tariff', meta:'monthly · Apr · seed', color:'#fbbf24' },
+      { label:'JKM',          meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
+      { label:'Brent',        meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
+      { label:'KRW/USD',      meta:fxLive?`${krwUsd.toFixed(2)} · ECB ${fxAsOf}`:`${krwUsd} · seed`, color: fxLive?'#34d399':'#fbbf24' },
     ])}
 
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">

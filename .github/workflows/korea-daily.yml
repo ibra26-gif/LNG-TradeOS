@@ -1,0 +1,84 @@
+name: Korea daily data scrape
+
+# Pulls Korean nuclear status (IAEA PRIS) + KRW/USD FX (ECB) once per day.
+# Both sources are globally accessible (no Korean-IP requirement, no API
+# key). KOGAS tariff Excel + KEPCO power data + KHNP direct site are all
+# KR-only and stay manual until a Korean proxy lands or the user enters
+# values via the dashboard. DART quarterly filings need the user's free
+# OpenDART API key registration (1-week approval) — separate workflow.
+
+on:
+  schedule:
+    # 17:30 UTC = 18:30 CET (after ECB publishes ~16:00 CET, comfortable buffer)
+    - cron: "30 17 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: korea-daily
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python deps
+        run: pip install requests
+
+      - name: Run Korea scraper (IAEA PRIS + ECB FX)
+        run: python3 scripts/fetch_korea.py
+
+      - name: Commit data if changed
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/korea.json
+          if git diff --cached --quiet; then
+            echo "No changes — nothing to commit."
+            exit 0
+          fi
+          # Pull a short summary for the commit message
+          SUMMARY=$(python3 -c "
+          import json
+          d = json.load(open('data/korea.json'))
+          fx = d.get('fx') or {}
+          k = d.get('khnp') or {}
+          parts = []
+          if fx.get('krwUsd'): parts.append(f\"FX {fx['krwUsd']} KRW/USD\")
+          if k.get('totalOnlineGW') is not None:
+              parts.append(f\"nuclear {k['onlineCount']}/{k['totalCount']} online {k['totalOnlineGW']}GW\")
+          print(' · '.join(parts) or 'no data')
+          ")
+          git commit -m "data: korea daily refresh ($SUMMARY)"
+          # Retry on push race
+          for attempt in 1 2 3 4 5; do
+            if git pull --rebase origin main && git push; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "::error::Failed to push after 5 attempts"
+          exit 1
+
+      - name: Upload korea.json on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: korea-json-${{ github.run_id }}
+          path: data/korea.json
+          if-no-files-found: ignore
+          retention-days: 14
