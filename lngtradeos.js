@@ -15662,11 +15662,15 @@ function fc2SavePrefs(p){
   try { localStorage.setItem(FC2_PREFS_KEY, JSON.stringify(p)); } catch (e) {}
 }
 
+// Four visually distinct hues per date. Spec mock had D2 as a dashed blue
+// but at-a-glance it was hard to tell apart from D1 — user requested a
+// proper color separation. D1 stays blue (anchor); D2 amber, D3 green,
+// D4 purple. All solid strokes for legibility on cell-grid dashboards.
 const FC2_COLORS = [
-  { stroke: '#3b82f6', dash: undefined,  fill: 'rgba(59,130,246,0.06)' }, // D1
-  { stroke: '#3b82f6', dash: [3, 3],     fill: 'transparent' },             // D2
-  { stroke: '#fbbf24', dash: undefined,  fill: 'transparent' },             // D3
-  { stroke: '#fbbf24', dash: [3, 3],     fill: 'transparent' },             // D4
+  { stroke: '#3b82f6', dash: undefined, fill: 'rgba(59,130,246,0.06)' }, // D1 blue
+  { stroke: '#f59e0b', dash: undefined, fill: 'transparent' },           // D2 amber
+  { stroke: '#34d399', dash: undefined, fill: 'transparent' },           // D3 green
+  { stroke: '#a78bfa', dash: undefined, fill: 'transparent' },           // D4 purple
 ];
 
 // Compute tenor-marker positions given the curve's pk list. Returns
