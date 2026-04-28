@@ -18749,8 +18749,8 @@ async function renderGaDashboard(){
             <span style="font-size:10px;color:#6b7a99;margin-left:4px">GW</span>
             <span id="gf-kor-nuclear-units" style="font-size:10px;color:#6b7a99;margin-left:6px"></span>
           </div>
+          <div id="gf-kor-nuclear-util" style="font-size:9px;color:#34d399;margin-top:4px">—</div>
           <div id="gf-kor-nuclear-offline" style="font-size:9px;color:#3d5070;margin-top:4px">—</div>
-          <div style="font-size:9px;color:#8a9bb5;margin-top:6px;line-height:1.4">KOGAS incremental LNG call sensitive to fleet availability</div>
         </div>
 
         <div id="gf-brz-hydro" style="background:#0f1221;border:1px solid rgba(77,158,245,0.1);padding:10px 12px;margin-bottom:10px">
@@ -21556,6 +21556,14 @@ function korUpdateGlobalFundamentalsCard(){
     badgeEl.textContent = 'LIVE';
     badgeEl.style.color = '#34d399';
     badgeEl.style.background = 'rgba(52,211,153,0.10)';
+  }
+  // Utilization: fleet online output ÷ fleet nameplate capacity (incl. offline reactors)
+  const utilEl = document.getElementById('gf-kor-nuclear-util');
+  if (utilEl && k.totalOnlineGW != null) {
+    const fleetNameplateGW = (k.reactors || []).reduce((s, r) =>
+      s + ((NUCLEAR_NAMEPLATE[r.name] || 1000) / 1000), 0);
+    const util = fleetNameplateGW > 0 ? (k.totalOnlineGW / fleetNameplateGW * 100) : null;
+    utilEl.textContent = util != null ? `Utilization · ${util.toFixed(1)}%` : '';
   }
   if (offEl) {
     const offCount = (k.reactors || []).filter(r => r.status !== 'Operational').length;
