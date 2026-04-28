@@ -280,6 +280,113 @@ def fetch_khnp_live():
     }
 
 
+def fetch_khnp_annual_util():
+    """Annual fleet utilization + capacity factor from KHNP.
+
+    Source: https://npp.khnp.co.kr/ON004004002001003 — '이용률·가동률' page.
+    Single server-rendered table with a year-by-year history (2007 onwards).
+    Returns: { asOf, byYear: [{year, util, capFactor}, ...], source }
+    """
+    url = 'https://npp.khnp.co.kr/ON004004002001003'
+    html = fetch(url)
+    tables = re.findall(r'<table[^>]*>.*?</table>', html, re.DOTALL)
+    if not tables:
+        return None
+    tbl = tables[0]
+    # Header: 구분 + year columns
+    th_all = [re.sub(r'<[^>]+>', '', t).strip()
+              for t in re.findall(r'<th[^>]*>(.*?)</th>', tbl, re.DOTALL)]
+    years = [int(t) for t in th_all if t.isdigit() and len(t) == 4]
+    rows = re.findall(r'<tr[^>]*>(.*?)</tr>', tbl, re.DOTALL)
+    util_row, cap_row = None, None
+    for r in rows:
+        cells = [re.sub(r'<[^>]+>', '', c).strip()
+                 for c in re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', r, re.DOTALL)]
+        if not cells:
+            continue
+        if '이용률' in cells[0]:
+            util_row = cells[1:]
+        elif '가동률' in cells[0]:
+            cap_row = cells[1:]
+    by_year = []
+    for i, y in enumerate(years):
+        try:
+            util = float(util_row[i]) if util_row and i < len(util_row) else None
+        except ValueError:
+            util = None
+        try:
+            cap = float(cap_row[i]) if cap_row and i < len(cap_row) else None
+        except ValueError:
+            cap = None
+        if util is not None or cap is not None:
+            by_year.append({'year': y, 'util': util, 'capFactor': cap})
+    return {
+        'asOf':      datetime.now(timezone.utc).strftime('%Y-%m-%d'),
+        'source':    'KHNP 이용률·가동률',
+        'sourceUrl': url,
+        'byYear':    by_year,
+    }
+
+
+def fetch_khnp_trips():
+    """Annual unplanned-trip counts from KHNP '불시정지' page.
+
+    Source: https://npp.khnp.co.kr/ON004004002001004
+    Three stacked tables (2001-09, 2010-19, 2020-29). Each row: year |
+    operating reactors | trip count | trips per reactor.
+    Returns: { asOf, byYear: [{year, reactors, trips, tripsPerReactor}, ...] }
+    """
+    url = 'https://npp.khnp.co.kr/ON004004002001004'
+    html = fetch(url)
+    tables = re.findall(r'<table[^>]*>.*?</table>', html, re.DOTALL)
+    by_year = []
+    for tbl in tables[:3]:
+        th_all = [re.sub(r'<[^>]+>', '', t).strip()
+                  for t in re.findall(r'<th[^>]*>(.*?)</th>', tbl, re.DOTALL)]
+        years = [int(t) for t in th_all if t.isdigit() and len(t) == 4]
+        if not years:
+            continue
+        rows = re.findall(r'<tr[^>]*>(.*?)</tr>', tbl, re.DOTALL)
+        reactors_row = trips_row = per_row = None
+        for r in rows:
+            cells = [re.sub(r'<[^>]+>', '', c).strip()
+                     for c in re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', r, re.DOTALL)]
+            if not cells:
+                continue
+            head = cells[0]
+            data = cells[1:]
+            # Order matters: '기당 불시 정지 건수' contains '불시 정지 건수' as a
+            # substring, so check the per-reactor row FIRST.
+            if '운전기수' in head:
+                reactors_row = data
+            elif '기당' in head:
+                per_row = data
+            elif '불시 정지 건수' in head:
+                trips_row = data
+        for i, y in enumerate(years):
+            def _i(arr):
+                if not arr or i >= len(arr) or arr[i] in ('', '-'):
+                    return None
+                try: return int(arr[i])
+                except ValueError:
+                    try: return float(arr[i])
+                    except ValueError: return None
+            entry = {
+                'year':            y,
+                'reactors':        _i(reactors_row),
+                'trips':           _i(trips_row),
+                'tripsPerReactor': _i(per_row),
+            }
+            if entry['reactors'] is not None or entry['trips'] is not None:
+                by_year.append(entry)
+    return {
+        'asOf':      datetime.now(timezone.utc).strftime('%Y-%m-%d'),
+        'source':    'KHNP 불시정지',
+        'sourceUrl': url,
+        'byYear':    by_year,
+    }
+
+
 def fetch_ecb_fx():
     """ECB daily reference rates (cross-rate to derive KRW/USD)."""
     url = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
@@ -305,11 +412,65 @@ def fetch_ecb_fx():
     }
 
 
+def round_for_diff_stability(out):
+    """Round noisy numeric fields so hourly scrapes don't churn git when
+    nothing material has changed. Reactor output drifting by 0.01% or 1 MWe
+    isn't a meaningful event."""
+    k = out.get('khnp') or {}
+    for r in (k.get('reactors') or []):
+        if r.get('output_pct') is not None:
+            r['output_pct'] = round(r['output_pct'], 1)
+        if r.get('output_mwe') is not None:
+            r['output_mwe'] = round(r['output_mwe'])  # nearest integer MWe
+    for s in (k.get('bySite') or []):
+        s['totalCap_GW']  = round(s.get('totalCap_GW', 0), 2)
+        s['onlineCap_GW'] = round(s.get('onlineCap_GW', 0), 2)
+    if k.get('totalOnlineGW') is not None:
+        k['totalOnlineGW'] = round(k['totalOnlineGW'], 2)
+
+
+def append_history_row(out):
+    """Append today's nuclear KPI to data/korea_nuclear_history.csv so we
+    accumulate a current-year monthly utilization line over time. One row
+    per scrape — duplicates per day are de-duped on read by the front-end."""
+    k = out.get('khnp') or {}
+    if not k or k.get('totalOnlineGW') is None:
+        return
+    history_path = os.path.join(os.path.dirname(OUT_PATH), 'korea_nuclear_history.csv')
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    # Compute aggregate util as online_GW / nominal_total (sum of all reactors'
+    # nameplate). For a "true" utilization we'd need nameplate, not running output.
+    # Approximation: sum of online_mwe + nameplate_for_offline. For now use
+    # online_GW / nominal 25.0 GW (current Korean fleet nameplate) as the rough denominator.
+    NOMINAL_FLEET_GW = 25.0
+    util_pct = round(100 * k['totalOnlineGW'] / NOMINAL_FLEET_GW, 1)
+    new_row = f"{today},{k['totalOnlineGW']},{NOMINAL_FLEET_GW},{util_pct},{k['onlineCount']},{k['totalCount']}\n"
+
+    header = "date,online_GW,nominal_total_GW,util_pct,online_count,total_count\n"
+    if not os.path.exists(history_path):
+        with open(history_path, 'w', encoding='utf-8') as f:
+            f.write(header)
+            f.write(new_row)
+        return
+    # Skip if today's row already exists (overwrite with latest snapshot of the day)
+    with open(history_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+    today_idx = next((i for i, L in enumerate(lines) if L.startswith(today + ',')), None)
+    if today_idx is not None:
+        lines[today_idx] = new_row
+    else:
+        lines.append(new_row)
+    with open(history_path, 'w', encoding='utf-8') as f:
+        f.writelines(lines)
+
+
 def main():
     out = {
         'updated':       datetime.now(timezone.utc).isoformat(timespec='seconds'),
         'fx':            None,
         'khnp':          None,
+        'khnpAnnual':    None,
+        'khnpTrips':     None,
         # KR-only sources — left null so the front-end falls back to seeded values + amber badge.
         'kogasTariff':   None,
         'kogasImports':  None,
@@ -335,10 +496,42 @@ def main():
         out['errors'].append(f'KHNP live: {e}')
         print(f"KHNP live failed: {e}", file=sys.stderr)
 
+    try:
+        out['khnpAnnual'] = fetch_khnp_annual_util()
+        a = out['khnpAnnual']
+        if a and a.get('byYear'):
+            print(f"KHNP annual util: {len(a['byYear'])} years "
+                  f"({a['byYear'][0]['year']}–{a['byYear'][-1]['year']})", file=sys.stderr)
+    except Exception as e:
+        out['errors'].append(f'KHNP annual util: {e}')
+        print(f"KHNP annual util failed: {e}", file=sys.stderr)
+
+    try:
+        out['khnpTrips'] = fetch_khnp_trips()
+        t = out['khnpTrips']
+        if t and t.get('byYear'):
+            print(f"KHNP unplanned trips: {len(t['byYear'])} years", file=sys.stderr)
+    except Exception as e:
+        out['errors'].append(f'KHNP trips: {e}')
+        print(f"KHNP trips failed: {e}", file=sys.stderr)
+
+    # Stabilize for git diff
+    round_for_diff_stability(out)
+
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     with open(OUT_PATH, 'w', encoding='utf-8') as f:
         json.dump(out, f, indent=2, ensure_ascii=False)
     print(f"Wrote {OUT_PATH}", file=sys.stderr)
+
+    # History accumulator: append/update today's row in the CSV. The
+    # workflow may pass --skip-history if it doesn't want this for some runs.
+    if '--skip-history' not in sys.argv:
+        try:
+            append_history_row(out)
+            print(f"Appended today's row to korea_nuclear_history.csv", file=sys.stderr)
+        except Exception as e:
+            out['errors'].append(f'history append: {e}')
+
     return 0 if not out['errors'] else 1
 
 

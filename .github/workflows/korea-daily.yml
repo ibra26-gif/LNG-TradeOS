@@ -1,23 +1,26 @@
-name: Korea daily data scrape
+name: Korea hourly data scrape
 
-# Pulls Korean nuclear status (IAEA PRIS) + KRW/USD FX (ECB) once per day.
-# Both sources are globally accessible (no Korean-IP requirement, no API
-# key). KOGAS tariff Excel + KEPCO power data + KHNP direct site are all
-# KR-only and stay manual until a Korean proxy lands or the user enters
-# values via the dashboard. DART quarterly filings need the user's free
-# OpenDART API key registration (1-week approval) — separate workflow.
+# Runs hourly. Commits to git ONLY when data materially changes
+# (reactor status flip, output > 50 MWe change, FX > 0.5 KRW change,
+#  annual util/trips refreshed). The history CSV is appended on every run
+# (de-duped to one row per day in the script itself).
+#
+# Sources (all globally accessible, no API key, no Korean-IP requirement):
+#   - KHNP Open NPP Operations Info — live per-reactor output (3-min refresh)
+#   - KHNP 이용률·가동률 — annual fleet utilization 2007–latest
+#   - KHNP 불시정지 — annual unplanned-trip counts 2001–latest
+#   - ECB euro reference rates — KRW/USD via cross-rate
 
 on:
   schedule:
-    # 17:30 UTC = 18:30 CET (after ECB publishes ~16:00 CET, comfortable buffer)
-    - cron: "30 17 * * *"
+    - cron: "0 * * * *"   # every hour at :00
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
 concurrency:
-  group: korea-daily
+  group: korea-hourly
   cancel-in-progress: false
 
 jobs:
@@ -27,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 2  # need HEAD~1 for the diff check
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -37,20 +40,28 @@ jobs:
       - name: Install Python deps
         run: pip install requests
 
-      - name: Run Korea scraper (IAEA PRIS + ECB FX)
+      - name: Run Korea scraper
         run: python3 scripts/fetch_korea.py
 
+      - name: Check for material change
+        id: changed
+        run: |
+          set -e
+          STATUS=$(python3 scripts/check_korea_changed.py | head -1)
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "diff status: $STATUS"
+
       - name: Commit data if changed
+        if: steps.changed.outputs.status == 'changed'
         run: |
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/korea.json
+          git add data/korea.json data/korea_nuclear_history.csv
           if git diff --cached --quiet; then
-            echo "No changes — nothing to commit."
+            echo "No tracked changes — nothing to commit."
             exit 0
           fi
-          # Pull a short summary for the commit message
           SUMMARY=$(python3 -c "
           import json
           d = json.load(open('data/korea.json'))
@@ -60,10 +71,9 @@ jobs:
           if fx.get('krwUsd'): parts.append(f\"FX {fx['krwUsd']} KRW/USD\")
           if k.get('totalOnlineGW') is not None:
               parts.append(f\"nuclear {k['onlineCount']}/{k['totalCount']} online {k['totalOnlineGW']}GW\")
-          print(' · '.join(parts) or 'no data')
+          print(' · '.join(parts) or 'data refresh')
           ")
-          git commit -m "data: korea daily refresh ($SUMMARY)"
-          # Retry on push race
+          git commit -m "data: korea hourly refresh ($SUMMARY)"
           for attempt in 1 2 3 4 5; do
             if git pull --rebase origin main && git push; then
               echo "Push succeeded on attempt $attempt"
@@ -74,11 +84,17 @@ jobs:
           echo "::error::Failed to push after 5 attempts"
           exit 1
 
+      - name: Skip notice
+        if: steps.changed.outputs.status != 'changed'
+        run: echo "No material change since last commit — skipping git commit."
+
       - name: Upload korea.json on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: korea-json-${{ github.run_id }}
-          path: data/korea.json
+          path: |
+            data/korea.json
+            data/korea_nuclear_history.csv
           if-no-files-found: ignore
           retention-days: 14

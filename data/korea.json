@@ -1,16 +1,16 @@
 {
-  "updated": "2026-04-28T12:56:54+00:00",
+  "updated": "2026-04-28T14:24:42+00:00",
   "fx": {
-    "asOf": "2026-04-27",
+    "asOf": "2026-04-28",
     "source": "ECB euro reference rates",
     "sourceUrl": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml",
-    "eurUsd": 1.1749,
-    "eurKrw": 1728.54,
-    "krwUsd": 1471.22
+    "eurUsd": 1.168,
+    "eurKrw": 1725.01,
+    "krwUsd": 1476.89
   },
   "khnp": {
-    "asOf": "2026-04-28 21:57:06",
-    "scrapedAt": "2026-04-28T12:57:31+00:00",
+    "asOf": "2026-04-28 23:25:05",
+    "scrapedAt": "2026-04-28T14:25:23+00:00",
     "source": "KHNP Open NPP Operations Info",
     "sourceUrl": "https://npp.khnp.co.kr/",
     "reactors": [
@@ -20,8 +20,8 @@
         "unit_cd": "2112",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 680.0,
-        "asOf": "2026-04-28 21:56:30"
+        "output_mwe": 681,
+        "asOf": "2026-04-28 23:24:30"
       },
       {
         "name": "Kori-3",
@@ -29,8 +29,8 @@
         "unit_cd": "2123",
         "status": "Maintenance",
         "output_pct": 0.0,
-        "output_mwe": 0.0,
-        "asOf": "2026-04-28 21:53:45"
+        "output_mwe": 0,
+        "asOf": "2026-04-28 23:23:45"
       },
       {
         "name": "Kori-4",
@@ -38,8 +38,8 @@
         "unit_cd": "2124",
         "status": "Maintenance",
         "output_pct": 0.0,
-        "output_mwe": 0.0,
-        "asOf": "2026-04-28 21:53:45"
+        "output_mwe": 0,
+        "asOf": "2026-04-28 23:23:45"
       },
       {
         "name": "Shin-Kori-1",
@@ -47,8 +47,8 @@
         "unit_cd": "2135",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1055.0,
-        "asOf": "2026-04-28 21:56:10"
+        "output_mwe": 1055,
+        "asOf": "2026-04-28 23:24:10"
       },
       {
         "name": "Shin-Kori-2",
@@ -56,8 +56,8 @@
         "unit_cd": "2136",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1053.0,
-        "asOf": "2026-04-28 21:56:30"
+        "output_mwe": 1053,
+        "asOf": "2026-04-28 23:24:30"
       },
       {
         "name": "Hanbit-1",
@@ -66,7 +66,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": null,
-        "asOf": "2026-04-28 21:51:11"
+        "asOf": "2026-04-28 23:21:11"
       },
       {
         "name": "Hanbit-2",
@@ -74,8 +74,8 @@
         "unit_cd": "2312",
         "status": "Operational",
         "output_pct": 96.0,
-        "output_mwe": 1024.0,
-        "asOf": "2026-04-28 21:56:31"
+        "output_mwe": 1025,
+        "asOf": "2026-04-28 23:24:31"
       },
       {
         "name": "Hanbit-3",
@@ -83,8 +83,8 @@
         "unit_cd": "2323",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1051.0,
-        "asOf": "2026-04-28 21:56:16"
+        "output_mwe": 1052,
+        "asOf": "2026-04-28 23:24:21"
       },
       {
         "name": "Hanbit-4",
@@ -92,8 +92,8 @@
         "unit_cd": "2324",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1047.0,
-        "asOf": "2026-04-28 21:56:51"
+        "output_mwe": 1046,
+        "asOf": "2026-04-28 23:24:21"
       },
       {
         "name": "Hanbit-5",
@@ -101,8 +101,8 @@
         "unit_cd": "2335",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1051.0,
-        "asOf": "2026-04-28 21:57:01"
+        "output_mwe": 1051,
+        "asOf": "2026-04-28 23:24:31"
       },
       {
         "name": "Hanbit-6",
@@ -110,8 +110,8 @@
         "unit_cd": "2336",
         "status": "Maintenance",
         "output_pct": 0.0,
-        "output_mwe": 0.0,
-        "asOf": "2026-04-28 21:51:11"
+        "output_mwe": 0,
+        "asOf": "2026-04-28 23:21:11"
       },
       {
         "name": "Hanul-1",
@@ -119,8 +119,8 @@
         "unit_cd": "2411",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1021.0,
-        "asOf": "2026-04-28 21:57:01"
+        "output_mwe": 1019,
+        "asOf": "2026-04-28 23:24:31"
       },
       {
         "name": "Hanul-2",
@@ -128,8 +128,8 @@
         "unit_cd": "2412",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1019.0,
-        "asOf": "2026-04-28 21:57:01"
+        "output_mwe": 1017,
+        "asOf": "2026-04-28 23:24:31"
       },
       {
         "name": "Hanul-3",
@@ -137,8 +137,8 @@
         "unit_cd": "2423",
         "status": "Maintenance",
         "output_pct": 0.0,
-        "output_mwe": 0.0,
-        "asOf": "2026-04-28 21:52:01"
+        "output_mwe": 0,
+        "asOf": "2026-04-28 23:22:01"
       },
       {
         "name": "Hanul-4",
@@ -146,8 +146,8 @@
         "unit_cd": "2424",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1048.0,
-        "asOf": "2026-04-28 21:57:01"
+        "output_mwe": 1046,
+        "asOf": "2026-04-28 23:24:31"
       },
       {
         "name": "Hanul-5",
@@ -155,8 +155,8 @@
         "unit_cd": "2435",
         "status": "Maintenance",
         "output_pct": 0.0,
-        "output_mwe": 0.0,
-        "asOf": "2026-04-28 21:54:26"
+        "output_mwe": 0,
+        "asOf": "2026-04-28 23:24:26"
       },
       {
         "name": "Hanul-6",
@@ -164,8 +164,8 @@
         "unit_cd": "2436",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1055.0,
-        "asOf": "2026-04-28 21:57:01"
+        "output_mwe": 1055,
+        "asOf": "2026-04-28 23:24:36"
       },
       {
         "name": "Shin-Hanul-1",
@@ -173,17 +173,17 @@
         "unit_cd": "2711",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1500.0,
-        "asOf": "2026-04-28 21:57:06"
+        "output_mwe": 1493,
+        "asOf": "2026-04-28 23:25:01"
       },
       {
         "name": "Shin-Hanul-2",
         "site": "Hanul",
         "unit_cd": "2712",
         "status": "Operational",
-        "output_pct": 100.0,
-        "output_mwe": 1503.0,
-        "asOf": "2026-04-28 21:56:46"
+        "output_pct": 99.0,
+        "output_mwe": 1501,
+        "asOf": "2026-04-28 23:24:46"
       },
       {
         "name": "Wolsong-2",
@@ -191,8 +191,8 @@
         "unit_cd": "2212",
         "status": "Maintenance",
         "output_pct": 0.0,
-        "output_mwe": 0.0,
-        "asOf": "2026-04-28 21:53:45"
+        "output_mwe": 0,
+        "asOf": "2026-04-28 23:23:45"
       },
       {
         "name": "Wolsong-3",
@@ -200,8 +200,8 @@
         "unit_cd": "2223",
         "status": "Maintenance",
         "output_pct": 0.0,
-        "output_mwe": 0.0,
-        "asOf": "2026-04-28 21:53:45"
+        "output_mwe": 0,
+        "asOf": "2026-04-28 23:23:45"
       },
       {
         "name": "Wolsong-4",
@@ -209,8 +209,8 @@
         "unit_cd": "2224",
         "status": "Maintenance",
         "output_pct": 0.0,
-        "output_mwe": 0.0,
-        "asOf": "2026-04-28 21:53:45"
+        "output_mwe": 0,
+        "asOf": "2026-04-28 23:23:45"
       },
       {
         "name": "Shin-Wolsong-1",
@@ -218,8 +218,8 @@
         "unit_cd": "2235",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1051.0,
-        "asOf": "2026-04-28 21:57:01"
+        "output_mwe": 1049,
+        "asOf": "2026-04-28 23:25:01"
       },
       {
         "name": "Shin-Wolsong-2",
@@ -227,8 +227,8 @@
         "unit_cd": "2236",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1050.0,
-        "asOf": "2026-04-28 21:56:50"
+        "output_mwe": 1049,
+        "asOf": "2026-04-28 23:24:45"
       },
       {
         "name": "Saeul-1",
@@ -236,8 +236,8 @@
         "unit_cd": "2811",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1481.0,
-        "asOf": "2026-04-28 21:57:00"
+        "output_mwe": 1480,
+        "asOf": "2026-04-28 23:25:05"
       },
       {
         "name": "Saeul-2",
@@ -245,8 +245,8 @@
         "unit_cd": "2812",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1498.0,
-        "asOf": "2026-04-28 21:56:05"
+        "output_mwe": 1497,
+        "asOf": "2026-04-28 23:23:05"
       }
     ],
     "bySite": [
@@ -264,8 +264,8 @@
         ],
         "totalCount": 8,
         "online": 6,
-        "totalCap_GW": 7.15,
-        "onlineCap_GW": 7.15
+        "totalCap_GW": 7.13,
+        "onlineCap_GW": 7.13
       },
       {
         "site": "Hanbit",
@@ -322,9 +322,263 @@
         "onlineCap_GW": 2.1
       }
     ],
-    "totalOnlineGW": 19.19,
+    "totalOnlineGW": 19.17,
     "onlineCount": 17,
     "totalCount": 26
+  },
+  "khnpAnnual": {
+    "asOf": "2026-04-28",
+    "source": "KHNP 이용률·가동률",
+    "sourceUrl": "https://npp.khnp.co.kr/ON004004002001003",
+    "byYear": [
+      {
+        "year": 2007,
+        "util": 90.3,
+        "capFactor": 90.9
+      },
+      {
+        "year": 2008,
+        "util": 93.4,
+        "capFactor": 93.6
+      },
+      {
+        "year": 2009,
+        "util": 91.7,
+        "capFactor": 90.4
+      },
+      {
+        "year": 2010,
+        "util": 91.2,
+        "capFactor": 89.5
+      },
+      {
+        "year": 2011,
+        "util": 90.7,
+        "capFactor": 90.3
+      },
+      {
+        "year": 2012,
+        "util": 82.3,
+        "capFactor": 82.3
+      },
+      {
+        "year": 2013,
+        "util": 75.5,
+        "capFactor": 75.7
+      },
+      {
+        "year": 2014,
+        "util": 85.0,
+        "capFactor": 85.4
+      },
+      {
+        "year": 2015,
+        "util": 85.3,
+        "capFactor": 85.9
+      },
+      {
+        "year": 2016,
+        "util": 79.7,
+        "capFactor": 79.9
+      },
+      {
+        "year": 2017,
+        "util": 71.2,
+        "capFactor": 71.3
+      },
+      {
+        "year": 2018,
+        "util": 65.9,
+        "capFactor": 66.5
+      },
+      {
+        "year": 2019,
+        "util": 70.6,
+        "capFactor": 71.0
+      },
+      {
+        "year": 2020,
+        "util": 75.3,
+        "capFactor": 74.8
+      },
+      {
+        "year": 2021,
+        "util": 74.5,
+        "capFactor": 76.0
+      },
+      {
+        "year": 2022,
+        "util": 81.6,
+        "capFactor": 81.1
+      },
+      {
+        "year": 2023,
+        "util": 81.8,
+        "capFactor": 82.1
+      },
+      {
+        "year": 2024,
+        "util": 83.8,
+        "capFactor": 82.0
+      }
+    ]
+  },
+  "khnpTrips": {
+    "asOf": "2026-04-28",
+    "source": "KHNP 불시정지",
+    "sourceUrl": "https://npp.khnp.co.kr/ON004004002001004",
+    "byYear": [
+      {
+        "year": 2001,
+        "reactors": 16,
+        "trips": 8,
+        "tripsPerReactor": 0.5
+      },
+      {
+        "year": 2002,
+        "reactors": 18,
+        "trips": 8,
+        "tripsPerReactor": 0.44
+      },
+      {
+        "year": 2003,
+        "reactors": 18,
+        "trips": 11,
+        "tripsPerReactor": 0.61
+      },
+      {
+        "year": 2004,
+        "reactors": 19,
+        "trips": 12,
+        "tripsPerReactor": 0.63
+      },
+      {
+        "year": 2005,
+        "reactors": 20,
+        "trips": 10,
+        "tripsPerReactor": 0.5
+      },
+      {
+        "year": 2006,
+        "reactors": 20,
+        "trips": 11,
+        "tripsPerReactor": 0.55
+      },
+      {
+        "year": 2007,
+        "reactors": 20,
+        "trips": 12,
+        "tripsPerReactor": 0.6
+      },
+      {
+        "year": 2008,
+        "reactors": 20,
+        "trips": 7,
+        "tripsPerReactor": 0.35
+      },
+      {
+        "year": 2009,
+        "reactors": 20,
+        "trips": 6,
+        "tripsPerReactor": 0.3
+      },
+      {
+        "year": 2010,
+        "reactors": 20,
+        "trips": 2,
+        "tripsPerReactor": 0.1
+      },
+      {
+        "year": 2011,
+        "reactors": 21,
+        "trips": 7,
+        "tripsPerReactor": 0.33
+      },
+      {
+        "year": 2012,
+        "reactors": 23,
+        "trips": 9,
+        "tripsPerReactor": 0.39
+      },
+      {
+        "year": 2013,
+        "reactors": 23,
+        "trips": 6,
+        "tripsPerReactor": 0.26
+      },
+      {
+        "year": 2014,
+        "reactors": 23,
+        "trips": 5,
+        "tripsPerReactor": 0.22
+      },
+      {
+        "year": 2015,
+        "reactors": 24,
+        "trips": 3,
+        "tripsPerReactor": 0.13
+      },
+      {
+        "year": 2016,
+        "reactors": 25,
+        "trips": 4,
+        "tripsPerReactor": 0.16
+      },
+      {
+        "year": 2017,
+        "reactors": 24,
+        "trips": 1,
+        "tripsPerReactor": 0.04
+      },
+      {
+        "year": 2018,
+        "reactors": 24,
+        "trips": 3,
+        "tripsPerReactor": 0.13
+      },
+      {
+        "year": 2019,
+        "reactors": 24,
+        "trips": 2,
+        "tripsPerReactor": 0.08
+      },
+      {
+        "year": 2020,
+        "reactors": 24,
+        "trips": 3,
+        "tripsPerReactor": 0.13
+      },
+      {
+        "year": 2021,
+        "reactors": 24,
+        "trips": 6,
+        "tripsPerReactor": 0.25
+      },
+      {
+        "year": 2022,
+        "reactors": 25,
+        "trips": 4,
+        "tripsPerReactor": 0.16
+      },
+      {
+        "year": 2023,
+        "reactors": 25,
+        "trips": 1,
+        "tripsPerReactor": 0.04
+      },
+      {
+        "year": 2024,
+        "reactors": 26,
+        "trips": 7,
+        "tripsPerReactor": 0.27
+      },
+      {
+        "year": 2025,
+        "reactors": 26,
+        "trips": 2,
+        "tripsPerReactor": 0.08
+      }
+    ]
   },
   "kogasTariff": null,
   "kogasImports": null,
