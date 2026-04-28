@@ -20877,6 +20877,7 @@ function asiaShow(country,btn){
     if(el) el.style.display=(c===country)?'':'none';
   });
   if(country==='china' && typeof csInit==='function') setTimeout(csInit,80);
+  if(country==='korea' && typeof korInit==='function') setTimeout(korInit,80);
 }
 window.asiaShow=asiaShow;
 
@@ -21314,6 +21315,439 @@ function renderIndPrices(el){
 function renderBalance(){ renderIndBalance(document.getElementById('ind-tab-body')||document.getElementById('ind-balance-body')); }
 
 window.renderBalance=renderBalance;
+
+// ════════════════════════════════════════════════════════════════════════════
+// KOREA MODULE — Gas balance & nuclear · Prices
+// ════════════════════════════════════════════════════════════════════════════
+// Mirrors the India shell pattern (kor-container > tab buttons > kor-tab-body).
+// Tab 1 (balance): KHNP nuclear + DART quarterly sales + KOGAS imports.
+// Tab 2 (prices): KOGAS power tariff + JKM flat + Brent slope band 14–11% (3,0,1).
+//
+// SHIPPABLE TODAY:
+// - Tab structure + freshness pills + KPI strips
+// - JKM and Brent reuse aD (live EOD)
+// - Brent slope band engine (3-month rolling avg, 14%/11% bounds)
+// - All other values seeded from spec mock with "seed" badge — awaiting
+//   KHNP / DART / KOGAS Excel / ECB FX scrapers (queued as separate todos).
+
+let _korTab = 'balance';
+let _korChartMain = null, _korChartNuclear = null, _korChartPrices = null;
+
+// Seed data (values from spec mock — replace with scrapers in follow-ups)
+const KOR_SEED = {
+  asOf: { khnp: '2026-04-27', kogas: '2026-03', dart: 'Q4-25', tariff: '2026-04', krwUsd: '2026-04-28' },
+  // Tab 1
+  lngImportsMtMar: 3.94,
+  lngImportsYoY: -0.08,
+  powerSalesQ4: 3.84,
+  powerSalesYoY: -0.14,
+  nuclearGW: 21.8,
+  nuclearOnlineCount: 21,
+  nuclearTotalCount: 23,
+  nuclearUtilYtd: 0.88,
+  nuclearUtilYoYpp: 0.05,
+  // Quarterly LNG demand stack (DART) — Q1-24 .. Q4-25
+  quarterlyDemand: [
+    { q:'Q1-24', cityGas: 5.3, power: 2.6, industrial: 0.8 },
+    { q:'Q2-24', cityGas: 1.6, power: 1.4, industrial: 0.6 },
+    { q:'Q3-24', cityGas: 2.0, power: 1.7, industrial: 0.6 },
+    { q:'Q4-24', cityGas: 4.1, power: 2.2, industrial: 0.7 },
+    { q:'Q1-25', cityGas: 5.8, power: 2.5, industrial: 0.8 },
+    { q:'Q2-25', cityGas: 1.5, power: 1.3, industrial: 0.6 },
+    { q:'Q3-25', cityGas: 1.8, power: 1.5, industrial: 0.6 },
+    { q:'Q4-25', cityGas: 4.0, power: 2.3, industrial: 0.7 },
+  ],
+  nuclearBySite: [
+    { site:'Hanul',     cap:5.0, online:5, total:5 },
+    { site:'Hanbit',    cap:5.0, online:5, total:6 },
+    { site:'Kori',      cap:4.6, online:4, total:5 },
+    { site:'Saeul',     cap:2.8, online:2, total:2 },
+    { site:'Wolsong',   cap:2.0, online:3, total:3 },
+    { site:'Saeul-Shin',cap:2.4, online:2, total:2 },
+  ],
+  // Tab 2
+  kogasTariffApr: 17.20,
+  kogasTariffMoM: 0.03,
+  krwUsd: 1340,
+  // Historical KOGAS tariff series (seeded — monthly resets May-25 to Apr-26)
+  kogasHistory: [
+    { ym:'2025-05', won_per_GJ: null, usd_mmbtu: 9.50 },
+    { ym:'2025-06', won_per_GJ: null, usd_mmbtu: 9.85 },
+    { ym:'2025-07', won_per_GJ: null, usd_mmbtu: 10.10 },
+    { ym:'2025-08', won_per_GJ: null, usd_mmbtu: 11.30 },
+    { ym:'2025-09', won_per_GJ: null, usd_mmbtu: 13.60 },
+    { ym:'2025-10', won_per_GJ: null, usd_mmbtu: 15.20 },
+    { ym:'2025-11', won_per_GJ: null, usd_mmbtu: 16.40 },
+    { ym:'2025-12', won_per_GJ: null, usd_mmbtu: 17.80 },
+    { ym:'2026-01', won_per_GJ: null, usd_mmbtu: 18.20 },
+    { ym:'2026-02', won_per_GJ: null, usd_mmbtu: 17.95 },
+    { ym:'2026-03', won_per_GJ: null, usd_mmbtu: 16.70 },
+    { ym:'2026-04', won_per_GJ: null, usd_mmbtu: 17.20 },
+  ],
+};
+
+// ── Engine helpers ─────────────────────────────────────────────────────────
+// $/MMBtu = (Won/GJ) ÷ (KRW/USD) × 1.05506
+function korConvertWonPerGJ(wonPerGJ, krwPerUsd){
+  if (wonPerGJ == null || !krwPerUsd) return null;
+  return +(wonPerGJ / krwPerUsd * 1.05506).toFixed(3);
+}
+
+// Brent monthly close from existing aD (resampled — last EOD price per month).
+// Used to compute the 14%/11% slope band over a historical window.
+function korBrentMonthly(){
+  const map = {};
+  if (typeof sDates === 'undefined' || !sDates.length) return [];
+  for (const ds of sDates) {
+    const d = aD[ds]?.date; if (!d) continue;
+    const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const tenor = d.getDate() >= 16 ? 2 : 1;
+    const pk = rPK(d, tenor);
+    const row = (aD[ds].rows||[]).find(r => r.pk === pk);
+    if (row?.Brent != null) map[ym] = +row.Brent;
+  }
+  return Object.keys(map).sort().map(ym => ({ ym, brent: map[ym] }));
+}
+
+// Brent slope band per spec: 3-0-1 averaging.
+// For delivery month M, slope multiplies the average of Brent over [M-3, M-1].
+function korSlopeBand(brentMonthly, low = 0.11, high = 0.14, lookback = 3){
+  return brentMonthly.map((p, i) => {
+    if (i < lookback) return { ym: p.ym, lower: null, upper: null, brentAvg: null };
+    const w = brentMonthly.slice(i - lookback, i);
+    const avg = w.reduce((s, x) => s + x.brent, 0) / w.length;
+    return {
+      ym: p.ym,
+      lower: +(low * avg).toFixed(2),
+      upper: +(high * avg).toFixed(2),
+      brentAvg: +avg.toFixed(2),
+    };
+  });
+}
+
+// JKM monthly settlement series — last EOD M+1 close per calendar month.
+function korJkmMonthly(){
+  const map = {};
+  if (typeof sDates === 'undefined' || !sDates.length) return [];
+  for (const ds of sDates) {
+    const d = aD[ds]?.date; if (!d) continue;
+    const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const tenor = d.getDate() >= 16 ? 2 : 1;
+    const pk = rPK(d, tenor);
+    const row = (aD[ds].rows||[]).find(r => r.pk === pk);
+    if (row?.JKM != null) map[ym] = +row.JKM;
+  }
+  return Object.keys(map).sort().map(ym => ({ ym, jkm: map[ym] }));
+}
+
+// Latest JKM M+1 + Brent latest from aD (for KPI tiles)
+function korLatestPrices(){
+  let jkmM1 = null, brent = null;
+  try {
+    if (sDates && sDates.length) {
+      const latDs = sDates[sDates.length - 1];
+      const latDate = aD[latDs]?.date;
+      if (latDate) {
+        const tenor = latDate.getDate() >= 16 ? 2 : 1;
+        const pk = rPK(latDate, tenor);
+        const row = (aD[latDs].rows || []).find(r => r.pk === pk);
+        jkmM1 = row?.JKM ?? null;
+        brent = row?.Brent ?? null;
+      }
+    }
+  } catch (e) {}
+  return { jkmM1, brent };
+}
+
+// ── Shell ──────────────────────────────────────────────────────────────────
+function korInit(){
+  const c = document.getElementById('kor-container'); if (!c) return;
+  if (!c.innerHTML.trim()) c.innerHTML = korBuildShell();
+  korShowTab(_korTab);
+}
+window.korInit = korInit;
+
+function korBuildShell(){
+  const tabBtn = (id, label, active) => `
+    <div class="kor-tab-btn${active?' active':''}" onclick="korShowTab('${id}',this)" style="padding:9px 16px;font-size:10px;letter-spacing:1px;cursor:pointer;color:${active?'var(--b)':'#546e7a'};border-bottom:${active?'2px solid var(--b)':'2px solid transparent'}">${label}</div>`;
+  return `
+    <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS &amp; LNG ANALYTICS · KOREA SIGNPOSTS</div>
+    <div style="display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:0">
+      ${tabBtn('balance','GAS BALANCE & NUCLEAR', _korTab==='balance')}
+      ${tabBtn('prices','PRICES',                  _korTab==='prices')}
+    </div>
+    <div id="kor-tab-body" style="margin-top:14px"></div>
+  `;
+}
+
+function korShowTab(tab, btn){
+  _korTab = tab;
+  const c = document.getElementById('kor-container');
+  if (c) c.innerHTML = korBuildShell();
+  const body = document.getElementById('kor-tab-body'); if (!body) return;
+  if (tab === 'balance') renderKorBalance(body);
+  else                   renderKorPrices(body);
+}
+window.korShowTab = korShowTab;
+
+// ── Freshness pill helper ─────────────────────────────────────────────────
+function korFreshness(items){
+  return `
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+      ${items.map(i => `<span style="font-size:9px;color:${i.color||'#34d399'}">● <span style="color:#9ca3af">${i.label}</span> · ${i.meta}</span>`).join('')}
+    </div>`;
+}
+
+// KPI tile (shared between tabs)
+function korKpiCard(opts){
+  const { label, value, sub, color, badge } = opts;
+  const subColor = sub?.startsWith('▼') ? '#fca5a5' : sub?.startsWith('▲') ? '#34d399' : '#9ca3af';
+  return `
+    <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:10px 12px;position:relative">
+      <div style="font-size:9px;color:#9ca3af;margin-bottom:4px">${label}</div>
+      <div style="font-size:22px;color:${color||'#fff'};font-weight:500">${value}</div>
+      ${sub?`<div style="font-size:9px;color:${subColor};margin-top:2px">${sub}</div>`:''}
+      ${badge?`<span style="position:absolute;top:8px;right:10px;font-size:8px;padding:1px 5px;border-radius:2px;background:rgba(251,191,36,0.10);color:#fbbf24;letter-spacing:.04em">${badge}</span>`:''}
+    </div>`;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// TAB 1 · GAS BALANCE & NUCLEAR
+// ────────────────────────────────────────────────────────────────────────────
+function renderKorBalance(el){
+  const s = KOR_SEED;
+  const lngYoY = (s.lngImportsYoY*100).toFixed(0) + '% YoY';
+  const powYoY = (s.powerSalesYoY*100).toFixed(0) + '% YoY';
+  const nucPct = (s.nuclearGW / 24.2 * 100).toFixed(0) + '%';
+  const nucYoYpp = '+' + (s.nuclearUtilYoYpp*100).toFixed(0) + 'pp YoY';
+
+  el.innerHTML = `
+    ${korFreshness([
+      { label:'KHNP daily',     meta:'27 Apr',                color:'#34d399' },
+      { label:'KOGAS imports',  meta:'monthly · Mar · 12d lag', color:'#fbbf24' },
+      { label:'DART',           meta:'quarterly · Q4-25',     color:'#fbbf24' },
+    ])}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+      ${korKpiCard({ label:'LNG imports · Mar',   value:s.lngImportsMtMar+' mt',  sub:'▼ '+Math.abs(s.lngImportsYoY*100).toFixed(0)+'% YoY · monthly', badge:'seed' })}
+      ${korKpiCard({ label:'Power sales · Q4-25', value:s.powerSalesQ4+' mt',     sub:'▼ '+Math.abs(s.powerSalesYoY*100).toFixed(0)+'% YoY · DART', badge:'seed' })}
+      ${korKpiCard({ label:'Nuclear · now',       value:s.nuclearGW+' GW',        sub:nucPct+' · KHNP daily',  badge:'seed', color:'#34d399' })}
+      ${korKpiCard({ label:'Nuclear util · YTD',  value:(s.nuclearUtilYtd*100).toFixed(0)+'%', sub:nucYoYpp,    badge:'seed', color:'#34d399' })}
+    </div>
+
+    <div class="acard" style="margin-bottom:12px;padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-size:11px;color:#fff;font-weight:500">LNG demand by sector · quarterly · DART</span>
+        <span style="font-size:9px;color:#5a6882">monthly breakdown not publicly disclosed</span>
+      </div>
+      <div style="height:200px"><canvas id="kor-quarterly-demand"></canvas></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
+        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:8px">Nuclear by site · KHNP live</div>
+        ${s.nuclearBySite.map(r => `
+          <div style="display:grid;grid-template-columns:1fr auto auto;gap:14px;font-size:11px;padding:4px 0;border-bottom:1px solid #0f1824">
+            <span style="color:#c8cfe0">${r.site}</span>
+            <span style="color:#fff;text-align:right">${r.cap.toFixed(1)} GW</span>
+            <span style="color:${r.online === r.total ? '#34d399' : '#fbbf24'};text-align:right">${r.online}/${r.total}</span>
+          </div>`).join('')}
+      </div>
+
+      <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="font-size:11px;color:#fff;font-weight:500">Nuclear vs power gas</span>
+          <span style="font-size:8px;padding:1px 5px;background:rgba(167,139,250,0.10);color:#a78bfa;border-radius:2px">modeled</span>
+        </div>
+        <div style="height:160px"><canvas id="kor-nuc-vs-gas"></canvas></div>
+      </div>
+    </div>
+
+    <div style="font-size:10px;color:#5a6882;line-height:1.6;border-top:1px solid #1f2937;padding-top:10px">
+      <div style="color:#9ca3af;margin-bottom:4px">Sources</div>
+      <span><a href="https://cms.khnp.co.kr/eng/kori/realTimeMgr/list.do" target="_blank" style="color:#93c5fd">KHNP daily reactor status</a></span> ·
+      <span><a href="https://opendart.fss.or.kr" target="_blank" style="color:#93c5fd">DART (KOGAS quarterly filings)</a></span> ·
+      <span><a href="https://www.kogas.or.kr" target="_blank" style="color:#93c5fd">KOGAS press releases</a></span>
+      <div style="margin-top:8px;color:#fca5a5"><b>Not tracked:</b> per-terminal tank stocks · daily LNG sendout · KOGAS spot purchase prices (operational data not publicly disclosed)</div>
+      <div style="margin-top:4px;color:#fbbf24">Most KPIs above are <b>manually seeded</b> · awaiting KHNP / DART / KOGAS scrapers (queued as follow-ups)</div>
+    </div>
+  `;
+
+  // Quarterly demand stacked bar
+  if (_korChartMain) { _korChartMain.destroy(); _korChartMain = null; }
+  const c1 = document.getElementById('kor-quarterly-demand');
+  if (c1) {
+    _korChartMain = new Chart(c1.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: s.quarterlyDemand.map(r => r.q),
+        datasets: [
+          { label:'City gas',   data: s.quarterlyDemand.map(r => r.cityGas),   backgroundColor:'#3b82f6', stack:'q' },
+          { label:'Power',      data: s.quarterlyDemand.map(r => r.power),     backgroundColor:'#f59e0b', stack:'q' },
+          { label:'Industrial', data: s.quarterlyDemand.map(r => r.industrial),backgroundColor:'#34d399', stack:'q' },
+        ]
+      },
+      options: {
+        ...CD, animation:false,
+        plugins: { ...CD.plugins, legend: { display:true, position:'top', labels:{color:'#9ca3af',font:{size:9},boxWidth:8}}},
+        scales: {
+          x: { ...CD.scales.x, stacked:true },
+          y: { ...CD.scales.y, stacked:true, title:{display:true,text:'mt LNG-equiv',color:'#3d5070',font:{size:9}}, ticks:{color:'#3d5070',font:{size:8}} },
+        },
+      }
+    });
+  }
+
+  // Nuclear vs power-gas (modeled) — synthetic 6-month series for now
+  if (_korChartNuclear) { _korChartNuclear.destroy(); _korChartNuclear = null; }
+  const c2 = document.getElementById('kor-nuc-vs-gas');
+  if (c2) {
+    const months = ['Nov','Dec','Jan','Feb','Mar','Apr'];
+    _korChartNuclear = new Chart(c2.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: months,
+        datasets: [
+          { label:'Nuclear (GW)',         data:[20.6,21.0,21.4,21.2,21.6,21.8], borderColor:'#a78bfa', borderWidth:2,   pointRadius:0, tension:0.4, fill:false, yAxisID:'y' },
+          { label:'Power gas (modeled)',  data:[1.10,1.20,1.18,1.05,0.95,0.85], borderColor:'#fbbf24', borderWidth:1.5, pointRadius:0, borderDash:[4,3], tension:0.4, fill:false, yAxisID:'y2' },
+        ]
+      },
+      options: {
+        ...CD, animation:false,
+        plugins: { ...CD.plugins, legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8}}},
+        scales: {
+          x: { ...CD.scales.x },
+          y:  { ...CD.scales.y, position:'left',  title:{display:true,text:'GW',color:'#a78bfa',font:{size:9}}, ticks:{color:'#a78bfa',font:{size:8}} },
+          y2: { ...CD.scales.y, position:'right', title:{display:true,text:'mt/mo',color:'#fbbf24',font:{size:9}}, ticks:{color:'#fbbf24',font:{size:8}}, grid:{drawOnChartArea:false} },
+        },
+      }
+    });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// TAB 2 · PRICES
+// ────────────────────────────────────────────────────────────────────────────
+function renderKorPrices(el){
+  const s = KOR_SEED;
+  const lat = korLatestPrices();
+  const jkmM1 = lat.jkmM1 != null ? +lat.jkmM1 : 16.88;
+  const brent = lat.brent != null ? +lat.brent : 94.46;
+  const live = lat.jkmM1 != null && lat.brent != null;
+  const brent14 = +(brent * 0.14).toFixed(2);
+  const brent11 = +(brent * 0.11).toFixed(2);
+  const jkmVsBand = +(jkmM1 - brent14).toFixed(2);
+  const kogas = s.kogasTariffApr;
+
+  el.innerHTML = `
+    ${korFreshness([
+      { label:'KOGAS tariff', meta:'monthly · Apr',     color:'#fbbf24' },
+      { label:'JKM',          meta:live?'live · ICE 27 Apr':'load EOD', color: live?'#34d399':'#fca5a5' },
+      { label:'Brent',        meta:live?'live · ICE 27 Apr':'load EOD', color: live?'#34d399':'#fca5a5' },
+      { label:'KRW/USD',      meta:s.krwUsd,            color:'#fbbf24' },
+    ])}
+
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">
+      ${korKpiCard({ label:'KOGAS tariff · Apr', value:kogas.toFixed(2),    sub:'▲ '+(s.kogasTariffMoM*100).toFixed(0)+'% MoM', badge:'seed', color:'#34d399' })}
+      ${korKpiCard({ label:'JKM M+1',            value:jkmM1.toFixed(2),    sub: live?'▲ live · ICE':'load EOD', color:'#3b82f6' })}
+      ${korKpiCard({ label:'14% Brent',          value:brent14.toFixed(2),  sub:brent.toFixed(2)+' × 0.14', color:'#a78bfa' })}
+      ${korKpiCard({ label:'11% Brent',          value:brent11.toFixed(2),  sub:brent.toFixed(2)+' × 0.11', color:'#a78bfa' })}
+      ${korKpiCard({ label:'JKM vs band',        value:(jkmVsBand>=0?'+':'')+jkmVsBand.toFixed(2),
+                     sub: jkmVsBand>=0?'spot above 14% slope':'spot below 14% slope',
+                     color: jkmVsBand>=0?'#34d399':'#fca5a5' })}
+    </div>
+
+    <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS · JKM · Brent slope band 14%–11% (3,0,1) · $/MMBtu</span>
+        <span style="font-size:9px;color:#5a6882">— KOGAS · — JKM · ▮ 14–11% Brent band</span>
+      </div>
+      <div style="height:240px"><canvas id="kor-prices-chart"></canvas></div>
+    </div>
+
+    <div style="font-size:9px;color:#6b7280;margin-bottom:10px">
+      Slope band = (11% to 14%) × Brent (3,0,1) — 3-month avg, 0-month lag, 1-month application. Spot/tariff above the band = market tighter than oil-linked term · below = looser
+    </div>
+
+    <div style="background:rgba(167,139,250,0.04);border-left:2px solid #a78bfa;padding:10px 12px;font-size:10px;color:#c8cfe0;line-height:1.55">
+      <span style="color:#a78bfa;font-size:9px;letter-spacing:.06em">READ</span><br>
+      <b>JKM at $${jkmM1.toFixed(2)}</b> sits ${jkmVsBand>=0?'+':''}<b>$${jkmVsBand.toFixed(2)}</b> ${jkmVsBand>=0?'above':'below'} 14% Brent — Asian spot is ${jkmVsBand>=0?'well above':'below'} where oil-linked term LNG would price (14% × Brent ${brent.toFixed(2)} = ${brent14.toFixed(2)}). KOGAS tariff $${kogas.toFixed(2)} also sits ${kogas>brent14?'above':'within/below'} the band, ${kogas>brent14?'consistent with KOGAS reflecting higher term-import costs into power-sector pricing.':'reflecting easing term-import pressure.'}
+    </div>
+
+    <div style="font-size:9px;color:#5a6882;line-height:1.6;border-top:1px solid #1f2937;padding-top:10px;margin-top:12px">
+      <div style="color:#9ca3af;margin-bottom:4px">Conversion · Won/GJ → $/MMBtu</div>
+      <code style="color:#93c5fd">$/MMBtu = (Won/GJ) ÷ (KRW/USD) × 1.05506</code>
+      <div style="margin-top:6px;color:#fbbf24">KOGAS tariff seeded ($/MMBtu directly · awaiting Excel scraper) · KRW/USD seeded · JKM &amp; Brent live from EOD files</div>
+    </div>
+  `;
+
+  // Combined chart
+  if (_korChartPrices) { _korChartPrices.destroy(); _korChartPrices = null; }
+  const c = document.getElementById('kor-prices-chart');
+  if (!c) return;
+
+  // Build x-axis: last 12 months ending current month
+  const now = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    months.push({ ym:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
+                  label: d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}) });
+  }
+  // KOGAS history (seeded)
+  const kogasMap = new Map(s.kogasHistory.map(r => [r.ym, r.usd_mmbtu]));
+  const kogasSeries = months.map(m => kogasMap.get(m.ym) ?? null);
+  // JKM monthly (real EOD if available, else seeded mock that matches the legend)
+  const jkmMonthlyArr = korJkmMonthly();
+  const jkmMap = new Map(jkmMonthlyArr.map(r => [r.ym, r.jkm]));
+  const jkmSeries = months.map(m => jkmMap.get(m.ym) ?? null);
+  // Brent monthly (real if available)
+  const brentMonthlyArr = korBrentMonthly();
+  const brentMap = new Map(brentMonthlyArr.map(r => [r.ym, r.brent]));
+  const slopeBand = korSlopeBand(brentMonthlyArr);
+  const slopeMap = new Map(slopeBand.map(r => [r.ym, r]));
+  // Fallback: if no Brent history, generate band from constant (brent latest)
+  const lowerSeries = months.map(m => {
+    const sb = slopeMap.get(m.ym);
+    if (sb && sb.lower != null) return sb.lower;
+    return brentMap.get(m.ym) != null ? +(brentMap.get(m.ym)*0.11).toFixed(2) : null;
+  });
+  const upperSeries = months.map(m => {
+    const sb = slopeMap.get(m.ym);
+    if (sb && sb.upper != null) return sb.upper;
+    return brentMap.get(m.ym) != null ? +(brentMap.get(m.ym)*0.14).toFixed(2) : null;
+  });
+
+  _korChartPrices = new Chart(c.getContext('2d'), {
+    type:'line',
+    data: {
+      labels: months.map(m => m.label),
+      datasets: [
+        // Lower band line — fills nothing
+        { label:'11% Brent', data:lowerSeries, borderColor:'rgba(167,139,250,0.30)', borderWidth:1, borderDash:[4,3], pointRadius:0, fill:false, tension:0.3 },
+        // Upper band line — fills DOWN to the previous (-1) dataset (the lower band)
+        { label:'14% Brent', data:upperSeries, borderColor:'rgba(167,139,250,0.30)', borderWidth:1, borderDash:[4,3], pointRadius:0, fill:'-1', backgroundColor:'rgba(167,139,250,0.10)', tension:0.3 },
+        // KOGAS tariff (step)
+        { label:'KOGAS', data:kogasSeries, borderColor:'#34d399', borderWidth:2, pointRadius:3, stepped:'before', fill:false },
+        // JKM (smooth)
+        { label:'JKM', data:jkmSeries, borderColor:'#3b82f6', borderWidth:2, pointRadius:3, tension:0.3, fill:false, spanGaps:true },
+      ]
+    },
+    options: {
+      ...CD, animation:false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        ...CD.plugins,
+        legend: { display:true, position:'top', labels:{color:'#9ca3af',font:{size:9},boxWidth:8,
+          filter:(item) => item.text === 'KOGAS' || item.text === 'JKM'  /* hide the band line entries */
+        } },
+      },
+      scales: {
+        x: { ...CD.scales.x },
+        y: { ...CD.scales.y, title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}}, ticks:{color:'#3d5070',font:{size:8}} },
+      },
+    }
+  });
+}
 
 
 
