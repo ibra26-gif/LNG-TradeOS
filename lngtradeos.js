@@ -15628,23 +15628,457 @@ if (typeof window !== 'undefined') {
 
 
 
+// ════════════════════════════════════════════════════════════════════════════
+// FORWARD CURVE v2 — multi-date overlay, tenor markers, click-to-drill
+// ════════════════════════════════════════════════════════════════════════════
+// Replaces the old single-function updFC. Major changes vs prior version:
+// - DATE 2 = "None" really means single curve (no auto-D-3 fallback)
+// - F−B spread sign convention flipped: positive = backwardation
+// - Shape detector adds "Mixed" for non-monotonic curves (seasonal humps)
+// - Tenor markers (M+1, Q3, Q4, Win, Cal+1, Cal+2) drawn on the chart
+// - Click any point → navigates to Historical pre-loaded with that pk
+// - + add date supports up to 4 curves with distinct colors per spec
+// - New change-pane sub-chart renders when ≥2 dates loaded
+// - New roll-yield tile (M+1 → M+2) in the KPI strip
+
+const FC2_PREFS_KEY = 'lng_tradeos_fc_v1';
+let _fcChangeChart = null;
+
+function fc2DefaultPrefs(){
+  return { defaultIndex: null, dates: [null, null, null, null] };
+}
+
+function fc2LoadPrefs(){
+  try {
+    const raw = localStorage.getItem(FC2_PREFS_KEY);
+    if (!raw) return fc2DefaultPrefs();
+    const p = JSON.parse(raw);
+    return { ...fc2DefaultPrefs(), ...p,
+      dates: Array.isArray(p.dates) ? p.dates.slice(0, 4) : [null, null, null, null] };
+  } catch (e) { return fc2DefaultPrefs(); }
+}
+
+function fc2SavePrefs(p){
+  try { localStorage.setItem(FC2_PREFS_KEY, JSON.stringify(p)); } catch (e) {}
+}
+
+const FC2_COLORS = [
+  { stroke: '#3b82f6', dash: undefined,  fill: 'rgba(59,130,246,0.06)' }, // D1
+  { stroke: '#3b82f6', dash: [3, 3],     fill: 'transparent' },             // D2
+  { stroke: '#fbbf24', dash: undefined,  fill: 'transparent' },             // D3
+  { stroke: '#fbbf24', dash: [3, 3],     fill: 'transparent' },             // D4
+];
+
+// Compute tenor-marker positions given the curve's pk list. Returns
+// [{pkIndex, label}] entries that map onto the chart's category x-axis.
+function fc2BuildTenorMarkers(pks){
+  if (!pks.length) return [];
+  // Build a quick set for membership
+  const pkSet = new Set(pks);
+  const findIdx = (pk) => pks.indexOf(pk);
+  const out = [];
+  // M+1 = first pk
+  out.push({ pkIndex: 0, pk: pks[0], label: 'M+1' });
+  // Determine reference year from first pk
+  const refYear = parseInt(pks[0].slice(0, 4), 10);
+  const refMonth = parseInt(pks[0].slice(5, 7), 10);
+  // Helper: find first pk for (year, month). If not in set, returns -1.
+  const pkOf = (y, m) => {
+    const s = `${y}-${String(m).padStart(2, '0')}`;
+    return pkSet.has(s) ? { idx: findIdx(s), pk: s } : null;
+  };
+  // Q3 of refYear (July). If past, use next year.
+  const q3y = refMonth > 7 ? refYear + 1 : refYear;
+  const q3 = pkOf(q3y, 7); if (q3) out.push({ pkIndex: q3.idx, pk: q3.pk, label: `Q3-${String(q3y).slice(2)}` });
+  // Q4 (October). If past, use next year.
+  const q4y = refMonth > 10 ? refYear + 1 : refYear;
+  const q4 = pkOf(q4y, 10); if (q4) out.push({ pkIndex: q4.idx, pk: q4.pk, label: `Q4-${String(q4y).slice(2)}` });
+  // Winter starts in October. If we already showed Q4 of same year, skip Win
+  // unless user wants a separate marker. For clarity, treat Win as Oct of
+  // the refYear (or next if past), which often coincides with Q4 — collapse.
+  // Cal+1 (January of refYear+1)
+  const cal1 = pkOf(refYear + 1, 1); if (cal1) out.push({ pkIndex: cal1.idx, pk: cal1.pk, label: `Cal-${String(refYear+1).slice(2)}` });
+  // Cal+2 (January of refYear+2)
+  const cal2 = pkOf(refYear + 2, 1); if (cal2) out.push({ pkIndex: cal2.idx, pk: cal2.pk, label: `Cal-${String(refYear+2).slice(2)}` });
+  return out;
+}
+
+// Shape detector: 'Backwardation' / 'Contango' / 'Mixed' / 'Flat'
+// Mixed when there are both up and down regions of meaningful magnitude
+// (seasonal humps). Threshold tuned to ignore tiny rounding noise.
+function fc2DetectShape(values){
+  const valid = values.filter(v => v != null);
+  if (valid.length < 2) return { label: 'FLAT', color: '#9ca3af' };
+  const ups = [], downs = [];
+  for (let i = 1; i < valid.length; i++) {
+    const d = valid[i] - valid[i-1];
+    if (d >  0.02) ups.push(d);
+    else if (d < -0.02) downs.push(d);
+  }
+  // Front − back (positive = backwardation per spec)
+  const fb = valid[0] - valid[valid.length - 1];
+  if (Math.abs(fb) < 0.05 && ups.length === 0 && downs.length === 0) {
+    return { label: 'FLAT', color: '#9ca3af' };
+  }
+  // Mixed: both up and down regions of size > 1
+  if (ups.length >= 2 && downs.length >= 2) {
+    return { label: 'MIXED', color: '#a78bfa' };
+  }
+  if (fb > 0) return { label: 'BACKWARDATION', color: '#fca5a5' };
+  return { label: 'CONTANGO', color: '#93c5fd' };
+}
+
+// Roll yield M+1 → M+2 = M+1 price − M+2 price. Negative in contango (you
+// lose money rolling forward). Per-month framing already since adjacent months.
+function fc2ComputeRollYield(values, pks){
+  if (values.length < 2) return null;
+  const v1 = values[0], v2 = values[1];
+  if (v1 == null || v2 == null) return null;
+  return +(v1 - v2).toFixed(4);
+}
+
+// Resolve store by index (EEX hubs use eexD, everything else aD)
+function fc2GetStore(inst){
+  if (typeof EEX_HUBS !== 'undefined' && EEX_HUBS.includes(inst)) {
+    return { store: typeof eexD !== 'undefined' ? eexD : {}, dates: typeof eexDates !== 'undefined' ? eexDates : [] };
+  }
+  return { store: aD, dates: sDates };
+}
+
+// Get the curve at a given date for an index. Returns { pks, values } where
+// pks is the sorted monthly contracts and values is the corresponding prices.
+function fc2GetCurve(inst, date){
+  const { store } = fc2GetStore(inst);
+  const ent = store[date]; if (!ent) return null;
+  const rows = ent.rows.filter(r => /^\d{4}-\d{2}$/.test(r.pk));
+  rows.sort((a, b) => a.pk.localeCompare(b.pk));
+  return {
+    pks: rows.map(r => r.pk),
+    values: rows.map(r => r[inst] != null ? +r[inst].toFixed(4) : null),
+  };
+}
+
+// Render the dynamic ctrl bar (INDEX · DATE 1 · DATE 2 · D3? · D4? · + ADD DATE)
+function fc2RenderCtrlBar(inst, dates){
+  const bar = $id('fc-ctrl-bar'); if (!bar) return;
+  const { dates: dDates } = fc2GetStore(inst);
+  // Build options for date selects
+  const dateOpts = (sel, allowNone) => {
+    const noneOpt = allowNone ? `<option value="none"${sel == null ? ' selected' : ''}>— None —</option>` : '';
+    return noneOpt + [...dDates].reverse().map(d =>
+      `<option value="${d}"${d === sel ? ' selected' : ''}>${fmtD(d)}</option>`
+    ).join('');
+  };
+  // Index options
+  const idxOpts = INSTS.map(i =>
+    `<option value="${i.k}"${i.k === inst ? ' selected' : ''}>${i.label}</option>`
+  ).join('');
+  const css = 'background:#0d1322;border:1px solid #1f2937;color:#c8cfe0;font-size:10px;padding:4px 8px;font-family:inherit;border-radius:3px;min-width:120px';
+  // Always render D1 + D2; D3/D4 only if non-null
+  let html = `
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:8px 10px;margin-bottom:10px">
+      <span style="font-size:10px;color:#6b7280;letter-spacing:.04em">INDEX</span>
+      <select onchange="fc2OnIndex(this.value)" style="${css}">${idxOpts}</select>
+      <span style="width:1px;height:14px;background:#1f2937;margin:0 4px"></span>
+      <span style="font-size:10px;color:#6b7280;letter-spacing:.04em">DATE 1</span>
+      <select onchange="fc2OnDate(0,this.value)" style="${css}">${dateOpts(dates[0], false)}</select>
+      <span style="font-size:10px;color:#6b7280;letter-spacing:.04em">DATE 2</span>
+      <select onchange="fc2OnDate(1,this.value)" style="${css}">${dateOpts(dates[1], true)}</select>
+  `;
+  for (let i = 2; i < 4; i++) {
+    if (dates[i] != null) {
+      html += `
+        <span style="font-size:10px;color:#6b7280;letter-spacing:.04em">DATE ${i+1}</span>
+        <select onchange="fc2OnDate(${i},this.value)" style="${css}">${dateOpts(dates[i], false)}</select>
+        <button onclick="fc2RemoveDate(${i})" title="Remove date" style="background:none;border:none;color:#5a6882;cursor:pointer;font-size:13px;padding:0 4px">×</button>
+      `;
+    }
+  }
+  // Add-date button — visible when there's room (dates.filter notnull < 4)
+  const filledCount = dates.filter(d => d != null && d !== 'none').length;
+  if (filledCount < 4) {
+    html += `<button onclick="fc2AddDate()" style="background:rgba(45,124,255,0.10);border:1px solid #3b82f6;color:#93c5fd;padding:4px 10px;border-radius:3px;font-size:10px;font-family:inherit;cursor:pointer;margin-left:auto">+ ADD DATE</button>`;
+  }
+  if (dates[1] === null || dates[1] === 'none') {
+    html += `<span style="font-size:9px;color:#5a6882;flex-basis:100%;margin-top:4px">DATE 2 = None · single curve · pick a comparison date to see two-date overlay + change pane</span>`;
+  }
+  html += `</div>`;
+  bar.innerHTML = html;
+}
+
+// Click-to-drill helper. Tenor pk like '2026-08' is supported by Historical's
+// bTS(wS=true). Reuses the dashboard's dash2GotoHistorical.
+window.fc2GotoHistorical = function(inst, tenorPk){
+  if (typeof dash2GotoHistorical === 'function') {
+    dash2GotoHistorical(inst, tenorPk);
+  } else {
+    // Fallback if the dashboard helper isn't loaded
+    const i1 = $id('h-i1'); if (i1) i1.value = inst;
+    const t1 = $id('h-t1'); if (t1) t1.value = tenorPk;
+    const i2 = $id('h-i2'); if (i2) i2.value = 'none';
+    if (typeof showSec === 'function') showSec('historical');
+    if (typeof updHist === 'function') setTimeout(updHist, 80);
+  }
+};
+
+window.fc2OnIndex = function(inst){
+  const p = fc2LoadPrefs(); p.defaultIndex = inst; fc2SavePrefs(p);
+  // Sync hidden legacy select so any legacy caller stays consistent
+  const hi = $id('fc-i'); if (hi) hi.value = inst;
+  updFC();
+};
+
+window.fc2OnDate = function(idx, val){
+  const p = fc2LoadPrefs();
+  p.dates[idx] = (val === 'none' || !val) ? null : val;
+  fc2SavePrefs(p);
+  updFC();
+};
+
+window.fc2AddDate = function(){
+  const p = fc2LoadPrefs();
+  // Find first null slot in indices 2 or 3
+  let slot = -1;
+  for (let i = 2; i < 4; i++) if (p.dates[i] == null) { slot = i; break; }
+  if (slot < 0) return;
+  // Default new slot to N-trading-days-back
+  const inst = p.defaultIndex || $id('fc-i')?.value || 'JKM';
+  const { dates: dDates } = fc2GetStore(inst);
+  if (!dDates.length) return;
+  // Pick the next earlier date that isn't already used
+  const used = new Set(p.dates.filter(d => d != null));
+  let candidate = null;
+  for (let i = dDates.length - 1; i >= 0; i--) {
+    if (!used.has(dDates[i])) { candidate = dDates[i]; break; }
+  }
+  p.dates[slot] = candidate;
+  fc2SavePrefs(p);
+  updFC();
+};
+
+window.fc2RemoveDate = function(idx){
+  if (idx < 2) return; // D1/D2 cannot be removed (D2 set to None instead)
+  const p = fc2LoadPrefs();
+  p.dates[idx] = null;
+  // Compact: if D3 removed but D4 set, slide D4 down
+  if (idx === 2 && p.dates[3] != null) { p.dates[2] = p.dates[3]; p.dates[3] = null; }
+  fc2SavePrefs(p);
+  updFC();
+};
+
+// Custom Chart.js plugin — draws tenor markers (vertical dashed gridlines + labels)
+function _fc2TenorMarkerPlugin(markers, labels){
+  return {
+    id: 'fcTenorMarkers',
+    beforeDatasetsDraw: (chart) => {
+      const { ctx, chartArea: ca, scales } = chart;
+      if (!ca || !scales.x) return;
+      ctx.save();
+      ctx.strokeStyle = '#374151';
+      ctx.setLineDash([2, 3]);
+      ctx.lineWidth = 0.6;
+      ctx.globalAlpha = 0.6;
+      markers.forEach(m => {
+        if (m.pkIndex < 0 || m.pkIndex >= labels.length) return;
+        const x = scales.x.getPixelForValue(m.pkIndex);
+        ctx.beginPath();
+        ctx.moveTo(x, ca.top);
+        ctx.lineTo(x, ca.bottom);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '8px "IBM Plex Mono"';
+      markers.forEach(m => {
+        if (m.pkIndex < 0 || m.pkIndex >= labels.length) return;
+        const x = scales.x.getPixelForValue(m.pkIndex);
+        ctx.fillText(m.label, x + 3, ca.top + 9);
+      });
+      ctx.restore();
+    },
+  };
+}
+
+// Curve change pane — bars by tenor of (D1 − D2) values
+function fc2RenderChangePane(curves, pks, lbls){
+  const wrap = $id('fc-change-pane'); if (!wrap) return;
+  if (curves.length < 2) {
+    wrap.style.display = 'none';
+    if (_fcChangeChart) { _fcChangeChart.destroy(); _fcChangeChart = null; }
+    return;
+  }
+  wrap.style.display = 'block';
+  // Use D1 − D2 as the canonical change. For 3+ dates we still show D1−D2.
+  const a = curves[0].values;
+  const b = curves[1].values;
+  const diffs = pks.map((_, i) => {
+    const va = a[i], vb = b[i];
+    return (va != null && vb != null) ? +(va - vb).toFixed(4) : null;
+  });
+  const colors = diffs.map(v => {
+    if (v == null) return 'rgba(255,255,255,0.04)';
+    const ab = Math.abs(v);
+    let alpha;
+    if (ab < 0.05) alpha = 0.20;
+    else if (ab < 0.15) alpha = 0.45;
+    else if (ab < 0.30) alpha = 0.65;
+    else alpha = 0.85;
+    return v >= 0 ? `rgba(34,197,94,${alpha})` : `rgba(239,68,68,${alpha})`;
+  });
+  wrap.innerHTML = `
+    <div class="acard" style="margin-top:10px">
+      <div class="ctitle" style="display:flex;align-items:center"><span>CHANGE · D1 − D2 BY TENOR</span><span style="flex:1;height:1px;background:#151e30;margin:0 8px"></span><span style="font-size:9px;color:#5a6882">${fmtD(curves[0].date)} vs ${fmtD(curves[1].date)} · green = up · red = down</span></div>
+      <div style="height:90px"><canvas id="fcChangeChart"></canvas></div>
+    </div>
+  `;
+  const cv = $id('fcChangeChart'); if (!cv) return;
+  if (_fcChangeChart) _fcChangeChart.destroy();
+  _fcChangeChart = new Chart(cv.getContext('2d'), {
+    type: 'bar',
+    data: { labels: lbls, datasets: [{ data: diffs, backgroundColor: colors, borderWidth: 0 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor:'#0c1120', borderColor:'#1e2d45', borderWidth:1, titleColor:'#c8cfe0', bodyColor:'#8a9bb5' } },
+      scales: {
+        x: { ticks: { color:'#3d5070', font: { size: 8 }, maxTicksLimit: 14 }, grid: { color:'#0f1824' } },
+        y: { ticks: { color:'#3d5070', font: { size: 8 } }, grid: { color:'#0f1824' } },
+      },
+    },
+  });
+}
+
+// Replaces legacy updFC. Kept the same name so existing callers (rAdd,
+// initUI, showSec, EEX-import paths) keep working without changes.
 function updFC(){
-  const inst=$id("fc-i").value,d1=$id("fc-d1").value,d2=$id("fc-d2").value;
-  const isEEX=EEX_HUBS.includes(inst);
-  const dStore=isEEX?eexD:aD,dDates=isEEX?eexDates:sDates;
-  if(!dDates.length) return;
-  const rd1=dStore[d1]?d1:dDates[dDates.length-1];
-  if(!rd1||!dStore[rd1]) return;
-  const unit=INST[inst].unit;
-  const rows1=dStore[rd1].rows.filter(r=>/^\d{4}-\d{2}$/.test(r.pk));
-  const lbls=rows1.map(r=>pkL(r.pk)),v1=rows1.map(r=>r[inst]!=null?+r[inst].toFixed(4):null);
-  const fct=$id("fc-title");if(fct)fct.textContent=INST[inst].label+" FORWARD CURVE — "+fmtD(rd1);
-  const ds=[{label:fmtD(rd1),data:v1,borderColor:"#2d7cff",backgroundColor:"rgba(45,124,255,.08)",borderWidth:2,pointRadius:3.5,tension:.3,fill:false}];
-  const candidates=[d2,dDates.length>1?dDates[dDates.length-2]:null];
-  const rd2=candidates.find(c=>c&&c!=="none"&&dStore[c])||null;
-  if(rd2){const rows2=dStore[rd2].rows.filter(r=>/^\d{4}-\d{2}$/.test(r.pk));const m2=new Map(rows2.map(r=>[r.pk,r[inst]]));ds.push({label:fmtD(rd2),data:rows1.map(r=>{const v=m2.get(r.pk);return v!=null?+v.toFixed(4):null;}),borderColor:"#f59e0b",borderDash:[6,4],borderWidth:2,pointRadius:3,tension:.3,fill:false});}
-  if(fcChart)fcChart.destroy();const fcc=$id("fcChart");if(fcc)fcChart=new Chart(fcc.getContext("2d"),{type:"line",data:{labels:lbls,datasets:ds},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:24}},y:{title:{display:true,text:unit,color:"#3d5070",font:{size:9}},ticks:{color:"#3d5070",font:{size:9,family:"IBM Plex Mono"}},grid:{color:"#0f1824"}}}}});
-  const valid=v1.filter(v=>v!=null);if(valid.length){const fr=valid[0],bk=valid[valid.length-1],sp=bk-fr,mn=Math.min(...valid),mx=Math.max(...valid),avg=valid.reduce((a,b)=>a+b,0)/valid.length,shape=Math.abs(sp)<0.05?"FLAT":sp>0?"CONTANGO":"BACKWARDATION",sc=shape==="CONTANGO"?"#22c55e":shape==="BACKWARDATION"?"#ef4444":"#5a6882",fcs=$id("fc-stats");if(fcs)fcs.innerHTML=`<div class="mc"><div class="mc-name">FRONT</div><div class="mc-val" style="font-size:16px">${fr.toFixed(3)}</div></div><div class="mc"><div class="mc-name">BACK</div><div class="mc-val" style="font-size:16px">${bk.toFixed(3)}</div></div><div class="mc"><div class="mc-name">F-B SPREAD</div><div class="mc-val ${sp>=0?"pos":"neg"}" style="font-size:16px">${sp>=0?"+":""}${sp.toFixed(3)}</div></div><div class="mc"><div class="mc-name">SHAPE</div><div class="mc-val" style="color:${sc};font-size:13px">${shape}</div></div>`;}
+  // Resolve current state — read from prefs first, then sync DOM selects
+  if (!INSTS) return;
+  const prefs = fc2LoadPrefs();
+  const hiddenInst = $id('fc-i')?.value;
+  let inst = prefs.defaultIndex || hiddenInst || 'JKM';
+  if (!INST[inst]) inst = 'JKM';
+  const { store, dates: dDates } = fc2GetStore(inst);
+  if (!dDates.length) {
+    // Render empty ctrl bar with no data
+    fc2RenderCtrlBar(inst, [null, null, null, null]);
+    return;
+  }
+  // Resolve dates: D1 falls back to latest; D2/D3/D4 stay as-is (null = absent)
+  const dates = [...prefs.dates];
+  if (!store[dates[0]]) dates[0] = dDates[dDates.length - 1];
+  for (let i = 1; i < 4; i++) {
+    if (dates[i] != null && dates[i] !== 'none' && !store[dates[i]]) dates[i] = null;
+    if (dates[i] === 'none') dates[i] = null;
+  }
+  // Persist any auto-resolved D1
+  prefs.dates = dates; prefs.defaultIndex = inst; fc2SavePrefs(prefs);
+
+  fc2RenderCtrlBar(inst, dates);
+
+  // Build curves for each non-null date
+  const activeDates = dates.filter(d => d != null && store[d]);
+  const curves = activeDates.map(d => {
+    const c = fc2GetCurve(inst, d);
+    return c ? { date: d, ...c } : null;
+  }).filter(Boolean);
+  if (!curves.length) return;
+  // Use D1's pks as the x-axis baseline. For other dates, align by pk match.
+  const basePks = curves[0].pks;
+  const lbls = basePks.map(pk => pkL(pk));
+  const datasets = curves.map((c, i) => {
+    const palette = FC2_COLORS[i] || FC2_COLORS[0];
+    // Align this curve to basePks via map lookup
+    const m = new Map(c.pks.map((pk, j) => [pk, c.values[j]]));
+    return {
+      label: fmtD(c.date),
+      data: basePks.map(pk => {
+        const v = m.get(pk);
+        return v != null ? v : null;
+      }),
+      borderColor: palette.stroke,
+      backgroundColor: palette.fill,
+      borderDash: palette.dash,
+      borderWidth: 2,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      tension: 0.3,
+      fill: i === 0 ? false : false,
+      spanGaps: false,
+    };
+  });
+
+  // Tenor markers (drawn on the chart)
+  const markers = fc2BuildTenorMarkers(basePks);
+
+  // Title
+  const fct = $id('fc-title');
+  if (fct) {
+    const dateStrs = curves.map(c => fmtD(c.date)).join(' · ');
+    fct.innerHTML = `<span>${INST[inst].label} FORWARD CURVE — ${dateStrs}</span><span style="flex:1;height:1px;background:#151e30;margin:0 4px"></span><span style="font-size:9px;color:#5a6882">click any point → Historical</span>`;
+  }
+
+  if (fcChart) fcChart.destroy();
+  const fcc = $id('fcChart');
+  if (fcc) {
+    fcChart = new Chart(fcc.getContext('2d'), {
+      type: 'line',
+      data: { labels: lbls, datasets },
+      options: {
+        ...CD,
+        animation: false,
+        onClick: (event, elements) => {
+          if (!elements.length) return;
+          const idx = elements[0].index;
+          const pk = basePks[idx];
+          if (pk) fc2GotoHistorical(inst, pk);
+        },
+        plugins: {
+          ...CD.plugins,
+          legend: { ...CD.plugins.legend, display: true },
+        },
+        scales: {
+          x: { ...CD.scales.x, ticks: { ...CD.scales.x.ticks, maxTicksLimit: 24 } },
+          y: { title: { display:true, text: INST[inst].unit, color:'#3d5070', font:{size:9} },
+                ticks: { color:'#3d5070', font:{size:9,family:'IBM Plex Mono'} },
+                grid: { color:'#0f1824' } },
+        },
+      },
+      plugins: [ _fc2TenorMarkerPlugin(markers, lbls) ],
+    });
+  }
+
+  // Curve change pane (D1 − D2 bars)
+  fc2RenderChangePane(curves, basePks, lbls);
+
+  // KPI strip — 5 tiles
+  const v1 = curves[0].values;
+  const valid = v1.filter(v => v != null);
+  const fcs = $id('fc-stats');
+  if (!fcs) return;
+  if (!valid.length) { fcs.innerHTML = ''; return; }
+  const front = valid[0], back = valid[valid.length - 1];
+  const fb = front - back; // positive = backwardation per spec
+  const fbCol = Math.abs(fb) < 0.05 ? '#9ca3af' : (fb > 0 ? '#34d399' : '#fca5a5');
+  const fbSign = fb >= 0 ? '+' : '';
+  const roll = fc2ComputeRollYield(v1, basePks);
+  const rollCol = roll == null ? '#9ca3af' : roll > 0 ? '#fca5a5' : '#34d399';
+  // Roll is M+1 − M+2: positive when M+1 > M+2 (backwardation, hurts a roll-long).
+  const rollSign = (roll != null && roll >= 0) ? '+' : '';
+  const shape = fc2DetectShape(v1);
+  const tile = (lbl, val, sub, color) => `
+    <div style="background:#0d1322;border:1px solid #1f2937;border-radius:4px;padding:8px 10px">
+      <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">${lbl}</div>
+      <div style="font-size:14px;font-weight:500;color:${color || '#fff'};margin-top:2px">${val}</div>
+      ${sub ? `<div style="font-size:8px;color:#6b7280;margin-top:1px">${sub}</div>` : ''}
+    </div>`;
+  fcs.innerHTML = [
+    tile('Front (M+1)', front.toFixed(3), pkL(basePks[0])),
+    tile('Back', back.toFixed(3), pkL(basePks[basePks.length-1])),
+    tile('Front − Back', fbSign + fb.toFixed(3), 'positive = backwardation', fbCol),
+    tile('M+1 → M+2 roll', roll != null ? rollSign + roll.toFixed(3) + '/mo' : '—',
+        roll == null ? '' : roll > 0 ? 'backwardation · roll loses' : 'contango · roll gains', rollCol),
+    tile('Shape', shape.label, '', shape.color),
+  ].join('');
 }
 function updSea(){if(!sDates.length)return;const inst=$id('sea-i').value,type=$id('sea-type').value,unit=INST[inst].unit,st=$id('sea-title');if(st)st.textContent=INST[inst].label+' — SEASONAL · YEAR OVER YEAR ('+unit+')';const yd={};if(type==='fwd'){const lat=sDates[sDates.length-1];aD[lat].rows.forEach(r=>{const[y,m]=r.pk.split('-');if(!yd[+y])yd[+y]={};if(r[inst]!=null)yd[+y][+m-1]=r[inst];});}else{sDates.forEach(ds=>{const{date,rows}=aD[ds],yr=date.getFullYear(),mo=date.getMonth(),pk=rPK(date,1),row=rows.find(r=>r.pk===pk);if(!row||row[inst]==null)return;if(!yd[yr])yd[yr]={};if(yd[yr][mo]===undefined)yd[yr][mo]=row[inst];});}const years=Object.keys(yd).map(Number).sort(),dsets=years.map((yr,idx)=>({label:String(yr),data:MA.map((_,mo)=>yd[yr][mo]!==undefined?+yd[yr][mo].toFixed(4):null),borderColor:SC[idx%SC.length],backgroundColor:'transparent',borderWidth:2,pointRadius:4,tension:.3,spanGaps:false}));if(seaChart)seaChart.destroy();const sc=$id('seaChart');if(sc)seaChart=new Chart(sc.getContext('2d'),{type:'line',data:{labels:MA,datasets:dsets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});let tbl=`<thead><tr><th>Month</th>${years.map(y=>`<th>${y}</th>`).join('')}${years.slice(0,-1).map((y,i)=>`<th>${y}→${years[i+1]}</th>`).join('')}</tr></thead><tbody>`;MA.forEach((m,mo)=>{tbl+=`<tr><td>${m}</td>${years.map(yr=>`<td>${yd[yr][mo]!==undefined?yd[yr][mo].toFixed(3):'—'}</td>`).join('')}`;for(let i=0;i<years.length-1;i++){const a=yd[years[i]][mo],b=yd[years[i+1]][mo];tbl+=a!==undefined&&b!==undefined?`<td class="${b-a>=0?'pos':'neg'}">${b-a>=0?'+':''}${(b-a).toFixed(3)}</td>`:`<td style="color:#3d5070">—</td>`;}tbl+=`</tr>`;});const st2=$id('sea-tbl');if(st2)st2.innerHTML=tbl+'</tbody>';}
 function updSpread(){

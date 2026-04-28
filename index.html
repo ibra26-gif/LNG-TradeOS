@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260422a">
-<script src="lngtradeos.js?v=20260428-options-pricer-payoff-greeks" defer></script>
+<script src="lngtradeos.js?v=20260428-forward-curve-redesign" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -518,9 +518,21 @@
         <div class="acard"><div class="ctitle">INDIVIDUAL PRICE SERIES</div><div class="cw" style="height:220px"><canvas id="spLegsChart"></canvas></div></div>
       </div>
       <div id="sec-forward" class="asec">
-        <div class="ctrl"><span class="cl">INDEX</span><select id="fc-i" onchange="updFC()"></select><div class="csep"></div><span class="cl">DATE 1</span><select id="fc-d1" onchange="updFC()"></select><span class="d1"></span><div class="csep"></div><span class="cl">DATE 2</span><select id="fc-d2" onchange="updFC()"></select><span class="d2"></span></div>
-        <div class="acard"><div class="ctitle" id="fc-title">FORWARD CURVE</div><div class="cw" style="height:320px"><canvas id="fcChart"></canvas></div></div>
-        <div id="fc-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px"></div>
+        <!-- Dynamic ctrl bar (rebuilt by updFC: INDEX, DATE 1, DATE 2, optional D3/D4, + add date) -->
+        <div id="fc-ctrl-bar"></div>
+        <!-- Hidden legacy selects kept so initUI/rAdd seeders don't error -->
+        <select id="fc-i" onchange="updFC()" style="display:none"></select>
+        <select id="fc-d1" onchange="updFC()" style="display:none"></select>
+        <select id="fc-d2" onchange="updFC()" style="display:none"></select>
+        <!-- Main chart -->
+        <div class="acard">
+          <div class="ctitle" id="fc-title" style="display:flex;align-items:center;gap:8px"><span>FORWARD CURVE</span><span style="flex:1;height:1px;background:#151e30;margin:0 4px"></span><span style="font-size:9px;color:#5a6882">click any point → Historical</span></div>
+          <div class="cw" style="height:300px"><canvas id="fcChart"></canvas></div>
+        </div>
+        <!-- Curve-change sub-chart (renders only when ≥2 dates loaded) -->
+        <div id="fc-change-pane" style="display:none"></div>
+        <!-- 5-tile KPI strip -->
+        <div id="fc-stats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px"></div>
       </div>
       <div id="sec-seasonal" class="asec">
         <div class="ctrl"><span class="cl">INDEX</span><select id="sea-i" onchange="updSea()"></select><div class="csep"></div><span class="cl">VIEW</span><select id="sea-type" onchange="updSea()"><option value="fwd">Forward curve snapshot by year</option><option value="hist">Historical M+1 closes</option></select></div>
