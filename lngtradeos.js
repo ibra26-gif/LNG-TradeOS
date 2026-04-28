@@ -21278,20 +21278,8 @@ function optCalc(){
     const vegC=c.vega*sign, vegP=p.vega*sign;
     const theC=c.theta*sign, theP=p.theta*sign;
 
-    // ── BS v2 Result card — 8 tiles, single position by default ───────────
-    // Spec: Premium · Total N×P · Intrinsic/Extrinsic · Daily 1σ $-move ·
-    //       Delta · Gamma · Vega(+1pp) · Theta(/day). Position sign applied.
-    const isCallSide = isCall;
-    const sel = isCallSide ? c : p;        // currently-selected leg
-    const intr = isCallSide ? intrC : intrP;
-    const ext  = isCallSide ? extC  : extP;
-    const cf   = isCallSide ? cfC   : cfP;
-    const del  = isCallSide ? delC  : delP;
-    const gam  = isCallSide ? gamC  : gamP;
-    const veg  = isCallSide ? vegC  : vegP;
-    const the  = isCallSide ? theC  : theP;
-    const mny  = isCallSide ? mnyC  : mnyP;
-    const mnyCol = isCallSide ? mnyColC : mnyColP;
+    // ── BS v2 Result card — 8 tiles, single position by default. Optional
+    //    "show put values too" parallel column when _opt2ShowPut is on.
     const dailyMove = F * sig / Math.sqrt(252);
     const tile = (lbl, val, sub, accent) => `
       <div style="background:${accent==='primary'?'rgba(59,130,246,0.08)':'#0d1322'};border:1px solid ${accent==='primary'?'rgba(59,130,246,0.30)':'#1f2937'};border-radius:4px;padding:8px 10px">
@@ -21299,16 +21287,21 @@ function optCalc(){
         <div style="font-size:14px;font-weight:500;color:#fff;margin-top:2px">${val}</div>
         ${sub?`<div style="font-size:9px;color:#6b7280;margin-top:1px">${sub}</div>`:''}
       </div>`;
-    const cfStr = (cf>=0?'+':'')+cf.toFixed(2);
-    const cfCol = cf >= 0 ? '#34d399' : '#fca5a5';
-    const thetaCol = the >= 0 ? '#34d399' : '#fca5a5';
-
-    resEl.innerHTML = `
-      <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:12px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-          <span style="font-size:12px;color:#fff;font-weight:500">Result · ${typeLbl} · ${posLbl}</span>
-          <span style="font-size:10px;color:#5a6882">${mny} · F/K ${(F/K).toFixed(3)}</span>
-        </div>
+    function tilesForLeg(isC){
+      const sel  = isC ? c : p;
+      const intr = isC ? intrC : intrP;
+      const ext  = isC ? extC  : extP;
+      const cf   = isC ? cfC   : cfP;
+      const del  = isC ? delC  : delP;
+      const gam  = isC ? gamC  : gamP;
+      const veg  = isC ? vegC  : vegP;
+      const the  = isC ? theC  : theP;
+      const mny  = isC ? mnyC  : mnyP;
+      const mnyCol = isC ? mnyColC : mnyColP;
+      const cfStr = (cf>=0?'+':'')+cf.toFixed(2);
+      const cfCol = cf >= 0 ? '#34d399' : '#fca5a5';
+      const thetaCol = the >= 0 ? '#34d399' : '#fca5a5';
+      return `
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
           ${tile('Premium', sel.price.toFixed(4), 'per unit', 'primary')}
           ${tile('Total · N='+N, (sel.price*N).toFixed(2), '<span style="color:'+cfCol+'">cash flow '+cfStr+'</span>')}
@@ -21317,21 +21310,39 @@ function optCalc(){
           ${tile('Delta', (del>=0?'+':'')+(del*100).toFixed(2)+'%', '∂Price/∂F · '+posLbl.toLowerCase())}
           ${tile('Gamma', gam.toFixed(4), '')}
           ${tile('Vega · +1pp σ', (veg>=0?'+':'')+veg.toFixed(4), '')}
-          ${`<div style="background:#0d1322;border:1px solid #1f2937;border-radius:4px;padding:8px 10px"><div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Theta · /day</div><div style="font-size:14px;font-weight:500;color:${thetaCol};margin-top:2px">${the.toFixed(4)}</div></div>`}
+          <div style="background:#0d1322;border:1px solid #1f2937;border-radius:4px;padding:8px 10px"><div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Theta · /day</div><div style="font-size:14px;font-weight:500;color:${thetaCol};margin-top:2px">${the.toFixed(4)}</div></div>
         </div>
+      `;
+    }
+    const showPut = !!window._opt2ShowPut;
+    const toggleLbl = showPut ? '▴ hide put values' : '↓ show put values too';
+    const isCallSide = isCall;
+    const otherLbl = isCallSide ? 'PUT' : 'CALL';
+    const otherSection = showPut ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1f2937">
+        <div style="font-size:11px;color:#9ca3af;margin-bottom:6px">Parallel · ${otherLbl} · ${posLbl} (same K · same σ · same T)</div>
+        ${tilesForLeg(!isCallSide)}
+      </div>` : '';
+
+    resEl.innerHTML = `
+      <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="font-size:12px;color:#fff;font-weight:500">Result · ${typeLbl} · ${posLbl}</span>
+          <span style="font-size:10px;color:#93c5fd;cursor:pointer" onclick="opt2TogglePutSide()">${toggleLbl}</span>
+        </div>
+        ${tilesForLeg(isCallSide)}
+        ${otherSection}
       </div>
     `;
 
-    if (intEl) intEl.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <span style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Intermediates · BS internals</span>
-        <span style="font-size:10px;color:#6b7280">▸ Phase 4 will make this expandable</span>
-      </div>
-      <div style="font-size:10px;color:#6b7280;margin-top:4px">T ${T.toFixed(3)} · σ√T ${sT.toFixed(3)} · d₁ ${(c.d1||0).toFixed(3)} · d₂ ${(c.d2||0).toFixed(3)} · ZC ${df.toFixed(4)} · F/K ${(F/K).toFixed(4)} · Daily σ ${(sig/Math.sqrt(252)*100).toFixed(3)}%</div>
-    `;
+    // Phase 2 / 3 / 4 renderers
+    if (typeof opt2RenderMoneyness === 'function')      opt2RenderMoneyness();
+    if (typeof opt2RenderSensitivity === 'function')    opt2RenderSensitivity(F, K, sig, T, r, isCall, sign);
+    if (typeof opt2RenderGreeksVsF === 'function')      opt2RenderGreeksVsF(F, K, sig, T, r, isCall);
+    if (typeof opt2RenderIntermediates === 'function')  opt2RenderIntermediates(F, K, sig, T, r, c);
+    if (typeof opt2UpdateButtonStates === 'function')   opt2UpdateButtonStates();
 
     optDrawPayoff('opt-payoff',F,K,isCallSide?c.price:p.price,isCallSide,N,'bs',{sign,posLbl});
-    // Update payoff title with current type/position
     const ptt = $id('opt2-payoff-title');
     if (ptt) ptt.textContent = `Payoff at expiry · ${typeLbl} · ${posLbl}`;
 
@@ -21491,7 +21502,9 @@ function optSolveIV(){
   </div>`;
 }
 
-// ── BS v2 helpers ──────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// BS v2 — Configurator + workflow helpers
+// ════════════════════════════════════════════════════════════════════════════
 // Sync the inline Type/Position toggles with the (now hidden) global Type
 // select + opt-pos select so optCalc/optSolveIV keep working unchanged.
 window.opt2SetType = function(t){
@@ -21521,17 +21534,258 @@ window.opt2SyncFromTopBar = function(){
   document.getElementById(p === 'sell' ? 'opt2-pos-short' : 'opt2-pos-long')?.classList.add('on');
 };
 
-// Live re-render hook on input change. For Phase 1, only updates the
-// freshness pill — Phase 2 will live-update the moneyness ribbon, Phase 3
-// won't re-render the Greeks panel until Calculate fires (heavy).
+// Live re-render hook on input change.
+// Phase 2 hook: re-renders moneyness ribbon as F/K change (no engine call).
+// Phase 1 input gating (AC#1): enables/disables Calculate when all inputs valid.
 window.opt2OnInput = function(){
-  // No live recompute in Phase 1 — user clicks Calculate. Phase 2 will
-  // wire the moneyness ribbon to update on F/K change without recomputing.
+  if (typeof opt2RenderMoneyness === 'function') opt2RenderMoneyness();
+  if (typeof opt2UpdateButtonStates === 'function') opt2UpdateButtonStates();
 };
 
-// Stub for the XLSX export button — wired in a later phase.
 window.opt2ExportXLSX = function(){
   alert('Options pricer XLSX export — coming in a later phase.');
+};
+
+// ── Phase-2/4 input validation gating (AC#1) ───────────────────────────────
+// Calculate disabled until F, K, σ, r, N, asof, maturity all set.
+// Solve IV disabled until same set EXCEPT σ, plus Broker price filled.
+function opt2ValidateInputs(){
+  const F  = parseFloat(document.getElementById('opt-F')?.value);
+  const K  = parseFloat(document.getElementById('opt-K')?.value);
+  const sig= parseFloat(document.getElementById('opt-sig')?.value);
+  const r  = parseFloat(document.getElementById('opt-r')?.value);
+  const N  = parseFloat(document.getElementById('opt-N')?.value);
+  const asof = document.getElementById('opt-asof')?.value;
+  const mat  = document.getElementById('opt-mat')?.value;
+  const broker = parseFloat(document.getElementById('opt-broker')?.value);
+  const baseOk = !isNaN(F) && F > 0 && !isNaN(K) && K > 0 && !isNaN(r) && !isNaN(N) && N > 0 && !!asof && !!mat;
+  return {
+    canCalculate: baseOk && !isNaN(sig) && sig > 0,
+    canSolveIV:   baseOk && !isNaN(broker) && broker > 0,
+  };
+}
+
+window.opt2UpdateButtonStates = function(){
+  const v = opt2ValidateInputs();
+  const calcBtn = document.querySelector('#sec-options button[onclick="optCalc()"]');
+  const solveBtn = document.querySelector('#sec-options button[onclick="optSolveIV()"]');
+  if (calcBtn) {
+    calcBtn.disabled = !v.canCalculate;
+    calcBtn.style.opacity = v.canCalculate ? '1' : '0.4';
+    calcBtn.style.cursor = v.canCalculate ? 'pointer' : 'not-allowed';
+  }
+  if (solveBtn) {
+    solveBtn.disabled = !v.canSolveIV;
+    solveBtn.style.opacity = v.canSolveIV ? '1' : '0.4';
+    solveBtn.style.cursor = v.canSolveIV ? 'pointer' : 'not-allowed';
+  }
+};
+
+// ── Phase 2 — Moneyness ribbon ─────────────────────────────────────────────
+window.opt2RenderMoneyness = function(){
+  const el = document.getElementById('opt2-moneyness');
+  if (!el) return;
+  const F = parseFloat(document.getElementById('opt-F')?.value);
+  const K = parseFloat(document.getElementById('opt-K')?.value);
+  const isCall = (document.getElementById('opt-type')?.value || 'call') === 'call';
+  if (isNaN(F) || isNaN(K) || K === 0) {
+    el.innerHTML = `<div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Moneyness</div><div style="font-size:10px;color:#5a6882;margin-top:6px">Enter F and K to render the ribbon.</div>`;
+    return;
+  }
+  const ratio = F/K;
+  // Ribbon scale: ATM at center (cx=300 of 600 viewBox). 1pp F/K deviation = 10px,
+  // so ±30pp deviation fills the ribbon.
+  const W = 600, cx = 300, scale = 1000;
+  const dev = ratio - 1;
+  const xK = cx;
+  const xF = Math.max(20, Math.min(W-20, cx + dev * scale));
+  // Moneyness label depends on type: call ITM iff F>K; put ITM iff F<K
+  const isATM = Math.abs(dev) < 0.005;
+  const moneyTag = isATM ? 'ATM'
+                : isCall ? (ratio > 1 ? 'ITM' : 'OTM')
+                         : (ratio < 1 ? 'ITM' : 'OTM');
+  const moneyTagCol = moneyTag === 'ATM' ? '#9ca3af' : moneyTag === 'ITM' ? '#fbbf24' : '#a78bfa';
+  // Banding: left half is OTM-side for call (and ITM-side for put — labels swap)
+  const leftLabel  = isCall ? 'OTM ←' : '← ITM';
+  const rightLabel = isCall ? '→ ITM' : 'OTM →';
+  // Distance copy
+  const distPct = (dev * 100);
+  const distCopy = isATM ? 'at the money'
+                : `${Math.abs(distPct).toFixed(1)}% ${ratio > 1 ? 'above K' : 'below K'} · ${moneyTag === 'ITM' ? 'in the money' : moneyTag === 'OTM' ? 'out of the money' : 'at the money'}`;
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+      <span style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Moneyness · <span style="color:${moneyTagCol}">${moneyTag}</span></span>
+      <span style="font-size:10px;color:#5a6882">${distCopy}</span>
+    </div>
+    <svg width="100%" height="36" viewBox="0 0 ${W} 36" preserveAspectRatio="none" style="display:block">
+      <line x1="20" y1="22" x2="${W-20}" y2="22" stroke="#1f2937" stroke-width="0.5"/>
+      <rect x="20" y="16" width="${cx-20}" height="12" fill="rgba(167,139,250,0.10)"/>
+      <rect x="${cx}" y="16" width="${cx-20}" height="12" fill="rgba(251,191,36,0.10)"/>
+      <line x1="${cx}" y1="13" x2="${cx}" y2="31" stroke="#fff" stroke-width="0.6" opacity="0.5"/>
+      <text x="${cx+4}" y="11" font-size="9" fill="#9ca3af">ATM</text>
+      <circle cx="${xF}" cy="22" r="3.5" fill="#3b82f6" stroke="#fff" stroke-width="0.5"/>
+      <circle cx="${xK}" cy="22" r="3.5" fill="#fbbf24" stroke="#fff" stroke-width="0.5"/>
+      <text x="40" y="11" font-size="9" fill="#a78bfa">${leftLabel}</text>
+      <text x="${W-60}" y="11" font-size="9" fill="#fbbf24">${rightLabel}</text>
+      <text x="${Math.max(40, xF-30)}" y="34" font-size="9" fill="#3b82f6">F = ${F.toFixed(2)}</text>
+      <text x="${Math.min(W-90, xK+8)}" y="34" font-size="9" fill="#fbbf24">K = ${K.toFixed(2)}</text>
+      <text x="${W-160}" y="34" font-size="9" fill="#9ca3af">F/K = ${ratio.toFixed(3)}</text>
+    </svg>
+  `;
+};
+
+// ── Phase 2 — Sensitivity row (Δ Premium under F±$1, σ±1pp shocks) ────────
+window.opt2RenderSensitivity = function(F, K, sig, T, r, isCall, sign){
+  const el = document.getElementById('opt2-sensitivity'); if (!el) return;
+  const base = bsPrice(F, K, sig, T, r, isCall).price * sign;
+  const sens = {
+    fMinus1: bsPrice(F-1, K, sig, T, r, isCall).price * sign - base,
+    fPlus1:  bsPrice(F+1, K, sig, T, r, isCall).price * sign - base,
+    sigmaMinus1pp: bsPrice(F, K, Math.max(0.001,sig-0.01), T, r, isCall).price * sign - base,
+    sigmaPlus1pp:  bsPrice(F, K, sig+0.01, T, r, isCall).price * sign - base,
+  };
+  const cell = (val) => {
+    if (val == null || !isFinite(val)) return `<div style="background:rgba(255,255,255,0.02);padding:5px;border-radius:2px;text-align:center;color:#5a6882">—</div>`;
+    const pos = val >= 0;
+    const bg = pos ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)';
+    const col = pos ? '#34d399' : '#fca5a5';
+    return `<div style="background:${bg};padding:5px;border-radius:2px;text-align:center;color:${col};font-weight:500">${(pos?'+':'')+val.toFixed(3)}</div>`;
+  };
+  const posLbl = sign > 0 ? 'Long' : 'Short';
+  const typeLbl = isCall ? 'Call' : 'Put';
+  el.innerHTML = `
+    <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Sensitivity</div>
+    <div style="display:grid;grid-template-columns:130px 1fr 1fr 1fr 1fr;gap:4px 10px;font-size:11px;align-items:center">
+      <span style="color:#6b7280;font-size:9px">Δ Premium if</span>
+      <span style="color:#6b7280;font-size:9px;text-align:center">F −$1</span>
+      <span style="color:#6b7280;font-size:9px;text-align:center">F +$1</span>
+      <span style="color:#6b7280;font-size:9px;text-align:center">σ −1pp</span>
+      <span style="color:#6b7280;font-size:9px;text-align:center">σ +1pp</span>
+      <span style="color:#d1d5db">${typeLbl} · ${posLbl}</span>
+      ${cell(sens.fMinus1)}
+      ${cell(sens.fPlus1)}
+      ${cell(sens.sigmaMinus1pp)}
+      ${cell(sens.sigmaPlus1pp)}
+    </div>
+  `;
+};
+
+// ── Phase 3 — Greeks vs F panel (2×2 small multiples) ──────────────────────
+// Sample 50 points across K ± 2σ√T (with hard floor at 0.01). Each greek gets
+// a tiny SVG line chart with 3 y-ticks, K dashed yellow gridline, F dashed
+// white gridline, and a green dot marking current value at F.
+window.opt2RenderGreeksVsF = function(F, K, sig, T, r, isCall){
+  const el = document.getElementById('opt2-greeks-vs-f'); if (!el) return;
+  const sT = sig * Math.sqrt(T);
+  const span = K * 2 * sT;
+  let fMin = K - span, fMax = K + span;
+  if (fMin <= 0) fMin = K * 0.05; // forwards must be positive in BS Lognormal
+  if (fMax <= fMin) fMax = K * 1.5;
+  const N = 50;
+  const samples = [];
+  for (let i = 0; i < N; i++) {
+    const f = fMin + (fMax - fMin) * i / (N-1);
+    const g = bsPrice(f, K, sig, T, r, isCall);
+    samples.push({ F:f, delta:g.delta, gamma:g.gamma, vega:g.vega, theta:g.theta });
+  }
+  const cur = bsPrice(F, K, sig, T, r, isCall);
+  const greeks = [
+    { key:'delta', label:'Delta',                color:'#3b82f6', cur:cur.delta },
+    { key:'gamma', label:'Gamma',                color:'#3b82f6', cur:cur.gamma },
+    { key:'vega',  label:'Vega · per +1pp σ',    color:'#3b82f6', cur:cur.vega  },
+    { key:'theta', label:'Theta · per day',      color:'#fca5a5', cur:cur.theta },
+  ];
+  function chartHTML(g){
+    const fs = samples.map(s => s.F);
+    const vs = samples.map(s => s[g.key]);
+    const fLo = Math.min(...fs), fHi = Math.max(...fs);
+    const vLo = Math.min(...vs), vHi = Math.max(...vs);
+    const W = 280, H = 80, padL = 22, padT = 6, padB = 8;
+    const xOf = f => padL + (f - fLo) / Math.max(fHi - fLo, 1e-9) * (W - padL - 8);
+    const yOf = v => padT + (1 - (v - vLo) / Math.max(vHi - vLo, 1e-9)) * (H - padT - padB);
+    const points = samples.map(s => `${xOf(s.F).toFixed(1)},${yOf(s[g.key]).toFixed(1)}`).join(' ');
+    const xK = xOf(K), xF = xOf(F);
+    const yCur = yOf(g.cur);
+    const fmt = v => Math.abs(v) >= 0.01 ? v.toFixed(3) : (Math.abs(v) < 1e-6 ? '0' : v.toExponential(1));
+    return `
+      <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:9px 10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+          <span style="font-size:11px;color:#93c5fd;font-weight:500">${g.label}</span>
+          <span style="font-size:11px;color:${g.cur < 0 ? '#fca5a5' : '#fff'};font-weight:500">${g.cur.toFixed(4)}</span>
+        </div>
+        <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="display:block">
+          <line x1="${padL}" y1="${padT}" x2="${W-8}" y2="${padT}" stroke="#1f2937" stroke-width="0.5" stroke-dasharray="3 3"/>
+          <line x1="${padL}" y1="${(padT + (H-padB))/2}" x2="${W-8}" y2="${(padT + (H-padB))/2}" stroke="#1f2937" stroke-width="0.5" stroke-dasharray="3 3"/>
+          <line x1="${padL}" y1="${H-padB}" x2="${W-8}" y2="${H-padB}" stroke="#374151" stroke-width="0.6"/>
+          <text x="2" y="${padT+4}" font-size="8" fill="#6b7280">${fmt(vHi)}</text>
+          <text x="2" y="${(padT + (H-padB))/2 + 2}" font-size="8" fill="#6b7280">${fmt((vHi+vLo)/2)}</text>
+          <text x="2" y="${H-padB+2}" font-size="8" fill="#6b7280">${fmt(vLo)}</text>
+          <line x1="${xK}" y1="0" x2="${xK}" y2="${H-padB}" stroke="#fbbf24" stroke-width="0.5" stroke-dasharray="2 2" opacity="0.6"/>
+          <line x1="${xF}" y1="0" x2="${xF}" y2="${H-padB}" stroke="#fff" stroke-width="0.5" opacity="0.4"/>
+          <polyline points="${points}" fill="none" stroke="${g.color}" stroke-width="1.6"/>
+          <circle cx="${xF}" cy="${yCur}" r="3" fill="#34d399" stroke="#fff" stroke-width="0.5"/>
+        </svg>
+      </div>
+    `;
+  }
+  el.innerHTML = `
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:11px;color:#fff;font-weight:500">Greeks vs underlying F · ${isCall?'Call':'Put'} · K=${K}</span>
+      <span style="font-size:10px;color:#6b7280">range K ± 2σ√T · ● value at F=${F.toFixed(2)}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${greeks.map(chartHTML).join('')}</div>
+  `;
+};
+
+// ── Phase 4 — Intermediates (collapsed by default, click to expand) ────────
+window._opt2IntExpanded = false;
+window.opt2ToggleIntermediates = function(){
+  window._opt2IntExpanded = !window._opt2IntExpanded;
+  if (typeof optCalc === 'function') optCalc();
+};
+
+window.opt2RenderIntermediates = function(F, K, sig, T, r, c){
+  const el = document.getElementById('opt-intermediates'); if (!el) return;
+  const sT = sig * Math.sqrt(T);
+  const df = Math.exp(-r*T);
+  const dailyPct = sig / Math.sqrt(252) * 100;
+  const dailyMove = F * sig / Math.sqrt(252);
+  const oneLine = `T ${T.toFixed(3)} · σ√T ${sT.toFixed(3)} · d₁ ${(c.d1||0).toFixed(3)} · d₂ ${(c.d2||0).toFixed(3)} · ZC ${df.toFixed(4)} · F/K ${(F/K).toFixed(4)} · Daily σ ${dailyPct.toFixed(3)}%`;
+  if (!window._opt2IntExpanded) {
+    el.innerHTML = `
+      <div onclick="opt2ToggleIntermediates()" style="cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Intermediates · BS internals</span>
+          <span style="font-size:10px;color:#6b7280">▸ expand</span>
+        </div>
+        <div style="font-size:10px;color:#6b7280;margin-top:4px">${oneLine}</div>
+      </div>
+    `;
+  } else {
+    el.innerHTML = `
+      <div onclick="opt2ToggleIntermediates()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Intermediates · BS internals</span>
+        <span style="font-size:10px;color:#6b7280">▾ collapse</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:10px;margin-top:8px">
+        <div class="mc"><div class="mc-name">T (years)</div><div class="mc-val" style="font-size:14px">${T.toFixed(4)}</div></div>
+        <div class="mc"><div class="mc-name">σ√T (sdev)</div><div class="mc-val" style="font-size:14px">${sT.toFixed(4)}</div></div>
+        <div class="mc"><div class="mc-name">d₁</div><div class="mc-val" style="font-size:14px">${(c.d1||0).toFixed(4)}</div></div>
+        <div class="mc"><div class="mc-name">d₂</div><div class="mc-val" style="font-size:14px">${(c.d2||0).toFixed(4)}</div></div>
+        <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${df.toFixed(6)}</div></div>
+        <div class="mc"><div class="mc-name">F/K</div><div class="mc-val" style="font-size:14px">${(F/K).toFixed(4)}</div></div>
+        <div class="mc"><div class="mc-name">Daily σ (%)</div><div class="mc-val" style="font-size:14px">${dailyPct.toFixed(3)}</div></div>
+        <div class="mc"><div class="mc-name">Daily 1σ $-move</div><div class="mc-val" style="font-size:14px">${dailyMove.toFixed(3)}</div></div>
+      </div>
+    `;
+  }
+};
+
+// ── AC#5 — show put values too toggle ──────────────────────────────────────
+window._opt2ShowPut = false;
+window.opt2TogglePutSide = function(){
+  window._opt2ShowPut = !window._opt2ShowPut;
+  if (typeof optCalc === 'function') optCalc();
 };
 
 window.optRender=optRender;
