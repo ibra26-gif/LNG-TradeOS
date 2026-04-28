@@ -12753,44 +12753,45 @@ function dash2FwdCellHTML(inst, contract){
   const lat  = dash2FwdPriceAt(inst, contract, 'latest');
   const prev = dash2FwdPriceAt(inst, contract, 'prior');
   if (lat == null) {
-    return `<td style="text-align:right;color:#3d5070;padding:6px 8px;font-size:11px;border-bottom:1px solid #0f1824">—</td>`;
+    return `<td style="text-align:right;color:#3d5070;padding:3px 5px;font-size:10px;border-bottom:1px solid #0f1824">—</td>`;
   }
   const dp = INST[inst]?.unit === '$/bbl' ? 2 : 3;
   const valStr = lat.toFixed(dp);
   const change = (prev != null) ? +(lat - prev).toFixed(3) : null;
-  // Vivid red/green for sign; signed display ("+0.045" / "-0.120") instead of
-  // arrow + magnitude. Subtle cell-bg tint so a column of green/red scans at
-  // a glance without becoming a full heatmap.
+  // Vivid red/green for sign; signed display so a column scans at a glance.
   let col = '#9ca3af', chgStr = '', bg = 'transparent';
   if (change != null) {
-    if (change > 0)      { col = '#22c55e'; bg = 'rgba(34,197,94,0.07)';  chgStr = '+' + change.toFixed(dp); }
-    else if (change < 0) { col = '#ef4444'; bg = 'rgba(239,68,68,0.07)';  chgStr = change.toFixed(dp); /* keeps the leading '-' */ }
-    else                 { col = '#9ca3af';                                chgStr = '0.000'; }
+    if (change > 0)      { col = '#22c55e'; bg = 'rgba(34,197,94,0.07)'; chgStr = '+' + change.toFixed(dp); }
+    else if (change < 0) { col = '#ef4444'; bg = 'rgba(239,68,68,0.07)'; chgStr = change.toFixed(dp); }
+    else                 { col = '#9ca3af';                              chgStr = '0.000'; }
   }
   const isCal = contract.startsWith('cal-');
   const onclick = isCal ? '' : `onclick="dash2GotoHistorical('${inst}','${contract}')"`;
   const cursor = isCal ? '' : 'cursor:pointer;';
   const title = isCal ? '' : `title="${INST[inst]?.label||inst} · ${contract} · click to drill"`;
-  return `<td ${onclick} ${title} style="${cursor}background:${bg};text-align:right;padding:6px 10px;font-size:11px;border-bottom:1px solid #0f1824"><div style="color:#fff;font-weight:500">${valStr}</div><div style="color:${col};font-size:10px;font-weight:500;margin-top:2px;min-height:12px">${chgStr}</div></td>`;
+  // Compact: price + change on the same line, separated by a thin space.
+  // Saves ~50% vertical real estate vs stacked layout while keeping the
+  // colour signal. Fits both tables on one viewport on a 14" laptop.
+  return `<td ${onclick} ${title} style="${cursor}background:${bg};text-align:right;padding:3px 6px;font-size:10px;border-bottom:1px solid #0f1824;white-space:nowrap"><span style="color:#fff;font-weight:500">${valStr}</span> <span style="color:${col};font-size:9px">${chgStr}</span></td>`;
 }
 
-function dash2RenderFwdTable(insts, label, sublabel){
+function dash2RenderFwdTable(insts, label){
   const contracts = dash2BuildFwdContracts();
   if (!contracts.length) return '';
   const headers = `
     <tr>
-      <th style="text-align:left;padding:7px 10px;font-size:9px;color:#9ca3af;background:#0a0f1e;border-bottom:1px solid #1f2937;letter-spacing:.04em">CONTRACT</th>
-      ${insts.map(k => `<th style="text-align:right;padding:7px 10px;font-size:9px;color:#9ca3af;background:#0a0f1e;border-bottom:1px solid #1f2937;letter-spacing:.04em">${INST[k]?.label||k}</th>`).join('')}
+      <th style="text-align:left;padding:4px 6px;font-size:8px;color:#9ca3af;background:#0a0f1e;border-bottom:1px solid #1f2937;letter-spacing:.04em">CONTRACT</th>
+      ${insts.map(k => `<th style="text-align:right;padding:4px 6px;font-size:8px;color:#9ca3af;background:#0a0f1e;border-bottom:1px solid #1f2937;letter-spacing:.04em">${INST[k]?.label||k}</th>`).join('')}
     </tr>`;
   const rows = contracts.map(c => `
     <tr>
-      <td style="padding:6px 10px;font-size:10px;color:#c8cfe0;border-bottom:1px solid #0f1824;font-weight:500;white-space:nowrap">${c.label}</td>
+      <td style="padding:3px 6px;font-size:9px;color:#c8cfe0;border-bottom:1px solid #0f1824;font-weight:500;white-space:nowrap">${c.label}</td>
       ${insts.map(k => dash2FwdCellHTML(k, c.v)).join('')}
     </tr>
   `).join('');
   return `
-    <div class="acard" style="margin-bottom:10px">
-      <div class="ctitle">${label}<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:9px;color:#5a6882">${sublabel}</span></div>
+    <div class="acard" style="margin-bottom:8px;padding:8px 10px">
+      <div class="ctitle" style="margin-bottom:4px">${label}<span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
       <table style="width:100%;border-collapse:collapse;font-family:inherit">
         <thead>${headers}</thead>
         <tbody>${rows}</tbody>
@@ -12806,9 +12807,15 @@ function dash2RenderForwardCurveTables(){
     el.innerHTML = `<div class="acard"><div class="ctitle">FORWARD CURVE</div><div class="cnote" style="color:#5a6882">Need at least 2 EOD dates to compute change vs prior session.</div></div>`;
     return;
   }
-  el.innerHTML =
-    dash2RenderFwdTable(DASH2_FWD_LNG_INSTS, 'FORWARD CURVE · LNG / MACRO', 'EOD price · DoD change · click cell to drill') +
-    dash2RenderFwdTable(DASH2_FWD_HUB_INSTS, 'FORWARD CURVE · EUROPEAN HUBS', 'EEX EOD · DoD change · click cell to drill');
+  // Two tables side-by-side on viewports >=1100px, stack on narrower screens.
+  // Compact 1-line cells (price + change inline) to keep both tables visible
+  // without scrolling on a 14" laptop.
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:8px">
+      ${dash2RenderFwdTable(DASH2_FWD_LNG_INSTS, 'FORWARD · LNG / MACRO')}
+      ${dash2RenderFwdTable(DASH2_FWD_HUB_INSTS, 'FORWARD · EUROPEAN HUBS')}
+    </div>
+  `;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
