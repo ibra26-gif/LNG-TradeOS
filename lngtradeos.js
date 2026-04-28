@@ -21554,8 +21554,8 @@ function renderKorBalance(el){
   const nucPct = (nuclearOn / Math.max(nuclearTot, 1) * 100).toFixed(0) + '%';
   const nucYoYpp = '+' + (s.nuclearUtilYoYpp*100).toFixed(0) + 'pp YoY';
   const khnpFreshness = nuclearLive
-    ? { label:'IAEA PRIS', meta:nuclearAsOf, color:'#34d399' }
-    : { label:'KHNP daily', meta:'27 Apr · seed', color:'#fbbf24' };
+    ? { label:'KHNP live · npp.khnp.co.kr', meta: nuclearAsOf || 'fetching…', color:'#34d399' }
+    : { label:'KHNP', meta:'27 Apr · seed', color:'#fbbf24' };
 
   el.innerHTML = `
     ${korFreshness([
@@ -21582,7 +21582,7 @@ function renderKorBalance(el){
       <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
           <span style="font-size:11px;color:#fff;font-weight:500">Nuclear by site</span>
-          <span style="font-size:8px;padding:1px 5px;border-radius:2px;background:${nuclearLive?'rgba(52,211,153,0.10)':'rgba(251,191,36,0.10)'};color:${nuclearLive?'#34d399':'#fbbf24'}">${nuclearLive?'IAEA PRIS · live':'seed'}</span>
+          <span style="font-size:8px;padding:1px 5px;border-radius:2px;background:${nuclearLive?'rgba(52,211,153,0.10)':'rgba(251,191,36,0.10)'};color:${nuclearLive?'#34d399':'#fbbf24'}">${nuclearLive?'KHNP · live':'seed'}</span>
         </div>
         ${siteList.map(r => `
           <div style="display:grid;grid-template-columns:1fr auto auto;gap:14px;font-size:11px;padding:4px 0;border-bottom:1px solid #0f1824">
@@ -21590,6 +21590,22 @@ function renderKorBalance(el){
             <span style="color:#fff;text-align:right">${(r.cap||0).toFixed(2)} GW</span>
             <span style="color:${r.online === r.total ? '#34d399' : '#fbbf24'};text-align:right">${r.online}/${r.total}</span>
           </div>`).join('')}
+        ${liveK?.reactors?.length ? `
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid #0f1824;font-size:9px;color:#9ca3af">
+            <div style="margin-bottom:4px">Per-reactor live output</div>
+            ${liveK.reactors.map(rx => {
+              const op = rx.status === 'Operational';
+              const mwe = rx.output_mwe != null ? rx.output_mwe.toFixed(0)+' MWe' : '—';
+              const pct = rx.output_pct != null ? rx.output_pct.toFixed(1)+'%' : '—';
+              const col = op ? '#34d399' : rx.status === 'Maintenance' ? '#fbbf24' : '#5a6882';
+              return `<div style="display:grid;grid-template-columns:130px 80px 70px 1fr;gap:6px;padding:1px 0">
+                <span style="color:#c8cfe0">${rx.name}</span>
+                <span style="color:${col}">${rx.status}</span>
+                <span style="color:#9ca3af;text-align:right">${pct}</span>
+                <span style="color:#fff;text-align:right">${mwe}</span>
+              </div>`;
+            }).join('')}
+          </div>` : ''}
       </div>
 
       <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">

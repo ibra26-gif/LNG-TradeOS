@@ -3,17 +3,20 @@
 Korea daily data scraper for LNG TradeOS.
 
 Sources (all globally accessible, no API key, no Korean-IP requirement):
-  - IAEA PRIS — Korean reactor status & capacity
+  - KHNP open NPP operations portal — LIVE per-reactor output % and MWe
+    (npp.khnp.co.kr is reachable globally; only the cms. subdomain on the
+    realTimeMgr path is blocked. The npp. subdomain serves the same data
+    via a JSON API used by their public dashboard, refreshed every ~3 min.)
   - ECB euro reference rates — KRW/USD via cross-rate
 
-Geo-blocked sources (KOGAS tariff Excel, KEPCO power data, KHNP direct site)
-are NOT scraped from this script — those would require a Korean proxy. The
-output JSON has placeholder slots for them (kogasTariff, kogasImports, dart)
-so the front-end renders a "manual entry · awaiting source" badge until
-those feeds come online.
+KOGAS tariff Excel and KOGAS imports remain manual until either a Korean
+proxy lands or the user enters values. DART quarterly filings need the
+user's free OpenDART API key (1-week approval).
 
 Output: data/korea.json
-Cadence: daily 18:00 CET (after ECB publishes; ECB updates ~16:00 CET)
+Cadence: daily 17:30 UTC (configurable; KHNP refreshes every ~3 min, but
+daily commits are fine — site-level counts only change on outages, which
+are rare. Could move to hourly later if needed.)
 """
 import json
 import os
@@ -84,41 +87,158 @@ def fetch(url, timeout=20, retries=4):
         raise last if last else e
 
 
-def fetch_pris():
-    """Scrape IAEA PRIS country page for Korean reactor status."""
-    url = 'https://pris.iaea.org/PRIS/CountryStatistics/CountryDetails.aspx?current=KR'
-    html = fetch(url)
-    # Each reactor row: <a>NAME</a></td><td>TYPE</td><td>STATUS</td>
-    # <td>LOCATION</td><td>NET_MW</td><td>GROSS_MW</td>
-    row_re = re.compile(
-        r'>([A-Z][A-Z0-9\-]+)</a>\s*</td>\s*'
-        r'<td[^>]*>\s*([A-Z]+)\s*</td>\s*'
-        r'<td[^>]*>\s*([^<]+?)\s*</td>\s*'
-        r'<td[^>]*>\s*([^<]+?)\s*</td>\s*'
-        r'<td[^>]*>\s*(\d+)\s*</td>\s*'
-        r'<td[^>]*>\s*(\d+)\s*</td>',
-        re.DOTALL,
-    )
-    reactors = []
-    for name, rtype, status, location, net_mw, gross_mw in row_re.findall(html):
-        # Site = strip trailing "-N"
-        m = re.match(r'(.+?)-(\d+)$', name)
-        if not m:
-            continue
-        prefix, unit = m.groups()
-        site = SITE_MAP.get(prefix, prefix.title())
-        reactors.append({
-            'name':         name,
-            'site':         site,
-            'unit':         int(unit),
-            'type':         rtype,
-            'status':       status.strip(),
-            'location':     location.strip().replace('&amp;', '&'),
-            'net_mw':       int(net_mw),
-            'gross_mw':     int(gross_mw),
-        })
+# KHNP unit codes per site. unitCd is the per-reactor identifier in the
+# /branch-operation-info-by-plant API. Discovered by scraping each site's
+# unit dropdown on npp.khnp.co.kr/ON004004002002NNN. branchCd3 (ho) is
+# unused by the API for unit filtering — kept here as a label only.
+KHNP_SITES = [
+    {'site': 'Kori',    'branchCd': 'BR0302', 'units': [
+        ('2112', 'Kori-2', 2),       ('2123', 'Kori-3', 3),
+        ('2124', 'Kori-4', 4),       ('2135', 'Shin-Kori-1', 1),
+        ('2136', 'Shin-Kori-2', 2),
+    ]},
+    {'site': 'Hanbit',  'branchCd': 'BR0303', 'units': [
+        ('2311', 'Hanbit-1', 1),     ('2312', 'Hanbit-2', 2),
+        ('2323', 'Hanbit-3', 3),     ('2324', 'Hanbit-4', 4),
+        ('2335', 'Hanbit-5', 5),     ('2336', 'Hanbit-6', 6),
+    ]},
+    {'site': 'Hanul',   'branchCd': 'BR0304', 'units': [
+        ('2411', 'Hanul-1', 1),      ('2412', 'Hanul-2', 2),
+        ('2423', 'Hanul-3', 3),      ('2424', 'Hanul-4', 4),
+        ('2435', 'Hanul-5', 5),      ('2436', 'Hanul-6', 6),
+        ('2711', 'Shin-Hanul-1', 1), ('2712', 'Shin-Hanul-2', 2),
+    ]},
+    {'site': 'Wolsong', 'branchCd': 'BR0305', 'units': [
+        ('2212', 'Wolsong-2', 2),    ('2223', 'Wolsong-3', 3),
+        ('2224', 'Wolsong-4', 4),    ('2235', 'Shin-Wolsong-1', 1),
+        ('2236', 'Shin-Wolsong-2', 2),
+    ]},
+    {'site': 'Saeul',   'branchCd': 'BR0312', 'units': [
+        ('2811', 'Saeul-1', 1),      ('2812', 'Saeul-2', 2),
+    ]},
+]
 
-    # Aggregate by site
+
+def fetch_khnp_unit(branch_cd, unit_cd, ho, session_cookies=None):
+    """Hit KHNP's /branch-operation-info-by-plant for a single reactor.
+
+    Returns None on failure or empty response (e.g. unit shutdown / not in
+    KHNP's monitored list any more). Live data refreshes every ~3 minutes
+    on KHNP's side; we capture whatever the latest snapshot is.
+    """
+    import json as _json
+    url = 'https://npp.khnp.co.kr/branch-operation-info-by-plant'
+    payload = _json.dumps({'branchCd': branch_cd, 'branchCd2': unit_cd, 'branchCd3': str(ho)})
+    headers = {
+        'User-Agent': UA,
+        'Accept': 'application/json, */*; q=0.01',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Referer': 'https://npp.khnp.co.kr/ON004004002002001',
+        'Origin': 'https://npp.khnp.co.kr',
+    }
+    try:
+        if _USE_REQUESTS:
+            r = _requests.post(url, data=payload, headers=headers,
+                               cookies=session_cookies, timeout=15)
+            if r.status_code != 200 or not r.text.strip():
+                return None
+            return r.json()
+        # urllib fallback
+        req = urllib.request.Request(url, data=payload.encode('utf-8'), headers=headers, method='POST')
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            body = resp.read().decode('utf-8')
+        return _json.loads(body) if body.strip() else None
+    except Exception:
+        return None
+
+
+def fetch_khnp_session():
+    """Hit the npp.khnp.co.kr root once to obtain the WMONID session cookie
+    that the API requires. Without this, the API returns empty 200s."""
+    if not _USE_REQUESTS:
+        return None
+    s = _requests.Session()
+    s.headers.update({'User-Agent': UA})
+    try:
+        s.get('https://npp.khnp.co.kr/', timeout=15)
+        return s
+    except Exception:
+        return None
+
+
+def fetch_khnp_live():
+    """Pull live per-reactor output from KHNP's open ops portal.
+
+    Returns a structure compatible with the front-end (reactors[], bySite[],
+    totalOnlineGW, onlineCount, totalCount), plus the underlying KHNP
+    timestamps so the front-end can display data freshness honestly.
+    """
+    session = fetch_khnp_session()
+    cookies = session.cookies if session else None
+
+    reactors = []
+    timestamps = []
+    for site in KHNP_SITES:
+        for unit_cd, name, ho in site['units']:
+            data = fetch_khnp_unit(site['branchCd'], unit_cd, ho,
+                                    session_cookies=cookies)
+            if not data:
+                # Append a stub with status unknown so site totals stay sensible
+                reactors.append({
+                    'name': name, 'site': site['site'], 'unit_cd': unit_cd,
+                    'status': 'Unknown', 'output_pct': None, 'output_mwe': None,
+                    'asOf': None,
+                })
+                continue
+            udo = data.get('unitDetailOutput') or {}
+            no1 = udo.get('NO_1') or {}
+            no8 = udo.get('NO_8') or {}
+            ul = (data.get('unitInfoList') or [{}])[0]
+            # Validate the response is for the requested reactor. plantCd
+            # in unitDetailOutput is the authoritative identifier — the
+            # unitInfoList[0] sometimes returns the first unit at the
+            # site instead of the requested one (KHNP server-side quirk).
+            api_unit = udo.get('plantCd')
+            if api_unit and api_unit != unit_cd:
+                reactors.append({
+                    'name': name, 'site': site['site'], 'unit_cd': unit_cd,
+                    'status': 'Unknown', 'output_pct': None, 'output_mwe': None,
+                    'asOf': None,
+                })
+                continue
+            try:
+                output_pct = float(no1.get('VALUE')) if no1.get('VALUE') is not None else None
+            except (TypeError, ValueError):
+                output_pct = None
+            try:
+                output_mwe = float(no8.get('VALUE')) if no8.get('VALUE') is not None else None
+            except (TypeError, ValueError):
+                output_mwe = None
+            # Status: derive from generator output, not the kh_status field
+            # (which is unreliable for some units). Unit clearly operational
+            # if MWe > 50, clearly offline if MWe is null/0.
+            kh_status = ul.get('status') or ''
+            if output_mwe is not None and output_mwe > 50:
+                status = 'Operational'
+            elif output_mwe is None or output_mwe < 5:
+                status = 'Maintenance' if kh_status == 'KH1202' else 'Offline'
+            else:
+                status = 'Partial'
+            ts = no1.get('TIME') or no8.get('TIME')
+            if ts:
+                timestamps.append(ts)
+            reactors.append({
+                'name':       name,
+                'site':       site['site'],
+                'unit_cd':    unit_cd,
+                'status':     status,
+                'output_pct': output_pct,
+                'output_mwe': output_mwe,
+                'asOf':       ts,
+            })
+
+    # Aggregate per site
     sites_dict = {}
     for r in reactors:
         s = sites_dict.setdefault(r['site'], {
@@ -127,10 +247,15 @@ def fetch_pris():
         })
         s['reactors'].append(r['name'])
         s['totalCount'] += 1
+        # Totalcap = sum of all reactor MWe (when reported, these are nameplate-ish).
+        # Onlinecap = sum of MWe for operational reactors.
+        if r['output_mwe'] and r['output_mwe'] > 0:
+            s['totalCap_GW'] += r['output_mwe'] / 1000.0
         if r['status'] == 'Operational':
             s['online'] += 1
-            s['onlineCap_GW'] += r['gross_mw'] / 1000.0
-        s['totalCap_GW'] += r['gross_mw'] / 1000.0
+            if r['output_mwe']:
+                s['onlineCap_GW'] += r['output_mwe'] / 1000.0
+
     by_site = sorted(sites_dict.values(), key=lambda x: -x['onlineCap_GW'])
     for s in by_site:
         s['totalCap_GW'] = round(s['totalCap_GW'], 2)
@@ -139,11 +264,14 @@ def fetch_pris():
     online_total_gw = round(sum(s['onlineCap_GW'] for s in by_site), 2)
     online_count = sum(s['online'] for s in by_site)
     total_count = sum(s['totalCount'] for s in by_site)
+    # Latest underlying KHNP timestamp — what the user sees as "data as of"
+    latest_ts = max(timestamps) if timestamps else None
 
     return {
-        'asOf':         datetime.now(timezone.utc).strftime('%Y-%m-%d'),
-        'source':       'IAEA PRIS',
-        'sourceUrl':    url,
+        'asOf':         latest_ts,  # KHNP's own timestamp, NOT our scrape time
+        'scrapedAt':    datetime.now(timezone.utc).isoformat(timespec='seconds'),
+        'source':       'KHNP Open NPP Operations Info',
+        'sourceUrl':    'https://npp.khnp.co.kr/',
         'reactors':     reactors,
         'bySite':       by_site,
         'totalOnlineGW':online_total_gw,
@@ -198,13 +326,14 @@ def main():
         print(f"ECB FX failed: {e}", file=sys.stderr)
 
     try:
-        out['khnp'] = fetch_pris()
+        out['khnp'] = fetch_khnp_live()
         k = out['khnp']
-        print(f"PRIS: {k['onlineCount']}/{k['totalCount']} online · "
-              f"{k['totalOnlineGW']} GW · {len(k['bySite'])} sites", file=sys.stderr)
+        print(f"KHNP live: {k['onlineCount']}/{k['totalCount']} online · "
+              f"{k['totalOnlineGW']} GW · {len(k['bySite'])} sites · "
+              f"data as of {k.get('asOf')}", file=sys.stderr)
     except Exception as e:
-        out['errors'].append(f'IAEA PRIS: {e}')
-        print(f"PRIS failed: {e}", file=sys.stderr)
+        out['errors'].append(f'KHNP live: {e}')
+        print(f"KHNP live failed: {e}", file=sys.stderr)
 
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     with open(OUT_PATH, 'w', encoding='utf-8') as f:

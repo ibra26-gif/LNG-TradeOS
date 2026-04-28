@@ -1,5 +1,5 @@
 {
-  "updated": "2026-04-28T12:08:10+00:00",
+  "updated": "2026-04-28T12:56:54+00:00",
   "fx": {
     "asOf": "2026-04-27",
     "source": "ECB euro reference rates",
@@ -9,380 +9,322 @@
     "krwUsd": 1471.22
   },
   "khnp": {
-    "asOf": "2026-04-28",
-    "source": "IAEA PRIS",
-    "sourceUrl": "https://pris.iaea.org/PRIS/CountryStatistics/CountryDetails.aspx?current=KR",
+    "asOf": "2026-04-28 21:57:06",
+    "scrapedAt": "2026-04-28T12:57:31+00:00",
+    "source": "KHNP Open NPP Operations Info",
+    "sourceUrl": "https://npp.khnp.co.kr/",
     "reactors": [
       {
-        "name": "HANBIT-3",
-        "site": "Hanbit",
-        "unit": 3,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Yeonggwang-gun",
-        "net_mw": 983,
-        "gross_mw": 1041
-      },
-      {
-        "name": "HANBIT-4",
-        "site": "Hanbit",
-        "unit": 4,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Yeonggwang-gun",
-        "net_mw": 961,
-        "gross_mw": 1041
-      },
-      {
-        "name": "HANBIT-5",
-        "site": "Hanbit",
-        "unit": 5,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Yeonggwang-gun",
-        "net_mw": 974,
-        "gross_mw": 1051
-      },
-      {
-        "name": "HANBIT-6",
-        "site": "Hanbit",
-        "unit": 6,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Yeonggwang-gun",
-        "net_mw": 978,
-        "gross_mw": 1053
-      },
-      {
-        "name": "HANBIT-1",
-        "site": "Hanbit",
-        "unit": 1,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Yeonggwang-gun",
-        "net_mw": 965,
-        "gross_mw": 1025
-      },
-      {
-        "name": "HANBIT-2",
-        "site": "Hanbit",
-        "unit": 2,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Yeonggwang-gun",
-        "net_mw": 952,
-        "gross_mw": 1024
-      },
-      {
-        "name": "HANUL-2",
-        "site": "Hanul",
-        "unit": 2,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Ulchin-gun",
-        "net_mw": 957,
-        "gross_mw": 1011
-      },
-      {
-        "name": "HANUL-3",
-        "site": "Hanul",
-        "unit": 3,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Ulchin-gun",
-        "net_mw": 991,
-        "gross_mw": 1051
-      },
-      {
-        "name": "HANUL-4",
-        "site": "Hanul",
-        "unit": 4,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Ulchin-gun",
-        "net_mw": 994,
-        "gross_mw": 1052
-      },
-      {
-        "name": "HANUL-5",
-        "site": "Hanul",
-        "unit": 5,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Ulchin-gun",
-        "net_mw": 989,
-        "gross_mw": 1049
-      },
-      {
-        "name": "HANUL-6",
-        "site": "Hanul",
-        "unit": 6,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Ulchin-gun",
-        "net_mw": 987,
-        "gross_mw": 1049
-      },
-      {
-        "name": "HANUL-1",
-        "site": "Hanul",
-        "unit": 1,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Ulchin-gun",
-        "net_mw": 953,
-        "gross_mw": 1014
-      },
-      {
-        "name": "KORI-1",
+        "name": "Kori-2",
         "site": "Kori",
-        "unit": 1,
-        "type": "PWR",
-        "status": "Permanent Shutdown",
-        "location": "Gijang-gun",
-        "net_mw": 576,
-        "gross_mw": 607
-      },
-      {
-        "name": "KORI-2",
-        "site": "Kori",
-        "unit": 2,
-        "type": "PWR",
+        "unit_cd": "2112",
         "status": "Operational",
-        "location": "Gijang-gun",
-        "net_mw": 640,
-        "gross_mw": 681
+        "output_pct": 100.0,
+        "output_mwe": 680.0,
+        "asOf": "2026-04-28 21:56:30"
       },
       {
-        "name": "KORI-3",
+        "name": "Kori-3",
         "site": "Kori",
-        "unit": 3,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Gijang-gun",
-        "net_mw": 996,
-        "gross_mw": 1046
+        "unit_cd": "2123",
+        "status": "Maintenance",
+        "output_pct": 0.0,
+        "output_mwe": 0.0,
+        "asOf": "2026-04-28 21:53:45"
       },
       {
-        "name": "KORI-4",
+        "name": "Kori-4",
         "site": "Kori",
-        "unit": 4,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Gijang-gun",
-        "net_mw": 1001,
-        "gross_mw": 1046
+        "unit_cd": "2124",
+        "status": "Maintenance",
+        "output_pct": 0.0,
+        "output_mwe": 0.0,
+        "asOf": "2026-04-28 21:53:45"
       },
       {
-        "name": "SAEUL-2",
+        "name": "Shin-Kori-1",
+        "site": "Kori",
+        "unit_cd": "2135",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1055.0,
+        "asOf": "2026-04-28 21:56:10"
+      },
+      {
+        "name": "Shin-Kori-2",
+        "site": "Kori",
+        "unit_cd": "2136",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1053.0,
+        "asOf": "2026-04-28 21:56:30"
+      },
+      {
+        "name": "Hanbit-1",
+        "site": "Hanbit",
+        "unit_cd": "2311",
+        "status": "Maintenance",
+        "output_pct": 0.0,
+        "output_mwe": null,
+        "asOf": "2026-04-28 21:51:11"
+      },
+      {
+        "name": "Hanbit-2",
+        "site": "Hanbit",
+        "unit_cd": "2312",
+        "status": "Operational",
+        "output_pct": 96.0,
+        "output_mwe": 1024.0,
+        "asOf": "2026-04-28 21:56:31"
+      },
+      {
+        "name": "Hanbit-3",
+        "site": "Hanbit",
+        "unit_cd": "2323",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1051.0,
+        "asOf": "2026-04-28 21:56:16"
+      },
+      {
+        "name": "Hanbit-4",
+        "site": "Hanbit",
+        "unit_cd": "2324",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1047.0,
+        "asOf": "2026-04-28 21:56:51"
+      },
+      {
+        "name": "Hanbit-5",
+        "site": "Hanbit",
+        "unit_cd": "2335",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1051.0,
+        "asOf": "2026-04-28 21:57:01"
+      },
+      {
+        "name": "Hanbit-6",
+        "site": "Hanbit",
+        "unit_cd": "2336",
+        "status": "Maintenance",
+        "output_pct": 0.0,
+        "output_mwe": 0.0,
+        "asOf": "2026-04-28 21:51:11"
+      },
+      {
+        "name": "Hanul-1",
+        "site": "Hanul",
+        "unit_cd": "2411",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1021.0,
+        "asOf": "2026-04-28 21:57:01"
+      },
+      {
+        "name": "Hanul-2",
+        "site": "Hanul",
+        "unit_cd": "2412",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1019.0,
+        "asOf": "2026-04-28 21:57:01"
+      },
+      {
+        "name": "Hanul-3",
+        "site": "Hanul",
+        "unit_cd": "2423",
+        "status": "Maintenance",
+        "output_pct": 0.0,
+        "output_mwe": 0.0,
+        "asOf": "2026-04-28 21:52:01"
+      },
+      {
+        "name": "Hanul-4",
+        "site": "Hanul",
+        "unit_cd": "2424",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1048.0,
+        "asOf": "2026-04-28 21:57:01"
+      },
+      {
+        "name": "Hanul-5",
+        "site": "Hanul",
+        "unit_cd": "2435",
+        "status": "Maintenance",
+        "output_pct": 0.0,
+        "output_mwe": 0.0,
+        "asOf": "2026-04-28 21:54:26"
+      },
+      {
+        "name": "Hanul-6",
+        "site": "Hanul",
+        "unit_cd": "2436",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1055.0,
+        "asOf": "2026-04-28 21:57:01"
+      },
+      {
+        "name": "Shin-Hanul-1",
+        "site": "Hanul",
+        "unit_cd": "2711",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1500.0,
+        "asOf": "2026-04-28 21:57:06"
+      },
+      {
+        "name": "Shin-Hanul-2",
+        "site": "Hanul",
+        "unit_cd": "2712",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1503.0,
+        "asOf": "2026-04-28 21:56:46"
+      },
+      {
+        "name": "Wolsong-2",
+        "site": "Wolsong",
+        "unit_cd": "2212",
+        "status": "Maintenance",
+        "output_pct": 0.0,
+        "output_mwe": 0.0,
+        "asOf": "2026-04-28 21:53:45"
+      },
+      {
+        "name": "Wolsong-3",
+        "site": "Wolsong",
+        "unit_cd": "2223",
+        "status": "Maintenance",
+        "output_pct": 0.0,
+        "output_mwe": 0.0,
+        "asOf": "2026-04-28 21:53:45"
+      },
+      {
+        "name": "Wolsong-4",
+        "site": "Wolsong",
+        "unit_cd": "2224",
+        "status": "Maintenance",
+        "output_pct": 0.0,
+        "output_mwe": 0.0,
+        "asOf": "2026-04-28 21:53:45"
+      },
+      {
+        "name": "Shin-Wolsong-1",
+        "site": "Wolsong",
+        "unit_cd": "2235",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1051.0,
+        "asOf": "2026-04-28 21:57:01"
+      },
+      {
+        "name": "Shin-Wolsong-2",
+        "site": "Wolsong",
+        "unit_cd": "2236",
+        "status": "Operational",
+        "output_pct": 100.0,
+        "output_mwe": 1050.0,
+        "asOf": "2026-04-28 21:56:50"
+      },
+      {
+        "name": "Saeul-1",
         "site": "Saeul",
-        "unit": 2,
-        "type": "PWR",
+        "unit_cd": "2811",
         "status": "Operational",
-        "location": "Ulsan",
-        "net_mw": 1392,
-        "gross_mw": 1491
+        "output_pct": 100.0,
+        "output_mwe": 1481.0,
+        "asOf": "2026-04-28 21:57:00"
       },
       {
-        "name": "SAEUL-3",
+        "name": "Saeul-2",
         "site": "Saeul",
-        "unit": 3,
-        "type": "PWR",
-        "status": "Under Construction",
-        "location": "Ulsan",
-        "net_mw": 1340,
-        "gross_mw": 1400
-      },
-      {
-        "name": "SAEUL-4",
-        "site": "Saeul",
-        "unit": 4,
-        "type": "PWR",
-        "status": "Under Construction",
-        "location": "Ulsan",
-        "net_mw": 1340,
-        "gross_mw": 1400
-      },
-      {
-        "name": "SHIN-HANUL-1",
-        "site": "Hanul",
-        "unit": 1,
-        "type": "PWR",
+        "unit_cd": "2812",
         "status": "Operational",
-        "location": "Ulchin-gun",
-        "net_mw": 1429,
-        "gross_mw": 1455
-      },
-      {
-        "name": "SHIN-HANUL-2",
-        "site": "Hanul",
-        "unit": 2,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Ulchin-gun",
-        "net_mw": 1416,
-        "gross_mw": 1455
-      },
-      {
-        "name": "SHIN-KORI-1",
-        "site": "Kori",
-        "unit": 1,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Busan & Ulsan",
-        "net_mw": 986,
-        "gross_mw": 1038
-      },
-      {
-        "name": "SHIN-KORI-2",
-        "site": "Kori",
-        "unit": 2,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Busan & Ulsan",
-        "net_mw": 982,
-        "gross_mw": 1036
-      },
-      {
-        "name": "SHIN-WOLSONG-1",
-        "site": "Wolsong",
-        "unit": 1,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Gyeongju-si",
-        "net_mw": 980,
-        "gross_mw": 1048
-      },
-      {
-        "name": "SHIN-WOLSONG-2",
-        "site": "Wolsong",
-        "unit": 2,
-        "type": "PWR",
-        "status": "Operational",
-        "location": "Gyeongju-si",
-        "net_mw": 976,
-        "gross_mw": 1048
-      },
-      {
-        "name": "WOLSONG-3",
-        "site": "Wolsong",
-        "unit": 3,
-        "type": "PHWR",
-        "status": "Operational",
-        "location": "Gyeongju-si",
-        "net_mw": 595,
-        "gross_mw": 624
-      },
-      {
-        "name": "WOLSONG-4",
-        "site": "Wolsong",
-        "unit": 4,
-        "type": "PHWR",
-        "status": "Operational",
-        "location": "Gyeongju-si",
-        "net_mw": 569,
-        "gross_mw": 589
-      },
-      {
-        "name": "WOLSONG-1",
-        "site": "Wolsong",
-        "unit": 1,
-        "type": "PHWR",
-        "status": "Permanent Shutdown",
-        "location": "Gyeongju-si",
-        "net_mw": 661,
-        "gross_mw": 683
-      },
-      {
-        "name": "WOLSONG-2",
-        "site": "Wolsong",
-        "unit": 2,
-        "type": "PHWR",
-        "status": "Operational",
-        "location": "Gyeongju-si",
-        "net_mw": 571,
-        "gross_mw": 593
+        "output_pct": 100.0,
+        "output_mwe": 1498.0,
+        "asOf": "2026-04-28 21:56:05"
       }
     ],
     "bySite": [
       {
         "site": "Hanul",
         "reactors": [
-          "HANUL-2",
-          "HANUL-3",
-          "HANUL-4",
-          "HANUL-5",
-          "HANUL-6",
-          "HANUL-1",
-          "SHIN-HANUL-1",
-          "SHIN-HANUL-2"
+          "Hanul-1",
+          "Hanul-2",
+          "Hanul-3",
+          "Hanul-4",
+          "Hanul-5",
+          "Hanul-6",
+          "Shin-Hanul-1",
+          "Shin-Hanul-2"
         ],
         "totalCount": 8,
-        "online": 8,
-        "totalCap_GW": 9.14,
-        "onlineCap_GW": 9.14
+        "online": 6,
+        "totalCap_GW": 7.15,
+        "onlineCap_GW": 7.15
       },
       {
         "site": "Hanbit",
         "reactors": [
-          "HANBIT-3",
-          "HANBIT-4",
-          "HANBIT-5",
-          "HANBIT-6",
-          "HANBIT-1",
-          "HANBIT-2"
+          "Hanbit-1",
+          "Hanbit-2",
+          "Hanbit-3",
+          "Hanbit-4",
+          "Hanbit-5",
+          "Hanbit-6"
         ],
         "totalCount": 6,
-        "online": 6,
-        "totalCap_GW": 6.24,
-        "onlineCap_GW": 6.24
-      },
-      {
-        "site": "Kori",
-        "reactors": [
-          "KORI-1",
-          "KORI-2",
-          "KORI-3",
-          "KORI-4",
-          "SHIN-KORI-1",
-          "SHIN-KORI-2"
-        ],
-        "totalCount": 6,
-        "online": 5,
-        "totalCap_GW": 5.45,
-        "onlineCap_GW": 4.85
-      },
-      {
-        "site": "Wolsong",
-        "reactors": [
-          "SHIN-WOLSONG-1",
-          "SHIN-WOLSONG-2",
-          "WOLSONG-3",
-          "WOLSONG-4",
-          "WOLSONG-1",
-          "WOLSONG-2"
-        ],
-        "totalCount": 6,
-        "online": 5,
-        "totalCap_GW": 4.58,
-        "onlineCap_GW": 3.9
+        "online": 4,
+        "totalCap_GW": 4.17,
+        "onlineCap_GW": 4.17
       },
       {
         "site": "Saeul",
         "reactors": [
-          "SAEUL-2",
-          "SAEUL-3",
-          "SAEUL-4"
+          "Saeul-1",
+          "Saeul-2"
         ],
-        "totalCount": 3,
-        "online": 1,
-        "totalCap_GW": 4.29,
-        "onlineCap_GW": 1.49
+        "totalCount": 2,
+        "online": 2,
+        "totalCap_GW": 2.98,
+        "onlineCap_GW": 2.98
+      },
+      {
+        "site": "Kori",
+        "reactors": [
+          "Kori-2",
+          "Kori-3",
+          "Kori-4",
+          "Shin-Kori-1",
+          "Shin-Kori-2"
+        ],
+        "totalCount": 5,
+        "online": 3,
+        "totalCap_GW": 2.79,
+        "onlineCap_GW": 2.79
+      },
+      {
+        "site": "Wolsong",
+        "reactors": [
+          "Wolsong-2",
+          "Wolsong-3",
+          "Wolsong-4",
+          "Shin-Wolsong-1",
+          "Shin-Wolsong-2"
+        ],
+        "totalCount": 5,
+        "online": 2,
+        "totalCap_GW": 2.1,
+        "onlineCap_GW": 2.1
       }
     ],
-    "totalOnlineGW": 25.62,
-    "onlineCount": 25,
-    "totalCount": 29
+    "totalOnlineGW": 19.19,
+    "onlineCount": 17,
+    "totalCount": 26
   },
   "kogasTariff": null,
   "kogasImports": null,
