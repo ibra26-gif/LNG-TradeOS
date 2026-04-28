@@ -21758,8 +21758,8 @@ function renderKorNuclear(el){
     <!-- Seasonal monthly chart (Ember) - the YoY view -->
     <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · monthly nuclear share of generation · 2019–latest</span>
-        <span style="font-size:9px;color:#5a6882">Ember Monthly Electricity Data · ~6-week lag</span>
+        <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · monthly nuclear utilization · 2019–latest</span>
+        <span style="font-size:9px;color:#5a6882">Ember TWh ÷ fleet nameplate · ~6-week lag</span>
       </div>
       <div style="height:240px"><canvas id="kor-seasonal-monthly"></canvas></div>
     </div>
@@ -21800,7 +21800,9 @@ function renderKorNuclear(el){
       const yr = parseInt(y, 10);
       const mo = parseInt(m, 10) - 1; // 0-indexed
       if (!byYear[yr]) byYear[yr] = new Array(12).fill(null);
-      if (r.sharePct != null) byYear[yr][mo] = r.sharePct;
+      // Prefer utilizationPct (capacity factor); fall back to sharePct for old caches
+      const v = (r.utilizationPct != null) ? r.utilizationPct : r.sharePct;
+      if (v != null) byYear[yr][mo] = v;
     }
     const years = Object.keys(byYear).map(Number).sort();
     const curY = new Date().getFullYear();
@@ -21832,13 +21834,13 @@ function renderKorNuclear(el){
           ...CD.plugins,
           legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8}},
           tooltip: { ...CD.plugins.tooltip, callbacks: {
-            label: (ctx) => `${ctx.dataset.label} ${ctx.label}: ${ctx.parsed.y?.toFixed(1)}% of generation`,
+            label: (ctx) => `${ctx.dataset.label} ${ctx.label}: ${ctx.parsed.y?.toFixed(1)}% utilization`,
           }},
         },
         scales: {
           x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
-          y: { ...CD.scales.y,
-                title:{display:true,text:'% of total generation',color:'#3d5070',font:{size:9}},
+          y: { ...CD.scales.y, min:50, max:100,
+                title:{display:true,text:'% utilization (capacity factor)',color:'#3d5070',font:{size:9}},
                 ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
         },
       }

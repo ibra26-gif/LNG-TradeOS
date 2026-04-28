@@ -18,6 +18,7 @@ Cadence: daily 17:30 UTC (configurable; KHNP refreshes every ~3 min, but
 daily commits are fine — site-level counts only change on outages, which
 are rare. Could move to hourly later if needed.)
 """
+import calendar
 import json
 import os
 import re
@@ -25,6 +26,30 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+
+
+# ────────────────────────────────────────────────────────────────────
+# Korean nuclear fleet nameplate capacity timeline (IAEA PRIS-anchored).
+# Used to convert Ember monthly TWh → monthly utilization (capacity factor).
+#
+# Events (commercial-operation / permanent-shutdown dates):
+#   2019-08-29  Shin Kori 4   commercial (+1.416 GW)
+#   2019-12-24  Wolsong 1     retired    (-0.679 GW)
+#   2022-12-07  Shin Hanul 1  commercial (+1.418 GW)
+#   2023-04-08  Kori 2        retired    (-0.650 GW)
+#   2024-04-05  Shin Hanul 2  commercial (+1.418 GW)
+#   2025-03-28  Shin Kori 5   commercial (+1.416 GW)
+# ────────────────────────────────────────────────────────────────────
+def korea_nuc_capacity_gw(date_str):
+    """Operating Korean nuclear nameplate (GW) for a YYYY-MM-DD month."""
+    ym = int(date_str[:4]) * 100 + int(date_str[5:7])
+    if ym < 201909: return 22.67   # pre-Shin-Kori-4
+    if ym < 201912: return 24.08   # SK4 in, Wolsong 1 still
+    if ym < 202212: return 23.40   # Wolsong 1 retired
+    if ym < 202304: return 24.82   # Shin Hanul 1 added
+    if ym < 202404: return 24.17   # Kori 2 retired
+    if ym < 202503: return 25.59   # Shin Hanul 2 added
+    return 27.00                    # Shin Kori 5 added
 
 # Prefer requests (more robust SSL session handling than urllib for sites
 # like IAEA PRIS that flake on TLS handshakes). Fall back to urllib if not.
@@ -399,6 +424,23 @@ def fetch_ember_monthly():
     import io as _io
 
     cache_path = os.path.join(os.path.dirname(OUT_PATH), 'korea_ember_monthly.json')
+
+    def _enrich(out):
+        """Add utilizationPct + capacityGw to every series row.
+        Idempotent — recomputes on every load so capacity-table edits flow through.
+        """
+        for r in (out.get('series') or []):
+            d = r.get('date'); twh = r.get('twh')
+            if not d or twh is None: continue
+            cap_gw = korea_nuc_capacity_gw(d)
+            y, m = int(d[:4]), int(d[5:7])
+            hours = calendar.monthrange(y, m)[1] * 24
+            max_twh = cap_gw * hours / 1000.0  # GW × h = GWh; /1000 → TWh
+            if max_twh > 0:
+                r['utilizationPct'] = round(twh / max_twh * 100, 1)
+                r['capacityGw'] = cap_gw
+        return out
+
     # Refresh if cache missing or > 7 days old
     refresh = True
     if os.path.exists(cache_path):
@@ -410,7 +452,7 @@ def fetch_ember_monthly():
                 from datetime import datetime as _dt
                 age_days = (datetime.now(timezone.utc) - _dt.fromisoformat(cached_at)).days
                 if age_days < 7:
-                    return cached
+                    return _enrich(cached)
         except Exception:
             pass
 
@@ -458,6 +500,7 @@ def fetch_ember_monthly():
             'sourceUrl':url,
             'series':   series,
         }
+        _enrich(out)
         with open(cache_path, 'w', encoding='utf-8') as f:
             json.dump(out, f, indent=2)
         return out

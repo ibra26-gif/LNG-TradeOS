@@ -1,5 +1,5 @@
 {
-  "updated": "2026-04-28T14:52:02+00:00",
+  "updated": "2026-04-28T16:47:40+00:00",
   "fx": {
     "asOf": "2026-04-28",
     "source": "ECB euro reference rates",
@@ -9,8 +9,8 @@
     "krwUsd": 1476.89
   },
   "khnp": {
-    "asOf": "2026-04-28 23:52:15",
-    "scrapedAt": "2026-04-28T14:52:38+00:00",
+    "asOf": "2026-04-29 01:47:41",
+    "scrapedAt": "2026-04-28T16:48:16+00:00",
     "source": "KHNP Open NPP Operations Info",
     "sourceUrl": "https://npp.khnp.co.kr/",
     "reactors": [
@@ -20,8 +20,8 @@
         "unit_cd": "2112",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 681,
-        "asOf": "2026-04-28 23:52:00"
+        "output_mwe": 680,
+        "asOf": "2026-04-29 01:47:40"
       },
       {
         "name": "Kori-3",
@@ -30,7 +30,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:43:45"
+        "asOf": "2026-04-29 01:43:45"
       },
       {
         "name": "Kori-4",
@@ -39,7 +39,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:43:45"
+        "asOf": "2026-04-29 01:43:45"
       },
       {
         "name": "Shin-Kori-1",
@@ -47,8 +47,8 @@
         "unit_cd": "2135",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1056,
-        "asOf": "2026-04-28 23:51:40"
+        "output_mwe": 1055,
+        "asOf": "2026-04-29 01:47:40"
       },
       {
         "name": "Shin-Kori-2",
@@ -56,8 +56,8 @@
         "unit_cd": "2136",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1054,
-        "asOf": "2026-04-28 23:52:00"
+        "output_mwe": 1053,
+        "asOf": "2026-04-29 01:47:30"
       },
       {
         "name": "Hanbit-1",
@@ -66,16 +66,16 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": null,
-        "asOf": "2026-04-28 23:51:11"
+        "asOf": "2026-04-29 01:41:11"
       },
       {
         "name": "Hanbit-2",
         "site": "Hanbit",
         "unit_cd": "2312",
         "status": "Operational",
-        "output_pct": 95.0,
-        "output_mwe": 1024,
-        "asOf": "2026-04-28 23:52:01"
+        "output_pct": 96.0,
+        "output_mwe": 1023,
+        "asOf": "2026-04-29 01:47:41"
       },
       {
         "name": "Hanbit-3",
@@ -83,8 +83,8 @@
         "unit_cd": "2323",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1051,
-        "asOf": "2026-04-28 23:51:46"
+        "output_mwe": 1050,
+        "asOf": "2026-04-29 01:47:16"
       },
       {
         "name": "Hanbit-4",
@@ -93,7 +93,7 @@
         "status": "Operational",
         "output_pct": 100.0,
         "output_mwe": 1047,
-        "asOf": "2026-04-28 23:51:51"
+        "asOf": "2026-04-29 01:47:21"
       },
       {
         "name": "Hanbit-5",
@@ -101,8 +101,8 @@
         "unit_cd": "2335",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1052,
-        "asOf": "2026-04-28 23:52:01"
+        "output_mwe": 1051,
+        "asOf": "2026-04-29 01:47:31"
       },
       {
         "name": "Hanbit-6",
@@ -111,7 +111,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:51:11"
+        "asOf": "2026-04-29 01:41:11"
       },
       {
         "name": "Hanul-1",
@@ -119,8 +119,8 @@
         "unit_cd": "2411",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1020,
-        "asOf": "2026-04-28 23:52:01"
+        "output_mwe": 1019,
+        "asOf": "2026-04-29 01:47:41"
       },
       {
         "name": "Hanul-2",
@@ -128,8 +128,8 @@
         "unit_cd": "2412",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1018,
-        "asOf": "2026-04-28 23:52:01"
+        "output_mwe": 1016,
+        "asOf": "2026-04-29 01:47:41"
       },
       {
         "name": "Hanul-3",
@@ -138,7 +138,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:52:01"
+        "asOf": "2026-04-29 01:42:01"
       },
       {
         "name": "Hanul-4",
@@ -147,7 +147,7 @@
         "status": "Operational",
         "output_pct": 99.0,
         "output_mwe": 1047,
-        "asOf": "2026-04-28 23:52:06"
+        "asOf": "2026-04-29 01:47:36"
       },
       {
         "name": "Hanul-5",
@@ -156,7 +156,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:44:26"
+        "asOf": "2026-04-29 01:44:26"
       },
       {
         "name": "Hanul-6",
@@ -164,8 +164,8 @@
         "unit_cd": "2436",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1054,
-        "asOf": "2026-04-28 23:52:01"
+        "output_mwe": 1053,
+        "asOf": "2026-04-29 01:47:31"
       },
       {
         "name": "Shin-Hanul-1",
@@ -173,8 +173,8 @@
         "unit_cd": "2711",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1496,
-        "asOf": "2026-04-28 23:52:01"
+        "output_mwe": 1495,
+        "asOf": "2026-04-29 01:47:36"
       },
       {
         "name": "Shin-Hanul-2",
@@ -182,8 +182,8 @@
         "unit_cd": "2712",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1500,
-        "asOf": "2026-04-28 23:51:46"
+        "output_mwe": 1502,
+        "asOf": "2026-04-29 01:47:41"
       },
       {
         "name": "Wolsong-2",
@@ -192,7 +192,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:43:45"
+        "asOf": "2026-04-29 01:43:45"
       },
       {
         "name": "Wolsong-3",
@@ -201,7 +201,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:43:45"
+        "asOf": "2026-04-29 01:43:45"
       },
       {
         "name": "Wolsong-4",
@@ -210,7 +210,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:43:45"
+        "asOf": "2026-04-29 01:43:45"
       },
       {
         "name": "Shin-Wolsong-1",
@@ -219,7 +219,7 @@
         "status": "Operational",
         "output_pct": 100.0,
         "output_mwe": 1050,
-        "asOf": "2026-04-28 23:51:31"
+        "asOf": "2026-04-29 01:47:31"
       },
       {
         "name": "Shin-Wolsong-2",
@@ -227,8 +227,8 @@
         "unit_cd": "2236",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1050,
-        "asOf": "2026-04-28 23:52:15"
+        "output_mwe": 1049,
+        "asOf": "2026-04-29 01:47:15"
       },
       {
         "name": "Saeul-1",
@@ -237,7 +237,7 @@
         "status": "Operational",
         "output_pct": 100.0,
         "output_mwe": 1482,
-        "asOf": "2026-04-28 23:52:05"
+        "asOf": "2026-04-29 01:47:30"
       },
       {
         "name": "Saeul-2",
@@ -245,8 +245,8 @@
         "unit_cd": "2812",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1498,
-        "asOf": "2026-04-28 23:50:30"
+        "output_mwe": 1495,
+        "asOf": "2026-04-29 01:47:35"
       }
     ],
     "bySite": [
@@ -588,432 +588,604 @@
       {
         "date": "2019-01-01",
         "twh": 12.26,
-        "sharePct": 23.36
+        "sharePct": 23.36,
+        "utilizationPct": 72.7,
+        "capacityGw": 22.67
       },
       {
         "date": "2019-02-01",
         "twh": 11.03,
-        "sharePct": 24.98
+        "sharePct": 24.98,
+        "utilizationPct": 72.4,
+        "capacityGw": 22.67
       },
       {
         "date": "2019-03-01",
         "twh": 14.03,
-        "sharePct": 29.95
+        "sharePct": 29.95,
+        "utilizationPct": 83.2,
+        "capacityGw": 22.67
       },
       {
         "date": "2019-04-01",
         "twh": 14.14,
-        "sharePct": 32.45
+        "sharePct": 32.45,
+        "utilizationPct": 86.6,
+        "capacityGw": 22.67
       },
       {
         "date": "2019-05-01",
         "twh": 14.73,
-        "sharePct": 33.46
+        "sharePct": 33.46,
+        "utilizationPct": 87.3,
+        "capacityGw": 22.67
       },
       {
         "date": "2019-06-01",
         "twh": 13.58,
-        "sharePct": 31.2
+        "sharePct": 31.2,
+        "utilizationPct": 83.2,
+        "capacityGw": 22.67
       },
       {
         "date": "2019-07-01",
         "twh": 11.68,
-        "sharePct": 23.67
+        "sharePct": 23.67,
+        "utilizationPct": 69.2,
+        "capacityGw": 22.67
       },
       {
         "date": "2019-08-01",
         "twh": 12.2,
-        "sharePct": 23.87
+        "sharePct": 23.87,
+        "utilizationPct": 72.3,
+        "capacityGw": 22.67
       },
       {
         "date": "2019-09-01",
         "twh": 10.32,
-        "sharePct": 23.44
+        "sharePct": 23.44,
+        "utilizationPct": 59.5,
+        "capacityGw": 24.08
       },
       {
         "date": "2019-10-01",
         "twh": 10.6,
-        "sharePct": 24.27
+        "sharePct": 24.27,
+        "utilizationPct": 59.2,
+        "capacityGw": 24.08
       },
       {
         "date": "2019-11-01",
         "twh": 10.23,
-        "sharePct": 22.8
+        "sharePct": 22.8,
+        "utilizationPct": 59.0,
+        "capacityGw": 24.08
       },
       {
         "date": "2019-12-01",
         "twh": 11.06,
-        "sharePct": 22.12
+        "sharePct": 22.12,
+        "utilizationPct": 63.5,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-01-01",
         "twh": 11.9,
-        "sharePct": 24.15
+        "sharePct": 24.15,
+        "utilizationPct": 68.4,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-02-01",
         "twh": 12.69,
-        "sharePct": 27.53
+        "sharePct": 27.53,
+        "utilizationPct": 77.9,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-03-01",
         "twh": 14.46,
-        "sharePct": 31.5
+        "sharePct": 31.5,
+        "utilizationPct": 83.1,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-04-01",
         "twh": 13.69,
-        "sharePct": 32.57
+        "sharePct": 32.57,
+        "utilizationPct": 81.3,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-05-01",
         "twh": 15.26,
-        "sharePct": 36.96
+        "sharePct": 36.96,
+        "utilizationPct": 87.7,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-06-01",
         "twh": 14.07,
-        "sharePct": 32.27
+        "sharePct": 32.27,
+        "utilizationPct": 83.5,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-07-01",
         "twh": 13.72,
-        "sharePct": 29.54
+        "sharePct": 29.54,
+        "utilizationPct": 78.8,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-08-01",
         "twh": 12.53,
-        "sharePct": 24.68
+        "sharePct": 24.68,
+        "utilizationPct": 72.0,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-09-01",
         "twh": 9.29,
-        "sharePct": 20.96
+        "sharePct": 20.96,
+        "utilizationPct": 55.1,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-10-01",
         "twh": 13.47,
-        "sharePct": 31.44
+        "sharePct": 31.44,
+        "utilizationPct": 77.4,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-11-01",
         "twh": 14.05,
-        "sharePct": 31.4
+        "sharePct": 31.4,
+        "utilizationPct": 83.4,
+        "capacityGw": 23.4
       },
       {
         "date": "2020-12-01",
         "twh": 15.06,
-        "sharePct": 29.35
+        "sharePct": 29.35,
+        "utilizationPct": 86.5,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-01-01",
         "twh": 14.04,
-        "sharePct": 26.58
+        "sharePct": 26.58,
+        "utilizationPct": 80.6,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-02-01",
         "twh": 12.73,
-        "sharePct": 28.5
+        "sharePct": 28.5,
+        "utilizationPct": 81.0,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-03-01",
         "twh": 13.8,
-        "sharePct": 29.41
+        "sharePct": 29.41,
+        "utilizationPct": 79.3,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-04-01",
         "twh": 12.55,
-        "sharePct": 28.97
+        "sharePct": 28.97,
+        "utilizationPct": 74.5,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-05-01",
         "twh": 12.76,
-        "sharePct": 29.0
+        "sharePct": 29.0,
+        "utilizationPct": 73.3,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-06-01",
         "twh": 11.31,
-        "sharePct": 24.86
+        "sharePct": 24.86,
+        "utilizationPct": 67.1,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-07-01",
         "twh": 12.3,
-        "sharePct": 22.86
+        "sharePct": 22.86,
+        "utilizationPct": 70.7,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-08-01",
         "twh": 12.78,
-        "sharePct": 24.83
+        "sharePct": 24.83,
+        "utilizationPct": 73.4,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-09-01",
         "twh": 12.17,
-        "sharePct": 26.97
+        "sharePct": 26.97,
+        "utilizationPct": 72.2,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-10-01",
         "twh": 13.46,
-        "sharePct": 29.6
+        "sharePct": 29.6,
+        "utilizationPct": 77.3,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-11-01",
         "twh": 13.57,
-        "sharePct": 29.1
+        "sharePct": 29.1,
+        "utilizationPct": 80.5,
+        "capacityGw": 23.4
       },
       {
         "date": "2021-12-01",
         "twh": 16.53,
-        "sharePct": 31.19
+        "sharePct": 31.19,
+        "utilizationPct": 94.9,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-01-01",
         "twh": 16.1,
-        "sharePct": 29.57
+        "sharePct": 29.57,
+        "utilizationPct": 92.5,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-02-01",
         "twh": 13.99,
-        "sharePct": 29.02
+        "sharePct": 29.02,
+        "utilizationPct": 89.0,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-03-01",
         "twh": 13.87,
-        "sharePct": 28.21
+        "sharePct": 28.21,
+        "utilizationPct": 79.7,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-04-01",
         "twh": 13.39,
-        "sharePct": 30.05
+        "sharePct": 30.05,
+        "utilizationPct": 79.5,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-05-01",
         "twh": 14.61,
-        "sharePct": 31.85
+        "sharePct": 31.85,
+        "utilizationPct": 83.9,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-06-01",
         "twh": 14.73,
-        "sharePct": 31.12
+        "sharePct": 31.12,
+        "utilizationPct": 87.4,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-07-01",
         "twh": 15.35,
-        "sharePct": 28.05
+        "sharePct": 28.05,
+        "utilizationPct": 88.2,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-08-01",
         "twh": 16.31,
-        "sharePct": 30.41
+        "sharePct": 30.41,
+        "utilizationPct": 93.7,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-09-01",
         "twh": 14.09,
-        "sharePct": 30.63
+        "sharePct": 30.63,
+        "utilizationPct": 83.6,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-10-01",
         "twh": 14.38,
-        "sharePct": 31.67
+        "sharePct": 31.67,
+        "utilizationPct": 82.6,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-11-01",
         "twh": 14.01,
-        "sharePct": 30.52
+        "sharePct": 30.52,
+        "utilizationPct": 83.2,
+        "capacityGw": 23.4
       },
       {
         "date": "2022-12-01",
         "twh": 15.23,
-        "sharePct": 27.56
+        "sharePct": 27.56,
+        "utilizationPct": 82.5,
+        "capacityGw": 24.82
       },
       {
         "date": "2023-01-01",
         "twh": 15.66,
-        "sharePct": 29.1
+        "sharePct": 29.1,
+        "utilizationPct": 84.8,
+        "capacityGw": 24.82
       },
       {
         "date": "2023-02-01",
         "twh": 13.61,
-        "sharePct": 28.68
+        "sharePct": 28.68,
+        "utilizationPct": 81.6,
+        "capacityGw": 24.82
       },
       {
         "date": "2023-03-01",
         "twh": 15.2,
-        "sharePct": 31.94
+        "sharePct": 31.94,
+        "utilizationPct": 82.3,
+        "capacityGw": 24.82
       },
       {
         "date": "2023-04-01",
         "twh": 13.57,
-        "sharePct": 31.05
+        "sharePct": 31.05,
+        "utilizationPct": 78.0,
+        "capacityGw": 24.17
       },
       {
         "date": "2023-05-01",
         "twh": 14.46,
-        "sharePct": 32.0
+        "sharePct": 32.0,
+        "utilizationPct": 80.4,
+        "capacityGw": 24.17
       },
       {
         "date": "2023-06-01",
         "twh": 14.17,
-        "sharePct": 30.25
+        "sharePct": 30.25,
+        "utilizationPct": 81.4,
+        "capacityGw": 24.17
       },
       {
         "date": "2023-07-01",
         "twh": 15.82,
-        "sharePct": 29.86
+        "sharePct": 29.86,
+        "utilizationPct": 88.0,
+        "capacityGw": 24.17
       },
       {
         "date": "2023-08-01",
         "twh": 15.87,
-        "sharePct": 28.89
+        "sharePct": 28.89,
+        "utilizationPct": 88.3,
+        "capacityGw": 24.17
       },
       {
         "date": "2023-09-01",
         "twh": 14.99,
-        "sharePct": 31.38
+        "sharePct": 31.38,
+        "utilizationPct": 86.1,
+        "capacityGw": 24.17
       },
       {
         "date": "2023-10-01",
         "twh": 15.14,
-        "sharePct": 33.96
+        "sharePct": 33.96,
+        "utilizationPct": 84.2,
+        "capacityGw": 24.17
       },
       {
         "date": "2023-11-01",
         "twh": 15.72,
-        "sharePct": 33.13
+        "sharePct": 33.13,
+        "utilizationPct": 90.3,
+        "capacityGw": 24.17
       },
       {
         "date": "2023-12-01",
         "twh": 16.29,
-        "sharePct": 31.25
+        "sharePct": 31.25,
+        "utilizationPct": 90.6,
+        "capacityGw": 24.17
       },
       {
         "date": "2024-01-01",
         "twh": 14.96,
-        "sharePct": 27.79
+        "sharePct": 27.79,
+        "utilizationPct": 83.2,
+        "capacityGw": 24.17
       },
       {
         "date": "2024-02-01",
         "twh": 14.72,
-        "sharePct": 31.45
+        "sharePct": 31.45,
+        "utilizationPct": 87.5,
+        "capacityGw": 24.17
       },
       {
         "date": "2024-03-01",
         "twh": 15.59,
-        "sharePct": 31.84
+        "sharePct": 31.84,
+        "utilizationPct": 86.7,
+        "capacityGw": 24.17
       },
       {
         "date": "2024-04-01",
         "twh": 14.62,
-        "sharePct": 33.5
+        "sharePct": 33.5,
+        "utilizationPct": 79.3,
+        "capacityGw": 25.59
       },
       {
         "date": "2024-05-01",
         "twh": 16.02,
-        "sharePct": 35.64
+        "sharePct": 35.64,
+        "utilizationPct": 84.1,
+        "capacityGw": 25.59
       },
       {
         "date": "2024-06-01",
         "twh": 15.08,
-        "sharePct": 32.09
+        "sharePct": 32.09,
+        "utilizationPct": 81.8,
+        "capacityGw": 25.59
       },
       {
         "date": "2024-07-01",
         "twh": 16.48,
-        "sharePct": 30.47
+        "sharePct": 30.47,
+        "utilizationPct": 86.6,
+        "capacityGw": 25.59
       },
       {
         "date": "2024-08-01",
         "twh": 15.51,
-        "sharePct": 26.56
+        "sharePct": 26.56,
+        "utilizationPct": 81.5,
+        "capacityGw": 25.59
       },
       {
         "date": "2024-09-01",
         "twh": 15.85,
-        "sharePct": 31.46
+        "sharePct": 31.46,
+        "utilizationPct": 86.0,
+        "capacityGw": 25.59
       },
       {
         "date": "2024-10-01",
         "twh": 17.07,
-        "sharePct": 37.3
+        "sharePct": 37.3,
+        "utilizationPct": 89.7,
+        "capacityGw": 25.59
       },
       {
         "date": "2024-11-01",
         "twh": 16.14,
-        "sharePct": 35.55
+        "sharePct": 35.55,
+        "utilizationPct": 87.6,
+        "capacityGw": 25.59
       },
       {
         "date": "2024-12-01",
         "twh": 16.71,
-        "sharePct": 32.25
+        "sharePct": 32.25,
+        "utilizationPct": 87.8,
+        "capacityGw": 25.59
       },
       {
         "date": "2025-01-01",
         "twh": 17.89,
-        "sharePct": 34.44
+        "sharePct": 34.44,
+        "utilizationPct": 94.0,
+        "capacityGw": 25.59
       },
       {
         "date": "2025-02-01",
         "twh": 16.23,
-        "sharePct": 33.37
+        "sharePct": 33.37,
+        "utilizationPct": 94.4,
+        "capacityGw": 25.59
       },
       {
         "date": "2025-03-01",
         "twh": 17.87,
-        "sharePct": 37.14
+        "sharePct": 37.14,
+        "utilizationPct": 89.0,
+        "capacityGw": 27.0
       },
       {
         "date": "2025-04-01",
         "twh": 15.93,
-        "sharePct": 36.21
+        "sharePct": 36.21,
+        "utilizationPct": 81.9,
+        "capacityGw": 27.0
       },
       {
         "date": "2025-05-01",
         "twh": 15.89,
-        "sharePct": 35.32
+        "sharePct": 35.32,
+        "utilizationPct": 79.1,
+        "capacityGw": 27.0
       },
       {
         "date": "2025-06-01",
         "twh": 15.06,
-        "sharePct": 31.93
+        "sharePct": 31.93,
+        "utilizationPct": 77.5,
+        "capacityGw": 27.0
       },
       {
         "date": "2025-07-01",
         "twh": 15.23,
-        "sharePct": 26.92
+        "sharePct": 26.92,
+        "utilizationPct": 75.8,
+        "capacityGw": 27.0
       },
       {
         "date": "2025-08-01",
         "twh": 14.07,
-        "sharePct": 24.74
+        "sharePct": 24.74,
+        "utilizationPct": 70.0,
+        "capacityGw": 27.0
       },
       {
         "date": "2025-09-01",
         "twh": 14.25,
-        "sharePct": 28.34
+        "sharePct": 28.34,
+        "utilizationPct": 73.3,
+        "capacityGw": 27.0
       },
       {
         "date": "2025-10-01",
         "twh": 13.75,
-        "sharePct": 30.63
+        "sharePct": 30.63,
+        "utilizationPct": 68.4,
+        "capacityGw": 27.0
       },
       {
         "date": "2025-11-01",
         "twh": 13.06,
-        "sharePct": 28.82
+        "sharePct": 28.82,
+        "utilizationPct": 67.2,
+        "capacityGw": 27.0
       },
       {
         "date": "2025-12-01",
         "twh": 15.44,
-        "sharePct": 29.86
+        "sharePct": 29.86,
+        "utilizationPct": 76.9,
+        "capacityGw": 27.0
       },
       {
         "date": "2026-01-01",
         "twh": 14.65,
-        "sharePct": 26.7
+        "sharePct": 26.7,
+        "utilizationPct": 72.9,
+        "capacityGw": 27.0
       },
       {
         "date": "2026-02-01",
         "twh": 12.07,
-        "sharePct": 26.43
+        "sharePct": 26.43,
+        "utilizationPct": 66.5,
+        "capacityGw": 27.0
       }
     ]
   },
