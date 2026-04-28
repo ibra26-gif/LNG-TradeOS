@@ -387,6 +387,82 @@ def fetch_khnp_trips():
     }
 
 
+def fetch_ember_monthly():
+    """Monthly Korean electricity by source from Ember.
+
+    Source: files.ember-energy.org public CSV (the same dataset behind
+    their Monthly Electricity Data explorer). Free, no API key needed.
+    The file is large (~70 MB) so we cache the parsed Korea-nuclear rows
+    in data/korea_ember_monthly.json and only re-download weekly.
+    """
+    import csv
+    import io as _io
+
+    cache_path = os.path.join(os.path.dirname(OUT_PATH), 'korea_ember_monthly.json')
+    # Refresh if cache missing or > 7 days old
+    refresh = True
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                cached = json.load(f)
+            cached_at = cached.get('cachedAt')
+            if cached_at:
+                from datetime import datetime as _dt
+                age_days = (datetime.now(timezone.utc) - _dt.fromisoformat(cached_at)).days
+                if age_days < 7:
+                    return cached
+        except Exception:
+            pass
+
+    if refresh:
+        url = 'https://files.ember-energy.org/public-downloads/monthly_full_release_long_format.csv'
+        try:
+            text = fetch(url, timeout=60)
+        except Exception as e:
+            print(f'Ember monthly fetch failed: {e}', file=sys.stderr)
+            # Return cached even if stale
+            if os.path.exists(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            return None
+        rows = []
+        reader = csv.DictReader(_io.StringIO(text))
+        for r in reader:
+            if r.get('Area') != 'South Korea': continue
+            if r.get('Variable') != 'Nuclear': continue
+            if r.get('Subcategory') != 'Fuel': continue
+            unit = r.get('Unit')
+            if unit not in ('TWh', '%'): continue
+            try:
+                val = float(r['Value']) if r.get('Value') else None
+            except ValueError:
+                val = None
+            if val is None: continue
+            rows.append({'date': r['Date'], 'unit': unit, 'value': val})
+
+        # Pivot: date → {twh, share_pct}
+        by_date = {}
+        for r in rows:
+            d = by_date.setdefault(r['date'], {})
+            if r['unit'] == 'TWh': d['twh'] = r['value']
+            elif r['unit'] == '%':  d['sharePct'] = r['value']
+        series = sorted([{
+            'date':     k,
+            'twh':      v.get('twh'),
+            'sharePct': v.get('sharePct'),
+        } for k, v in by_date.items()], key=lambda x: x['date'])
+
+        out = {
+            'cachedAt': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+            'source':   'Ember Monthly Electricity Data',
+            'sourceUrl':url,
+            'series':   series,
+        }
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            json.dump(out, f, indent=2)
+        return out
+
+
 def fetch_ecb_fx():
     """ECB daily reference rates (cross-rate to derive KRW/USD)."""
     url = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
@@ -471,6 +547,7 @@ def main():
         'khnp':          None,
         'khnpAnnual':    None,
         'khnpTrips':     None,
+        'emberMonthly':  None,  # NEW: monthly nuclear gen 2019+ for seasonal chart
         # KR-only sources — left null so the front-end falls back to seeded values + amber badge.
         'kogasTariff':   None,
         'kogasImports':  None,
@@ -514,6 +591,16 @@ def main():
     except Exception as e:
         out['errors'].append(f'KHNP trips: {e}')
         print(f"KHNP trips failed: {e}", file=sys.stderr)
+
+    try:
+        out['emberMonthly'] = fetch_ember_monthly()
+        em = out['emberMonthly']
+        if em and em.get('series'):
+            print(f"Ember monthly: {len(em['series'])} months "
+                  f"({em['series'][0]['date'][:7]}–{em['series'][-1]['date'][:7]})", file=sys.stderr)
+    except Exception as e:
+        out['errors'].append(f'Ember monthly: {e}')
+        print(f"Ember monthly failed: {e}", file=sys.stderr)
 
     # Stabilize for git diff
     round_for_diff_stability(out)

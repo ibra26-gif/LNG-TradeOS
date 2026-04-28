@@ -21594,8 +21594,9 @@ function korBuildShell(){
   return `
     <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS &amp; LNG ANALYTICS · KOREA SIGNPOSTS</div>
     <div style="display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:0">
-      ${tabBtn('balance','GAS BALANCE & NUCLEAR', _korTab==='balance')}
-      ${tabBtn('prices','PRICES',                  _korTab==='prices')}
+      ${tabBtn('balance', 'GAS BALANCE',           _korTab==='balance')}
+      ${tabBtn('nuclear', 'NUCLEAR',               _korTab==='nuclear')}
+      ${tabBtn('prices',  'PRICES',                _korTab==='prices')}
     </div>
     <div id="kor-tab-body" style="margin-top:14px"></div>
   `;
@@ -21606,8 +21607,9 @@ function korShowTab(tab, btn){
   const c = document.getElementById('kor-container');
   if (c) c.innerHTML = korBuildShell();
   const body = document.getElementById('kor-tab-body'); if (!body) return;
-  if (tab === 'balance') renderKorBalance(body);
-  else                   renderKorPrices(body);
+  if (tab === 'nuclear')      renderKorNuclear(body);
+  else if (tab === 'balance') renderKorBalance(body);
+  else                        renderKorPrices(body);
 }
 window.korShowTab = korShowTab;
 
@@ -21633,47 +21635,32 @@ function korKpiCard(opts){
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// TAB 1 · GAS BALANCE & NUCLEAR
+// TAB · NUCLEAR (own dedicated tab)
 // ────────────────────────────────────────────────────────────────────────────
-function renderKorBalance(el){
-  const s = KOR_SEED;
-  // Live KHNP data
+function renderKorNuclear(el){
   const liveK = _korLive?.khnp;
   const liveAnnual = _korLive?.khnpAnnual;
   const liveTrips = _korLive?.khnpTrips;
-  const nuclearGW = liveK?.totalOnlineGW ?? s.nuclearGW;
-  const nuclearOn = liveK?.onlineCount ?? s.nuclearOnlineCount;
-  const nuclearTot= liveK?.totalCount ?? s.nuclearTotalCount;
+  const liveEmber = _korLive?.emberMonthly;
+  const nuclearGW = liveK?.totalOnlineGW ?? 0;
+  const nuclearOn = liveK?.onlineCount ?? 0;
+  const nuclearTot = liveK?.totalCount ?? 26;
   const nuclearAsOf = liveK?.asOf;
   const nuclearLive = !!liveK;
-  // Site list
-  const siteList = liveK?.bySite?.length ? liveK.bySite.map(b => ({
-    site: b.site, cap: b.onlineCap_GW, online: b.online, total: b.totalCount,
-  })) : s.nuclearBySite;
-  // Outage list (currently offline)
+  const fleetNameplate = (liveK?.reactors || []).reduce((s, r) =>
+    s + ((NUCLEAR_NAMEPLATE[r.name] || 1000) / 1000), 0) || 27.5;
+  const utilNow = (nuclearGW / fleetNameplate * 100).toFixed(1);
   const offlineReactors = (liveK?.reactors || []).filter(r => r.status !== 'Operational');
-  const offlineGW = offlineReactors
-    .filter(r => r.output_mwe == null || r.output_mwe < 5)
-    .reduce((sum, r) => {
-      // Approximate unavailable capacity from prior-known nameplate.
-      // For now use a simple lookup based on reactor type pattern.
-      const cap = r.output_mwe && r.output_mwe > 5 ? r.output_mwe : NUCLEAR_NAMEPLATE[r.name] || 1000;
-      return sum + cap;
-    }, 0);
-  const offlineGWStr = (offlineGW / 1000).toFixed(2);
-  const offlinePct = ((nuclearTot - nuclearOn) / Math.max(nuclearTot, 1) * 100).toFixed(0);
-  // Δ vs prior — from history CSV (last entry vs latest)
+  const offlineBySite = {};
+  offlineReactors.forEach(r => {
+    const cap = (r.output_mwe && r.output_mwe > 5) ? r.output_mwe : (NUCLEAR_NAMEPLATE[r.name] || 1000);
+    if (!offlineBySite[r.site]) offlineBySite[r.site] = { reactors: [], cap: 0 };
+    offlineBySite[r.site].reactors.push(r.name);
+    offlineBySite[r.site].cap += cap;
+  });
+  const offlineGW = Object.values(offlineBySite).reduce((s, x) => s + x.cap, 0) / 1000;
   const dod = _korDodSnapshot();
-  const lngYoY = (s.lngImportsYoY*100).toFixed(0) + '% YoY';
-  const powYoY = (s.powerSalesYoY*100).toFixed(0) + '% YoY';
-  const utilNow = (nuclearGW / 25.0 * 100).toFixed(0); // 25 GW nominal denominator
-  const khnpFreshness = nuclearLive
-    ? { label:'KHNP live · npp.khnp.co.kr', meta: nuclearAsOf || 'fetching…', color:'#34d399' }
-    : { label:'KHNP', meta:'27 Apr · seed', color:'#fbbf24' };
-
-  // Per-reactor list collapse state (preserved across re-renders).
   const reactorsExpanded = !!window._korReactorsExpanded;
-  // Build reactor list HTML once
   const reactorsHTML = (liveK?.reactors || []).map(rx => {
     const op = rx.status === 'Operational';
     const mwe = rx.output_mwe != null ? rx.output_mwe.toFixed(0)+' MWe' : '—';
@@ -21688,111 +21675,105 @@ function renderKorBalance(el){
   }).join('');
 
   el.innerHTML = `
-    ${korFreshness([
-      khnpFreshness,
-      { label:'KOGAS imports',  meta:'monthly · Mar · seed', color:'#fbbf24' },
-      { label:'DART',           meta:'quarterly · Q4-25 · seed', color:'#fbbf24' },
-    ])}
-
-    <!-- Top KPI row: 3 nuclear-focused tiles + Korean LNG context -->
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">
-      ${korKpiCard({
-        label:'Nuclear online',
-        value: nuclearGW.toFixed(2)+' GW',
-        sub: `${nuclearOn}/${nuclearTot} units · ${utilNow}% util`,
-        badge: nuclearLive?null:'seed',
-        color:'#34d399',
-      })}
-      ${korKpiCard({
-        label:'Unavailable',
-        value: offlineGWStr+' GW',
-        sub: `${offlineReactors.length} units · ${offlinePct}% of fleet`,
-        badge: nuclearLive?null:'seed',
-        color: offlineGW > 0 ? '#fca5a5' : '#9ca3af',
-      })}
-      ${korKpiCard({
-        label:'Δ vs yesterday',
-        value: dod.gwDelta != null ? (dod.gwDelta >= 0 ? '+' : '') + dod.gwDelta.toFixed(2) + ' GW' : '—',
-        sub: dod.gwDelta != null ? (dod.unitsDelta != null && dod.unitsDelta !== 0
-          ? `${dod.unitsDelta > 0 ? '+' : ''}${dod.unitsDelta} units · ${dod.priorDate}`
-          : `no change since ${dod.priorDate}`) : 'building history…',
-        color: dod.gwDelta == null ? '#9ca3af' : dod.gwDelta > 0 ? '#34d399' : dod.gwDelta < 0 ? '#fca5a5' : '#9ca3af',
-      })}
-      ${korKpiCard({ label:'LNG imports · Mar', value: s.lngImportsMtMar+' mt', sub:'▼ '+Math.abs(s.lngImportsYoY*100).toFixed(0)+'% YoY', badge:'seed' })}
-      ${korKpiCard({ label:'Power sales · Q4-25', value: s.powerSalesQ4+' mt', sub:'▼ '+Math.abs(s.powerSalesYoY*100).toFixed(0)+'% YoY', badge:'seed' })}
+    <!-- Hero strip — single big readable headline -->
+    <div style="background:linear-gradient(135deg,#0d1322 0%,#0a0f1e 100%);border:1px solid #1f2937;border-radius:6px;padding:14px 18px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:9px;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase">Korea Nuclear · live</div>
+          <div style="font-size:28px;color:#fff;font-weight:600;margin-top:2px">
+            ${nuclearGW.toFixed(2)} <span style="font-size:14px;color:#9ca3af">GW online</span>
+            <span style="font-size:14px;color:#9ca3af;margin-left:8px">·</span>
+            <span style="font-size:18px;color:#34d399;margin-left:6px">${nuclearOn}/${nuclearTot}</span>
+            <span style="font-size:12px;color:#6b7280">units</span>
+            <span style="font-size:14px;color:#9ca3af;margin-left:8px">·</span>
+            <span style="font-size:18px;color:#34d399;margin-left:6px">${utilNow}%</span>
+            <span style="font-size:12px;color:#6b7280">utilization</span>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:9px;color:#9ca3af">Δ vs ${dod.priorDate || '—'}</div>
+          <div style="font-size:14px;color:${dod.gwDelta == null ? '#9ca3af' : dod.gwDelta > 0 ? '#34d399' : dod.gwDelta < 0 ? '#fca5a5' : '#9ca3af'};font-weight:500;margin-top:2px">
+            ${dod.gwDelta != null ? (dod.gwDelta >= 0 ? '+' : '') + dod.gwDelta.toFixed(2) + ' GW' : 'building history…'}
+          </div>
+          ${dod.unitsDelta != null && dod.unitsDelta !== 0
+            ? `<div style="font-size:10px;color:#9ca3af">${dod.unitsDelta > 0 ? '+' : ''}${dod.unitsDelta} units</div>` : ''}
+        </div>
+      </div>
+      <div style="font-size:9px;color:#5a6882;border-top:1px solid #1f2937;padding-top:6px;margin-top:6px">
+        ${nuclearLive ? `KHNP · npp.khnp.co.kr · ${nuclearAsOf || ''} KST` : '—'}
+      </div>
     </div>
 
-    <!-- Outages-first card: list of currently offline reactors -->
+    <!-- Outages by site -->
     ${offlineReactors.length > 0 ? `
-    <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;border-left:2px solid #fbbf24;margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-        <span style="font-size:11px;color:#fff;font-weight:500">Currently offline / in maintenance</span>
-        <span style="font-size:9px;color:#fbbf24">${offlineReactors.length} reactors · ~${offlineGWStr} GW unavailable · KOGAS LNG demand exposure</span>
+    <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;border-left:3px solid #fbbf24;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+        <span style="font-size:11px;color:#fff;font-weight:500">Currently offline · ${offlineReactors.length} reactors · ~${offlineGW.toFixed(2)} GW unavailable</span>
+        <span style="font-size:9px;color:#fbbf24">grouped by site · KOGAS LNG demand exposure</span>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px">
-        ${offlineReactors.map(rx => `
-          <div style="background:#0a0f1e;border:1px solid #1f2937;border-radius:3px;padding:5px 8px">
-            <div style="font-size:10px;color:#fff;font-weight:500">${rx.name}</div>
-            <div style="font-size:9px;color:#fbbf24">${rx.status}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">
+        ${Object.entries(offlineBySite).map(([site, info]) => `
+          <div style="background:#0a0f1e;border:1px solid #1f2937;border-radius:4px;padding:8px 10px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+              <span style="font-size:11px;color:#fff;font-weight:500">${site}</span>
+              <span style="font-size:10px;color:#fbbf24">${(info.cap/1000).toFixed(2)} GW</span>
+            </div>
+            <div style="font-size:9px;color:#9ca3af">${info.reactors.length} reactor${info.reactors.length>1?'s':''} · ${info.reactors.join(' · ')}</div>
           </div>`).join('')}
       </div>
     </div>` : ''}
 
-    <!-- Two-col: nuclear by site (with collapsible reactor detail) + nuclear-vs-gas modeled chart -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-      <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-          <span style="font-size:11px;color:#fff;font-weight:500">Nuclear by site</span>
-          <span style="font-size:8px;padding:1px 5px;border-radius:2px;background:${nuclearLive?'rgba(52,211,153,0.10)':'rgba(251,191,36,0.10)'};color:${nuclearLive?'#34d399':'#fbbf24'}">${nuclearLive?'KHNP · live':'seed'}</span>
-        </div>
-        ${siteList.map(r => {
-          const cap = r.cap||0;
-          const total = r.total||1;
-          const ratio = total > 0 ? Math.min(1, r.online / total) : 0;
-          return `<div style="display:grid;grid-template-columns:80px 1fr 60px 50px;gap:8px;font-size:10px;padding:4px 0;border-bottom:1px solid #0f1824;align-items:center">
-            <span style="color:#c8cfe0">${r.site}</span>
-            <div style="height:6px;background:#0a0f1e;border-radius:1px;overflow:hidden;position:relative"><div style="width:${(ratio*100).toFixed(0)}%;height:100%;background:${ratio===1?'#34d399':ratio>=0.5?'#fbbf24':'#fca5a5'}"></div></div>
-            <span style="color:#fff;text-align:right">${cap.toFixed(2)} GW</span>
-            <span style="color:${r.online===total?'#34d399':'#fbbf24'};text-align:right">${r.online}/${total}</span>
-          </div>`;
-        }).join('')}
-        ${liveK?.reactors?.length ? `
-          <div style="margin-top:8px;padding-top:6px;border-top:1px solid #0f1824">
-            <div onclick="window._korReactorsExpanded=!window._korReactorsExpanded;korShowTab('balance');" style="cursor:pointer;font-size:9px;color:#93c5fd;letter-spacing:.04em">
-              ${reactorsExpanded ? '▾ hide' : '▸ show'} ${liveK.reactors.length} reactor-level details
-            </div>
-            ${reactorsExpanded ? `<div style="margin-top:6px">${reactorsHTML}</div>` : ''}
-          </div>` : ''}
+    <!-- By site capacity-weighted (online vs nameplate) -->
+    <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+        <span style="font-size:11px;color:#fff;font-weight:500">Capacity by site · online vs nameplate</span>
+        <span style="font-size:9px;color:#5a6882">live KHNP</span>
       </div>
-
-      <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-          <span style="font-size:11px;color:#fff;font-weight:500">Nuclear vs power gas</span>
-          <span style="font-size:8px;padding:1px 5px;background:rgba(167,139,250,0.10);color:#a78bfa;border-radius:2px">modeled</span>
-        </div>
-        <div style="height:160px"><canvas id="kor-nuc-vs-gas"></canvas></div>
-      </div>
+      ${(liveK?.bySite || []).map(s => {
+        // Nameplate sum for this site from NUCLEAR_NAMEPLATE
+        const nameplateGW = (liveK.reactors || [])
+          .filter(r => r.site === s.site)
+          .reduce((sum, r) => sum + (NUCLEAR_NAMEPLATE[r.name] || 1000), 0) / 1000;
+        const onlineGW = s.onlineCap_GW || 0;
+        const ratio = nameplateGW > 0 ? Math.min(1, onlineGW / nameplateGW) : 0;
+        const col = ratio === 1 ? '#34d399' : ratio >= 0.5 ? '#fbbf24' : '#fca5a5';
+        return `<div style="display:grid;grid-template-columns:80px 1fr 130px 60px;gap:10px;padding:6px 0;border-bottom:1px solid #0f1824;align-items:center;font-size:11px">
+          <span style="color:#c8cfe0">${s.site}</span>
+          <div style="height:14px;background:#0a0f1e;border-radius:2px;position:relative">
+            <div style="width:${(ratio*100).toFixed(0)}%;height:100%;background:${col};border-radius:2px"></div>
+          </div>
+          <span style="color:#fff;text-align:right">${onlineGW.toFixed(2)} / ${nameplateGW.toFixed(2)} GW</span>
+          <span style="color:${s.online===s.totalCount?'#34d399':'#fbbf24'};text-align:right">${s.online}/${s.totalCount}</span>
+        </div>`;
+      }).join('')}
+      ${liveK?.reactors?.length ? `
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid #0f1824">
+          <div onclick="window._korReactorsExpanded=!window._korReactorsExpanded;korShowTab('nuclear');" style="cursor:pointer;font-size:9px;color:#93c5fd;letter-spacing:.04em">
+            ${reactorsExpanded ? '▾ hide' : '▸ show'} ${liveK.reactors.length} reactor-level details
+          </div>
+          ${reactorsExpanded ? `<div style="margin-top:6px">${reactorsHTML}</div>` : ''}
+        </div>` : ''}
     </div>
 
-    <!-- Seasonal chart: annual fleet utilization bars + current YTD line -->
-    <div class="acard" style="margin-bottom:12px;padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
+    <!-- Seasonal monthly chart (Ember) - the YoY view -->
+    <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">Annual fleet utilization · ${liveAnnual?.byYear?.length || 0} years · KHNP 이용률</span>
-        <span style="font-size:9px;color:#5a6882">current year line builds forward as we accumulate daily snapshots</span>
+        <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · monthly nuclear share of generation · 2019–latest</span>
+        <span style="font-size:9px;color:#5a6882">Ember Monthly Electricity Data · ~6-week lag</span>
       </div>
-      <div style="height:180px"><canvas id="kor-annual-util"></canvas></div>
+      <div style="height:240px"><canvas id="kor-seasonal-monthly"></canvas></div>
     </div>
 
-    <!-- LNG demand quarterly + annual trips side by side -->
+    <!-- Annual util + trips side by side -->
     <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:10px;margin-bottom:12px">
-      <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
+      <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-          <span style="font-size:11px;color:#fff;font-weight:500">LNG demand by sector · quarterly · DART</span>
-          <span style="font-size:9px;color:#5a6882">monthly breakdown not publicly disclosed</span>
+          <span style="font-size:11px;color:#fff;font-weight:500">Annual fleet utilization · 2007–latest</span>
+          <span style="font-size:9px;color:#5a6882">KHNP 이용률 · current year highlighted</span>
         </div>
-        <div style="height:200px"><canvas id="kor-quarterly-demand"></canvas></div>
+        <div style="height:200px"><canvas id="kor-annual-util"></canvas></div>
       </div>
-      <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
+      <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
           <span style="font-size:11px;color:#fff;font-weight:500">Unplanned trips · per year</span>
           <span style="font-size:9px;color:#5a6882">KHNP 불시정지</span>
@@ -21803,15 +21784,169 @@ function renderKorBalance(el){
 
     <div style="font-size:10px;color:#5a6882;line-height:1.6;border-top:1px solid #1f2937;padding-top:10px">
       <div style="color:#9ca3af;margin-bottom:4px">Sources</div>
-      <span><a href="https://npp.khnp.co.kr" target="_blank" style="color:#93c5fd">KHNP Open NPP Operations</a></span> ·
-      <span><a href="https://opendart.fss.or.kr" target="_blank" style="color:#93c5fd">DART (KOGAS quarterly filings · pending)</a></span> ·
-      <span><a href="https://www.kogas.or.kr" target="_blank" style="color:#93c5fd">KOGAS (geo-blocked · manual entry pending)</a></span>
-      <div style="margin-top:8px;color:#fca5a5"><b>Not tracked:</b> per-terminal tank stocks · daily LNG sendout · KOGAS spot purchase prices</div>
-      <div style="margin-top:4px;color:#fbbf24">LNG imports / Power sales / Power-gas-burn are seeded · KHNP nuclear and ECB FX are live</div>
+      <a href="https://npp.khnp.co.kr" target="_blank" style="color:#93c5fd">KHNP Open NPP Operations</a> · live per-reactor output & status (~3 min refresh)<br>
+      <a href="https://ember-energy.org/data/monthly-electricity-data/" target="_blank" style="color:#93c5fd">Ember Monthly Electricity Data</a> · 2019–latest, ~6-week lag (free CSV, sourced from KEPCO/IEA)
     </div>
   `;
 
-  // Quarterly demand stacked bar
+  // Render seasonal monthly chart from Ember
+  if (window._korChartSeasonal) { window._korChartSeasonal.destroy(); window._korChartSeasonal = null; }
+  const cS = document.getElementById('kor-seasonal-monthly');
+  if (cS && liveEmber?.series?.length) {
+    // Group by year → array of 12 months
+    const byYear = {};
+    for (const r of liveEmber.series) {
+      const [y, m] = r.date.split('-');
+      const yr = parseInt(y, 10);
+      const mo = parseInt(m, 10) - 1; // 0-indexed
+      if (!byYear[yr]) byYear[yr] = new Array(12).fill(null);
+      if (r.sharePct != null) byYear[yr][mo] = r.sharePct;
+    }
+    const years = Object.keys(byYear).map(Number).sort();
+    const curY = new Date().getFullYear();
+    const colors = ['#475569','#64748b','#94a3b8','#a78bfa','#3b82f6','#fbbf24','#fca5a5','#34d399'];
+    const datasets = years.map((yr, i) => {
+      const isCur = yr === curY;
+      return {
+        label: String(yr),
+        data: byYear[yr],
+        borderColor: isCur ? '#34d399' : colors[i % colors.length],
+        backgroundColor: 'transparent',
+        borderWidth: isCur ? 2.5 : 1.2,
+        pointRadius: isCur ? 3 : 0,
+        pointBackgroundColor: isCur ? '#34d399' : colors[i % colors.length],
+        tension: 0.3,
+        fill: false,
+        spanGaps: true,
+      };
+    });
+    window._korChartSeasonal = new Chart(cS.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+        datasets,
+      },
+      options: {
+        ...CD, animation:false,
+        plugins: {
+          ...CD.plugins,
+          legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8}},
+          tooltip: { ...CD.plugins.tooltip, callbacks: {
+            label: (ctx) => `${ctx.dataset.label} ${ctx.label}: ${ctx.parsed.y?.toFixed(1)}% of generation`,
+          }},
+        },
+        scales: {
+          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
+          y: { ...CD.scales.y,
+                title:{display:true,text:'% of total generation',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
+        },
+      }
+    });
+  }
+
+  // Annual util bar chart (existing logic, copied here)
+  if (window._korChartAnnual) { window._korChartAnnual.destroy(); window._korChartAnnual = null; }
+  const cAU = document.getElementById('kor-annual-util');
+  if (cAU && liveAnnual?.byYear?.length) {
+    const yrs = liveAnnual.byYear.map(r => r.year);
+    const utils = liveAnnual.byYear.map(r => r.util);
+    const caps = liveAnnual.byYear.map(r => r.capFactor);
+    const curY = new Date().getFullYear();
+    window._korChartAnnual = new Chart(cAU.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: yrs,
+        datasets: [
+          { type:'bar', label:'Utilization', data: utils,
+            backgroundColor: yrs.map(y => y === curY-1 ? '#34d399' : 'rgba(167,139,250,0.65)'),
+            borderWidth: 0 },
+          { type:'line', label:'Capacity factor', data: caps,
+            borderColor:'#fbbf24', backgroundColor:'transparent', borderWidth:1,
+            pointRadius:0, tension:0.3, fill:false },
+        ]
+      },
+      options: {
+        ...CD, animation:false,
+        plugins: { ...CD.plugins, legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8} } },
+        scales: {
+          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:18} },
+          y: { ...CD.scales.y, min:50, max:100,
+                title:{display:true,text:'%',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:8}} },
+        },
+      }
+    });
+  }
+
+  // Annual trips
+  if (window._korChartTrips) { window._korChartTrips.destroy(); window._korChartTrips = null; }
+  const cT = document.getElementById('kor-trips');
+  if (cT && liveTrips?.byYear?.length) {
+    const recent = liveTrips.byYear.slice(-15);
+    window._korChartTrips = new Chart(cT.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: recent.map(r => String(r.year).slice(2)),
+        datasets: [{
+          data: recent.map(r => r.trips),
+          backgroundColor: recent.map(r => r.year === new Date().getFullYear() ? '#34d399' : 'rgba(252,165,165,0.6)'),
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        ...CD, animation:false,
+        plugins: {
+          ...CD.plugins, legend: { display:false },
+          tooltip: { ...CD.plugins.tooltip, callbacks: {
+            label: (ctx) => {
+              const r = recent[ctx.dataIndex];
+              return `${r.trips} trips · ${r.tripsPerReactor} per reactor (${r.reactors} units)`;
+            }
+          }},
+        },
+        scales: {
+          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:8}} },
+          y: { ...CD.scales.y, beginAtZero:true,
+                title:{display:true,text:'trips',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:8}} },
+        },
+      }
+    });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// TAB · GAS BALANCE (LNG/DART/KOGAS only — nuclear lives in its own tab now)
+// ────────────────────────────────────────────────────────────────────────────
+function renderKorBalance(el){
+  const s = KOR_SEED;
+  el.innerHTML = `
+    ${korFreshness([
+      { label:'KOGAS imports',  meta:'monthly · Mar · seed', color:'#fbbf24' },
+      { label:'DART',           meta:'quarterly · Q4-25 · seed', color:'#fbbf24' },
+    ])}
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">
+      ${korKpiCard({ label:'LNG imports · Mar', value: s.lngImportsMtMar+' mt', sub:'▼ '+Math.abs(s.lngImportsYoY*100).toFixed(0)+'% YoY · KOGAS', badge:'seed' })}
+      ${korKpiCard({ label:'Power sales · Q4-25', value: s.powerSalesQ4+' mt', sub:'▼ '+Math.abs(s.powerSalesYoY*100).toFixed(0)+'% YoY · DART', badge:'seed' })}
+    </div>
+    <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-size:11px;color:#fff;font-weight:500">LNG demand by sector · quarterly · DART</span>
+        <span style="font-size:9px;color:#5a6882">monthly breakdown not publicly disclosed</span>
+      </div>
+      <div style="height:240px"><canvas id="kor-quarterly-demand"></canvas></div>
+    </div>
+    <div style="font-size:10px;color:#5a6882;line-height:1.6;border-top:1px solid #1f2937;padding-top:10px">
+      <div style="color:#9ca3af;margin-bottom:4px">Sources</div>
+      <a href="https://opendart.fss.or.kr" target="_blank" style="color:#93c5fd">DART (KOGAS quarterly filings · pending)</a> ·
+      <a href="https://www.kogas.or.kr" target="_blank" style="color:#93c5fd">KOGAS (geo-blocked · manual entry pending)</a>
+      <div style="margin-top:8px;color:#fca5a5"><b>Not tracked:</b> per-terminal tank stocks · daily LNG sendout · KOGAS spot purchase prices</div>
+      <div style="margin-top:4px;color:#fbbf24">Values seeded · awaiting DART API key + KOGAS scraper. <a onclick="korShowTab('nuclear')" style="color:#34d399;cursor:pointer">→ Nuclear tab</a> for live KHNP data.</div>
+    </div>
+  `;
+
+  // Quarterly demand chart
   if (_korChartMain) { _korChartMain.destroy(); _korChartMain = null; }
   const c1 = document.getElementById('kor-quarterly-demand');
   if (c1) {
@@ -21835,119 +21970,8 @@ function renderKorBalance(el){
       }
     });
   }
-
-  // Nuclear vs power-gas (modeled) — synthetic 6-month series for now
-  if (_korChartNuclear) { _korChartNuclear.destroy(); _korChartNuclear = null; }
-  const c2 = document.getElementById('kor-nuc-vs-gas');
-  if (c2) {
-    const months = ['Nov','Dec','Jan','Feb','Mar','Apr'];
-    _korChartNuclear = new Chart(c2.getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: months,
-        datasets: [
-          { label:'Nuclear (GW)',         data:[20.6,21.0,21.4,21.2,21.6,21.8], borderColor:'#a78bfa', borderWidth:2,   pointRadius:0, tension:0.4, fill:false, yAxisID:'y' },
-          { label:'Power gas (modeled)',  data:[1.10,1.20,1.18,1.05,0.95,0.85], borderColor:'#fbbf24', borderWidth:1.5, pointRadius:0, borderDash:[4,3], tension:0.4, fill:false, yAxisID:'y2' },
-        ]
-      },
-      options: {
-        ...CD, animation:false,
-        plugins: { ...CD.plugins, legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8}}},
-        scales: {
-          x: { ...CD.scales.x },
-          y:  { ...CD.scales.y, position:'left',  title:{display:true,text:'GW',color:'#a78bfa',font:{size:9}}, ticks:{color:'#a78bfa',font:{size:8}} },
-          y2: { ...CD.scales.y, position:'right', title:{display:true,text:'mt/mo',color:'#fbbf24',font:{size:9}}, ticks:{color:'#fbbf24',font:{size:8}}, grid:{drawOnChartArea:false} },
-        },
-      }
-    });
-  }
-
-  // Annual fleet utilization (KHNP, 2007–latest) + current YTD line from history CSV
-  if (window._korChartAnnual) { window._korChartAnnual.destroy(); window._korChartAnnual = null; }
-  const cAU = document.getElementById('kor-annual-util');
-  if (cAU && liveAnnual?.byYear?.length) {
-    const years = liveAnnual.byYear.map(r => r.year);
-    const utils = liveAnnual.byYear.map(r => r.util);
-    const caps  = liveAnnual.byYear.map(r => r.capFactor);
-    // YTD overlay: latest util from history CSV (single point on this year column)
-    const curY = new Date().getFullYear();
-    let ytdPoint = null;
-    if (_korHistory && _korHistory.length) {
-      const latest = _korHistory[_korHistory.length - 1];
-      if (latest && latest.util_pct) ytdPoint = parseFloat(latest.util_pct);
-    }
-    const ytdSeries = years.map(y => y === curY ? ytdPoint : null);
-    window._korChartAnnual = new Chart(cAU.getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: years,
-        datasets: [
-          { type:'bar', label:'Annual util (KHNP)', data: utils,
-            backgroundColor: years.map(y => y === curY ? '#34d399' : 'rgba(167,139,250,0.6)'),
-            borderWidth: 0 },
-          { type:'line', label:'Capacity factor', data: caps,
-            borderColor:'#fbbf24', backgroundColor:'transparent', borderWidth:1.2,
-            pointRadius:0, tension:0.3, fill:false },
-          { type:'line', label:'Current snapshot util', data: ytdSeries,
-            borderColor:'#34d399', backgroundColor:'#34d399',
-            pointRadius: 6, pointBackgroundColor:'#34d399', pointBorderColor:'#fff', pointBorderWidth:1,
-            showLine:false, fill:false, spanGaps:false },
-        ]
-      },
-      options: {
-        ...CD, animation:false,
-        plugins: { ...CD.plugins, legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8} } },
-        scales: {
-          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:18} },
-          y: { ...CD.scales.y, min:50, max:100,
-                title:{display:true,text:'%',color:'#3d5070',font:{size:9}},
-                ticks:{color:'#3d5070',font:{size:8}} },
-        },
-      }
-    });
-  }
-
-  // Annual unplanned trips (KHNP 불시정지)
-  if (window._korChartTrips) { window._korChartTrips.destroy(); window._korChartTrips = null; }
-  const cT = document.getElementById('kor-trips');
-  if (cT && liveTrips?.byYear?.length) {
-    const recent = liveTrips.byYear.slice(-15); // last 15 years
-    const labels = recent.map(r => String(r.year).slice(2));
-    const trips = recent.map(r => r.trips);
-    const curY = new Date().getFullYear();
-    window._korChartTrips = new Chart(cT.getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Unplanned trips',
-          data: trips,
-          backgroundColor: recent.map(r => r.year === curY ? '#34d399' : 'rgba(252,165,165,0.6)'),
-          borderWidth: 0,
-        }]
-      },
-      options: {
-        ...CD, animation:false,
-        plugins: {
-          ...CD.plugins,
-          legend: { display:false },
-          tooltip: { ...CD.plugins.tooltip, callbacks: {
-            label: (ctx) => {
-              const r = recent[ctx.dataIndex];
-              return `${r.trips} trips · ${r.tripsPerReactor} per reactor (${r.reactors} units)`;
-            }
-          }},
-        },
-        scales: {
-          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:8}} },
-          y: { ...CD.scales.y, beginAtZero:true,
-                title:{display:true,text:'trips',color:'#3d5070',font:{size:9}},
-                ticks:{color:'#3d5070',font:{size:8}} },
-        },
-      }
-    });
-  }
 }
+
 
 // ────────────────────────────────────────────────────────────────────────────
 // TAB 2 · PRICES

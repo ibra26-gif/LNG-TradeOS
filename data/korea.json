@@ -1,5 +1,5 @@
 {
-  "updated": "2026-04-28T14:24:42+00:00",
+  "updated": "2026-04-28T14:52:02+00:00",
   "fx": {
     "asOf": "2026-04-28",
     "source": "ECB euro reference rates",
@@ -9,8 +9,8 @@
     "krwUsd": 1476.89
   },
   "khnp": {
-    "asOf": "2026-04-28 23:25:05",
-    "scrapedAt": "2026-04-28T14:25:23+00:00",
+    "asOf": "2026-04-28 23:52:15",
+    "scrapedAt": "2026-04-28T14:52:38+00:00",
     "source": "KHNP Open NPP Operations Info",
     "sourceUrl": "https://npp.khnp.co.kr/",
     "reactors": [
@@ -21,7 +21,7 @@
         "status": "Operational",
         "output_pct": 100.0,
         "output_mwe": 681,
-        "asOf": "2026-04-28 23:24:30"
+        "asOf": "2026-04-28 23:52:00"
       },
       {
         "name": "Kori-3",
@@ -30,7 +30,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:23:45"
+        "asOf": "2026-04-28 23:43:45"
       },
       {
         "name": "Kori-4",
@@ -39,7 +39,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:23:45"
+        "asOf": "2026-04-28 23:43:45"
       },
       {
         "name": "Shin-Kori-1",
@@ -47,8 +47,8 @@
         "unit_cd": "2135",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1055,
-        "asOf": "2026-04-28 23:24:10"
+        "output_mwe": 1056,
+        "asOf": "2026-04-28 23:51:40"
       },
       {
         "name": "Shin-Kori-2",
@@ -56,8 +56,8 @@
         "unit_cd": "2136",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1053,
-        "asOf": "2026-04-28 23:24:30"
+        "output_mwe": 1054,
+        "asOf": "2026-04-28 23:52:00"
       },
       {
         "name": "Hanbit-1",
@@ -66,16 +66,16 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": null,
-        "asOf": "2026-04-28 23:21:11"
+        "asOf": "2026-04-28 23:51:11"
       },
       {
         "name": "Hanbit-2",
         "site": "Hanbit",
         "unit_cd": "2312",
         "status": "Operational",
-        "output_pct": 96.0,
-        "output_mwe": 1025,
-        "asOf": "2026-04-28 23:24:31"
+        "output_pct": 95.0,
+        "output_mwe": 1024,
+        "asOf": "2026-04-28 23:52:01"
       },
       {
         "name": "Hanbit-3",
@@ -83,8 +83,8 @@
         "unit_cd": "2323",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1052,
-        "asOf": "2026-04-28 23:24:21"
+        "output_mwe": 1051,
+        "asOf": "2026-04-28 23:51:46"
       },
       {
         "name": "Hanbit-4",
@@ -92,8 +92,8 @@
         "unit_cd": "2324",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1046,
-        "asOf": "2026-04-28 23:24:21"
+        "output_mwe": 1047,
+        "asOf": "2026-04-28 23:51:51"
       },
       {
         "name": "Hanbit-5",
@@ -101,8 +101,8 @@
         "unit_cd": "2335",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1051,
-        "asOf": "2026-04-28 23:24:31"
+        "output_mwe": 1052,
+        "asOf": "2026-04-28 23:52:01"
       },
       {
         "name": "Hanbit-6",
@@ -111,7 +111,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:21:11"
+        "asOf": "2026-04-28 23:51:11"
       },
       {
         "name": "Hanul-1",
@@ -119,8 +119,8 @@
         "unit_cd": "2411",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1019,
-        "asOf": "2026-04-28 23:24:31"
+        "output_mwe": 1020,
+        "asOf": "2026-04-28 23:52:01"
       },
       {
         "name": "Hanul-2",
@@ -128,8 +128,8 @@
         "unit_cd": "2412",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1017,
-        "asOf": "2026-04-28 23:24:31"
+        "output_mwe": 1018,
+        "asOf": "2026-04-28 23:52:01"
       },
       {
         "name": "Hanul-3",
@@ -138,16 +138,16 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:22:01"
+        "asOf": "2026-04-28 23:52:01"
       },
       {
         "name": "Hanul-4",
         "site": "Hanul",
         "unit_cd": "2424",
         "status": "Operational",
-        "output_pct": 100.0,
-        "output_mwe": 1046,
-        "asOf": "2026-04-28 23:24:31"
+        "output_pct": 99.0,
+        "output_mwe": 1047,
+        "asOf": "2026-04-28 23:52:06"
       },
       {
         "name": "Hanul-5",
@@ -156,7 +156,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:24:26"
+        "asOf": "2026-04-28 23:44:26"
       },
       {
         "name": "Hanul-6",
@@ -164,8 +164,8 @@
         "unit_cd": "2436",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1055,
-        "asOf": "2026-04-28 23:24:36"
+        "output_mwe": 1054,
+        "asOf": "2026-04-28 23:52:01"
       },
       {
         "name": "Shin-Hanul-1",
@@ -173,17 +173,17 @@
         "unit_cd": "2711",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1493,
-        "asOf": "2026-04-28 23:25:01"
+        "output_mwe": 1496,
+        "asOf": "2026-04-28 23:52:01"
       },
       {
         "name": "Shin-Hanul-2",
         "site": "Hanul",
         "unit_cd": "2712",
         "status": "Operational",
-        "output_pct": 99.0,
-        "output_mwe": 1501,
-        "asOf": "2026-04-28 23:24:46"
+        "output_pct": 100.0,
+        "output_mwe": 1500,
+        "asOf": "2026-04-28 23:51:46"
       },
       {
         "name": "Wolsong-2",
@@ -192,7 +192,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:23:45"
+        "asOf": "2026-04-28 23:43:45"
       },
       {
         "name": "Wolsong-3",
@@ -201,7 +201,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:23:45"
+        "asOf": "2026-04-28 23:43:45"
       },
       {
         "name": "Wolsong-4",
@@ -210,7 +210,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-28 23:23:45"
+        "asOf": "2026-04-28 23:43:45"
       },
       {
         "name": "Shin-Wolsong-1",
@@ -218,8 +218,8 @@
         "unit_cd": "2235",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1049,
-        "asOf": "2026-04-28 23:25:01"
+        "output_mwe": 1050,
+        "asOf": "2026-04-28 23:51:31"
       },
       {
         "name": "Shin-Wolsong-2",
@@ -227,8 +227,8 @@
         "unit_cd": "2236",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1049,
-        "asOf": "2026-04-28 23:24:45"
+        "output_mwe": 1050,
+        "asOf": "2026-04-28 23:52:15"
       },
       {
         "name": "Saeul-1",
@@ -236,8 +236,8 @@
         "unit_cd": "2811",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1480,
-        "asOf": "2026-04-28 23:25:05"
+        "output_mwe": 1482,
+        "asOf": "2026-04-28 23:52:05"
       },
       {
         "name": "Saeul-2",
@@ -245,8 +245,8 @@
         "unit_cd": "2812",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1497,
-        "asOf": "2026-04-28 23:23:05"
+        "output_mwe": 1498,
+        "asOf": "2026-04-28 23:50:30"
       }
     ],
     "bySite": [
@@ -577,6 +577,443 @@
         "reactors": 26,
         "trips": 2,
         "tripsPerReactor": 0.08
+      }
+    ]
+  },
+  "emberMonthly": {
+    "cachedAt": "2026-04-28T14:52:45+00:00",
+    "source": "Ember Monthly Electricity Data",
+    "sourceUrl": "https://files.ember-energy.org/public-downloads/monthly_full_release_long_format.csv",
+    "series": [
+      {
+        "date": "2019-01-01",
+        "twh": 12.26,
+        "sharePct": 23.36
+      },
+      {
+        "date": "2019-02-01",
+        "twh": 11.03,
+        "sharePct": 24.98
+      },
+      {
+        "date": "2019-03-01",
+        "twh": 14.03,
+        "sharePct": 29.95
+      },
+      {
+        "date": "2019-04-01",
+        "twh": 14.14,
+        "sharePct": 32.45
+      },
+      {
+        "date": "2019-05-01",
+        "twh": 14.73,
+        "sharePct": 33.46
+      },
+      {
+        "date": "2019-06-01",
+        "twh": 13.58,
+        "sharePct": 31.2
+      },
+      {
+        "date": "2019-07-01",
+        "twh": 11.68,
+        "sharePct": 23.67
+      },
+      {
+        "date": "2019-08-01",
+        "twh": 12.2,
+        "sharePct": 23.87
+      },
+      {
+        "date": "2019-09-01",
+        "twh": 10.32,
+        "sharePct": 23.44
+      },
+      {
+        "date": "2019-10-01",
+        "twh": 10.6,
+        "sharePct": 24.27
+      },
+      {
+        "date": "2019-11-01",
+        "twh": 10.23,
+        "sharePct": 22.8
+      },
+      {
+        "date": "2019-12-01",
+        "twh": 11.06,
+        "sharePct": 22.12
+      },
+      {
+        "date": "2020-01-01",
+        "twh": 11.9,
+        "sharePct": 24.15
+      },
+      {
+        "date": "2020-02-01",
+        "twh": 12.69,
+        "sharePct": 27.53
+      },
+      {
+        "date": "2020-03-01",
+        "twh": 14.46,
+        "sharePct": 31.5
+      },
+      {
+        "date": "2020-04-01",
+        "twh": 13.69,
+        "sharePct": 32.57
+      },
+      {
+        "date": "2020-05-01",
+        "twh": 15.26,
+        "sharePct": 36.96
+      },
+      {
+        "date": "2020-06-01",
+        "twh": 14.07,
+        "sharePct": 32.27
+      },
+      {
+        "date": "2020-07-01",
+        "twh": 13.72,
+        "sharePct": 29.54
+      },
+      {
+        "date": "2020-08-01",
+        "twh": 12.53,
+        "sharePct": 24.68
+      },
+      {
+        "date": "2020-09-01",
+        "twh": 9.29,
+        "sharePct": 20.96
+      },
+      {
+        "date": "2020-10-01",
+        "twh": 13.47,
+        "sharePct": 31.44
+      },
+      {
+        "date": "2020-11-01",
+        "twh": 14.05,
+        "sharePct": 31.4
+      },
+      {
+        "date": "2020-12-01",
+        "twh": 15.06,
+        "sharePct": 29.35
+      },
+      {
+        "date": "2021-01-01",
+        "twh": 14.04,
+        "sharePct": 26.58
+      },
+      {
+        "date": "2021-02-01",
+        "twh": 12.73,
+        "sharePct": 28.5
+      },
+      {
+        "date": "2021-03-01",
+        "twh": 13.8,
+        "sharePct": 29.41
+      },
+      {
+        "date": "2021-04-01",
+        "twh": 12.55,
+        "sharePct": 28.97
+      },
+      {
+        "date": "2021-05-01",
+        "twh": 12.76,
+        "sharePct": 29.0
+      },
+      {
+        "date": "2021-06-01",
+        "twh": 11.31,
+        "sharePct": 24.86
+      },
+      {
+        "date": "2021-07-01",
+        "twh": 12.3,
+        "sharePct": 22.86
+      },
+      {
+        "date": "2021-08-01",
+        "twh": 12.78,
+        "sharePct": 24.83
+      },
+      {
+        "date": "2021-09-01",
+        "twh": 12.17,
+        "sharePct": 26.97
+      },
+      {
+        "date": "2021-10-01",
+        "twh": 13.46,
+        "sharePct": 29.6
+      },
+      {
+        "date": "2021-11-01",
+        "twh": 13.57,
+        "sharePct": 29.1
+      },
+      {
+        "date": "2021-12-01",
+        "twh": 16.53,
+        "sharePct": 31.19
+      },
+      {
+        "date": "2022-01-01",
+        "twh": 16.1,
+        "sharePct": 29.57
+      },
+      {
+        "date": "2022-02-01",
+        "twh": 13.99,
+        "sharePct": 29.02
+      },
+      {
+        "date": "2022-03-01",
+        "twh": 13.87,
+        "sharePct": 28.21
+      },
+      {
+        "date": "2022-04-01",
+        "twh": 13.39,
+        "sharePct": 30.05
+      },
+      {
+        "date": "2022-05-01",
+        "twh": 14.61,
+        "sharePct": 31.85
+      },
+      {
+        "date": "2022-06-01",
+        "twh": 14.73,
+        "sharePct": 31.12
+      },
+      {
+        "date": "2022-07-01",
+        "twh": 15.35,
+        "sharePct": 28.05
+      },
+      {
+        "date": "2022-08-01",
+        "twh": 16.31,
+        "sharePct": 30.41
+      },
+      {
+        "date": "2022-09-01",
+        "twh": 14.09,
+        "sharePct": 30.63
+      },
+      {
+        "date": "2022-10-01",
+        "twh": 14.38,
+        "sharePct": 31.67
+      },
+      {
+        "date": "2022-11-01",
+        "twh": 14.01,
+        "sharePct": 30.52
+      },
+      {
+        "date": "2022-12-01",
+        "twh": 15.23,
+        "sharePct": 27.56
+      },
+      {
+        "date": "2023-01-01",
+        "twh": 15.66,
+        "sharePct": 29.1
+      },
+      {
+        "date": "2023-02-01",
+        "twh": 13.61,
+        "sharePct": 28.68
+      },
+      {
+        "date": "2023-03-01",
+        "twh": 15.2,
+        "sharePct": 31.94
+      },
+      {
+        "date": "2023-04-01",
+        "twh": 13.57,
+        "sharePct": 31.05
+      },
+      {
+        "date": "2023-05-01",
+        "twh": 14.46,
+        "sharePct": 32.0
+      },
+      {
+        "date": "2023-06-01",
+        "twh": 14.17,
+        "sharePct": 30.25
+      },
+      {
+        "date": "2023-07-01",
+        "twh": 15.82,
+        "sharePct": 29.86
+      },
+      {
+        "date": "2023-08-01",
+        "twh": 15.87,
+        "sharePct": 28.89
+      },
+      {
+        "date": "2023-09-01",
+        "twh": 14.99,
+        "sharePct": 31.38
+      },
+      {
+        "date": "2023-10-01",
+        "twh": 15.14,
+        "sharePct": 33.96
+      },
+      {
+        "date": "2023-11-01",
+        "twh": 15.72,
+        "sharePct": 33.13
+      },
+      {
+        "date": "2023-12-01",
+        "twh": 16.29,
+        "sharePct": 31.25
+      },
+      {
+        "date": "2024-01-01",
+        "twh": 14.96,
+        "sharePct": 27.79
+      },
+      {
+        "date": "2024-02-01",
+        "twh": 14.72,
+        "sharePct": 31.45
+      },
+      {
+        "date": "2024-03-01",
+        "twh": 15.59,
+        "sharePct": 31.84
+      },
+      {
+        "date": "2024-04-01",
+        "twh": 14.62,
+        "sharePct": 33.5
+      },
+      {
+        "date": "2024-05-01",
+        "twh": 16.02,
+        "sharePct": 35.64
+      },
+      {
+        "date": "2024-06-01",
+        "twh": 15.08,
+        "sharePct": 32.09
+      },
+      {
+        "date": "2024-07-01",
+        "twh": 16.48,
+        "sharePct": 30.47
+      },
+      {
+        "date": "2024-08-01",
+        "twh": 15.51,
+        "sharePct": 26.56
+      },
+      {
+        "date": "2024-09-01",
+        "twh": 15.85,
+        "sharePct": 31.46
+      },
+      {
+        "date": "2024-10-01",
+        "twh": 17.07,
+        "sharePct": 37.3
+      },
+      {
+        "date": "2024-11-01",
+        "twh": 16.14,
+        "sharePct": 35.55
+      },
+      {
+        "date": "2024-12-01",
+        "twh": 16.71,
+        "sharePct": 32.25
+      },
+      {
+        "date": "2025-01-01",
+        "twh": 17.89,
+        "sharePct": 34.44
+      },
+      {
+        "date": "2025-02-01",
+        "twh": 16.23,
+        "sharePct": 33.37
+      },
+      {
+        "date": "2025-03-01",
+        "twh": 17.87,
+        "sharePct": 37.14
+      },
+      {
+        "date": "2025-04-01",
+        "twh": 15.93,
+        "sharePct": 36.21
+      },
+      {
+        "date": "2025-05-01",
+        "twh": 15.89,
+        "sharePct": 35.32
+      },
+      {
+        "date": "2025-06-01",
+        "twh": 15.06,
+        "sharePct": 31.93
+      },
+      {
+        "date": "2025-07-01",
+        "twh": 15.23,
+        "sharePct": 26.92
+      },
+      {
+        "date": "2025-08-01",
+        "twh": 14.07,
+        "sharePct": 24.74
+      },
+      {
+        "date": "2025-09-01",
+        "twh": 14.25,
+        "sharePct": 28.34
+      },
+      {
+        "date": "2025-10-01",
+        "twh": 13.75,
+        "sharePct": 30.63
+      },
+      {
+        "date": "2025-11-01",
+        "twh": 13.06,
+        "sharePct": 28.82
+      },
+      {
+        "date": "2025-12-01",
+        "twh": 15.44,
+        "sharePct": 29.86
+      },
+      {
+        "date": "2026-01-01",
+        "twh": 14.65,
+        "sharePct": 26.7
+      },
+      {
+        "date": "2026-02-01",
+        "twh": 12.07,
+        "sharePct": 26.43
       }
     ]
   },
