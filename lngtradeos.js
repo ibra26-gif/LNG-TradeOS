@@ -21015,36 +21015,156 @@ function optRender(){
   const today=new Date().toISOString().slice(0,10);
 
   if(model==='bs'){
+    // ════════════════════════════════════════════════════════════════════════
+    // BS LOGNORMAL — v2 redesign (Phase 1: Configurator + Inputs + Workflow A
+    // + Result card + kept Payoff chart. Phase 2/3/4 placeholders below.)
+    // ════════════════════════════════════════════════════════════════════════
+    // Hide the global top-bar Type select + Calculate/Solve IV buttons when
+    // BS is active — the new layout owns those controls. The buttons stay in
+    // DOM (just display:none) so optCalc / optSolveIV can still read them.
+    const topType = document.getElementById('opt-type'); if (topType) topType.style.display = 'none';
+    document.querySelectorAll('#sec-options .ctrl > .sbtn').forEach(b => b.style.display = 'none');
+    document.querySelectorAll('#sec-options .ctrl > .csep').forEach(s => s.style.display = 'none');
+    // Default maturity = year-end Dec 31 of current year (rolls forward yearly)
+    const matDefault = `${new Date().getFullYear()}-12-31`;
+
     body.innerHTML=`
-    <div style="display:grid;grid-template-columns:380px 1fr;gap:16px">
-      <div>
-        <div class="ctitle">INPUTS — BLACK-SCHOLES</div>
-        <div class="acard" style="padding:14px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div><label class="cl">Forward (F)</label><input type="number" id="opt-F" value="76.79" step="0.01" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">Strike (K)</label><input type="number" id="opt-K" value="77" step="0.01" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">Implied Vol σ (annual)</label><input type="number" id="opt-sig" value="0.208" step="0.001" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">Risk-free rate r</label><input type="number" id="opt-r" value="0.01" step="0.001" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">As-of Date</label><input type="date" id="opt-asof" value="${today}" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">Maturity Date</label><input type="date" id="opt-mat" value="2026-12-31" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">Notional (units)</label><input type="number" id="opt-N" value="100" step="1" class="f-inp" style="width:100%"></div>
-            <div><label class="cl">Position</label><select id="opt-pos" class="f-inp" style="width:100%"><option value="buy">BUY (Long)</option><option value="sell">SELL (Short)</option></select></div>
-            <div style="grid-column:span 2"><label class="cl">Broker Price (for IV)</label><input type="number" id="opt-broker" value="" step="0.01" class="f-inp" style="width:100%" placeholder="optional"></div>
-          </div>
-          <div style="margin-top:10px;display:flex;gap:8px">
-            <button class="f-btn" onclick="optCalc()" style="flex:1">CALCULATE</button>
-            <button class="f-btn grn" onclick="optSolveIV()" style="flex:1">SOLVE IMPLIED VOL</button>
-          </div>
+    <!-- Header strip -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #151e30">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-size:12px;color:#c8cfe0;font-weight:500">Options pricer</span>
+        <span id="opt2-freshness" style="font-size:9px;color:#34d399">●</span>
+      </div>
+      <button class="cr-pill" onclick="opt2ExportXLSX()" style="font-size:9px;color:#22c55e;border-color:#22c55e">↓ XLSX</button>
+    </div>
+
+    <!-- Configurator: Type + Position (Model dropdown stays in the global ctrl bar) -->
+    <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:10px;margin-bottom:12px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:10px;color:#6b7280;letter-spacing:.04em">Model</span>
+        <span style="background:rgba(255,255,255,0.04);border:1px solid #374151;padding:3px 9px;border-radius:3px;font-size:11px;color:#fff">Black-Scholes (Lognormal)</span>
+        <span style="width:1px;height:14px;background:#1f2937;margin:0 4px"></span>
+        <span style="font-size:10px;color:#6b7280;letter-spacing:.04em">Type</span>
+        <button class="cr-pill" id="opt2-type-call" onclick="opt2SetType('call')" style="font-size:10px">CALL</button>
+        <button class="cr-pill" id="opt2-type-put"  onclick="opt2SetType('put')"  style="font-size:10px">PUT</button>
+        <span style="width:1px;height:14px;background:#1f2937;margin:0 4px"></span>
+        <span style="font-size:10px;color:#6b7280;letter-spacing:.04em">Position</span>
+        <button class="cr-pill" id="opt2-pos-long"  onclick="opt2SetPos('buy')"  style="font-size:10px">LONG</button>
+        <button class="cr-pill" id="opt2-pos-short" onclick="opt2SetPos('sell')" style="font-size:10px">SHORT</button>
+      </div>
+    </div>
+
+    <!-- Inputs grid (8 cells, σ accented) -->
+    <div style="font-size:10px;color:#93c5fd;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Inputs · all required</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+      <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:8px 10px">
+        <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Forward (F)</div>
+        <input type="number" id="opt-F" value="76.79" step="0.01" oninput="opt2OnInput()" style="background:transparent;border:none;color:#fff;font-size:14px;font-weight:500;padding:2px 0;width:100%;outline:none">
+      </div>
+      <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:8px 10px">
+        <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Strike (K)</div>
+        <input type="number" id="opt-K" value="77" step="0.01" oninput="opt2OnInput()" style="background:transparent;border:none;color:#fff;font-size:14px;font-weight:500;padding:2px 0;width:100%;outline:none">
+      </div>
+      <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:8px 10px">
+        <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">As-of</div>
+        <input type="date" id="opt-asof" value="${today}" oninput="opt2OnInput()" style="background:transparent;border:none;color:#fff;font-size:13px;font-weight:500;padding:2px 0;width:100%;outline:none">
+      </div>
+      <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:8px 10px">
+        <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Maturity</div>
+        <input type="date" id="opt-mat" value="${matDefault}" oninput="opt2OnInput()" style="background:transparent;border:none;color:#fff;font-size:13px;font-weight:500;padding:2px 0;width:100%;outline:none">
+      </div>
+      <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:8px 10px">
+        <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Risk-free r</div>
+        <input type="number" id="opt-r" value="0.01" step="0.001" oninput="opt2OnInput()" style="background:transparent;border:none;color:#fff;font-size:14px;font-weight:500;padding:2px 0;width:100%;outline:none">
+      </div>
+      <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:8px 10px">
+        <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Notional</div>
+        <input type="number" id="opt-N" value="100" step="1" oninput="opt2OnInput()" style="background:transparent;border:none;color:#fff;font-size:14px;font-weight:500;padding:2px 0;width:100%;outline:none">
+      </div>
+      <!-- σ has the blue accent border (AC#11) -->
+      <div style="background:#0d1322;border:1px solid rgba(59,130,246,0.40);border-radius:6px;padding:8px 10px">
+        <div style="font-size:9px;color:#93c5fd;text-transform:uppercase;letter-spacing:.06em">Implied vol σ</div>
+        <input type="number" id="opt-sig" value="0.208" step="0.001" oninput="opt2OnInput()" style="background:transparent;border:none;color:#fff;font-size:14px;font-weight:500;padding:2px 0;width:100%;outline:none">
+      </div>
+      <!-- Hint tile — clicking focuses the Broker Price input in Workflow B -->
+      <div onclick="document.getElementById('opt-broker')?.focus()"
+           style="background:rgba(255,255,255,0.02);border:1px dashed #374151;border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center;cursor:pointer">
+        <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.06em">σ unknown?</div>
+        <div style="font-size:11px;color:#9ca3af">use Solve IV →</div>
+      </div>
+    </div>
+
+    <!-- Workflow split -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+      <div style="background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.30);border-radius:6px;padding:10px 12px">
+        <div style="font-size:9px;color:#93c5fd;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A · price the option</div>
+        <div style="font-size:11px;color:#d1d5db;line-height:1.45">Set σ above, then:</div>
+        <div style="margin-top:8px">
+          <button onclick="optCalc()" style="background:rgba(59,130,246,0.18);border:1px solid #3b82f6;color:#93c5fd;padding:6px 16px;border-radius:3px;font-size:12px;font-weight:500;font-family:inherit;cursor:pointer">Calculate</button>
         </div>
-        <div id="opt-results" style="margin-top:10px"></div>
       </div>
-      <div>
-        <div class="ctitle">PAYOFF AT EXPIRY</div>
-        <div class="acard"><div style="height:320px"><canvas id="opt-payoff"></canvas></div></div>
-        <div id="opt-intermediates" style="margin-top:10px"></div>
+      <div style="background:rgba(52,211,153,0.04);border:1px solid rgba(52,211,153,0.30);border-radius:6px;padding:10px 12px">
+        <div style="font-size:9px;color:#34d399;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">B · solve IV from broker quote</div>
+        <div style="display:flex;gap:6px;align-items:end">
+          <div style="flex:1">
+            <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Broker price</div>
+            <input type="number" id="opt-broker" value="" step="0.01" placeholder="e.g. 5.20"
+                   style="background:rgba(255,255,255,0.04);border:1px solid #374151;color:#fff;font-size:13px;font-weight:500;padding:4px 6px;width:100%;outline:none;border-radius:3px;font-family:inherit">
+          </div>
+          <button onclick="optSolveIV()"
+                  style="background:rgba(52,211,153,0.18);border:1px solid #34d399;color:#34d399;padding:6px 14px;border-radius:3px;font-size:12px;font-weight:500;font-family:inherit;cursor:pointer">Solve IV</button>
+        </div>
+        <div style="font-size:10px;color:#6b7280;margin-top:4px">backs out σ from broker price, then prices the option</div>
       </div>
-    </div>`;
+    </div>
+
+    <!-- Phase 2 — Moneyness ribbon (placeholder) -->
+    <div id="opt2-moneyness" class="acard" style="margin-bottom:12px;padding:10px 12px;background:#0d1322;border:1px solid #1f2937">
+      <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Moneyness</div>
+      <div style="font-size:10px;color:#5a6882;margin-top:6px">Phase 2 — F · K positions on ATM ribbon, F/K ratio, OTM/ATM/ITM label.</div>
+    </div>
+
+    <!-- KEPT: Payoff at expiry chart (existing optDrawPayoff) -->
+    <div class="acard" style="margin-bottom:12px;padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <span style="font-size:12px;color:#fff;font-weight:500" id="opt2-payoff-title">Payoff at expiry</span>
+        <span style="font-size:10px;color:#6b7280">━ P&amp;L · ┄ Intrinsic</span>
+      </div>
+      <div style="height:200px"><canvas id="opt-payoff"></canvas></div>
+    </div>
+
+    <!-- Result card (8 metric tiles) — populated by optCalc -->
+    <div id="opt-results" style="margin-bottom:12px"></div>
+
+    <!-- Phase 2 — Sensitivity row (placeholder) -->
+    <div id="opt2-sensitivity" class="acard" style="margin-bottom:12px;padding:10px 12px;background:#0d1322;border:1px solid #1f2937">
+      <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Sensitivity</div>
+      <div style="font-size:10px;color:#5a6882;margin-top:6px">Phase 2 — Δ Premium under F±$1 and σ±1pp shocks, color-coded.</div>
+    </div>
+
+    <!-- Phase 3 — Greeks vs F panel (placeholder) -->
+    <div id="opt2-greeks-vs-f" class="acard" style="margin-bottom:12px;padding:10px 12px;background:#0d1322;border:1px solid #1f2937">
+      <div style="font-size:11px;color:#fff;font-weight:500">Greeks vs underlying F</div>
+      <div style="font-size:10px;color:#5a6882;margin-top:6px">Phase 3 — 2×2 small multiples (Delta, Gamma, Vega, Theta) over K ± 2σ√T with current-value dot at F.</div>
+    </div>
+
+    <!-- Phase 4 — Intermediates (collapsed placeholder) -->
+    <div id="opt-intermediates" style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Intermediates · BS internals</span>
+        <span style="font-size:10px;color:#6b7280">▸ Phase 4</span>
+      </div>
+      <div style="font-size:10px;color:#5a6882;margin-top:4px">Phase 4 — collapsed by default · expandable inline summary (T · σ√T · d₁ · d₂ · ZC · F/K · Daily σ).</div>
+    </div>
+    `;
+    // Sync the new Type/Position toggles with the hidden top-bar selects
+    opt2SyncFromTopBar();
   } else if(model==='gauss'){
+    // Non-BS models keep the legacy layout. Restore the global top-bar
+    // controls that the BS branch hides.
+    const tt = document.getElementById('opt-type'); if (tt) tt.style.display = '';
+    document.querySelectorAll('#sec-options .ctrl > .sbtn').forEach(b => b.style.display = '');
+    document.querySelectorAll('#sec-options .ctrl > .csep').forEach(s => s.style.display = '');
     body.innerHTML=`
     <div style="display:grid;grid-template-columns:380px 1fr;gap:16px">
       <div>
@@ -21075,6 +21195,10 @@ function optRender(){
       </div>
     </div>`;
   } else {
+    // Spread-option model — same legacy layout, restore top-bar visibility.
+    const tt = document.getElementById('opt-type'); if (tt) tt.style.display = '';
+    document.querySelectorAll('#sec-options .ctrl > .sbtn').forEach(b => b.style.display = '');
+    document.querySelectorAll('#sec-options .ctrl > .csep').forEach(s => s.style.display = '');
     body.innerHTML=`
     <div style="display:grid;grid-template-columns:420px 1fr;gap:16px">
       <div>
@@ -21154,40 +21278,62 @@ function optCalc(){
     const vegC=c.vega*sign, vegP=p.vega*sign;
     const theC=c.theta*sign, theP=p.theta*sign;
 
-    resEl.innerHTML=`<div class="acard" style="padding:10px">
-    <div class="ctitle">${typeLbl} · BS LOGNORMAL · ${posLbl}</div>
-    <table style="width:100%;border-collapse:collapse;font-size:11px">
-    <tr><th style="text-align:left;color:#3d5070;padding:4px 10px;font-size:9px;font-weight:400">Metric</th><th style="text-align:right;color:#2d7cff;font-size:9px;font-weight:400">CALL</th><th style="text-align:right;color:#f59e0b;font-size:9px;font-weight:400">PUT</th><th style="text-align:left;color:#3d5070;font-size:9px;font-weight:400">Notes</th></tr>
-    ${row('Premium',c.price.toFixed(4),p.price.toFixed(4),'Per unit · market quote')}
-    ${row('Intrinsic',intrC.toFixed(4),intrP.toFixed(4),'max(F−K,0)·e⁻ʳᵀ / max(K−F,0)·e⁻ʳᵀ')}
-    ${row('Extrinsic (Time)',extC.toFixed(4),extP.toFixed(4),'Premium − Intrinsic')}
-    ${row('Moneyness',`<span style="color:${mnyColC}">${mnyC}</span>`,`<span style="color:${mnyColP}">${mnyP}</span>`,'Call vs Put per strike')}
-    <tr><td colspan="4" style="padding:2px 0"></td></tr>
-    ${row('Price × N',(c.price*N).toFixed(2),(p.price*N).toFixed(2),'Total premium (notional×premium)')}
-    ${row('Cash flow',(cfC>=0?'+':'')+cfC.toFixed(2),(cfP>=0?'+':'')+cfP.toFixed(2),pos==='buy'?'BUY: pay (debit)':'SELL: receive (credit)')}
-    <tr><td colspan="4" style="padding:2px 0"></td></tr>
-    ${row('Delta (%)',(delC*100).toFixed(2),(delP*100).toFixed(2),'∂Price/∂F · '+posLbl.toLowerCase())}
-    ${row('Gamma',gamC.toFixed(6),gamP.toFixed(6),'∂²Price/∂F² · '+posLbl.toLowerCase())}
-    ${row('Vega (+1pp σ)',vegC.toFixed(4),vegP.toFixed(4),'Per +1pp abs vol · '+posLbl.toLowerCase())}
-    ${row('Theta (1 day)',theC.toFixed(4),theP.toFixed(4),'Per trading day /252 · '+posLbl.toLowerCase())}
-    <tr><td colspan="4" style="padding:2px 0"></td></tr>
-    ${row('Straddle',(c.price+p.price).toFixed(4),'','Call + Put @ same K')}
-    </table></div>`;
+    // ── BS v2 Result card — 8 tiles, single position by default ───────────
+    // Spec: Premium · Total N×P · Intrinsic/Extrinsic · Daily 1σ $-move ·
+    //       Delta · Gamma · Vega(+1pp) · Theta(/day). Position sign applied.
+    const isCallSide = isCall;
+    const sel = isCallSide ? c : p;        // currently-selected leg
+    const intr = isCallSide ? intrC : intrP;
+    const ext  = isCallSide ? extC  : extP;
+    const cf   = isCallSide ? cfC   : cfP;
+    const del  = isCallSide ? delC  : delP;
+    const gam  = isCallSide ? gamC  : gamP;
+    const veg  = isCallSide ? vegC  : vegP;
+    const the  = isCallSide ? theC  : theP;
+    const mny  = isCallSide ? mnyC  : mnyP;
+    const mnyCol = isCallSide ? mnyColC : mnyColP;
+    const dailyMove = F * sig / Math.sqrt(252);
+    const tile = (lbl, val, sub, accent) => `
+      <div style="background:${accent==='primary'?'rgba(59,130,246,0.08)':'#0d1322'};border:1px solid ${accent==='primary'?'rgba(59,130,246,0.30)':'#1f2937'};border-radius:4px;padding:8px 10px">
+        <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">${lbl}</div>
+        <div style="font-size:14px;font-weight:500;color:#fff;margin-top:2px">${val}</div>
+        ${sub?`<div style="font-size:9px;color:#6b7280;margin-top:1px">${sub}</div>`:''}
+      </div>`;
+    const cfStr = (cf>=0?'+':'')+cf.toFixed(2);
+    const cfCol = cf >= 0 ? '#34d399' : '#fca5a5';
+    const thetaCol = the >= 0 ? '#34d399' : '#fca5a5';
 
-    intEl.innerHTML=`<div class="acard" style="padding:10px">
-    <div class="ctitle">INTERMEDIATES</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:10px">
-      <div class="mc"><div class="mc-name">T (years)</div><div class="mc-val" style="font-size:14px">${T.toFixed(4)}</div></div>
-      <div class="mc"><div class="mc-name">σ√T (sdev)</div><div class="mc-val" style="font-size:14px">${sT.toFixed(4)}</div></div>
-      <div class="mc"><div class="mc-name">d₁</div><div class="mc-val" style="font-size:14px">${(c.d1||0).toFixed(4)}</div></div>
-      <div class="mc"><div class="mc-name">d₂</div><div class="mc-val" style="font-size:14px">${(c.d2||0).toFixed(4)}</div></div>
-      <div class="mc"><div class="mc-name">ZC e⁻ʳᵀ</div><div class="mc-val" style="font-size:14px">${df.toFixed(6)}</div></div>
-      <div class="mc"><div class="mc-name">F/K</div><div class="mc-val" style="font-size:14px">${(F/K).toFixed(4)}</div></div>
-      <div class="mc"><div class="mc-name">Daily σ (%)</div><div class="mc-val" style="font-size:14px">${(sig/Math.sqrt(252)*100).toFixed(3)}</div></div>
-      <div class="mc"><div class="mc-name">Daily 1σ $-move</div><div class="mc-val" style="font-size:14px">${(F*sig/Math.sqrt(252)).toFixed(3)}</div></div>
-    </div></div>`;
+    resEl.innerHTML = `
+      <div style="background:#0d1322;border:1px solid #1f2937;border-radius:6px;padding:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="font-size:12px;color:#fff;font-weight:500">Result · ${typeLbl} · ${posLbl}</span>
+          <span style="font-size:10px;color:#5a6882">${mny} · F/K ${(F/K).toFixed(3)}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+          ${tile('Premium', sel.price.toFixed(4), 'per unit', 'primary')}
+          ${tile('Total · N='+N, (sel.price*N).toFixed(2), '<span style="color:'+cfCol+'">cash flow '+cfStr+'</span>')}
+          ${tile('Intrinsic / Extrinsic', `<span style="color:#6b7280">${intr.toFixed(2)}</span> / <span style="font-weight:500">${ext.toFixed(2)}</span>`, '<span style="color:'+mnyCol+'">'+mny+(intr<=0?' · all time value':'')+'</span>')}
+          ${tile('Daily 1σ $-move', '±'+dailyMove.toFixed(3), 'on F = '+F.toFixed(2))}
+          ${tile('Delta', (del>=0?'+':'')+(del*100).toFixed(2)+'%', '∂Price/∂F · '+posLbl.toLowerCase())}
+          ${tile('Gamma', gam.toFixed(4), '')}
+          ${tile('Vega · +1pp σ', (veg>=0?'+':'')+veg.toFixed(4), '')}
+          ${`<div style="background:#0d1322;border:1px solid #1f2937;border-radius:4px;padding:8px 10px"><div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Theta · /day</div><div style="font-size:14px;font-weight:500;color:${thetaCol};margin-top:2px">${the.toFixed(4)}</div></div>`}
+        </div>
+      </div>
+    `;
 
-    optDrawPayoff('opt-payoff',F,K,isCall?c.price:p.price,isCall,N,'bs',{sign,posLbl});
+    if (intEl) intEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Intermediates · BS internals</span>
+        <span style="font-size:10px;color:#6b7280">▸ Phase 4 will make this expandable</span>
+      </div>
+      <div style="font-size:10px;color:#6b7280;margin-top:4px">T ${T.toFixed(3)} · σ√T ${sT.toFixed(3)} · d₁ ${(c.d1||0).toFixed(3)} · d₂ ${(c.d2||0).toFixed(3)} · ZC ${df.toFixed(4)} · F/K ${(F/K).toFixed(4)} · Daily σ ${(sig/Math.sqrt(252)*100).toFixed(3)}%</div>
+    `;
+
+    optDrawPayoff('opt-payoff',F,K,isCallSide?c.price:p.price,isCallSide,N,'bs',{sign,posLbl});
+    // Update payoff title with current type/position
+    const ptt = $id('opt2-payoff-title');
+    if (ptt) ptt.textContent = `Payoff at expiry · ${typeLbl} · ${posLbl}`;
 
   } else if(model==='gauss'){
     const F=parseFloat(document.getElementById('opt-F')?.value)||0;
@@ -21344,6 +21490,49 @@ function optSolveIV(){
     · F=${F} K=${K} T=${T.toFixed(3)}yr
   </div>`;
 }
+
+// ── BS v2 helpers ──────────────────────────────────────────────────────────
+// Sync the inline Type/Position toggles with the (now hidden) global Type
+// select + opt-pos select so optCalc/optSolveIV keep working unchanged.
+window.opt2SetType = function(t){
+  if (t !== 'call' && t !== 'put') return;
+  const top = document.getElementById('opt-type');
+  if (top) top.value = t;
+  opt2SyncFromTopBar();
+  if (typeof optCalc === 'function') optCalc();
+};
+
+window.opt2SetPos = function(p){
+  if (p !== 'buy' && p !== 'sell') return;
+  const sel = document.getElementById('opt-pos');
+  if (sel) sel.value = p;
+  opt2SyncFromTopBar();
+  // Live recompute on Position toggle (G3 default)
+  if (typeof optCalc === 'function') optCalc();
+};
+
+window.opt2SyncFromTopBar = function(){
+  const t = document.getElementById('opt-type')?.value || 'call';
+  const p = document.getElementById('opt-pos')?.value || 'buy';
+  ['opt2-type-call','opt2-type-put','opt2-pos-long','opt2-pos-short'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.classList.remove('on');
+  });
+  document.getElementById(t === 'put' ? 'opt2-type-put' : 'opt2-type-call')?.classList.add('on');
+  document.getElementById(p === 'sell' ? 'opt2-pos-short' : 'opt2-pos-long')?.classList.add('on');
+};
+
+// Live re-render hook on input change. For Phase 1, only updates the
+// freshness pill — Phase 2 will live-update the moneyness ribbon, Phase 3
+// won't re-render the Greeks panel until Calculate fires (heavy).
+window.opt2OnInput = function(){
+  // No live recompute in Phase 1 — user clicks Calculate. Phase 2 will
+  // wire the moneyness ribbon to update on F/K change without recomputing.
+};
+
+// Stub for the XLSX export button — wired in a later phase.
+window.opt2ExportXLSX = function(){
+  alert('Options pricer XLSX export — coming in a later phase.');
+};
 
 window.optRender=optRender;
 window.optCalc=optCalc;
