@@ -12438,7 +12438,10 @@ function dash2RenderMacroCard(inst){
   const pct = formatPctChange(lat.latest, lat.prior, DASH2_NM_FLOOR);
   return `
     <div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px">
-      <div style="font-size:9px;color:#9ca3af">${lbl}</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px">
+        <span style="font-size:9px;color:#9ca3af">${lbl}</span>
+        <span style="font-size:8px;color:#5a6882">M+1 · ${pkL(lat.m1)}</span>
+      </div>
       <div style="font-size:13px;color:#fff;font-weight:500;margin-top:2px">${lat.latest.toFixed(lat.dp)}</div>
       <div style="font-size:9px;color:${col};margin-top:1px">${arr} ${lat.change!=null ? Math.abs(lat.change).toFixed(lat.dp) : '—'} ${pct!=='n/m' ? '('+pct+')' : '· n/m'}</div>
     </div>
@@ -12475,15 +12478,19 @@ function dash2RenderHubCard(hubInst){
   const arr = change == null ? '' : change > 0 ? '▲' : '▼';
   const col = cls === 'pos' ? '#34d399' : cls === 'neg' ? '#fca5a5' : '#9ca3af';
   const pct = formatPctChange(last.value, prev?.value, DASH2_NM_FLOOR);
+  const contractLbl = `M+1 · ${pkL(em1)}`;
   const dateLbl = last.date.toLocaleDateString('en-GB', { day:'2-digit', month:'short' });
   return `
     <div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px">
-      <div style="display:flex;align-items:baseline;justify-content:space-between">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:4px">
         <span style="font-size:9px;color:#9ca3af">${lbl}</span>
-        <span style="font-size:8px;color:#5a6882">· ${dateLbl}</span>
+        <span style="font-size:8px;color:#5a6882">${contractLbl}</span>
       </div>
       <div style="font-size:13px;color:#fff;font-weight:500;margin-top:2px">${last.value.toFixed(3)}</div>
-      <div style="font-size:9px;color:${col};margin-top:1px">${arr} ${change!=null ? Math.abs(change).toFixed(3) : '—'} ${pct!=='n/m' ? '('+pct+')' : '· n/m'}</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:1px;gap:4px">
+        <span style="font-size:9px;color:${col}">${arr} ${change!=null ? Math.abs(change).toFixed(3) : '—'} ${pct!=='n/m' ? '('+pct+')' : '· n/m'}</span>
+        <span style="font-size:8px;color:#5a6882">· ${dateLbl}</span>
+      </div>
     </div>
   `;
 }
@@ -12503,9 +12510,19 @@ function dash2RenderSpreadCard(hubInst, label){
   const arr = change == null ? '' : change > 0 ? '▲' : '▼';
   const col = cls === 'pos' ? '#34d399' : cls === 'neg' ? '#fca5a5' : '#9ca3af';
   const pct = formatPctChange(latest, prior, DASH2_NM_FLOOR);
+  // Contract month for the spread = the EEX hub's M+1 contract on its latest
+  // EOD (since hub data drives the spread date).
+  let contractLbl = 'M+1';
+  if (eexDates.length) {
+    const eld = eexDates[eexDates.length-1];
+    contractLbl = `M+1 · ${pkL(rPK(eexD[eld].date, 1))}`;
+  }
   return `
     <div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px">
-      <div style="font-size:9px;color:#9ca3af">${label}</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px">
+        <span style="font-size:9px;color:#9ca3af">${label}</span>
+        <span style="font-size:8px;color:#5a6882">${contractLbl}</span>
+      </div>
       <div style="font-size:13px;color:#fff;font-weight:500;margin-top:2px">${latest.toFixed(3)}</div>
       <div style="font-size:9px;color:${col};margin-top:1px">${arr} ${change!=null ? Math.abs(change).toFixed(3) : '—'} ${pct!=='n/m' ? '('+pct+')' : '· n/m'}</div>
     </div>
