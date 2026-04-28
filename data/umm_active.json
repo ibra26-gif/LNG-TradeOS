@@ -32,6 +32,16 @@
     },
     {
       "title": "Other unavailability · Planned",
+      "asset": "Njord",
+      "impact": "-4.8 mcm/d",
+      "from": "2026-04-28",
+      "to": "2026-04-29",
+      "type": "planned",
+      "published": "2026-04-22T12:55:00",
+      "msg_id": "2026-35___________________009"
+    },
+    {
+      "title": "Other unavailability · Planned",
       "asset": "Dornum",
       "impact": "+0.0 mcm/d",
       "from": "2026-03-02",
@@ -42,9 +52,9 @@
     }
   ],
   "_meta": {
-    "updated": "2026-04-27T21:45:11Z",
+    "updated": "2026-04-28T08:10:10Z",
     "source": "gassco xlexport",
     "total_messages": 158,
-    "active_count": 4
+    "active_count": 5
   }
 }
