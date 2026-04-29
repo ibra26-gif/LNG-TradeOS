@@ -59,9 +59,23 @@ jobs:
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/korea.json data/korea_nuclear_history.csv
+          # Stage every file the scraper may write, so the rebase below has
+          # a clean tree. Some sub-fetchers refresh weekly/monthly caches
+          # (Ember, KCGA, DART quarterly, data.go.kr CSVs) — even when their
+          # series is unchanged, file mtimes can shift. We let git diff
+          # filter them out before commit.
+          git add data/korea.json data/korea_nuclear_history.csv \
+                  data/korea_ember_monthly.json \
+                  data/dart_kogas.json data/dart_kogas_monthly.json \
+                  data/dart_kogas_quarterly.json \
+                  data/kcga_monthly.json \
+                  data/data_go_kr_kogas_supply.json data/data_go_kr_kogas_tariff.json \
+                  2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No tracked changes — nothing to commit."
+            # Also drop any unstaged modifications so the rebase below
+            # (when run by another step) has a clean working tree.
+            git checkout -- . 2>/dev/null || true
             exit 0
           fi
           SUMMARY=$(python3 -c "
@@ -76,9 +90,13 @@ jobs:
           print(' · '.join(parts) or 'data refresh')
           ")
           git commit -m "data: korea hourly refresh ($SUMMARY)"
+          # Discard any remaining unstaged file changes (Python __pycache__,
+          # ember cache mtime drift) so pull --rebase has a clean tree.
+          git stash -u 2>/dev/null || true
           for attempt in 1 2 3 4 5; do
             if git pull --rebase origin main && git push; then
               echo "Push succeeded on attempt $attempt"
+              git stash drop 2>/dev/null || true
               exit 0
             fi
             sleep $((attempt * 5))
