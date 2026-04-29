@@ -9534,7 +9534,13 @@ function initCargo(){
   CP.coghMode=cpGet('cp_cogh_mode',false);
   CP.fobUsIdx=cpGet('cp_fob_us_idx','TTF');
   CP.fobOmanIdx=cpGet('cp_fob_oman_idx','TTF');
-  CP.fobOmanHistIdx=cpGet('cp_fob_oman_hist_idx','FIXED');
+  // FOB Historical (Design 2) — per-origin tenor + route + index toggles
+  CP.fobUsHistTenor   = cpGet('cp_fob_usgc_hist_tenor', 1);
+  CP.fobUsHistRoute   = cpGet('cp_fob_usgc_hist_route','sabine_tokyo');
+  CP.fobUsHistIdx     = cpGet('cp_fob_usgc_hist_idx',  'FIXED');
+  CP.fobOmanHistTenor = cpGet('cp_fob_oman_hist_tenor', 1);
+  CP.fobOmanHistRoute = cpGet('cp_fob_oman_hist_route','oman_tokyo');
+  CP.fobOmanHistIdx   = cpGet('cp_fob_oman_hist_idx',  'FIXED');
   CP.fobOmanFixed=cpGet('cp_fob_oman_fixed',10.00);
   CP.tab=0;renderCargo();
 }
@@ -11356,88 +11362,139 @@ function cpFobPricing(d){
 
 
 // ════════════════════════════════════════════════════════════════════════════
-// FOB Historical curves — for each EOD date in cache, compute the M+1..M+24
-// forward curve using the same formula as the static cpFobPricing panes:
-//   USGC FOB = 1.15 × HH(date, M+N) + liqFee[N]
-//   Oman FOB = DES(jktc, date, M+N) − freight(oman_tokyo, M+N) − idxArr[N]
-// Then surface two views per origin:
-//   1. Spaghetti — full M+1..M+24 curves at selected historical dates
-//   2. Front-month time series (M+1 daily history)
+// FOB Historical · Design 2 · daily time-series at user-selected tenor+route
+//
+// For each EOD date in cache + a chosen (tenor, route, index), compute the
+// FOB price using the same formula as the static cpFobPricing panes:
+//   USGC FOB(date, T, route, idx):
+//     desValue = (route.desKey is JKM ? JKM : TTF) + phys[route.desPhysKey] (today)
+//     freight  = CP.freight[route.frKey][T-1]  (today's snapshot)
+//     liqFee   = CP.liqFee[T-1] || 2.50
+//     idxArr   = TTF | JKM | 1.15×HH (at EOD date)
+//     FIXED    → 1.15 × HH(date,T) + liqFee[T-1]   (Sabine FOB special case)
+//                OR DES − freight  (if non-Sabine USGC route)
+//     SPREAD   → DES − freight − idxArr
+//   Oman FOB(date, T, route, idx):
+//     FIXED    → DES − freight
+//     SPREAD   → DES − freight − idxArr
+//
+// Toggles: tenor (1..24), route (per origin), index (FIXED/TTF/JKM/HH)
 // ════════════════════════════════════════════════════════════════════════════
-function _fobBuildHistoricalCurves(originType, idxName, tenorMax){
-  // Returns Array<{date, ds, curve: [M+1, M+2, ..., M+tenorMax]}> sorted by date.
+const FOB_ROUTES = {
+  usgc: [
+    { id:'sabine_rotterdam', label:'NWE',         desKey:'TTF', physKey:'nwe',      frKey:'sabine_rotterdam' },
+    { id:'sabine_southhook', label:'UK',          desKey:'TTF', physKey:'uk',       frKey:'sabine_southhook' },
+    { id:'sabine_iberia',    label:'Iberia',      desKey:'TTF', physKey:'iberia',   frKey:'sabine_iberia'    },
+    { id:'sabine_rovigo',    label:'Italy',       desKey:'TTF', physKey:null,       frKey:'sabine_rovigo'    },
+    { id:'sabine_dahej',     label:'MEI',         desKey:'JKM', physKey:null,       frKey:'sabine_dahej'     },
+    { id:'sabine_tokyo',     label:'JKTC',        desKey:'JKM', physKey:'jktc',     frKey:'sabine_tokyo'     },
+  ],
+  oman: [
+    { id:'oman_tokyo',       label:'JKTC',        desKey:'JKM', physKey:'jktc',     frKey:'oman_tokyo'       },
+    { id:'oman_dahej',       label:'Dahej (MEI)', desKey:'JKM', physKey:null,       frKey:'oman_dahej'       },
+    { id:'oman_gate',        label:'NWE',         desKey:'TTF', physKey:'nwe',      frKey:'oman_gate'        },
+    { id:'oman_southhook',   label:'UK',          desKey:'TTF', physKey:'uk',       frKey:'oman_southhook'   },
+    { id:'oman_iberia',      label:'Iberia',      desKey:'TTF', physKey:'iberia',   frKey:'oman_iberia'      },
+    { id:'oman_rovigo',      label:'Italy',       desKey:'TTF', physKey:null,       frKey:'oman_rovigo'      },
+  ],
+};
+
+function _fobHistTimeSeries(originType, tenor, routeId, idxName){
+  // Returns Array<{date, value}> for the selected (tenor, route, index)
+  // across every EOD date in cache.
   if (!sDates?.length) return [];
   const sl = CP.hhSlope || 1.15;
+  const route = (FOB_ROUTES[originType] || []).find(r => r.id === routeId);
+  if (!route) return [];
+
+  // today's static inputs (freight + phys diffs aren't historical yet)
+  const freight = CP.freight?.[route.frKey]?.[tenor - 1];
+  const physVal = route.physKey ? (CP.phys?.[route.physKey]?.[tenor - 1] || 0) : 0;
+  const liqFee  = (CP.liqFee && CP.liqFee[tenor - 1] != null) ? CP.liqFee[tenor - 1] : 2.50;
+
   const out = [];
   for (const ds of sDates) {
     const date = aD[ds]?.date; if (!date) continue;
     const rows = aD[ds]?.rows || [];
-    const curve = [];
-    for (let n = 1; n <= tenorMax; n++) {
-      const pk = rPK(date, n);
-      const row = rows.find(r => r.pk === pk);
-      let v = null;
-      if (row) {
-        if (originType === 'usgc') {
-          // USGC FOB = 1.15 × HH(M+N) + liqFee[N-1]
-          const hh = row.HH;
-          const fee = (CP.liqFee && CP.liqFee[n-1] != null) ? CP.liqFee[n-1] : 2.50;
-          if (hh != null && !isNaN(hh)) v = +(sl * hh + fee).toFixed(3);
-        } else if (originType === 'oman') {
-          // Oman FOB = DES JKTC − Oman→Tokyo freight − idxArr
-          //   DES JKTC ≈ JKM at front (we use JKM directly as DES anchor)
-          //   For 'FIXED' index → return absolute (DES − freight)
-          const jkm = row.JKM;
-          const fr  = (CP.freight?.oman_tokyo?.[n-1]);
-          if (jkm != null && fr != null) {
-            if (idxName === 'FIXED') {
-              v = +(jkm - fr).toFixed(3); // absolute FOB level
-            } else {
-              const idxArr = idxName === 'JKM' ? row.JKM
-                            : idxName === 'HH' ? sl * row.HH
-                            : row.TTF;
-              if (idxArr != null) v = +(jkm - fr - idxArr).toFixed(3);
-            }
-          }
-        }
-      }
-      curve.push(v);
+    const pk = rPK(date, tenor);
+    const row = rows.find(r => r.pk === pk);
+    if (!row) { out.push({ date, value: null }); continue; }
+
+    // Special case: Sabine FOB ABS = 1.15 × HH + liqFee  (the published Cheniere formula)
+    // Use this only when route is a Sabine-origin route AND index is FIXED.
+    if (originType === 'usgc' && idxName === 'FIXED' && row.HH != null) {
+      out.push({ date, value: +(sl * row.HH + liqFee).toFixed(3) });
+      continue;
     }
-    out.push({ date, ds, curve });
+
+    // Generic FOB formula: DES_destination − freight (− index if spread mode)
+    const idxAtDate = (route.desKey === 'JKM') ? row.JKM : row.TTF;
+    if (idxAtDate == null || freight == null) { out.push({ date, value: null }); continue; }
+    const desValue = idxAtDate + physVal;
+
+    let value;
+    if (idxName === 'FIXED') {
+      value = +(desValue - freight).toFixed(3);
+    } else {
+      const idxValAtDate = idxName === 'TTF' ? row.TTF
+                          : idxName === 'JKM' ? row.JKM
+                          : (row.HH != null ? sl * row.HH : null);
+      if (idxValAtDate == null) { out.push({ date, value: null }); continue; }
+      value = +(desValue - freight - idxValAtDate).toFixed(3);
+    }
+    out.push({ date, value });
   }
   return out;
 }
 
 function cpFobHistoricalSection(d){
-  const usIdx   = 'FIXED'; // USGC always shown as absolute (1.15×HH + fee)
-  const omanIdx = CP.fobOmanHistIdx || 'FIXED';
+  const TENORS = [1, 2, 3, 6, 12, 24];
+  const us   = { tenor: CP.fobUsHistTenor   || 1, route: CP.fobUsHistRoute   || 'sabine_tokyo', idx: CP.fobUsHistIdx   || 'FIXED' };
+  const oman = { tenor: CP.fobOmanHistTenor || 1, route: CP.fobOmanHistRoute || 'oman_tokyo',   idx: CP.fobOmanHistIdx || 'FIXED' };
+
+  const renderToggles = (origin, sel) => {
+    const routes = FOB_ROUTES[origin];
+    const tenorBtns = TENORS.map(t => `<button class="f-btn sm${sel.tenor===t?' on':''}" onclick="CP.fob${origin==='usgc'?'Us':'Oman'}HistTenor=${t};cpSet('cp_fob_${origin}_hist_tenor',${t});renderCargoTab()">M+${t}</button>`).join('');
+    const routeBtns = routes.map(r => `<button class="f-btn sm${sel.route===r.id?' on':''}" onclick="CP.fob${origin==='usgc'?'Us':'Oman'}HistRoute='${r.id}';cpSet('cp_fob_${origin}_hist_route','${r.id}');renderCargoTab()">${r.label}</button>`).join('');
+    const idxBtns   = ['FIXED','TTF','JKM','HH'].map(x => `<button class="f-btn sm${sel.idx===x?' on':''}" onclick="CP.fob${origin==='usgc'?'Us':'Oman'}HistIdx='${x}';cpSet('cp_fob_${origin}_hist_idx','${x}');renderCargoTab()">${x==='FIXED'?'Abs':x==='HH'?'115%HH':x}</button>`).join('');
+    return `
+      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;font-size:9px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#546e7a;letter-spacing:1px;min-width:50px">TENOR</span> ${tenorBtns}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#546e7a;letter-spacing:1px;min-width:50px">ROUTE</span> ${routeBtns}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#546e7a;letter-spacing:1px;min-width:50px">INDEX</span> ${idxBtns}</div>
+      </div>`;
+  };
+
+  const usRouteLabel = (FOB_ROUTES.usgc.find(r=>r.id===us.route)||{}).label || us.route;
+  const omanRouteLabel = (FOB_ROUTES.oman.find(r=>r.id===oman.route)||{}).label || oman.route;
+  const yLabel = (idx) => idx==='FIXED' ? '$/MMBtu (Abs)' : 'spread vs '+(idx==='HH'?'115%HH':idx);
+
   return `
-    <div class="f-sec" style="margin-top:18px">FOB HISTORICAL · M+1 daily evolution</div>
+    <div class="f-sec" style="margin-top:18px">FOB HISTORICAL · daily time series at selected tenor · route · index</div>
     <div style="font-size:9px;color:#546e7a;padding:0 14px 8px;line-height:1.5">
-      Same formula as the panes above, applied to every EOD date in cache.
-      USGC = 1.15 × HH(M+1) + liqFee[0]. Oman = DES JKTC − Oman→Tokyo freight at front month.
-      <span style="color:#fbbf24">⚠ Freight held at the current snapshot — historical BLNG not yet replayed per EOD date.</span>
+      Per-EOD-date FOB price for the picked tenor, route, and index. Same formula as the panes above.
+      Sabine ABS uses Cheniere formula (1.15×HH + liqFee). All other routes/modes: DES − freight (− idx if spread).
+      <span style="color:#fbbf24">⚠ Freight + phys diffs held at current snapshot — historical replay TBD.</span>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 14px">
 
-      <!-- USGC HISTORICAL — front-month line chart -->
+      <!-- USGC -->
       <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937">
         <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:6px">
-          US (Sabine) FOB · M+1 · $/MMBtu
+          US (Sabine) FOB · M+${us.tenor} → ${usRouteLabel} · ${yLabel(us.idx)}
         </div>
-        <div style="height:280px"><canvas id="fob-hist-us-front"></canvas></div>
+        ${renderToggles('usgc', us)}
+        <div style="height:240px"><canvas id="fob-hist-us-front"></canvas></div>
       </div>
 
-      <!-- OMAN HISTORICAL — front-month line chart with index toggle -->
+      <!-- OMAN -->
       <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-          <span style="font-size:11px;color:#fff;font-weight:500">Oman FOB · M+1 · ${omanIdx==='FIXED'?'$/MMBtu (Abs)':'spread vs '+(omanIdx==='HH'?'115%HH':omanIdx)}</span>
-          <div style="display:flex;gap:3px">
-            ${['FIXED','TTF','JKM','HH'].map(x => `<button class="f-btn sm${omanIdx===x?' on':''}" onclick="CP.fobOmanHistIdx='${x}';cpSet('cp_fob_oman_hist_idx','${x}');renderCargoTab()">${x==='FIXED'?'Abs':x==='HH'?'115%HH':x}</button>`).join('')}
-          </div>
+        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:6px">
+          Oman FOB · M+${oman.tenor} → ${omanRouteLabel} · ${yLabel(oman.idx)}
         </div>
-        <div style="height:280px"><canvas id="fob-hist-oman-front"></canvas></div>
+        ${renderToggles('oman', oman)}
+        <div style="height:240px"><canvas id="fob-hist-oman-front"></canvas></div>
       </div>
 
     </div>
@@ -11446,28 +11503,32 @@ function cpFobHistoricalSection(d){
 
 // Render the historical charts after the FOB tab DOM is mounted.
 function _fobRenderHistoricalCharts(d){
-  const omanIdx = CP.fobOmanHistIdx || 'FIXED';
+  const us   = { origin:'usgc', tenor: CP.fobUsHistTenor   || 1, route: CP.fobUsHistRoute   || 'sabine_tokyo', idx: CP.fobUsHistIdx   || 'FIXED' };
+  const oman = { origin:'oman', tenor: CP.fobOmanHistTenor || 1, route: CP.fobOmanHistRoute || 'oman_tokyo',   idx: CP.fobOmanHistIdx || 'FIXED' };
 
-  function renderForOrigin(origin, idxName, frontId, color){
+  function renderForOrigin(sel, frontId, color){
     if (!sDates?.length) return;
-    const series = _fobBuildHistoricalCurves(origin, idxName, 1);
+    const series = _fobHistTimeSeries(sel.origin, sel.tenor, sel.route, sel.idx);
     if (!series.length) return;
 
     const frontCanvas = document.getElementById(frontId);
     if (!frontCanvas) return;
     if (window['_'+frontId]) window['_'+frontId].destroy();
+
     const labels = series.map(r => r.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
-    const data = series.map(r => r.curve[0]);
-    const isAbs = idxName === 'FIXED';
+    const data = series.map(r => r.value);
+    const isAbs = sel.idx === 'FIXED';
+    const idxLbl = isAbs ? '$/MMBtu' : 'vs '+(sel.idx==='HH'?'115%HH':sel.idx);
+
     window['_'+frontId] = new Chart(frontCanvas.getContext('2d'), {
       type: 'line',
       data: {
         labels,
         datasets: [{
-          label: 'M+1',
+          label: `M+${sel.tenor}`,
           data,
           borderColor: color,
-          backgroundColor: color + '1A',  // 10% alpha
+          backgroundColor: color + '1A',
           borderWidth: 1.8,
           pointRadius: 0,
           tension: 0.25,
@@ -11481,21 +11542,21 @@ function _fobRenderHistoricalCharts(d){
           ...CD.plugins,
           legend: { display:false },
           tooltip: { ...CD.plugins.tooltip, callbacks: {
-            label: (ctx) => `${ctx.label}: ${ctx.parsed.y?.toFixed(3)} ${isAbs?'$/MMBtu':'vs '+(idxName==='HH'?'115%HH':idxName)}`,
+            label: (ctx) => `${ctx.label}: ${ctx.parsed.y?.toFixed(3)} ${idxLbl}`,
           }},
         },
         scales: {
           x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:9},maxTicksLimit:10} },
           y: { ...CD.scales.y,
-                title:{display:true,text:isAbs?'$/MMBtu':'vs '+(idxName==='HH'?'115%HH':idxName),color:'#3d5070',font:{size:9}},
+                title:{display:true,text:idxLbl,color:'#3d5070',font:{size:9}},
                 ticks:{color:'#3d5070',font:{size:9}} },
         },
       }
     });
   }
 
-  renderForOrigin('usgc', 'FIXED', 'fob-hist-us-front',   '#4fc3f7');
-  renderForOrigin('oman', omanIdx, 'fob-hist-oman-front', '#fbbf24');
+  renderForOrigin(us,   'fob-hist-us-front',   '#4fc3f7');
+  renderForOrigin(oman, 'fob-hist-oman-front', '#fbbf24');
 }
 
 
