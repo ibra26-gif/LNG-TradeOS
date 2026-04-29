@@ -21365,56 +21365,14 @@ let _korTab = 'balance';
 let _korChartMain = null, _korChartNuclear = null, _korChartPrices = null;
 
 // Seed data (values from spec mock — replace with scrapers in follow-ups)
+// All Korea data is now sourced from live scrapers (KHNP / DART / KCGA /
+// data.go.kr / Ember). KOR_SEED was a placeholder dict from the initial
+// scaffold — every field except the FX fallback is now removed, so the
+// dashboard never silently shows fabricated numbers.
 const KOR_SEED = {
-  asOf: { khnp: '2026-04-27', kogas: '2026-03', dart: 'Q4-25', tariff: '2026-04', krwUsd: '2026-04-28' },
-  // Tab 1
-  lngImportsMtMar: 3.94,
-  lngImportsYoY: -0.08,
-  powerSalesQ4: 3.84,
-  powerSalesYoY: -0.14,
-  nuclearGW: 21.8,
-  nuclearOnlineCount: 21,
-  nuclearTotalCount: 23,
-  nuclearUtilYtd: 0.88,
-  nuclearUtilYoYpp: 0.05,
-  // Quarterly LNG demand stack (DART) — Q1-24 .. Q4-25
-  quarterlyDemand: [
-    { q:'Q1-24', cityGas: 5.3, power: 2.6, industrial: 0.8 },
-    { q:'Q2-24', cityGas: 1.6, power: 1.4, industrial: 0.6 },
-    { q:'Q3-24', cityGas: 2.0, power: 1.7, industrial: 0.6 },
-    { q:'Q4-24', cityGas: 4.1, power: 2.2, industrial: 0.7 },
-    { q:'Q1-25', cityGas: 5.8, power: 2.5, industrial: 0.8 },
-    { q:'Q2-25', cityGas: 1.5, power: 1.3, industrial: 0.6 },
-    { q:'Q3-25', cityGas: 1.8, power: 1.5, industrial: 0.6 },
-    { q:'Q4-25', cityGas: 4.0, power: 2.3, industrial: 0.7 },
-  ],
-  nuclearBySite: [
-    { site:'Hanul',     cap:5.0, online:5, total:5 },
-    { site:'Hanbit',    cap:5.0, online:5, total:6 },
-    { site:'Kori',      cap:4.6, online:4, total:5 },
-    { site:'Saeul',     cap:2.8, online:2, total:2 },
-    { site:'Wolsong',   cap:2.0, online:3, total:3 },
-    { site:'Saeul-Shin',cap:2.4, online:2, total:2 },
-  ],
-  // Tab 2
-  kogasTariffApr: 17.20,
-  kogasTariffMoM: 0.03,
-  krwUsd: 1340,
-  // Historical KOGAS tariff series (seeded — monthly resets May-25 to Apr-26)
-  kogasHistory: [
-    { ym:'2025-05', won_per_GJ: null, usd_mmbtu: 9.50 },
-    { ym:'2025-06', won_per_GJ: null, usd_mmbtu: 9.85 },
-    { ym:'2025-07', won_per_GJ: null, usd_mmbtu: 10.10 },
-    { ym:'2025-08', won_per_GJ: null, usd_mmbtu: 11.30 },
-    { ym:'2025-09', won_per_GJ: null, usd_mmbtu: 13.60 },
-    { ym:'2025-10', won_per_GJ: null, usd_mmbtu: 15.20 },
-    { ym:'2025-11', won_per_GJ: null, usd_mmbtu: 16.40 },
-    { ym:'2025-12', won_per_GJ: null, usd_mmbtu: 17.80 },
-    { ym:'2026-01', won_per_GJ: null, usd_mmbtu: 18.20 },
-    { ym:'2026-02', won_per_GJ: null, usd_mmbtu: 17.95 },
-    { ym:'2026-03', won_per_GJ: null, usd_mmbtu: 16.70 },
-    { ym:'2026-04', won_per_GJ: null, usd_mmbtu: 17.20 },
-  ],
+  // FX fallback — only used if the live ECB feed is unavailable. ECB updates
+  // daily; the live value almost always wins.
+  krwUsd: 1300,
 };
 
 // ── Engine helpers ─────────────────────────────────────────────────────────
@@ -22642,13 +22600,12 @@ function renderKorBalance(el){
 function renderKorPrices(el){
   const s = KOR_SEED;
   const lat = korLatestPrices();
-  const jkmM1 = lat.jkmM1 != null ? +lat.jkmM1 : 16.88;
-  const brent = lat.brent != null ? +lat.brent : 94.46;
-  const live = lat.jkmM1 != null && lat.brent != null;
-  const brent14 = +(brent * 0.14).toFixed(2);
-  const brent11 = +(brent * 0.11).toFixed(2);
-  const jkmVsBand = +(jkmM1 - brent14).toFixed(2);
-  const kogas = s.kogasTariffApr;
+  const jkmM1 = lat.jkmM1;     // live from EOD or null
+  const brent = lat.brent;     // live from EOD or null
+  const live  = jkmM1 != null && brent != null;
+  const brent14 = brent != null ? +(brent * 0.14).toFixed(2) : null;
+  const brent11 = brent != null ? +(brent * 0.11).toFixed(2) : null;
+  const jkmVsBand = (jkmM1 != null && brent14 != null) ? +(jkmM1 - brent14).toFixed(2) : null;
   // Live ECB FX overrides the seeded KRW/USD when available
   const liveFx = _korLive?.fx;
   const krwUsd = liveFx?.krwUsd ?? s.krwUsd;
@@ -22676,39 +22633,39 @@ function renderKorPrices(el){
 
   el.innerHTML = `
     ${korFreshness([
-      { label:'KOGAS tariff (current)', meta:'monthly · Apr · seed', color:'#fbbf24' },
       { label:'KOGAS history', meta: lastTariff ? `data.go.kr · 2008–${lastTariff.date.slice(0,7)} · ${tariffHistory.length} mo` : 'no data', color: lastTariff ? '#34d399' : '#fbbf24' },
-      { label:'JKM',          meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
-      { label:'Brent',        meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
-      { label:'KRW/USD',      meta:fxLive?`${krwUsd.toFixed(2)} · ECB ${fxAsOf}`:`${krwUsd} · seed`, color: fxLive?'#34d399':'#fbbf24' },
+      { label:'JKM',     meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
+      { label:'Brent',   meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
+      { label:'KRW/USD', meta:fxLive?`${krwUsd.toFixed(2)} · ECB ${fxAsOf}`:`${krwUsd} · fallback`, color: fxLive?'#34d399':'#fbbf24' },
     ])}
 
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">
-      ${korKpiCard({ label:'KOGAS tariff · Apr', value:kogas.toFixed(2),    sub:'▲ '+(s.kogasTariffMoM*100).toFixed(0)+'% MoM', badge:'seed', color:'#34d399' })}
-      ${korKpiCard({ label:'JKM M+1',            value:jkmM1.toFixed(2),    sub: live?'▲ live · ICE':'load EOD', color:'#3b82f6' })}
-      ${korKpiCard({ label:'14% Brent',          value:brent14.toFixed(2),  sub:brent.toFixed(2)+' × 0.14', color:'#a78bfa' })}
-      ${korKpiCard({ label:'11% Brent',          value:brent11.toFixed(2),  sub:brent.toFixed(2)+' × 0.11', color:'#a78bfa' })}
-      ${korKpiCard({ label:'JKM vs band',        value:(jkmVsBand>=0?'+':'')+jkmVsBand.toFixed(2),
-                     sub: jkmVsBand>=0?'spot above 14% slope':'spot below 14% slope',
-                     color: jkmVsBand>=0?'#34d399':'#fca5a5' })}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+      ${korKpiCard({ label:'JKM M+1',     value: jkmM1!=null?jkmM1.toFixed(2):'—',         sub: live?'▲ live · ICE':'load EOD', color:'#3b82f6' })}
+      ${korKpiCard({ label:'14% Brent',   value: brent14!=null?brent14.toFixed(2):'—',     sub: brent!=null?brent.toFixed(2)+' × 0.14':'—', color:'#a78bfa' })}
+      ${korKpiCard({ label:'11% Brent',   value: brent11!=null?brent11.toFixed(2):'—',     sub: brent!=null?brent.toFixed(2)+' × 0.11':'—', color:'#a78bfa' })}
+      ${korKpiCard({ label:'JKM vs band', value: jkmVsBand!=null?(jkmVsBand>=0?'+':'')+jkmVsBand.toFixed(2):'—',
+                     sub: jkmVsBand==null?'—':(jkmVsBand>=0?'spot above 14% slope':'spot below 14% slope'),
+                     color: jkmVsBand==null?'#9ca3af':(jkmVsBand>=0?'#34d399':'#fca5a5') })}
     </div>
 
     <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS · JKM · Brent slope band 14%–11% (3,0,1) · $/MMBtu</span>
-        <span style="font-size:9px;color:#5a6882">— KOGAS · — JKM · ▮ 14–11% Brent band</span>
+        <span style="font-size:11px;color:#fff;font-weight:500">JKM · Brent slope band 14%–11% (3,0,1) · $/MMBtu</span>
+        <span style="font-size:9px;color:#5a6882">— JKM · ▮ 14–11% Brent band</span>
       </div>
       <div style="height:240px"><canvas id="kor-prices-chart"></canvas></div>
     </div>
 
     <div style="font-size:9px;color:#6b7280;margin-bottom:10px">
-      Slope band = (11% to 14%) × Brent (3,0,1) — 3-month avg, 0-month lag, 1-month application. Spot/tariff above the band = market tighter than oil-linked term · below = looser
+      Slope band = (11% to 14%) × Brent (3,0,1) — 3-month avg, 0-month lag, 1-month application. Spot above the band = market tighter than oil-linked term · below = looser
     </div>
 
+    ${live ? `
     <div style="background:rgba(167,139,250,0.04);border-left:2px solid #a78bfa;padding:10px 12px;font-size:10px;color:#c8cfe0;line-height:1.55">
       <span style="color:#a78bfa;font-size:9px;letter-spacing:.06em">READ</span><br>
-      <b>JKM at $${jkmM1.toFixed(2)}</b> sits ${jkmVsBand>=0?'+':''}<b>$${jkmVsBand.toFixed(2)}</b> ${jkmVsBand>=0?'above':'below'} 14% Brent — Asian spot is ${jkmVsBand>=0?'well above':'below'} where oil-linked term LNG would price (14% × Brent ${brent.toFixed(2)} = ${brent14.toFixed(2)}). KOGAS tariff $${kogas.toFixed(2)} also sits ${kogas>brent14?'above':'within/below'} the band, ${kogas>brent14?'consistent with KOGAS reflecting higher term-import costs into power-sector pricing.':'reflecting easing term-import pressure.'}
+      <b>JKM at $${jkmM1.toFixed(2)}</b> sits ${jkmVsBand>=0?'+':''}<b>$${jkmVsBand.toFixed(2)}</b> ${jkmVsBand>=0?'above':'below'} 14% Brent — Asian spot is ${jkmVsBand>=0?'above':'below'} where oil-linked term LNG would price (14% × Brent ${brent.toFixed(2)} = ${brent14.toFixed(2)}).
     </div>
+    ` : ''}
 
     ${tariffHistory.length ? `
     <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-top:12px">
@@ -22740,7 +22697,7 @@ function renderKorPrices(el){
     <div style="font-size:9px;color:#5a6882;line-height:1.6;border-top:1px solid #1f2937;padding-top:10px;margin-top:12px">
       <div style="color:#9ca3af;margin-bottom:4px">Conversion · Won/GJ → $/MMBtu</div>
       <code style="color:#93c5fd">$/MMBtu = (Won/GJ) ÷ (KRW/USD) × 1.05506</code>
-      <div style="margin-top:6px;color:#fbbf24">Current-month KOGAS tariff seeded ($/MMBtu directly · awaiting KOGAS press-release scraper) · KRW/USD live from ECB · JKM &amp; Brent live from EOD files</div>
+      <div style="margin-top:6px;color:#9ca3af">All prices live: JKM &amp; Brent from EOD files · KRW/USD from ECB · KOGAS history from data.go.kr 15052058. Current-month KOGAS tariff card removed (no globally-accessible source — KOGAS press releases are Korean-IP-only).</div>
     </div>
   `;
 
@@ -22757,10 +22714,7 @@ function renderKorPrices(el){
     months.push({ ym:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
                   label: d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}) });
   }
-  // KOGAS history (seeded)
-  const kogasMap = new Map(s.kogasHistory.map(r => [r.ym, r.usd_mmbtu]));
-  const kogasSeries = months.map(m => kogasMap.get(m.ym) ?? null);
-  // JKM monthly (real EOD if available, else seeded mock that matches the legend)
+  // JKM monthly (real EOD if available)
   const jkmMonthlyArr = korJkmMonthly();
   const jkmMap = new Map(jkmMonthlyArr.map(r => [r.ym, r.jkm]));
   const jkmSeries = months.map(m => jkmMap.get(m.ym) ?? null);
@@ -22786,13 +22740,11 @@ function renderKorPrices(el){
     data: {
       labels: months.map(m => m.label),
       datasets: [
-        // Lower band line — fills nothing
+        // Lower band line
         { label:'11% Brent', data:lowerSeries, borderColor:'rgba(167,139,250,0.30)', borderWidth:1, borderDash:[4,3], pointRadius:0, fill:false, tension:0.3 },
-        // Upper band line — fills DOWN to the previous (-1) dataset (the lower band)
+        // Upper band line — fills down to the lower band
         { label:'14% Brent', data:upperSeries, borderColor:'rgba(167,139,250,0.30)', borderWidth:1, borderDash:[4,3], pointRadius:0, fill:'-1', backgroundColor:'rgba(167,139,250,0.10)', tension:0.3 },
-        // KOGAS tariff (step)
-        { label:'KOGAS', data:kogasSeries, borderColor:'#34d399', borderWidth:2, pointRadius:3, stepped:'before', fill:false },
-        // JKM (smooth)
+        // JKM (live monthly resample from EOD files)
         { label:'JKM', data:jkmSeries, borderColor:'#3b82f6', borderWidth:2, pointRadius:3, tension:0.3, fill:false, spanGaps:true },
       ]
     },
@@ -22802,7 +22754,7 @@ function renderKorPrices(el){
       plugins: {
         ...CD.plugins,
         legend: { display:true, position:'top', labels:{color:'#9ca3af',font:{size:9},boxWidth:8,
-          filter:(item) => item.text === 'KOGAS' || item.text === 'JKM'  /* hide the band line entries */
+          filter:(item) => item.text === 'JKM'  /* hide the band line entries from legend */
         } },
       },
       scales: {
