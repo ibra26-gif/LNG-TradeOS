@@ -22655,9 +22655,29 @@ function renderKorPrices(el){
   const fxAsOf = liveFx?.asOf;
   const fxLive = !!liveFx;
 
+  // ── Historical KOGAS power-sector tariff from data.go.kr (15 yrs, 2008-2022) ──
+  const tariffSeries = _korLive?.dataGoKr?.kogasTariff?.series || [];
+  // Convert KRW/GJ → USD/MMBtu using a flat reference FX (live FX would
+  // distort historical comparison; keep history in nominal terms).
+  // Using 1300 KRW/USD as a reasonable multi-year average for the 2008-2022
+  // window. Pre-2014 was ~1100, 2022 was ~1300, peak Sep 2022 was ~1400.
+  const FX_REF = 1300;
+  const GJ_PER_MMBTU = 1.05506;
+  const tariffHistory = tariffSeries.map(r => ({
+    date: r.date,
+    krwGj_total: r.gj_total_krw,
+    krwGj_raw:   r.gj_raw_krw,
+    krwGj_supply:r.gj_supply_krw,
+    usdMmbtu_total:  r.gj_total_krw  != null ? +(r.gj_total_krw  * GJ_PER_MMBTU / FX_REF).toFixed(2) : null,
+    usdMmbtu_raw:    r.gj_raw_krw    != null ? +(r.gj_raw_krw    * GJ_PER_MMBTU / FX_REF).toFixed(2) : null,
+    usdMmbtu_supply: r.gj_supply_krw != null ? +(r.gj_supply_krw * GJ_PER_MMBTU / FX_REF).toFixed(2) : null,
+  }));
+  const lastTariff = tariffHistory.length ? tariffHistory[tariffHistory.length - 1] : null;
+
   el.innerHTML = `
     ${korFreshness([
-      { label:'KOGAS tariff', meta:'monthly · Apr · seed', color:'#fbbf24' },
+      { label:'KOGAS tariff (current)', meta:'monthly · Apr · seed', color:'#fbbf24' },
+      { label:'KOGAS history', meta: lastTariff ? `data.go.kr · 2008–${lastTariff.date.slice(0,7)} · ${tariffHistory.length} mo` : 'no data', color: lastTariff ? '#34d399' : '#fbbf24' },
       { label:'JKM',          meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
       { label:'Brent',        meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
       { label:'KRW/USD',      meta:fxLive?`${krwUsd.toFixed(2)} · ECB ${fxAsOf}`:`${krwUsd} · seed`, color: fxLive?'#34d399':'#fbbf24' },
@@ -22690,10 +22710,37 @@ function renderKorPrices(el){
       <b>JKM at $${jkmM1.toFixed(2)}</b> sits ${jkmVsBand>=0?'+':''}<b>$${jkmVsBand.toFixed(2)}</b> ${jkmVsBand>=0?'above':'below'} 14% Brent — Asian spot is ${jkmVsBand>=0?'well above':'below'} where oil-linked term LNG would price (14% × Brent ${brent.toFixed(2)} = ${brent14.toFixed(2)}). KOGAS tariff $${kogas.toFixed(2)} also sits ${kogas>brent14?'above':'within/below'} the band, ${kogas>brent14?'consistent with KOGAS reflecting higher term-import costs into power-sector pricing.':'reflecting easing term-import pressure.'}
     </div>
 
+    ${tariffHistory.length ? `
+    <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS power-sector tariff · historical · 2008–${lastTariff.date.slice(0,7)}</span>
+        <span style="font-size:9px;color:#5a6882">data.go.kr 15052058 · ${tariffHistory.length} months · raw + supply, KRW/GJ</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+        <div style="background:#0a1628;border-radius:4px;padding:8px 10px">
+          <div style="font-size:9px;color:#6b7280">Latest available (${lastTariff.date.slice(0,7)})</div>
+          <div style="font-size:14px;color:#fff;font-weight:600">${lastTariff.krwGj_total?.toLocaleString() || '—'} KRW/GJ</div>
+          <div style="font-size:10px;color:#a78bfa">≈ \$${lastTariff.usdMmbtu_total?.toFixed(2) || '—'}/MMBtu  <span style="color:#3d5070">@ ref ${FX_REF} KRW/USD</span></div>
+        </div>
+        <div style="background:#0a1628;border-radius:4px;padding:8px 10px">
+          <div style="font-size:9px;color:#6b7280">Composition (${lastTariff.date.slice(0,7)})</div>
+          <div style="font-size:11px;color:#c8cfe0">Raw material: <b style="color:#3b82f6">${lastTariff.krwGj_raw?.toLocaleString() || '—'}</b> KRW/GJ</div>
+          <div style="font-size:11px;color:#c8cfe0">Supply cost: &nbsp;<b style="color:#34d399">${lastTariff.krwGj_supply?.toLocaleString() || '—'}</b> KRW/GJ</div>
+        </div>
+      </div>
+      <div style="height:240px"><canvas id="kor-tariff-history"></canvas></div>
+      <div style="margin-top:8px;font-size:9px;color:#6b7280;line-height:1.5">
+        Raw-material cost (원료비) tracks LNG procurement; supply cost (공급비) is the regulated transmission/regas margin.
+        Peak Dec-22 = ${tariffHistory.find(r=>r.date==='2022-12-01')?.krwGj_total?.toLocaleString() || '—'} KRW/GJ ≈ \$${tariffHistory.find(r=>r.date==='2022-12-01')?.usdMmbtu_total?.toFixed(2) || '—'}/MMBtu (energy crisis).
+        Dataset stops Dec-22 — KOGAS still publishes monthly via press releases; current-month KPI above remains seeded.
+      </div>
+    </div>
+    ` : ''}
+
     <div style="font-size:9px;color:#5a6882;line-height:1.6;border-top:1px solid #1f2937;padding-top:10px;margin-top:12px">
       <div style="color:#9ca3af;margin-bottom:4px">Conversion · Won/GJ → $/MMBtu</div>
       <code style="color:#93c5fd">$/MMBtu = (Won/GJ) ÷ (KRW/USD) × 1.05506</code>
-      <div style="margin-top:6px;color:#fbbf24">KOGAS tariff seeded ($/MMBtu directly · awaiting Excel scraper) · KRW/USD seeded · JKM &amp; Brent live from EOD files</div>
+      <div style="margin-top:6px;color:#fbbf24">Current-month KOGAS tariff seeded ($/MMBtu directly · awaiting KOGAS press-release scraper) · KRW/USD live from ECB · JKM &amp; Brent live from EOD files</div>
     </div>
   `;
 
@@ -22764,6 +22811,62 @@ function renderKorPrices(el){
       },
     }
   });
+
+  // ── Historical KOGAS tariff chart ─────────────────────────────────────────
+  if (window._korChartTariffHistory) { window._korChartTariffHistory.destroy(); window._korChartTariffHistory = null; }
+  const cTH = document.getElementById('kor-tariff-history');
+  if (cTH && tariffHistory.length) {
+    const labels = tariffHistory.map(r => r.date.slice(0,7));
+    window._korChartTariffHistory = new Chart(cTH.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label:'Total tariff (KRW/GJ)', data: tariffHistory.map(r => r.krwGj_total),
+            borderColor:'#fbbf24', backgroundColor:'transparent',
+            borderWidth:2, pointRadius:0, tension:0.3, fill:false, yAxisID:'y' },
+          { label:'Raw material',  data: tariffHistory.map(r => r.krwGj_raw),
+            borderColor:'#3b82f6', backgroundColor:'transparent',
+            borderWidth:1, pointRadius:0, tension:0.3, fill:false, yAxisID:'y',
+            borderDash:[3,3] },
+          { label:'Supply cost',   data: tariffHistory.map(r => r.krwGj_supply),
+            borderColor:'#34d399', backgroundColor:'transparent',
+            borderWidth:1, pointRadius:0, tension:0.3, fill:false, yAxisID:'y',
+            borderDash:[3,3] },
+          { label:'Total ≈ \$/MMBtu (ref FX)', data: tariffHistory.map(r => r.usdMmbtu_total),
+            borderColor:'#a78bfa', backgroundColor:'transparent',
+            borderWidth:1.2, pointRadius:0, tension:0.3, fill:false, yAxisID:'y1' },
+        ]
+      },
+      options: {
+        ...CD, animation:false,
+        plugins: {
+          ...CD.plugins,
+          legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8} },
+          tooltip: { ...CD.plugins.tooltip, callbacks: {
+            label: (ctx) => {
+              const v = ctx.parsed.y; if (v == null) return '';
+              if (ctx.dataset.label.includes('MMBtu')) return `${ctx.dataset.label}: \$${v.toFixed(2)}`;
+              return `${ctx.dataset.label}: ${v.toLocaleString()} KRW/GJ`;
+            },
+          }},
+        },
+        scales: {
+          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:18,
+                callback: function(v,i){
+                  const lab = this.getLabelForValue(v);
+                  return lab.endsWith('-01') ? lab.slice(0,4) : '';
+                }} },
+          y:  { ...CD.scales.y, position:'left',
+                title:{display:true,text:'KRW/GJ',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:9}} },
+          y1: { ...CD.scales.y, position:'right', grid:{drawOnChartArea:false},
+                title:{display:true,text:'\$/MMBtu (ref ' + FX_REF + ' KRW/USD)',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:9}} },
+        },
+      }
+    });
+  }
 }
 
 
