@@ -9181,7 +9181,7 @@ const CP_SEED_FR={
 // Build marker — bump on each cache-bust so we can confirm at a glance
 // from the console which JS version is actually live in the browser.
 console.log('%c[lngtradeos] build 2026-04-26 LNG-ARB-MAP-v2 loaded · CP_TABS has 9 tabs incl LNG ARB','color:#4fc3f7;font-weight:bold');
-const CP_TABS=['PHYS DIFFERENTIALS','DES PRICES','GLOBAL ARB','LNG ARB','ATLANTIC BASIN','MEI','PACIFIC BASIN','FREIGHT DIFFERENTIAL vs BASIS','FOB PRICING'];
+const CP_TABS=['PHYS DIFFERENTIALS','DES PRICES','GLOBAL ARB','LNG ARB','ATLANTIC BASIN','MEI','PACIFIC BASIN','FREIGHT DIFFERENTIAL vs BASIS','FOB PRICING','USGC ARB'];
 let CP={fp:null,phys:null,freight:null,liqFee:null,histSnaps:null,tab:0,selMonth:0,indexMode:'TTF',hhSlope:1.15,coghMode:false,histSnapDate:new Date().toISOString().slice(0,10)};
 function cpGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
 function cpSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
@@ -9586,6 +9586,7 @@ function renderCargoTab(){const b=document.getElementById('cp-body');if(!b)retur
   else if(CP.tab===6)b.innerHTML=cpPacificArb(d);
   else if(CP.tab===7)b.innerHTML=cpFrDiffBasis(d);
   else if(CP.tab===8){b.innerHTML=cpFobPricing(d); setTimeout(()=>{ try{_fobRenderHistoricalCharts(d);}catch(e){console.warn('[FOB hist]',e);} },50);}
+  else if(CP.tab===9){b.innerHTML=cpUsgcArbViz(d); setTimeout(()=>{ try{_usgcArbRenderCharts();}catch(e){console.warn('[USGC arb]',e);} },50);}
   // Browsers do NOT execute <script> tags injected via innerHTML. The FR Diff
   // vs Basis tab emits a Chart.js init block as an inline <script> — re-insert
   // it so it runs. Harmless for tabs that contain no <script>.
@@ -11730,6 +11731,200 @@ function _fobRenderHistoricalCharts(d){
 
   renderForOrigin(us,   'fob-hist-us-front',   '#4fc3f7');
   renderForOrigin(oman, 'fob-hist-oman-front', '#fbbf24');
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// USGC ARB VISUALIZATION (Spark-style)
+// Two graphs, one per route (COGH vs Panama Canal):
+//   X = forward delivery months (M+1 → M+24)
+//   Y = NE-Asia FOB-netback minus NW-Europe FOB-netback ($/MMBtu)
+//   Lines = each FOB Snapshot + today's live curve
+// Above 0 → arb pointing to Asia · Below 0 → arb pointing to Europe.
+// ════════════════════════════════════════════════════════════════════════════
+const PC_NM_RATIO = 9264 / 15379;  // matches cpDerived sabine_tokyo_pc derivation
+const PC_CANAL_FEE_PER_MMBTU_LOCAL = 1000000 / 3800000;  // $0.263 / MMBtu
+
+function _usgcArbComputeFromInputs(gas, freight, phys, liqFee){
+  // Compute arb_cogh + arb_pc curves from a single time-aligned set of inputs.
+  // Returns { arbCogh: [M+1..M+24], arbPc: [...] }
+  const sl = CP.hhSlope || 1.15;
+  const arbCogh = [];
+  const arbPc   = [];
+  for (let i = 0; i < 24; i++) {
+    const hh    = gas?.HH?.[i];
+    const jkm   = gas?.JKM?.[i];
+    const ttf   = gas?.TTF?.[i];
+    const physNwe  = phys?.nwe?.[i]  ?? 0;
+    const physJktc = phys?.jktc?.[i] ?? 0;
+    const frGate  = freight?.sabine_rotterdam?.[i];
+    const frTokyo = freight?.sabine_tokyo?.[i];
+
+    if (hh == null || jkm == null || ttf == null || frGate == null || frTokyo == null) {
+      arbCogh.push(null); arbPc.push(null); continue;
+    }
+
+    // 1.15×HH cost basis cancels out in (Asia − Europe) anyway, but keep the
+    // explicit subtraction so the formula reads naturally.
+    const idx = sl * hh;
+    const desNwe  = ttf + physNwe;
+    const desJktc = jkm + physJktc;
+    const europeNb   = desNwe  - frGate  - idx;
+    const asiaCoghNb = desJktc - frTokyo - idx;
+    // PC route: scale COGH freight by NM ratio + canal fee (matches cpDerived)
+    const sabTokyoPc = frTokyo * PC_NM_RATIO + PC_CANAL_FEE_PER_MMBTU_LOCAL;
+    const asiaPcNb   = desJktc - sabTokyoPc - idx;
+
+    arbCogh.push(+(asiaCoghNb - europeNb).toFixed(3));
+    arbPc.push(+(asiaPcNb - europeNb).toFixed(3));
+  }
+  return { arbCogh, arbPc };
+}
+
+function _usgcArbCurves(){
+  const out = { snapshotCurves: [], today: null };
+  // Snapshot lines
+  const snaps = (typeof _fobLoadSnapshots === 'function' ? _fobLoadSnapshots() : []);
+  for (const s of snaps) {
+    const c = _usgcArbComputeFromInputs(s.gas, s.freight, s.phys, s.liqFee);
+    out.snapshotCurves.push({
+      ts: s.ts, eod_date: s.eod_date,
+      label: `${s.eod_date}`,
+      arbCogh: c.arbCogh, arbPc: c.arbPc,
+    });
+  }
+  // Today's live curve (from current EOD + CP.freight + CP.phys + CP.liqFee)
+  if (sDates && sDates.length) {
+    const eodDs = sDates[sDates.length - 1];
+    const eodDate = aD[eodDs].date;
+    const eodIso  = eodDate.toISOString().slice(0,10);
+    const tenors  = 24;
+    const synGas = { HH:[], JKM:[], TTF:[] };
+    for (let n = 1; n <= tenors; n++) {
+      const pk = rPK(eodDate, n);
+      const row = (aD[eodDs].rows || []).find(r => r.pk === pk);
+      ['HH','JKM','TTF'].forEach(k => synGas[k].push(row?.[k] ?? null));
+    }
+    const c = _usgcArbComputeFromInputs(synGas, CP.freight, CP.phys,
+                                        CP.liqFee || []);
+    out.today = { eod_date: eodIso, label: `Latest (${eodIso})`, ...c };
+  }
+  return out;
+}
+
+function cpUsgcArbViz(d){
+  return `
+    <div class="f-sec">USGC ARB · NE-Asia FOB-netback minus NW-Europe FOB-netback · Sabine Pass loading</div>
+
+    <div style="padding:0 14px 8px;font-size:9px;color:#546e7a;line-height:1.5">
+      <code style="color:#93c5fd">arb = (DES_JKTC − Sabine→Tokyo − 1.15×HH) − (DES_NWE − Sabine→Gate − 1.15×HH)</code><br/>
+      <span style="color:#34d399">Above 0</span> → arb pointing to Asia (Sabine cargoes net higher to Tokyo).
+      <span style="color:#fca5a5">Below 0</span> → arb pointing to Europe.<br/>
+      Lines = each <a onclick="CP.tab=8;cpTab(8)" style="color:#a78bfa;cursor:pointer;text-decoration:underline">FOB Snapshot</a> you've captured + today's live curve.
+    </div>
+
+    <div style="padding:0 14px 14px;display:flex;flex-direction:column;gap:10px">
+
+      <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
+        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:6px">
+          USGC Arb via COGH · Sabine→Tokyo (Cape of Good Hope route)
+        </div>
+        <div style="height:300px"><canvas id="usgc-arb-cogh"></canvas></div>
+      </div>
+
+      <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
+        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:6px">
+          USGC Arb via Panama Canal · Sabine→Tokyo (PC route, freight = COGH × ${PC_NM_RATIO.toFixed(3)} + $${PC_CANAL_FEE_PER_MMBTU_LOCAL.toFixed(3)} canal fee)
+        </div>
+        <div style="height:300px"><canvas id="usgc-arb-pc"></canvas></div>
+      </div>
+
+    </div>
+  `;
+}
+
+function _usgcArbRenderCharts(){
+  const data = _usgcArbCurves();
+  const palette = ['#9ca3af','#fbbf24','#a78bfa','#fca5a5','#34d399','#f59e0b','#ec4899'];
+
+  function buildDatasets(key){
+    const out = [];
+    if (data.today) {
+      out.push({
+        label: data.today.label,
+        data: data.today[key],
+        borderColor: '#4fc3f7',
+        backgroundColor: 'transparent',
+        borderWidth: 2.6,
+        pointRadius: 3,
+        tension: 0.25,
+        fill: false,
+        spanGaps: true,
+      });
+    }
+    // Show up to 6 snapshots (most recent first), older ones thinner
+    const recent = data.snapshotCurves.slice(-6).reverse();
+    recent.forEach((s, i) => {
+      out.push({
+        label: s.label,
+        data: s[key],
+        borderColor: palette[i % palette.length],
+        backgroundColor: 'transparent',
+        borderWidth: 1.3,
+        borderDash: [5, 3],
+        pointRadius: 2,
+        tension: 0.25,
+        fill: false,
+        spanGaps: true,
+      });
+    });
+    return out;
+  }
+
+  function renderChart(canvasId, key){
+    const c = document.getElementById(canvasId); if (!c) return;
+    if (window['_'+canvasId]) window['_'+canvasId].destroy();
+    const datasets = buildDatasets(key);
+    if (!datasets.length) {
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0,0,c.width,c.height);
+      ctx.fillStyle = '#546e7a';
+      ctx.font = '11px IBM Plex Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('No data — load EOD curves first.', c.width/2, c.height/2);
+      return;
+    }
+    window['_'+canvasId] = new Chart(c.getContext('2d'), {
+      type: 'line',
+      data: { labels: ML.slice(0, 24), datasets },
+      options: {
+        ...CD, animation: false,
+        plugins: {
+          ...CD.plugins,
+          legend: { display:true, position:'bottom',
+                    labels:{color:'#9ca3af',font:{size:9},boxWidth:8,padding:6} },
+          tooltip: { ...CD.plugins.tooltip, callbacks: {
+            label: (ctx) => {
+              const v = ctx.parsed.y; if (v == null) return '';
+              return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(3)} $/MMBtu`;
+            },
+          }},
+        },
+        scales: {
+          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:9},maxTicksLimit:13} },
+          y: { ...CD.scales.y,
+                title:{display:true,text:'$/MMBtu  (above 0 = arb to Asia · below 0 = arb to Europe)',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:9},
+                       callback: (v) => (v >= 0 ? '+' : '') + v.toFixed(2)},
+                grid: { color:(ctx) => ctx.tick.value === 0 ? '#1e3a5f' : '#0f1824',
+                        lineWidth: (ctx) => ctx.tick.value === 0 ? 1.2 : 0.5 } },
+        },
+      },
+    });
+  }
+
+  renderChart('usgc-arb-cogh', 'arbCogh');
+  renderChart('usgc-arb-pc',   'arbPc');
 }
 
 
