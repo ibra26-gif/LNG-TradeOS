@@ -1071,6 +1071,220 @@ def fetch_dart_kogas():
     return out
 
 
+# ────────────────────────────────────────────────────────────────────
+# KCGA — Korea City Gas Association monthly bulletin (XLSX)
+#
+# KCGA publishes a monthly Excel bulletin (도시가스사업통계월보) with the
+# full sub-sector breakdown of city-gas demand that KOGAS does NOT
+# disclose: Residential / General / Business / **Industrial** / CHP /
+# Heat-only / Transport / Fuel-cell — by 34 distributors × 17 regions.
+#
+# Listing URL:  http://www.citygas.or.kr/info/monthly/index.jsp
+# Bulletin URL: /info/monthly/read.jsp?reqPageNo=1&no=NNN  (no monotonic)
+# Download URL: /include/download.jsp?path=...&vf=...&af=...
+#
+# Each XLSX is ~400KB. We cache by bulletin `no` so subsequent runs only
+# fetch new bulletins.
+# ────────────────────────────────────────────────────────────────────
+KCGA_BASE = 'http://www.citygas.or.kr'
+
+# Sub-sector total columns on Sheet 3 ('수요가수공급량(천㎥기준)') in the
+# 전국 합계 row 34. Confirmed against Feb 2026 bulletin layout.
+KCGA_VOLUME_COLS = {
+    'residential_km3':       20,   # 가정용 소계 (cooking + heating)
+    'general_km3':           23,   # 일반용 소계 (small commercial)
+    'business_km3':          26,   # 업무용 소계 (large commercial / HVAC)
+    'industrial_km3':        27,   # 산업용
+    'chp_km3':               (28, 29),  # 열병합 1+2
+    'heatOnly_km3':          30,   # 열전용 설비용
+    'transport_km3':         31,   # 수송용 (CNG vehicles)
+    'fuelCell_km3':          32,   # 연료전지용
+    'total_km3':             33,   # 합 계
+}
+
+# LNG conversion: 1 m³ vapour ≈ 0.000737 t LNG (typical Korean spec)
+KCGA_M3_PER_T = 1357.0  # ≈ 1/0.000737 — used to convert 천㎥ → kt for cross-check
+
+
+def _kcga_list_bulletins():
+    """Fetch the bulletin listing and return [{no, title, year, month, page}]."""
+    import re
+    rows = []
+    # Pages: 7 pages of ~25 entries on the listing site.
+    # Iterate until a page has no entries.
+    for page in range(1, 12):
+        url = f'{KCGA_BASE}/info/monthly/index.jsp?reqPageNo={page}'
+        try:
+            text = fetch(url, timeout=20)
+        except Exception:
+            break
+        # Match anchors: <a href="read.jsp?reqPageNo=N&no=NNN">YYYY년 M월 도시가스사업통계월보</a>
+        page_rows = re.findall(
+            r'href="read\.jsp\?reqPageNo=\d+&no=(\d+)"[^>]*>\s*(?:<[^>]*>\s*)*([^<]*?)\s*(?:<|$)',
+            text)
+        added = 0
+        for no, title in page_rows:
+            title = title.strip()
+            m = re.search(r'(\d{4})\s*년\s*(\d{1,2})\s*월', title)
+            if m and '월보' in title:
+                rows.append({
+                    'no':    int(no),
+                    'title': title,
+                    'year':  int(m.group(1)),
+                    'month': int(m.group(2)),
+                    'page':  page,
+                })
+                added += 1
+        if not added:
+            break
+    return rows
+
+
+def _kcga_get_download_url(no):
+    """Scrape the bulletin read page to extract the XLSX download URL."""
+    import re
+    page_url = f'{KCGA_BASE}/info/monthly/read.jsp?reqPageNo=1&no={no}'
+    text = fetch(page_url, timeout=20)
+    # Anchor like: href="/include/download.jsp?path=/upload/data/&vf=...&af=..."
+    m = re.search(r'href="(/include/download\.jsp\?[^"]+)"', text)
+    if not m:
+        return None
+    return KCGA_BASE + m.group(1)
+
+
+def _kcga_parse_xlsx(buf):
+    """Open an XLSX bulletin (in-memory bytes) and extract national totals
+    + by-sub-sector volumes from sheet '3.수요가수공급량(천㎥기준)'."""
+    try:
+        import openpyxl
+    except ImportError:
+        print('openpyxl not installed — KCGA parse skipped', file=sys.stderr)
+        return None
+    import io as _io
+    try:
+        wb = openpyxl.load_workbook(_io.BytesIO(buf), data_only=True, read_only=True)
+    except Exception as e:
+        print(f'KCGA xlsx open failed: {e}', file=sys.stderr)
+        return None
+
+    target = '3.수요가수공급량(천㎥기준)'
+    if target not in wb.sheetnames:
+        # Some older bulletins may use slightly different naming
+        candidates = [s for s in wb.sheetnames if '수요가수공급량' in s and '㎥' in s]
+        if not candidates: return None
+        target = candidates[0]
+    ws = wb[target]
+
+    # Find the 전국 합계 row by scanning column 1.
+    nat_row = None
+    for r in range(1, min(ws.max_row, 200) + 1):
+        v = ws.cell(r, 1).value
+        if v and ('전 국' in str(v) or '전국' in str(v)) and ('합' in str(v) or '계' in str(v)):
+            nat_row = r
+            break
+    if not nat_row:
+        return None
+
+    out = {}
+    for key, col in KCGA_VOLUME_COLS.items():
+        if isinstance(col, tuple):
+            v = sum((ws.cell(nat_row, c).value or 0) for c in col)
+        else:
+            v = ws.cell(nat_row, col).value
+        if v is None:
+            continue
+        try:
+            out[key] = round(float(v), 1)
+        except (TypeError, ValueError):
+            pass
+    return out
+
+
+def fetch_kcga_monthly():
+    """Pull KCGA monthly bulletins → national city-gas demand by sub-sector.
+
+    Caches in data/kcga_monthly.json by bulletin `no`. Each XLSX is ~400KB
+    so initial backfill of ~150 months ~= 60MB downloads (do incrementally).
+    Subsequent runs only fetch new bulletins.
+    """
+    cache_path = os.path.join(os.path.dirname(OUT_PATH), 'kcga_monthly.json')
+    cached = {'series': [], 'parsedNos': []}
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                cached = json.load(f)
+        except Exception:
+            cached = {'series': [], 'parsedNos': []}
+
+    parsed_set = set(cached.get('parsedNos') or [])
+    series_by_date = {r['date']: r for r in (cached.get('series') or [])}
+
+    try:
+        bulletins = _kcga_list_bulletins()
+    except Exception as e:
+        print(f'KCGA list failed: {e}', file=sys.stderr)
+        return None
+    if not bulletins:
+        print('KCGA: no bulletins listed', file=sys.stderr)
+        return None
+
+    # Per-run fetch budget — first run does heavy backfill, subsequent
+    # runs catch only the latest 1-2 new ones. Cap to keep cron timing.
+    PER_RUN_LIMIT = 25 if not parsed_set else 10
+    todo = [b for b in sorted(bulletins, key=lambda x: x['no'], reverse=True)
+            if b['no'] not in parsed_set][:PER_RUN_LIMIT]
+
+    print(f'KCGA: {len(bulletins)} bulletins listed, '
+          f'{len(parsed_set)} cached, {len(todo)} to fetch this run',
+          file=sys.stderr)
+
+    fetched = 0
+    for b in todo:
+        try:
+            dl_url = _kcga_get_download_url(b['no'])
+            if not dl_url:
+                continue
+            # Download XLSX (small ~400KB)
+            if _USE_REQUESTS:
+                r = _requests.get(dl_url, timeout=60,
+                                  headers={'User-Agent': UA,
+                                           'Referer': f'{KCGA_BASE}/info/monthly/read.jsp?no={b["no"]}'})
+                r.raise_for_status()
+                buf = r.content
+            else:
+                from urllib.request import urlopen, Request
+                req = Request(dl_url, headers={'User-Agent': UA})
+                buf = urlopen(req, timeout=60).read()
+            parsed = _kcga_parse_xlsx(buf)
+            if parsed:
+                date = f'{b["year"]}-{b["month"]:02d}-01'
+                row = {
+                    'date':  date,
+                    'no':    b['no'],
+                    'title': b['title'],
+                    **parsed,
+                }
+                series_by_date[date] = row
+                parsed_set.add(b['no'])
+                fetched += 1
+        except Exception as e:
+            print(f'KCGA bulletin no={b["no"]}: {e}', file=sys.stderr)
+
+    series = sorted(series_by_date.values(), key=lambda r: r['date'])
+    out = {
+        'cachedAt':  datetime.now(timezone.utc).isoformat(timespec='seconds'),
+        'source':    'Korea City Gas Association · 도시가스사업통계월보',
+        'sourceUrl': f'{KCGA_BASE}/info/monthly/index.jsp',
+        'parsedNos': sorted(parsed_set),
+        'series':    series,
+    }
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        json.dump(out, f, indent=2, ensure_ascii=False)
+    print(f'KCGA: {len(series)} months in series '
+          f'(fetched {fetched} new this run)', file=sys.stderr)
+    return out
+
+
 def fetch_ecb_fx():
     """ECB daily reference rates (cross-rate to derive KRW/USD)."""
     url = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
@@ -1155,12 +1369,14 @@ def main():
         'khnp':          None,
         'khnpAnnual':    None,
         'khnpTrips':     None,
-        'emberMonthly':  None,  # NEW: monthly nuclear gen 2019+ for seasonal chart
+        'emberMonthly':  None,
         # KR-only sources — left null so the front-end falls back to seeded values + amber badge.
         'kogasTariff':   None,
         'kogasImports':  None,
         # Gated on user OpenDART API key.
         'dart':          None,
+        # Korea City Gas Association monthly bulletins — sub-sector demand
+        'kcga':          None,
         'errors':        [],
     }
 
@@ -1239,6 +1455,21 @@ def main():
     except Exception as e:
         out['errors'].append(f'DART KOGAS monthly: {e}')
         print(f"DART KOGAS monthly failed: {e}", file=sys.stderr)
+
+    # KCGA monthly bulletins — sub-sector demand (Res/Gen/Biz/Industrial/CHP/Transport)
+    try:
+        kcga = fetch_kcga_monthly()
+        if kcga:
+            out['kcga'] = {
+                'cachedAt': kcga.get('cachedAt'),
+                'source':   kcga.get('source'),
+                'series':   kcga.get('series'),
+            }
+            print(f"KCGA: {len(kcga.get('series') or [])} months in series",
+                  file=sys.stderr)
+    except Exception as e:
+        out['errors'].append(f'KCGA: {e}')
+        print(f"KCGA failed: {e}", file=sys.stderr)
 
     # Stabilize for git diff
     round_for_diff_stability(out)

@@ -38,7 +38,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Python deps
-        run: pip install requests
+        run: pip install requests openpyxl
 
       - name: Run Korea scraper
         env:

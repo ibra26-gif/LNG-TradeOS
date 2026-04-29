@@ -21928,6 +21928,7 @@ function renderKorBalance(el){
   const contracted = dart?.contractedVolumes || []; // [{year, cityGas_kt, power_avg_tariff_kt, ...}, ...]
   const origins = dart?.lngOrigins || [];
   const monthly = dart?.monthlySales?.series || []; // [{date, cityGas_kt, power_kt, total_kt}, ...]
+  const kcga = _korLive?.kcga?.series || [];        // [{date, residential_km3, industrial_km3, ...}, ...]
 
   // Latest year + YoY (annual context)
   const latest = annual.length ? annual[annual.length - 1] : null;
@@ -21996,6 +21997,21 @@ function renderKorBalance(el){
       </div>
       <div style="height:260px"><canvas id="kor-bal-monthly"></canvas></div>
     </div>
+
+    ${kcga.length ? `
+    <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-size:11px;color:#fff;font-weight:500">City-gas demand by sub-sector · ${kcga[0].date.slice(0,7)}–${kcga[kcga.length-1].date.slice(0,7)} · mcm</span>
+        <span style="font-size:9px;color:#5a6882">KCGA 도시가스사업통계월보 · ${kcga.length} months · 8 sub-sectors</span>
+      </div>
+      <div style="height:300px"><canvas id="kor-bal-kcga"></canvas></div>
+      <div style="margin-top:8px;font-size:9px;color:#6b7280;line-height:1.5">
+        Residential = cooking + heating · General = small commercial · Business = large commercial w/ HVAC ·
+        Industrial = factories · CHP = cogeneration · Transport = CNG vehicles ·
+        Heat-only / Fuel-cell = niche. National total across 34 city-gas distributors.
+      </div>
+    </div>
+    ` : ''}
 
     <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
@@ -22106,6 +22122,64 @@ function renderKorBalance(el){
                        }} },
           y: { ...CD.scales.y, stacked:true,
                 title:{display:true,text:'kt LNG',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:9}} },
+        },
+      }
+    });
+  }
+
+  // ── KCGA sub-sector stacked bar chart (mcm) ────────────────────────────
+  if (window._korChartKcga) { window._korChartKcga.destroy(); window._korChartKcga = null; }
+  const cKcga = document.getElementById('kor-bal-kcga');
+  if (cKcga && kcga.length) {
+    const labels = kcga.map(r => r.date.slice(0,7));
+    const cur = kcga[kcga.length - 1].date.slice(0,7);
+    // Convert thousand m³ → million m³ (mcm) by /1000 for readability
+    const toMcm = (n) => n != null ? +(n/1000).toFixed(2) : null;
+    // Distinct color per sub-sector — biggest first (residential dominates)
+    const subSectors = [
+      { key:'residential_km3', label:'Residential',     color:'#3b82f6' },
+      { key:'industrial_km3',  label:'Industrial',      color:'#f59e0b' },
+      { key:'general_km3',     label:'General/Comm',    color:'#34d399' },
+      { key:'business_km3',    label:'Business',        color:'#a78bfa' },
+      { key:'fuelCell_km3',    label:'Fuel cell',       color:'#06b6d4' },
+      { key:'transport_km3',   label:'Transport',       color:'#fb7185' },
+      { key:'chp_km3',         label:'CHP',             color:'#8b5cf6' },
+      { key:'heatOnly_km3',    label:'Heat-only',       color:'#94a3b8' },
+    ];
+    const datasets = subSectors.map(s => ({
+      label: s.label,
+      data: kcga.map(r => toMcm(r[s.key])),
+      backgroundColor: labels.map(d => d === cur ? s.color : s.color + 'CC'),
+      stack:'kcga',
+      borderWidth: 0,
+    }));
+    window._korChartKcga = new Chart(cKcga.getContext('2d'), {
+      type: 'bar',
+      data: { labels, datasets },
+      options: {
+        ...CD, animation:false,
+        plugins: {
+          ...CD.plugins,
+          legend: { display:true, position:'bottom',
+                    labels:{color:'#9ca3af',font:{size:9},boxWidth:8,padding:6} },
+          tooltip: { ...CD.plugins.tooltip, callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2)} mcm`,
+            footer: (items) => {
+              const tot = items.reduce((a,i) => a + (i.parsed.y || 0), 0);
+              return items.length > 1 ? `Total: ${tot.toFixed(2)} mcm` : '';
+            },
+          }},
+        },
+        scales: {
+          x: { ...CD.scales.x, stacked:true,
+                ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:18,
+                       callback: function(v,i){
+                         const lab = this.getLabelForValue(v);
+                         return lab.endsWith('-01') ? lab.slice(0,4) : '';
+                       }} },
+          y: { ...CD.scales.y, stacked:true,
+                title:{display:true,text:'mcm (million m³)',color:'#3d5070',font:{size:9}},
                 ticks:{color:'#3d5070',font:{size:9}} },
         },
       }
