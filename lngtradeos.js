@@ -21945,12 +21945,182 @@ function renderKorNuclear(el){
 // ────────────────────────────────────────────────────────────────────────────
 // TAB · GAS BALANCE (LNG/DART/KOGAS only — nuclear lives in its own tab now)
 // ────────────────────────────────────────────────────────────────────────────
+// ── KESIS manual upload + parser ────────────────────────────────────────────
+// KESIS publishes the Korean physical energy balance (DT_BAL_SIMPLE_PHYSICAL)
+// monthly with ~6-week lag. The website is bot-protected so we accept the
+// Excel/CSV download via drag-drop. The parser pulls the Natural Gas row
+// across all flow categories: Production / Imports / Exports / Stock changes
+// / TPES / Final consumption — in physical units (typically thousand toe or
+// thousand m³ depending on the user's selection on KESIS).
+const KESIS_LSKEY = 'kesis_balance_v1';
+function _kesisLoad(){
+  try { const raw = localStorage.getItem(KESIS_LSKEY); return raw ? JSON.parse(raw) : null; }
+  catch (e) { return null; }
+}
+function _kesisSave(data){
+  try { localStorage.setItem(KESIS_LSKEY, JSON.stringify(data)); }
+  catch (e) { console.warn('[KESIS] save failed:', e.message); }
+}
+async function kesisHandleFile(file){
+  if (!file) return;
+  if (typeof XLSX === 'undefined') { alert('XLSX library not loaded.'); return; }
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+    const parsed = parseKesisBalance(wb, file.name);
+    if (!parsed || !parsed.series?.length) {
+      alert('Could not find a Natural Gas row in this file.\nMake sure you exported the "Simple energy balance (Physical)" table from KESIS.');
+      return;
+    }
+    parsed.uploadedAt = new Date().toISOString();
+    parsed.fileName = file.name;
+    _kesisSave(parsed);
+    alert(`KESIS gas balance loaded: ${parsed.series.length} periods (${parsed.series[0].period} → ${parsed.series[parsed.series.length-1].period})\n` +
+          `Flows extracted: ${parsed.flows.join(', ')}`);
+    if (typeof korShowTab === 'function') korShowTab(_korTab);
+  } catch (e) {
+    alert('KESIS parse error: ' + e.message);
+    console.error('[KESIS]', e);
+  }
+}
+function parseKesisBalance(wb, fileName){
+  // Try every sheet — find one containing Natural Gas (Korean or English)
+  const NG_TOKENS = ['천연가스','Natural gas','Natural Gas','NATURAL GAS','LNG'];
+  const FLOW_MAP = {
+    'Production':'production','국내생산':'production','생산':'production',
+    'Imports':'imports','수입':'imports','Imports (Net)':'imports',
+    'Exports':'exports','수출':'exports',
+    'Stock changes':'stockChanges','재고변동':'stockChanges','Stock Change':'stockChanges',
+    'Bunker':'bunker','국제벙커링':'bunker',
+    'Total primary energy supply':'tpes','TPES':'tpes','1차에너지공급':'tpes','Primary supply':'tpes',
+    'Total final energy consumption':'tfc','최종에너지소비':'tfc','Final consumption':'tfc','TFC':'tfc',
+    'Transformation':'transformation','전환부문':'transformation',
+    'Statistical difference':'statisticalDiff','통계오차':'statisticalDiff',
+  };
+  for (const sn of wb.SheetNames) {
+    const ws = wb.Sheets[sn];
+    const grid = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+    if (!grid.length) continue;
+
+    // Locate the Natural Gas COLUMN or ROW. KESIS uses both layouts.
+    // Strategy: scan every cell — find one matching NG_TOKENS, then extract.
+    let ngRow = -1, ngCol = -1;
+    for (let r = 0; r < grid.length && ngRow < 0; r++) {
+      for (let c = 0; c < (grid[r] || []).length; c++) {
+        const v = grid[r]?.[c];
+        if (v == null) continue;
+        const s = String(v).trim();
+        if (NG_TOKENS.some(t => s === t || s.includes(t))) {
+          ngRow = r; ngCol = c; break;
+        }
+      }
+    }
+    if (ngRow < 0) continue;
+
+    // Layout A: NG is a COLUMN header → flows are rows, period is also column
+    // Layout B: NG is a ROW header → flows are columns, period is row 1 or 2
+    // Detect by checking neighbors.
+    // Rule: if the cell at (ngRow, ngCol+1) is numeric or null, NG is a row header (Layout B).
+    // If the cell at (ngRow+1, ngCol) is numeric, NG is a col header (Layout A).
+    const isLayoutB = (() => {
+      const right = grid[ngRow]?.[ngCol+1];
+      if (right == null) return true;
+      return typeof right !== 'string' || /^[\d\.,\-]+$/.test(String(right).trim());
+    })();
+
+    // Find period axis (years/months) — typically the row above or first column
+    function findPeriods(layout){
+      const out = [];
+      if (layout === 'B') {
+        // periods are column headers — scan row 0 then row 1
+        for (let r = 0; r < Math.min(4, grid.length); r++) {
+          const row = grid[r] || [];
+          let ok = 0;
+          for (let c = ngCol+1; c < row.length; c++) {
+            const v = row[c]; if (v == null) continue;
+            const s = String(v).trim();
+            if (/^(19|20)\d{2}(\.\d{1,2}|-\d{1,2})?$/.test(s) || /^(19|20)\d{2}$/.test(s)) {
+              out.push({ idx: c, label: s });
+              ok++;
+            }
+          }
+          if (ok >= 3) return out;
+          out.length = 0;
+        }
+        return [];
+      } else {
+        // periods are in column 0, flows in row at ngRow+1, ngRow+2..
+        for (let r = ngRow+1; r < grid.length; r++) {
+          const v = grid[r]?.[0];
+          if (v == null) continue;
+          const s = String(v).trim();
+          if (/^(19|20)\d{2}(\.\d{1,2}|-\d{1,2})?$/.test(s)) {
+            out.push({ idx: r, label: s });
+          }
+        }
+        return out;
+      }
+    }
+
+    const periods = findPeriods(isLayoutB ? 'B' : 'A');
+    if (!periods.length) continue;
+
+    // Find flow rows (Layout B) or flow columns (Layout A) — only those that map.
+    function findFlows(layout){
+      const out = [];
+      if (layout === 'B') {
+        // flow labels are in column ngCol-1 (or column 0) of each row in the block
+        for (let r = ngRow+1; r < Math.min(grid.length, ngRow + 30); r++) {
+          const labelCell = grid[r]?.[ngCol-1] ?? grid[r]?.[0];
+          if (labelCell == null) continue;
+          const lbl = String(labelCell).trim();
+          if (FLOW_MAP[lbl]) {
+            out.push({ idx: r, key: FLOW_MAP[lbl], label: lbl });
+          }
+        }
+      } else {
+        // flow labels are in row 0 (or 1), flows in subsequent columns
+        for (let c = ngCol+1; c < (grid[0] || []).length; c++) {
+          const labelCell = grid[ngRow]?.[c] ?? grid[ngRow-1]?.[c];
+          if (labelCell == null) continue;
+          const lbl = String(labelCell).trim();
+          if (FLOW_MAP[lbl]) out.push({ idx: c, key: FLOW_MAP[lbl], label: lbl });
+        }
+      }
+      return out;
+    }
+
+    const flows = findFlows(isLayoutB ? 'B' : 'A');
+    if (!flows.length) continue;
+
+    // Extract numeric grid: rows = periods, cols = flows
+    const series = periods.map(p => {
+      const row = { period: p.label };
+      flows.forEach(f => {
+        const v = isLayoutB ? grid[f.idx]?.[p.idx] : grid[p.idx]?.[f.idx];
+        if (v != null && v !== '' && !isNaN(+v)) row[f.key] = +v;
+      });
+      return row;
+    });
+
+    return {
+      sheet: sn,
+      flows: flows.map(f => f.key),
+      series,
+      raw: { ngRow, ngCol, layout: isLayoutB ? 'B' : 'A', fileName },
+    };
+  }
+  return null;
+}
+window.kesisHandleFile = kesisHandleFile;
+
 function renderKorBalance(el){
   // ── Live DART data (KOGAS sectoral sales, contracted volumes, LNG origins) ──
   const dart = _korLive?.dart;
   const annual = dart?.sectorVolumesByYear || [];   // [{year, cityGas_kt, power_kt, total_kt}, ...]
   const contracted = dart?.contractedVolumes || []; // [{year, cityGas_kt, power_avg_tariff_kt, ...}, ...]
   const origins = dart?.lngOrigins || [];
+  const kesis = _kesisLoad();
   const monthly = dart?.monthlySales?.series || []; // [{date, cityGas_kt, power_kt, total_kt}, ...]
   const kcga = _korLive?.kcga?.series || [];        // [{date, residential_km3, industrial_km3, ...}, ...]
   const inv = dart?.quarterlyInventory?.snapshots || []; // [{end_date, inventory_krw, implied_inventory_kt, quarter, ...}, ...]
@@ -21992,7 +22162,38 @@ function renderKorBalance(el){
       { label:'DART · KOGAS', meta: dart ? `${reportName} · ${reportDate}` : 'awaiting key', color: dart ? '#34d399' : '#fbbf24' },
       { label:'Ember power',  meta:'monthly · ~6w lag', color:'#34d399' },
       { label:'KHNP nuclear', meta:'live · 3-min · → Nuclear tab', color:'#34d399' },
+      { label:'KESIS', meta: kesis ? `${kesis.series.length} periods · ${kesis.fileName?.slice(0,18)||'uploaded'}` : 'no data — drop file below', color: kesis ? '#34d399' : '#fbbf24' },
     ])}
+
+    <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:11px;color:#fff;font-weight:500">KESIS energy balance · Natural Gas (Physical) — manual upload</div>
+          <div style="font-size:9px;color:#5a6882;margin-top:3px;line-height:1.5">
+            Source: <a href="https://kesis.keei.re.kr/statHtml/statHtml.do?conn_path=I2&language=en&orgId=339&tblId=DT_BAL_SIMPLE_PHYSICAL" target="_blank" style="color:#93c5fd">KESIS DT_BAL_SIMPLE_PHYSICAL</a>
+            — bot-blocked, so download Excel/CSV manually and drop here. Parser extracts the Natural Gas row (Production / Imports / Exports / Stock changes / TPES / TFC).
+          </div>
+        </div>
+        <div>
+          <input type="file" id="kesis-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="if(this.files[0]){kesisHandleFile(this.files[0]);this.value='';}">
+          <button class="fdfc-btn" style="border-color:#a78bfa;color:#a78bfa" onclick="document.getElementById('kesis-file').click()">📂 UPLOAD KESIS FILE</button>
+          ${kesis ? `<button class="fdfc-btn" style="border-color:#ef5350;color:#ef5350;margin-left:6px" onclick="if(confirm('Clear KESIS data?')){localStorage.removeItem('${KESIS_LSKEY}');korShowTab(_korTab);}">⚠ CLEAR</button>` : ''}
+        </div>
+      </div>
+      ${kesis ? `
+        <div style="margin-top:10px;padding:8px 10px;background:rgba(167,139,250,0.04);border-left:2px solid #a78bfa;border-radius:3px">
+          <div style="font-size:10px;color:#c8cfe0;line-height:1.6">
+            <b style="color:#a78bfa">Loaded</b> · ${kesis.series.length} periods (${kesis.series[0].period} → ${kesis.series[kesis.series.length-1].period}) ·
+            flows: ${kesis.flows.join(', ')} · sheet: ${kesis.sheet} · uploaded ${new Date(kesis.uploadedAt).toLocaleString('en-GB')}
+          </div>
+        </div>
+        <div style="height:280px;margin-top:10px"><canvas id="kor-bal-kesis"></canvas></div>
+      ` : `
+        <div style="margin-top:10px;padding:10px;background:#0a1628;border:1px dashed #1e3a5f;border-radius:4px;text-align:center;color:#6b7280;font-size:10px">
+          No KESIS data yet. Click upload above (xlsx/xls/csv) — parser auto-detects layout.
+        </div>
+      `}
+    </div>
 
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
       ${korKpiCard({
@@ -22325,6 +22526,54 @@ function renderKorBalance(el){
           x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
           y: { ...CD.scales.y,
                 title:{display:true,text:'kt LNG / month',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
+        },
+      }
+    });
+  }
+
+  // ── KESIS Natural Gas balance (manual upload) ──────────────────────────
+  if (window._korChartKesis) { window._korChartKesis.destroy(); window._korChartKesis = null; }
+  const cKes = document.getElementById('kor-bal-kesis');
+  if (cKes && kesis?.series?.length) {
+    const labels = kesis.series.map(r => r.period);
+    const FLOW_COLORS = {
+      production: '#10b981', imports: '#3b82f6', exports: '#f59e0b',
+      stockChanges: '#a78bfa', bunker: '#94a3b8',
+      tpes: '#22d3ee', tfc: '#fbbf24',
+      transformation: '#fca5a5', statisticalDiff: '#64748b',
+    };
+    const FLOW_LABELS = {
+      production: 'Production', imports: 'Imports', exports: 'Exports',
+      stockChanges: 'Δ Stock', bunker: 'Bunker',
+      tpes: 'TPES', tfc: 'Final consumption',
+      transformation: 'Transformation', statisticalDiff: 'Statistical diff',
+    };
+    const datasets = kesis.flows.map(f => ({
+      label: FLOW_LABELS[f] || f,
+      data: kesis.series.map(r => r[f] ?? null),
+      borderColor: FLOW_COLORS[f] || '#9ca3af',
+      backgroundColor: 'transparent',
+      borderWidth: f === 'imports' || f === 'tfc' ? 2 : 1.2,
+      pointRadius: 0,
+      tension: 0.3,
+      fill: false,
+      spanGaps: true,
+    }));
+    window._korChartKesis = new Chart(cKes.getContext('2d'), {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        ...CD, animation:false,
+        plugins: {
+          ...CD.plugins,
+          legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8} },
+        },
+        scales: {
+          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:9},maxTicksLimit:18},
+                grid:{color:'#0f1824'} },
+          y: { ...CD.scales.y,
+                title:{display:true,text:'physical units (as exported from KESIS)',color:'#3d5070',font:{size:9}},
                 ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
         },
       }
