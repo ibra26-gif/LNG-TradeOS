@@ -10445,11 +10445,12 @@ function cpLngArb(d){
 
   // ── DESTINATION cards ────────────────────────────────────────────────────
   const destCards = DESTS.map(D => {
-    // Rank by FOB Δ (best origin economics) — DES Dahej (and any single-market
-    // destination) is one price for everyone, so sorting by DES is meaningless.
-    // Sorting by FOB Δ surfaces the natural supplier (shortest freight wins).
+    // Rank by FOB Δ (best origin economics) — DES is the same price for every
+    // origin delivering to a given destination; sorting by FOB surfaces the
+    // origin with the cheapest freight (= best seller netback).
+    const desPxValue = des[D.desKey]?.[m];
     const ranked = ORIGINS
-      .map(O => ({ O, fob: matrix[O.id][D.id], desPx: des[D.desKey]?.[m] }))
+      .map(O => ({ O, fob: matrix[O.id][D.id], desPx: desPxValue }))
       .filter(x => x.fob != null && x.desPx != null)
       .sort((a,b) => b.fob - a.fob)
       .slice(0, 5);
@@ -10457,6 +10458,9 @@ function cpLngArb(d){
     const physBadge = physDelta != null
       ? `<span title="${D.hub} basis · phys diff" style="color:#4fc3f7;font-size:9px;padding:2px 6px;border:1px solid #1e3a5f;border-radius:3px;font-weight:600">${D.hub} Δ ${(physDelta>=0?'+':'')+physDelta.toFixed(3)}</span>`
       : '';
+    const desLine = desPxValue != null
+      ? `<div style="font-size:11px;color:#90caf9;font-weight:600;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #1e3a5f">DES $${desPxValue.toFixed(3)}/MMBtu</div>`
+      : `<div style="font-size:10px;color:#3d5070;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #1e3a5f">DES —</div>`;
     const originsHtml = ranked.map((x, i) => `
       <li style="display:flex;justify-content:space-between;font-size:10px;line-height:1.6">
         <span style="color:#8a9bb5">${i+1}. ${x.O.label}</span>
@@ -10464,10 +10468,11 @@ function cpLngArb(d){
       </li>`).join('');
     return `<div class="lngarb-card" data-dest="${D.id}" onclick="cpLngArbDrawer('dest','${D.id}')"
       style="background:#070b14;border:1px solid #1e3a5f;border-left:3px solid #4fc3f7;border-radius:6px;padding:10px 12px;cursor:pointer;transition:transform .1s">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span style="color:#c8d6e5;font-size:11px;font-weight:700">${D.label}</span>
         ${physBadge}
       </div>
+      ${desLine}
       <ol style="list-style:none;padding:0;margin:0">${originsHtml || '<li style="color:#3d5070;font-size:10px">no routes</li>'}</ol>
     </div>`;
   }).join('');
@@ -10504,7 +10509,7 @@ function cpLngArb(d){
   return `${topBar}
     <div style="padding:10px 14px;color:#546e7a;font-size:10px;letter-spacing:1px;font-weight:600;border-bottom:1px solid #1e3a5f">ORIGINS — best 3 destinations · FAIR = avg top 3</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding:10px 14px">${originCards}</div>
-    <div style="padding:10px 14px;color:#546e7a;font-size:10px;letter-spacing:1px;font-weight:600;border-bottom:1px solid #1e3a5f;border-top:1px solid #1e3a5f">DESTINATIONS — top 5 origins by DES (cheapest first)</div>
+    <div style="padding:10px 14px;color:#546e7a;font-size:10px;letter-spacing:1px;font-weight:600;border-bottom:1px solid #1e3a5f;border-top:1px solid #1e3a5f">DESTINATIONS — top 5 origins by FOB netback (best for seller, highest first)</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding:10px 14px">${destCards}</div>
     <div id="lng-arb-drawer" style="display:none;border-top:2px solid #1e3a5f;background:#080e1c"></div>
     <div id="lng-arb-modal-mount"></div>
