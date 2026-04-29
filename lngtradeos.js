@@ -21922,52 +21922,167 @@ function renderKorNuclear(el){
 // TAB · GAS BALANCE (LNG/DART/KOGAS only — nuclear lives in its own tab now)
 // ────────────────────────────────────────────────────────────────────────────
 function renderKorBalance(el){
-  const s = KOR_SEED;
+  // ── Live DART data (KOGAS sectoral sales, contracted volumes, LNG origins) ──
+  const dart = _korLive?.dart;
+  const annual = dart?.sectorVolumesByYear || [];   // [{year, cityGas_kt, power_kt, total_kt}, ...]
+  const contracted = dart?.contractedVolumes || []; // [{year, cityGas_kt, power_avg_tariff_kt, ...}, ...]
+  const origins = dart?.lngOrigins || [];
+
+  // Latest year + YoY
+  const latest = annual.length ? annual[annual.length - 1] : null;
+  const prev   = annual.length >= 2 ? annual[annual.length - 2] : null;
+  const totalYoY   = (latest && prev && prev.total_kt)   ? (latest.total_kt   - prev.total_kt)   / prev.total_kt   : null;
+  const cityYoY    = (latest && prev && prev.cityGas_kt) ? (latest.cityGas_kt - prev.cityGas_kt) / prev.cityGas_kt : null;
+  const powerYoY   = (latest && prev && prev.power_kt)   ? (latest.power_kt   - prev.power_kt)   / prev.power_kt   : null;
+
+  // Power vs City split for latest year
+  const cityShare  = (latest && latest.total_kt) ? latest.cityGas_kt / latest.total_kt : null;
+  const powerShare = (latest && latest.total_kt) ? latest.power_kt   / latest.total_kt : null;
+
+  const fmtKt  = (n) => n != null ? (n/1000).toFixed(2) + ' Mt' : '—';
+  const fmtPct = (p) => p != null ? ((p>=0?'▲ ':'▼ ') + Math.abs(p*100).toFixed(1) + '%') : '—';
+  const pctColor = (p) => p == null ? '#9ca3af' : (p >= 0 ? '#34d399' : '#fca5a5');
+
+  const reportName = dart?.latestReportName || '— no data';
+  const reportDate = dart?.latestReportDate ? `${dart.latestReportDate.slice(0,4)}-${dart.latestReportDate.slice(4,6)}-${dart.latestReportDate.slice(6,8)}` : '';
+
+  // Forward contract sum (2025) — total commitment for current year
+  const fwdLatest = contracted.length ? contracted[0] : null;
+
   el.innerHTML = `
     ${korFreshness([
-      { label:'KOGAS imports',  meta:'monthly · Mar · seed', color:'#fbbf24' },
-      { label:'DART',           meta:'quarterly · Q4-25 · seed', color:'#fbbf24' },
+      { label:'DART · KOGAS', meta: dart ? `${reportName} · ${reportDate}` : 'awaiting key', color: dart ? '#34d399' : '#fbbf24' },
+      { label:'Ember power',  meta:'monthly · ~6w lag', color:'#34d399' },
+      { label:'KHNP nuclear', meta:'live · 3-min · → Nuclear tab', color:'#34d399' },
     ])}
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">
-      ${korKpiCard({ label:'LNG imports · Mar', value: s.lngImportsMtMar+' mt', sub:'▼ '+Math.abs(s.lngImportsYoY*100).toFixed(0)+'% YoY · KOGAS', badge:'seed' })}
-      ${korKpiCard({ label:'Power sales · Q4-25', value: s.powerSalesQ4+' mt', sub:'▼ '+Math.abs(s.powerSalesYoY*100).toFixed(0)+'% YoY · DART', badge:'seed' })}
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      ${korKpiCard({
+        label: latest ? `Total LNG sales · ${latest.year}` : 'Total LNG sales',
+        value: fmtKt(latest?.total_kt),
+        sub: '<span style="color:'+pctColor(totalYoY)+'">'+fmtPct(totalYoY)+' YoY</span>',
+        color:'#fff',
+      })}
+      ${korKpiCard({
+        label: latest ? `City-gas · ${latest.year}` : 'City-gas',
+        value: fmtKt(latest?.cityGas_kt),
+        sub: '<span style="color:'+pctColor(cityYoY)+'">'+fmtPct(cityYoY)+' YoY</span> · '+(cityShare!=null?(cityShare*100).toFixed(0)+'% mix':''),
+        color:'#3b82f6',
+      })}
+      ${korKpiCard({
+        label: latest ? `Power · ${latest.year}` : 'Power',
+        value: fmtKt(latest?.power_kt),
+        sub: '<span style="color:'+pctColor(powerYoY)+'">'+fmtPct(powerYoY)+' YoY</span> · '+(powerShare!=null?(powerShare*100).toFixed(0)+'% mix':''),
+        color:'#f59e0b',
+      })}
     </div>
+
     <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">LNG demand by sector · quarterly · DART</span>
-        <span style="font-size:9px;color:#5a6882">monthly breakdown not publicly disclosed</span>
+        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS sales by sector · 2015–${latest?.year || '—'} · kt LNG</span>
+        <span style="font-size:9px;color:#5a6882">DART · KOGAS quarterly + annual reports</span>
       </div>
-      <div style="height:240px"><canvas id="kor-quarterly-demand"></canvas></div>
+      <div style="height:240px"><canvas id="kor-bal-annual"></canvas></div>
     </div>
+
+    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:8px;margin-bottom:12px">
+
+      <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937">
+        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:8px">Forward contracted volumes · kt</div>
+        ${contracted.length ? `
+          <table style="width:100%;border-collapse:collapse;font-size:10px;color:#c8cfe0">
+            <thead>
+              <tr style="border-bottom:1px solid #1f2937;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">
+                <th style="text-align:left;padding:6px 4px">Year</th>
+                <th style="text-align:right;padding:6px 4px">Power · Avg tariff</th>
+                <th style="text-align:right;padding:6px 4px">Power · Indiv tariff</th>
+                <th style="text-align:right;padding:6px 4px">City-gas</th>
+                <th style="text-align:right;padding:6px 4px">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${contracted.map(r => `
+                <tr style="border-bottom:1px solid #0f1824">
+                  <td style="padding:6px 4px;color:#fff">${r.year}</td>
+                  <td style="text-align:right;padding:6px 4px">${r.power_avg_tariff_kt!=null?r.power_avg_tariff_kt.toLocaleString():'—'}</td>
+                  <td style="text-align:right;padding:6px 4px">${r.power_individual_tariff_kt!=null?r.power_individual_tariff_kt.toLocaleString():'—'}</td>
+                  <td style="text-align:right;padding:6px 4px">${r.cityGas_kt!=null?r.cityGas_kt.toLocaleString():'—'}</td>
+                  <td style="text-align:right;padding:6px 4px;color:#fff;font-weight:600">${r.total_kt!=null?r.total_kt.toLocaleString():'—'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div style="margin-top:6px;font-size:9px;color:#6b7280">From KOGAS '용도별 약정 물량' table · annual contracted commitments</div>
+        ` : `<div style="color:#fbbf24;font-size:10px">No contracted-volume data yet — awaiting first DART scrape.</div>`}
+      </div>
+
+      <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937">
+        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:8px">LNG procurement origins</div>
+        ${origins.length ? `
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+            ${origins.map((o,i) => `
+              <div style="background:rgba(59,130,246,${0.15 - i*0.02});border:1px solid rgba(59,130,246,${0.4 - i*0.05});padding:6px 10px;border-radius:4px;font-size:11px;color:#dbeafe">
+                ${o}
+              </div>
+            `).join('')}
+          </div>
+          <div style="font-size:9px;color:#6b7280;line-height:1.5">
+            Latest period: ${reportName}. Origins shown in DART procurement disclosure order.
+            Korea is islanded — 100% of supply is LNG, no pipeline imports, ~zero domestic production.
+          </div>
+        ` : `<div style="color:#fbbf24;font-size:10px">No origin data yet.</div>`}
+      </div>
+
+    </div>
+
     <div style="font-size:10px;color:#5a6882;line-height:1.6;border-top:1px solid #1f2937;padding-top:10px">
       <div style="color:#9ca3af;margin-bottom:4px">Sources</div>
-      <a href="https://opendart.fss.or.kr" target="_blank" style="color:#93c5fd">DART (KOGAS quarterly filings · pending)</a> ·
-      <a href="https://www.kogas.or.kr" target="_blank" style="color:#93c5fd">KOGAS (geo-blocked · manual entry pending)</a>
-      <div style="margin-top:8px;color:#fca5a5"><b>Not tracked:</b> per-terminal tank stocks · daily LNG sendout · KOGAS spot purchase prices</div>
-      <div style="margin-top:4px;color:#fbbf24">Values seeded · awaiting DART API key + KOGAS scraper. <a onclick="korShowTab('nuclear')" style="color:#34d399;cursor:pointer">→ Nuclear tab</a> for live KHNP data.</div>
+      <a href="https://opendart.fss.or.kr" target="_blank" style="color:#93c5fd">DART · OpenDART API</a> · KOGAS quarterly + annual filings · refreshed when new period report is filed<br>
+      <a href="https://ember-energy.org/data/monthly-electricity-data/" target="_blank" style="color:#93c5fd">Ember Monthly Electricity Data</a> · gas-fired generation TWh (proxy for power-sector demand seasonality)<br>
+      <span style="color:#fca5a5"><b>Coverage gaps:</b> per-terminal tank stocks · daily LNG sendout · KOGAS spot purchase prices · monthly LNG import volumes (annual only via DART)</span>
     </div>
   `;
 
-  // Quarterly demand chart
+  // ── Annual sector stacked bar chart ────────────────────────────────────
   if (_korChartMain) { _korChartMain.destroy(); _korChartMain = null; }
-  const c1 = document.getElementById('kor-quarterly-demand');
-  if (c1) {
-    _korChartMain = new Chart(c1.getContext('2d'), {
+  const cBal = document.getElementById('kor-bal-annual');
+  if (cBal && annual.length) {
+    // Skip 1987 baseline — only show modern series 2015+
+    const recent = annual.filter(r => r.year >= 2015);
+    const yrs = recent.map(r => r.year);
+    const cur = yrs[yrs.length - 1];
+    _korChartMain = new Chart(cBal.getContext('2d'), {
       type: 'bar',
       data: {
-        labels: s.quarterlyDemand.map(r => r.q),
+        labels: yrs,
         datasets: [
-          { label:'City gas',   data: s.quarterlyDemand.map(r => r.cityGas),   backgroundColor:'#3b82f6', stack:'q' },
-          { label:'Power',      data: s.quarterlyDemand.map(r => r.power),     backgroundColor:'#f59e0b', stack:'q' },
-          { label:'Industrial', data: s.quarterlyDemand.map(r => r.industrial),backgroundColor:'#34d399', stack:'q' },
+          { label:'City-gas', data: recent.map(r => r.cityGas_kt),
+            backgroundColor: yrs.map(y => y === cur ? '#60a5fa' : '#3b82f6'),
+            stack:'sales', borderWidth:0 },
+          { label:'Power',    data: recent.map(r => r.power_kt),
+            backgroundColor: yrs.map(y => y === cur ? '#fbbf24' : '#f59e0b'),
+            stack:'sales', borderWidth:0 },
         ]
       },
       options: {
         ...CD, animation:false,
-        plugins: { ...CD.plugins, legend: { display:true, position:'top', labels:{color:'#9ca3af',font:{size:9},boxWidth:8}}},
+        plugins: {
+          ...CD.plugins,
+          legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8} },
+          tooltip: { ...CD.plugins.tooltip, callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} kt`,
+            footer: (items) => {
+              if (items.length < 2) return '';
+              const tot = items.reduce((a,i) => a + i.parsed.y, 0);
+              return `Total: ${tot.toLocaleString()} kt`;
+            },
+          }},
+        },
         scales: {
-          x: { ...CD.scales.x, stacked:true },
-          y: { ...CD.scales.y, stacked:true, title:{display:true,text:'mt LNG-equiv',color:'#3d5070',font:{size:9}}, ticks:{color:'#3d5070',font:{size:8}} },
+          x: { ...CD.scales.x, stacked:true, ticks:{color:'#3d5070',font:{size:9}} },
+          y: { ...CD.scales.y, stacked:true,
+                title:{display:true,text:'kt LNG (1 kt = ~1.36 MMscm gas)',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:9}} },
         },
       }
     });

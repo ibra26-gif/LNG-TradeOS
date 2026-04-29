@@ -41,6 +41,8 @@ jobs:
         run: pip install requests
 
       - name: Run Korea scraper
+        env:
+          OPENDART_KEY: ${{ secrets.OPENDART_KEY }}
         run: python3 scripts/fetch_korea.py
 
       - name: Check for material change

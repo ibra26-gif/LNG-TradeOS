@@ -1,0 +1,271 @@
+{
+  "asOf": "2026-04-29T06:14:01+00:00",
+  "corpCode": "00261285",
+  "corpName": "한국가스공사",
+  "corpNameEn": "Korea Gas Corporation",
+  "stockCode": "036460",
+  "latestRceptNo": "20260323001058",
+  "latestReportName": "사업보고서 (2025.12)",
+  "latestReportDate": "20260323",
+  "filings": [
+    {
+      "rcept_no": "20260428800625",
+      "rcept_dt": "20260428",
+      "report_nm": "기타경영사항(자율공시)"
+    },
+    {
+      "rcept_no": "20260422800446",
+      "rcept_dt": "20260422",
+      "report_nm": "기업가치제고계획(자율공시)"
+    },
+    {
+      "rcept_no": "20260420000524",
+      "rcept_dt": "20260420",
+      "report_nm": "사외이사의선임ㆍ해임또는중도퇴임에관한신고"
+    },
+    {
+      "rcept_no": "20260410801089",
+      "rcept_dt": "20260410",
+      "report_nm": "주주명부폐쇄기간또는기준일설정"
+    },
+    {
+      "rcept_no": "20260410800420",
+      "rcept_dt": "20260410",
+      "report_nm": "영업(잠정)실적(공정공시)"
+    },
+    {
+      "rcept_no": "20260401002957",
+      "rcept_dt": "20260401",
+      "report_nm": "주식등의대량보유상황보고서(약식)"
+    },
+    {
+      "rcept_no": "20260331802602",
+      "rcept_dt": "20260331",
+      "report_nm": "정기주주총회결과"
+    },
+    {
+      "rcept_no": "20260325801218",
+      "rcept_dt": "20260325",
+      "report_nm": "자원개발진행사항공시(자율공시)"
+    },
+    {
+      "rcept_no": "20260323001058",
+      "rcept_dt": "20260323",
+      "report_nm": "사업보고서 (2025.12)"
+    },
+    {
+      "rcept_no": "20260316000637",
+      "rcept_dt": "20260316",
+      "report_nm": "주주총회소집공고"
+    },
+    {
+      "rcept_no": "20260313801971",
+      "rcept_dt": "20260313",
+      "report_nm": "감사보고서제출"
+    },
+    {
+      "rcept_no": "20260313800277",
+      "rcept_dt": "20260313",
+      "report_nm": "영업(잠정)실적(공정공시)"
+    },
+    {
+      "rcept_no": "20260309801616",
+      "rcept_dt": "20260309",
+      "report_nm": "[기재정정]주주총회소집결의"
+    },
+    {
+      "rcept_no": "20260304801580",
+      "rcept_dt": "20260304",
+      "report_nm": "주주총회소집결의"
+    },
+    {
+      "rcept_no": "20260304801501",
+      "rcept_dt": "20260304",
+      "report_nm": "기업설명회(IR)개최(안내공시)"
+    },
+    {
+      "rcept_no": "20260226801287",
+      "rcept_dt": "20260226",
+      "report_nm": "매출액또는손익구조30%(대규모법인은15%)이상변경"
+    },
+    {
+      "rcept_no": "20260226801276",
+      "rcept_dt": "20260226",
+      "report_nm": "현금ㆍ현물배당결정"
+    },
+    {
+      "rcept_no": "20260226800912",
+      "rcept_dt": "20260226",
+      "report_nm": "연결재무제표기준영업(잠정)실적(공정공시)"
+    },
+    {
+      "rcept_no": "20260223800818",
+      "rcept_dt": "20260223",
+      "report_nm": "결산실적공시예고(안내공시)"
+    },
+    {
+      "rcept_no": "20260212801026",
+      "rcept_dt": "20260212",
+      "report_nm": "영업(잠정)실적(공정공시)"
+    },
+    {
+      "rcept_no": "20260206801082",
+      "rcept_dt": "20260206",
+      "report_nm": "소송등의제기ㆍ신청(일정금액이상의청구)"
+    },
+    {
+      "rcept_no": "20260130800370",
+      "rcept_dt": "20260130",
+      "report_nm": "소송등의제기ㆍ신청(일정금액이상의청구)"
+    },
+    {
+      "rcept_no": "20260121800489",
+      "rcept_dt": "20260121",
+      "report_nm": "소송등의판결ㆍ결정(일정금액이상의청구)"
+    },
+    {
+      "rcept_no": "20260115800100",
+      "rcept_dt": "20260115",
+      "report_nm": "영업(잠정)실적(공정공시)"
+    },
+    {
+      "rcept_no": "20251211800299",
+      "rcept_dt": "20251211",
+      "report_nm": "단일판매ㆍ공급계약체결"
+    },
+    {
+      "rcept_no": "20251209800497",
+      "rcept_dt": "20251209",
+      "report_nm": "영업(잠정)실적(공정공시)"
+    },
+    {
+      "rcept_no": "20251124800279",
+      "rcept_dt": "20251124",
+      "report_nm": "단일판매ㆍ공급계약체결"
+    },
+    {
+      "rcept_no": "20251121800363",
+      "rcept_dt": "20251121",
+      "report_nm": "주주명부폐쇄기간또는기준일설정"
+    },
+    {
+      "rcept_no": "20251114801844",
+      "rcept_dt": "20251114",
+      "report_nm": "[기재정정]단일판매ㆍ공급계약체결"
+    },
+    {
+      "rcept_no": "20251114000871",
+      "rcept_dt": "20251114",
+      "report_nm": "분기보고서 (2025.09)"
+    }
+  ],
+  "sectorVolumesByYear": [
+    {
+      "year": 1987,
+      "cityGas_kt": 75,
+      "power_kt": 1537,
+      "total_kt": 1612
+    },
+    {
+      "year": 2015,
+      "cityGas_kt": 16929,
+      "power_kt": 14527,
+      "total_kt": 31456
+    },
+    {
+      "year": 2016,
+      "cityGas_kt": 17384,
+      "power_kt": 15389,
+      "total_kt": 32773
+    },
+    {
+      "year": 2017,
+      "cityGas_kt": 18390,
+      "power_kt": 13772,
+      "total_kt": 32162
+    },
+    {
+      "year": 2018,
+      "cityGas_kt": 19813,
+      "power_kt": 16406,
+      "total_kt": 36219
+    },
+    {
+      "year": 2019,
+      "cityGas_kt": 18822,
+      "power_kt": 14775,
+      "total_kt": 33597
+    },
+    {
+      "year": 2020,
+      "cityGas_kt": 18247,
+      "power_kt": 14120,
+      "total_kt": 32367
+    },
+    {
+      "year": 2021,
+      "cityGas_kt": 19331,
+      "power_kt": 17583,
+      "total_kt": 36914
+    },
+    {
+      "year": 2022,
+      "cityGas_kt": 19832,
+      "power_kt": 18565,
+      "total_kt": 38397
+    },
+    {
+      "year": 2023,
+      "cityGas_kt": 18328,
+      "power_kt": 16314,
+      "total_kt": 34642
+    },
+    {
+      "year": 2024,
+      "cityGas_kt": 18398,
+      "power_kt": 15727,
+      "total_kt": 34125
+    },
+    {
+      "year": 2025,
+      "cityGas_kt": 19008,
+      "power_kt": 15505,
+      "total_kt": 34513
+    }
+  ],
+  "contractedVolumes": [
+    {
+      "year": 2025,
+      "power_avg_tariff_kt": 14879.0,
+      "power_individual_tariff_kt": 1295.0,
+      "cityGas_kt": 18912.0,
+      "total_kt": 35086.0
+    },
+    {
+      "year": 2024,
+      "power_avg_tariff_kt": 15767.0,
+      "power_individual_tariff_kt": 962.5,
+      "cityGas_kt": 19227.0,
+      "total_kt": 35956.5
+    },
+    {
+      "year": 2023,
+      "power_avg_tariff_kt": 17698.0,
+      "power_individual_tariff_kt": 440.0,
+      "cityGas_kt": 19839.0,
+      "total_kt": 37977.0
+    }
+  ],
+  "lngOrigins": [
+    "Qatar",
+    "Australia",
+    "United States"
+  ],
+  "lngOriginsKr": [
+    "카타르",
+    "호주",
+    "미국"
+  ],
+  "source": "OpenDART (Financial Supervisory Service)",
+  "sourceUrl": "https://opendart.fss.or.kr"
+}

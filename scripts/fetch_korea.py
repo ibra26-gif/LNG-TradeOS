@@ -25,7 +25,7 @@ import re
 import sys
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -506,6 +506,371 @@ def fetch_ember_monthly():
         return out
 
 
+# ────────────────────────────────────────────────────────────────────
+# DART (OpenDART) — KOGAS quarterly filings + sectoral sales volumes
+#
+# Free API key required (env var OPENDART_KEY). Without it this fetcher
+# returns None gracefully — existing data flow unaffected.
+#
+# KOGAS corp metadata (verified via corpCode.xml dump):
+#   corp_code  = 00261285
+#   corp_name  = 한국가스공사 (Korea Gas Corporation)
+#   stock_code = 036460
+#
+# What we extract from the latest quarterly/half-year/annual report:
+#   1. Annual sales volume by sector (도시가스용 / 발전용 / 합계) — historical
+#      time series from 1987 onwards, in thousand tons.
+#   2. LNG procurement origins (e.g., Qatar, Australia, US).
+#   3. Forward-contracted volumes by tariff type (3 most recent years).
+#   4. Latest period summary (revenue, op profit) from fnlttSinglAcntAll.
+# ────────────────────────────────────────────────────────────────────
+DART_KOGAS_CORP_CODE = '00261285'
+DART_API_BASE = 'https://opendart.fss.or.kr/api'
+
+
+def _dart_get(url, timeout=30):
+    """GET a DART JSON endpoint and parse — raises on non-200."""
+    text = fetch(url, timeout=timeout)
+    return json.loads(text)
+
+
+def _dart_get_zip(url, timeout=600):
+    """Download a DART ZIP archive (corpCode.xml or document.xml) and return raw bytes.
+    DART throttles uploads to ~13 KB/s — a 10MB document.xml can take 10+ min.
+    Falls back to curl with retries if Python streaming truncates."""
+    headers = {'User-Agent': UA}
+    if _USE_REQUESTS:
+        try:
+            r = _requests.get(url, timeout=timeout, stream=True, headers=headers)
+            r.raise_for_status()
+            # Read in chunks so the connection stays alive on slow streams.
+            chunks = []
+            for chunk in r.iter_content(chunk_size=64*1024):
+                if chunk:
+                    chunks.append(chunk)
+            content = b''.join(chunks)
+            cl = r.headers.get('Content-Length')
+            if not cl or int(cl) == len(content):
+                return content
+            print(f'DART zip: requests got {len(content)}/{cl} bytes — retrying via curl',
+                  file=sys.stderr)
+        except Exception as e:
+            print(f'DART zip via requests failed: {e} — retrying via curl', file=sys.stderr)
+
+    # Curl fallback with retries — DART occasionally drops the connection.
+    import subprocess, tempfile
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tf:
+        tmp_path = tf.name
+    try:
+        subprocess.run(
+            ['curl', '--http1.1', '-fsS', '-A', UA,
+             '--max-time', str(timeout),
+             '--connect-timeout', '30',
+             '--retry', '3', '--retry-delay', '5',
+             '--speed-time', '120', '--speed-limit', '300',
+             '-o', tmp_path, url],
+            check=True, timeout=timeout + 60,
+        )
+        with open(tmp_path, 'rb') as f:
+            return f.read()
+    finally:
+        try: os.unlink(tmp_path)
+        except: pass
+
+
+def _dart_parse_period_report_xml(xml_text):
+    """Parse a KOGAS period-report main XML. Returns dict with sectoral data.
+
+    The report is a custom KICS XBRL-like document. We extract data from
+    the embedded <TABLE> elements using regex (BeautifulSoup not available
+    in the runtime). Three target tables:
+
+      A) Annual sales volume by sector (multi-year, in kilo-tons):
+         signature: contains '도시가스용' AND '발전용' AND '평균증가율'.
+      B) Forward contracted volumes by tariff type (3 yrs × 3 cats):
+         signature: '발전용 평균요금제' AND '도시가스용'.
+      C) LNG procurement origins (single row — Qatar, Australia, US, ...):
+         signature: 'LNG' AND ('카타르' OR '호주') AND short table.
+    """
+    import re
+    out = {}
+
+    tables = re.findall(r'<TABLE[\s\S]*?</TABLE>', xml_text)
+
+    def _cells(table):
+        """Strip XML tags from a table, collapse whitespace, split on '|'."""
+        clean = re.sub(r'<[^>]+>', '|', table)
+        clean = re.sub(r'\|+', '|', clean)
+        clean = re.sub(r'\s+', ' ', clean).strip('| ').strip()
+        return [c.strip() for c in clean.split('|')]
+
+    def _to_int(s):
+        s = re.sub(r'\([^)]*\)', '', s).replace(',', '').strip()
+        try:    return int(float(s))
+        except: return None
+
+    SECTOR_SEPARATORS = {'도시가스용','발전용','발전용 평균요금제','발전용 개별요금제',
+                          '합 계','합계','구 분','구분','용 도','용도'}
+
+    def _row_after(cells, sector_kr, max_take=None):
+        """Return ints from cells after sector_kr until next sector header.
+        Strips parenthetical growth rates and decimals (CAGR), keeps only
+        non-negative integer-looking numbers."""
+        try:
+            idx = cells.index(sector_kr)
+        except ValueError:
+            return None
+        row_text_parts = []
+        for c in cells[idx+1:]:
+            if c in SECTOR_SEPARATORS:
+                break
+            row_text_parts.append(c)
+        row_text = ' '.join(row_text_parts)
+        # 1) Drop everything inside parens (growth rates like (-6.9), (2.7))
+        row_text = re.sub(r'\([^)]*\)', ' ', row_text)
+        # 2) Drop standalone decimal numbers like CAGR "15.7%" or "8.4%"
+        row_text = re.sub(r'\b\d+\.\d+\s*%?', ' ', row_text)
+        # 3) Now extract integer tokens (with optional thousands separator)
+        ints = []
+        for m in re.finditer(r'-?\d{1,3}(?:,\d{3})+|\d+', row_text):
+            n = _to_int(m.group(0))
+            if n is None or n < 0 or n > 1_000_000:
+                continue
+            ints.append(n)
+            if max_take and len(ints) >= max_take:
+                break
+        return ints
+
+    # ── Table A: annual sectoral sales volume ──────────────────────────
+    for t in tables:
+        if not ('도시가스용' in t and '발전용' in t and '평균증가율' in t):
+            continue
+        if len(t) > 12000:  # skip huge boilerplate tables
+            continue
+        cells = _cells(t)
+        # Years are 4-digit ints between 1987 and current+1.
+        years = []
+        for c in cells:
+            m = re.fullmatch(r'(19\d\d|20\d\d)', c)
+            if m:
+                y = int(m.group(1))
+                if 1987 <= y <= datetime.now().year + 1 and y not in years:
+                    years.append(y)
+        if not years:
+            continue
+
+        rows_data = {}
+        for sector_kr, key in [('도시가스용','cityGas_kt'),
+                                ('발전용','power_kt'),
+                                ('합 계','total_kt'),
+                                ('합계','total_kt')]:
+            ints = _row_after(cells, sector_kr, max_take=len(years) + 1)
+            if ints and len(ints) >= len(years):
+                rows_data[key] = ints[:len(years)]
+
+        if rows_data:
+            entries = []
+            for i, y in enumerate(years):
+                e = {'year': y}
+                for k, vals in rows_data.items():
+                    e[k] = vals[i]
+                entries.append(e)
+            out['sectorVolumesByYear'] = entries
+            break
+
+    # ── Table B: forward-contracted volumes by tariff type ─────────────
+    for t in tables:
+        if not ('발전용 평균요금제' in t and '도시가스용' in t):
+            continue
+        if len(t) > 6000:
+            continue
+        cells = _cells(t)
+        # Years like '25년, '24년, '23년 → ints 2025/2024/2023
+        years = []
+        for c in cells:
+            m = re.search(r"'(\d{2})년", c)
+            if m:
+                y = 2000 + int(m.group(1))
+                if y not in years:
+                    years.append(y)
+        if not years or len(years) < 2:
+            continue
+        # Re-use the row helper (allow decimals here — values may be 962.5)
+        def _row_floats(cells, sector_kr, n_years):
+            try:
+                idx = cells.index(sector_kr)
+            except ValueError:
+                return None
+            text_parts = []
+            for c in cells[idx+1:]:
+                if c in SECTOR_SEPARATORS:
+                    break
+                text_parts.append(c)
+            text = ' '.join(text_parts)
+            text = re.sub(r'\([^)]*\)', ' ', text)
+            nums = re.findall(r'-?\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?', text)
+            vals = []
+            for n in nums:
+                try:    vals.append(float(n.replace(',', '')))
+                except: pass
+                if len(vals) >= n_years:
+                    break
+            return vals if len(vals) >= n_years else None
+
+        rows_data = {}
+        for sector_kr, key in [
+            ('발전용 평균요금제', 'power_avg_tariff_kt'),
+            ('발전용 개별요금제', 'power_individual_tariff_kt'),
+            ('도시가스용',         'cityGas_kt'),
+            ('합 계',              'total_kt'),
+            ('합계',                'total_kt'),
+        ]:
+            vals = _row_floats(cells, sector_kr, len(years))
+            if vals:
+                rows_data[key] = vals[:len(years)]
+        if rows_data:
+            out['contractedVolumes'] = [
+                {'year': y, **{k: vals[i] for k, vals in rows_data.items()}}
+                for i, y in enumerate(years)
+            ]
+            break
+
+    # ── Table C: LNG procurement origins ───────────────────────────────
+    for t in tables:
+        if 'LNG' in t and ('카타르' in t or '호주' in t) and len(t) < 3500:
+            cells = _cells(t)
+            for c in cells:
+                if '카타르' in c or '호주' in c:
+                    raw = re.sub(r'\s*등\s*$', '', c)
+                    parts = re.split(r'[,、·\s]+', raw)
+                    origins_kr = [p for p in parts if p and len(p) <= 6]
+                    if origins_kr:
+                        # Korean → English mapping for display
+                        kr2en = {
+                            '카타르':'Qatar','호주':'Australia','미국':'United States',
+                            '오만':'Oman','말레이시아':'Malaysia','인도네시아':'Indonesia',
+                            '러시아':'Russia','나이지리아':'Nigeria','브루나이':'Brunei',
+                            '예멘':'Yemen','앙골라':'Angola','이집트':'Egypt',
+                            '트리니다드':'Trinidad','UAE':'UAE','파푸아뉴기니':'Papua New Guinea',
+                        }
+                        origins_en = [kr2en.get(k, k) for k in origins_kr]
+                        out['lngOrigins'] = origins_en
+                        out['lngOriginsKr'] = origins_kr
+                        break
+            if 'lngOrigins' in out:
+                break
+
+    return out
+
+
+def fetch_dart_kogas():
+    """Pull KOGAS sectoral data from OpenDART API.
+
+    Requires environment variable OPENDART_KEY. Returns None if missing.
+    Caches the parsed report in data/dart_kogas.json — only re-parses
+    when a new period report (분기/반기/사업보고서) shows up in the listing.
+    """
+    api_key = os.environ.get('OPENDART_KEY')
+    if not api_key:
+        print('OPENDART_KEY not set — skipping DART fetch', file=sys.stderr)
+        return None
+
+    cache_path = os.path.join(os.path.dirname(OUT_PATH), 'dart_kogas.json')
+    today = datetime.now(timezone.utc)
+
+    # 1. List recent KOGAS filings (last 2 years).
+    bgn = (today - timedelta(days=730)).strftime('%Y%m%d')
+    end = today.strftime('%Y%m%d')
+    list_url = (f'{DART_API_BASE}/list.json'
+                f'?crtfc_key={api_key}&corp_code={DART_KOGAS_CORP_CODE}'
+                f'&bgn_de={bgn}&end_de={end}&page_count=100')
+    try:
+        list_data = _dart_get(list_url, timeout=30)
+    except Exception as e:
+        print(f'DART list fetch failed: {e}', file=sys.stderr)
+        return None
+
+    if list_data.get('status') != '000':
+        print(f"DART list error: {list_data.get('message')}", file=sys.stderr)
+        return None
+    filings = list_data.get('list') or []
+
+    # 2. Find latest period report (분기/반기/사업보고서 — full-form business report).
+    latest_period = None
+    for f in filings:
+        nm = f.get('report_nm', '') or ''
+        if '분기보고서' in nm or '반기보고서' in nm or '사업보고서' in nm:
+            latest_period = f
+            break
+
+    # 3. Cache check — skip parse if same rcept_no.
+    cached = None
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                cached = json.load(f)
+        except Exception:
+            cached = None
+
+    if (cached and latest_period
+            and cached.get('latestRceptNo') == latest_period.get('rcept_no')):
+        cached['filings'] = [
+            {'rcept_no': f['rcept_no'], 'rcept_dt': f['rcept_dt'],
+             'report_nm': (f['report_nm'] or '').strip()}
+            for f in filings[:30]
+        ]
+        cached['asOf'] = today.isoformat(timespec='seconds')
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            json.dump(cached, f, indent=2, ensure_ascii=False)
+        return cached
+
+    # 4. Download + parse latest period report main XML.
+    sector_data = {}
+    if latest_period:
+        rcept_no = latest_period['rcept_no']
+        doc_url = f'{DART_API_BASE}/document.xml?crtfc_key={api_key}&rcept_no={rcept_no}'
+        try:
+            buf = _dart_get_zip(doc_url, timeout=300)
+            import zipfile, io as _io
+            with zipfile.ZipFile(_io.BytesIO(buf)) as z:
+                with z.open(z.namelist()[0]) as f:
+                    xml_text = f.read().decode('utf-8', errors='replace')
+            sector_data = _dart_parse_period_report_xml(xml_text)
+            print(f"DART parsed report {rcept_no}: "
+                  f"annual={len(sector_data.get('sectorVolumesByYear') or [])}y, "
+                  f"contracted={len(sector_data.get('contractedVolumes') or [])}y, "
+                  f"origins={sector_data.get('lngOrigins') or []}",
+                  file=sys.stderr)
+        except Exception as e:
+            print(f'DART document.xml parse failed: {e}', file=sys.stderr)
+
+    out = {
+        'asOf':              today.isoformat(timespec='seconds'),
+        'corpCode':          DART_KOGAS_CORP_CODE,
+        'corpName':          '한국가스공사',
+        'corpNameEn':        'Korea Gas Corporation',
+        'stockCode':         '036460',
+        'latestRceptNo':     latest_period['rcept_no'] if latest_period else None,
+        'latestReportName':  (latest_period['report_nm'].strip() if latest_period else None),
+        'latestReportDate':  latest_period['rcept_dt'] if latest_period else None,
+        'filings': [
+            {'rcept_no': f['rcept_no'], 'rcept_dt': f['rcept_dt'],
+             'report_nm': (f['report_nm'] or '').strip()}
+            for f in filings[:30]
+        ],
+        'sectorVolumesByYear': sector_data.get('sectorVolumesByYear'),
+        'contractedVolumes':   sector_data.get('contractedVolumes'),
+        'lngOrigins':          sector_data.get('lngOrigins'),
+        'lngOriginsKr':        sector_data.get('lngOriginsKr'),
+        'source':              'OpenDART (Financial Supervisory Service)',
+        'sourceUrl':           'https://opendart.fss.or.kr',
+    }
+
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        json.dump(out, f, indent=2, ensure_ascii=False)
+    return out
+
+
 def fetch_ecb_fx():
     """ECB daily reference rates (cross-rate to derive KRW/USD)."""
     url = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
@@ -644,6 +1009,18 @@ def main():
     except Exception as e:
         out['errors'].append(f'Ember monthly: {e}')
         print(f"Ember monthly failed: {e}", file=sys.stderr)
+
+    try:
+        out['dart'] = fetch_dart_kogas()
+        d = out['dart']
+        if d:
+            yrs = len(d.get('sectorVolumesByYear') or [])
+            origins = d.get('lngOrigins') or []
+            print(f"DART KOGAS: {d.get('latestReportName')} ({d.get('latestReportDate')}), "
+                  f"{yrs} yrs sectoral volume, origins={origins}", file=sys.stderr)
+    except Exception as e:
+        out['errors'].append(f'DART KOGAS: {e}')
+        print(f"DART KOGAS failed: {e}", file=sys.stderr)
 
     # Stabilize for git diff
     round_for_diff_stability(out)

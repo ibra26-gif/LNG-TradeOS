@@ -1,5 +1,5 @@
 {
-  "updated": "2026-04-28T16:47:40+00:00",
+  "updated": "2026-04-28T21:33:41+00:00",
   "fx": {
     "asOf": "2026-04-28",
     "source": "ECB euro reference rates",
@@ -9,8 +9,8 @@
     "krwUsd": 1476.89
   },
   "khnp": {
-    "asOf": "2026-04-29 01:47:41",
-    "scrapedAt": "2026-04-28T16:48:16+00:00",
+    "asOf": "2026-04-29 06:34:00",
+    "scrapedAt": "2026-04-28T21:34:17+00:00",
     "source": "KHNP Open NPP Operations Info",
     "sourceUrl": "https://npp.khnp.co.kr/",
     "reactors": [
@@ -20,8 +20,8 @@
         "unit_cd": "2112",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 680,
-        "asOf": "2026-04-29 01:47:40"
+        "output_mwe": 681,
+        "asOf": "2026-04-29 06:33:30"
       },
       {
         "name": "Kori-3",
@@ -30,7 +30,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 01:43:45"
+        "asOf": "2026-04-29 06:23:45"
       },
       {
         "name": "Kori-4",
@@ -39,7 +39,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 01:43:45"
+        "asOf": "2026-04-29 06:23:45"
       },
       {
         "name": "Shin-Kori-1",
@@ -47,8 +47,8 @@
         "unit_cd": "2135",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1055,
-        "asOf": "2026-04-29 01:47:40"
+        "output_mwe": 1056,
+        "asOf": "2026-04-29 06:33:10"
       },
       {
         "name": "Shin-Kori-2",
@@ -57,7 +57,7 @@
         "status": "Operational",
         "output_pct": 100.0,
         "output_mwe": 1053,
-        "asOf": "2026-04-29 01:47:30"
+        "asOf": "2026-04-29 06:33:30"
       },
       {
         "name": "Hanbit-1",
@@ -66,7 +66,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": null,
-        "asOf": "2026-04-29 01:41:11"
+        "asOf": "2026-04-29 06:31:11"
       },
       {
         "name": "Hanbit-2",
@@ -74,8 +74,8 @@
         "unit_cd": "2312",
         "status": "Operational",
         "output_pct": 96.0,
-        "output_mwe": 1023,
-        "asOf": "2026-04-29 01:47:41"
+        "output_mwe": 1025,
+        "asOf": "2026-04-29 06:33:31"
       },
       {
         "name": "Hanbit-3",
@@ -83,8 +83,8 @@
         "unit_cd": "2323",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1050,
-        "asOf": "2026-04-29 01:47:16"
+        "output_mwe": 1053,
+        "asOf": "2026-04-29 06:33:16"
       },
       {
         "name": "Hanbit-4",
@@ -93,7 +93,7 @@
         "status": "Operational",
         "output_pct": 100.0,
         "output_mwe": 1047,
-        "asOf": "2026-04-29 01:47:21"
+        "asOf": "2026-04-29 06:33:21"
       },
       {
         "name": "Hanbit-5",
@@ -101,8 +101,8 @@
         "unit_cd": "2335",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1051,
-        "asOf": "2026-04-29 01:47:31"
+        "output_mwe": 1052,
+        "asOf": "2026-04-29 06:33:36"
       },
       {
         "name": "Hanbit-6",
@@ -111,7 +111,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 01:41:11"
+        "asOf": "2026-04-29 06:31:11"
       },
       {
         "name": "Hanul-1",
@@ -119,8 +119,8 @@
         "unit_cd": "2411",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1019,
-        "asOf": "2026-04-29 01:47:41"
+        "output_mwe": 1020,
+        "asOf": "2026-04-29 06:33:31"
       },
       {
         "name": "Hanul-2",
@@ -128,8 +128,8 @@
         "unit_cd": "2412",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1016,
-        "asOf": "2026-04-29 01:47:41"
+        "output_mwe": 1015,
+        "asOf": "2026-04-29 06:33:31"
       },
       {
         "name": "Hanul-3",
@@ -138,7 +138,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 01:42:01"
+        "asOf": "2026-04-29 06:32:01"
       },
       {
         "name": "Hanul-4",
@@ -146,8 +146,8 @@
         "unit_cd": "2424",
         "status": "Operational",
         "output_pct": 99.0,
-        "output_mwe": 1047,
-        "asOf": "2026-04-29 01:47:36"
+        "output_mwe": 1043,
+        "asOf": "2026-04-29 06:33:16"
       },
       {
         "name": "Hanul-5",
@@ -156,7 +156,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 01:44:26"
+        "asOf": "2026-04-29 06:24:26"
       },
       {
         "name": "Hanul-6",
@@ -164,8 +164,8 @@
         "unit_cd": "2436",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1053,
-        "asOf": "2026-04-29 01:47:31"
+        "output_mwe": 1054,
+        "asOf": "2026-04-29 06:33:31"
       },
       {
         "name": "Shin-Hanul-1",
@@ -173,8 +173,8 @@
         "unit_cd": "2711",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1495,
-        "asOf": "2026-04-29 01:47:36"
+        "output_mwe": 1496,
+        "asOf": "2026-04-29 06:33:31"
       },
       {
         "name": "Shin-Hanul-2",
@@ -182,8 +182,8 @@
         "unit_cd": "2712",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1502,
-        "asOf": "2026-04-29 01:47:41"
+        "output_mwe": 1500,
+        "asOf": "2026-04-29 06:33:16"
       },
       {
         "name": "Wolsong-2",
@@ -192,7 +192,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 01:43:45"
+        "asOf": "2026-04-29 06:33:45"
       },
       {
         "name": "Wolsong-3",
@@ -201,7 +201,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 01:43:45"
+        "asOf": "2026-04-29 06:33:45"
       },
       {
         "name": "Wolsong-4",
@@ -210,7 +210,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 01:43:45"
+        "asOf": "2026-04-29 06:33:45"
       },
       {
         "name": "Shin-Wolsong-1",
@@ -218,8 +218,8 @@
         "unit_cd": "2235",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1050,
-        "asOf": "2026-04-29 01:47:31"
+        "output_mwe": 1049,
+        "asOf": "2026-04-29 06:33:31"
       },
       {
         "name": "Shin-Wolsong-2",
@@ -228,7 +228,7 @@
         "status": "Operational",
         "output_pct": 100.0,
         "output_mwe": 1049,
-        "asOf": "2026-04-29 01:47:15"
+        "asOf": "2026-04-29 06:33:45"
       },
       {
         "name": "Saeul-1",
@@ -236,8 +236,8 @@
         "unit_cd": "2811",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1482,
-        "asOf": "2026-04-29 01:47:30"
+        "output_mwe": 1478,
+        "asOf": "2026-04-29 06:34:00"
       },
       {
         "name": "Saeul-2",
@@ -245,8 +245,8 @@
         "unit_cd": "2812",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1495,
-        "asOf": "2026-04-29 01:47:35"
+        "output_mwe": 1498,
+        "asOf": "2026-04-29 06:34:00"
       }
     ],
     "bySite": [
@@ -279,8 +279,8 @@
         ],
         "totalCount": 6,
         "online": 4,
-        "totalCap_GW": 4.17,
-        "onlineCap_GW": 4.17
+        "totalCap_GW": 4.18,
+        "onlineCap_GW": 4.18
       },
       {
         "site": "Saeul",
@@ -322,7 +322,7 @@
         "onlineCap_GW": 2.1
       }
     ],
-    "totalOnlineGW": 19.17,
+    "totalOnlineGW": 19.18,
     "onlineCount": 17,
     "totalCount": 26
   },
@@ -1191,6 +1191,276 @@
   },
   "kogasTariff": null,
   "kogasImports": null,
-  "dart": null,
+  "dart": {
+    "asOf": "2026-04-29T06:14:01+00:00",
+    "corpCode": "00261285",
+    "corpName": "한국가스공사",
+    "corpNameEn": "Korea Gas Corporation",
+    "stockCode": "036460",
+    "latestRceptNo": "20260323001058",
+    "latestReportName": "사업보고서 (2025.12)",
+    "latestReportDate": "20260323",
+    "filings": [
+      {
+        "rcept_no": "20260428800625",
+        "rcept_dt": "20260428",
+        "report_nm": "기타경영사항(자율공시)"
+      },
+      {
+        "rcept_no": "20260422800446",
+        "rcept_dt": "20260422",
+        "report_nm": "기업가치제고계획(자율공시)"
+      },
+      {
+        "rcept_no": "20260420000524",
+        "rcept_dt": "20260420",
+        "report_nm": "사외이사의선임ㆍ해임또는중도퇴임에관한신고"
+      },
+      {
+        "rcept_no": "20260410801089",
+        "rcept_dt": "20260410",
+        "report_nm": "주주명부폐쇄기간또는기준일설정"
+      },
+      {
+        "rcept_no": "20260410800420",
+        "rcept_dt": "20260410",
+        "report_nm": "영업(잠정)실적(공정공시)"
+      },
+      {
+        "rcept_no": "20260401002957",
+        "rcept_dt": "20260401",
+        "report_nm": "주식등의대량보유상황보고서(약식)"
+      },
+      {
+        "rcept_no": "20260331802602",
+        "rcept_dt": "20260331",
+        "report_nm": "정기주주총회결과"
+      },
+      {
+        "rcept_no": "20260325801218",
+        "rcept_dt": "20260325",
+        "report_nm": "자원개발진행사항공시(자율공시)"
+      },
+      {
+        "rcept_no": "20260323001058",
+        "rcept_dt": "20260323",
+        "report_nm": "사업보고서 (2025.12)"
+      },
+      {
+        "rcept_no": "20260316000637",
+        "rcept_dt": "20260316",
+        "report_nm": "주주총회소집공고"
+      },
+      {
+        "rcept_no": "20260313801971",
+        "rcept_dt": "20260313",
+        "report_nm": "감사보고서제출"
+      },
+      {
+        "rcept_no": "20260313800277",
+        "rcept_dt": "20260313",
+        "report_nm": "영업(잠정)실적(공정공시)"
+      },
+      {
+        "rcept_no": "20260309801616",
+        "rcept_dt": "20260309",
+        "report_nm": "[기재정정]주주총회소집결의"
+      },
+      {
+        "rcept_no": "20260304801580",
+        "rcept_dt": "20260304",
+        "report_nm": "주주총회소집결의"
+      },
+      {
+        "rcept_no": "20260304801501",
+        "rcept_dt": "20260304",
+        "report_nm": "기업설명회(IR)개최(안내공시)"
+      },
+      {
+        "rcept_no": "20260226801287",
+        "rcept_dt": "20260226",
+        "report_nm": "매출액또는손익구조30%(대규모법인은15%)이상변경"
+      },
+      {
+        "rcept_no": "20260226801276",
+        "rcept_dt": "20260226",
+        "report_nm": "현금ㆍ현물배당결정"
+      },
+      {
+        "rcept_no": "20260226800912",
+        "rcept_dt": "20260226",
+        "report_nm": "연결재무제표기준영업(잠정)실적(공정공시)"
+      },
+      {
+        "rcept_no": "20260223800818",
+        "rcept_dt": "20260223",
+        "report_nm": "결산실적공시예고(안내공시)"
+      },
+      {
+        "rcept_no": "20260212801026",
+        "rcept_dt": "20260212",
+        "report_nm": "영업(잠정)실적(공정공시)"
+      },
+      {
+        "rcept_no": "20260206801082",
+        "rcept_dt": "20260206",
+        "report_nm": "소송등의제기ㆍ신청(일정금액이상의청구)"
+      },
+      {
+        "rcept_no": "20260130800370",
+        "rcept_dt": "20260130",
+        "report_nm": "소송등의제기ㆍ신청(일정금액이상의청구)"
+      },
+      {
+        "rcept_no": "20260121800489",
+        "rcept_dt": "20260121",
+        "report_nm": "소송등의판결ㆍ결정(일정금액이상의청구)"
+      },
+      {
+        "rcept_no": "20260115800100",
+        "rcept_dt": "20260115",
+        "report_nm": "영업(잠정)실적(공정공시)"
+      },
+      {
+        "rcept_no": "20251211800299",
+        "rcept_dt": "20251211",
+        "report_nm": "단일판매ㆍ공급계약체결"
+      },
+      {
+        "rcept_no": "20251209800497",
+        "rcept_dt": "20251209",
+        "report_nm": "영업(잠정)실적(공정공시)"
+      },
+      {
+        "rcept_no": "20251124800279",
+        "rcept_dt": "20251124",
+        "report_nm": "단일판매ㆍ공급계약체결"
+      },
+      {
+        "rcept_no": "20251121800363",
+        "rcept_dt": "20251121",
+        "report_nm": "주주명부폐쇄기간또는기준일설정"
+      },
+      {
+        "rcept_no": "20251114801844",
+        "rcept_dt": "20251114",
+        "report_nm": "[기재정정]단일판매ㆍ공급계약체결"
+      },
+      {
+        "rcept_no": "20251114000871",
+        "rcept_dt": "20251114",
+        "report_nm": "분기보고서 (2025.09)"
+      }
+    ],
+    "sectorVolumesByYear": [
+      {
+        "year": 1987,
+        "cityGas_kt": 75,
+        "power_kt": 1537,
+        "total_kt": 1612
+      },
+      {
+        "year": 2015,
+        "cityGas_kt": 16929,
+        "power_kt": 14527,
+        "total_kt": 31456
+      },
+      {
+        "year": 2016,
+        "cityGas_kt": 17384,
+        "power_kt": 15389,
+        "total_kt": 32773
+      },
+      {
+        "year": 2017,
+        "cityGas_kt": 18390,
+        "power_kt": 13772,
+        "total_kt": 32162
+      },
+      {
+        "year": 2018,
+        "cityGas_kt": 19813,
+        "power_kt": 16406,
+        "total_kt": 36219
+      },
+      {
+        "year": 2019,
+        "cityGas_kt": 18822,
+        "power_kt": 14775,
+        "total_kt": 33597
+      },
+      {
+        "year": 2020,
+        "cityGas_kt": 18247,
+        "power_kt": 14120,
+        "total_kt": 32367
+      },
+      {
+        "year": 2021,
+        "cityGas_kt": 19331,
+        "power_kt": 17583,
+        "total_kt": 36914
+      },
+      {
+        "year": 2022,
+        "cityGas_kt": 19832,
+        "power_kt": 18565,
+        "total_kt": 38397
+      },
+      {
+        "year": 2023,
+        "cityGas_kt": 18328,
+        "power_kt": 16314,
+        "total_kt": 34642
+      },
+      {
+        "year": 2024,
+        "cityGas_kt": 18398,
+        "power_kt": 15727,
+        "total_kt": 34125
+      },
+      {
+        "year": 2025,
+        "cityGas_kt": 19008,
+        "power_kt": 15505,
+        "total_kt": 34513
+      }
+    ],
+    "contractedVolumes": [
+      {
+        "year": 2025,
+        "power_avg_tariff_kt": 14879.0,
+        "power_individual_tariff_kt": 1295.0,
+        "cityGas_kt": 18912.0,
+        "total_kt": 35086.0
+      },
+      {
+        "year": 2024,
+        "power_avg_tariff_kt": 15767.0,
+        "power_individual_tariff_kt": 962.5,
+        "cityGas_kt": 19227.0,
+        "total_kt": 35956.5
+      },
+      {
+        "year": 2023,
+        "power_avg_tariff_kt": 17698.0,
+        "power_individual_tariff_kt": 440.0,
+        "cityGas_kt": 19839.0,
+        "total_kt": 37977.0
+      }
+    ],
+    "lngOrigins": [
+      "Qatar",
+      "Australia",
+      "United States"
+    ],
+    "lngOriginsKr": [
+      "카타르",
+      "호주",
+      "미국"
+    ],
+    "source": "OpenDART (Financial Supervisory Service)",
+    "sourceUrl": "https://opendart.fss.or.kr"
+  },
   "errors": []
 }
