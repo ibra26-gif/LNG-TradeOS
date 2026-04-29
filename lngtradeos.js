@@ -6190,7 +6190,7 @@ let F={blng:null,params:null,snaps:null,matrix:null,matrixTs:null,blngTs:null,ex
 
 function fg(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
 function fs(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
-function fSaveBlng(b){F.blng=b;const ts=new Date().toISOString();fs('f_blng',b);localStorage.setItem('f_blng_ts',ts);F.blngTs=ts;}
+function fSaveBlng(b){F.blng=b;const ts=new Date().toISOString();fs('f_blng',b);localStorage.setItem('f_blng_ts',ts);F.blngTs=ts;try{if(typeof _fobMarkFresh==='function')_fobMarkFresh('freight');}catch(e){}}
 function fSaveParams(p){F.params=p;fs('f_params',p);}
 function fSaveMatParams(){fs('f_mat_params',F.matParams);}
 function fSavePR(){fs('f_posArr',F.posArr);fs('f_repoArr',F.repoArr);}
@@ -11362,6 +11362,139 @@ function cpFobPricing(d){
 
 
 // ════════════════════════════════════════════════════════════════════════════
+// FOB Snapshots — capture (EOD curves + freight + phys + liqFee) at one
+// moment in time so the historical chart is TRUTHFUL (all 3 inputs aligned).
+//
+// Storage:  localStorage 'fob_snapshots' (array, append-only)
+// Triggers: (1) auto on EOD load when EOD date advances
+//           (2) manual button — force re-snapshot regardless of freshness
+//
+// Freshness timestamps: 'eod_last_ts', 'freight_last_ts', 'phys_last_ts'
+// updated whenever the user touches the corresponding input.
+// ════════════════════════════════════════════════════════════════════════════
+const FOB_SNAP_KEY = 'fob_snapshots';
+
+function _fobLoadSnapshots(){
+  try { return JSON.parse(localStorage.getItem(FOB_SNAP_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+function _fobSaveSnapshots(arr){
+  try { localStorage.setItem(FOB_SNAP_KEY, JSON.stringify(arr)); }
+  catch (e) { console.warn('[FOB] snapshot save failed', e.message); }
+}
+function _fobLatestEodDate(){
+  if (!sDates?.length) return null;
+  return sDates[sDates.length - 1];
+}
+
+// Capture current state into a snapshot. Returns the snapshot object or null.
+function fobCaptureSnapshot(opts = {}){
+  const force = !!opts.force;
+  const eodDs = _fobLatestEodDate();
+  if (!eodDs) { if (force) alert('No EOD curves loaded.'); return null; }
+  const eodDate = aD[eodDs].date;
+  const eodIso  = eodDate.toISOString().slice(0,10);
+
+  const snaps = _fobLoadSnapshots();
+  const lastSnap = snaps[snaps.length - 1];
+  if (!force && lastSnap && lastSnap.eod_date === eodIso) {
+    return null; // already snapshotted this EOD date
+  }
+
+  // Pull gas curves M+1..M+24 from the EOD row set.
+  const tenors = 24;
+  const gas = { HH: [], JKM: [], TTF: [], NBP: [], Brent: [] };
+  for (let n = 1; n <= tenors; n++) {
+    const pk = rPK(eodDate, n);
+    const row = (aD[eodDs].rows || []).find(r => r.pk === pk);
+    ['HH','JKM','TTF','NBP','Brent'].forEach(k => gas[k].push(row?.[k] ?? null));
+  }
+
+  // Snapshot freight (full CP.freight object — clones today's snapshot)
+  const freight = {};
+  for (const k in (CP.freight || {})) {
+    if (Array.isArray(CP.freight[k])) freight[k] = CP.freight[k].slice(0, tenors);
+  }
+  // Snapshot phys (CP.phys + cp_phys_ov overrides folded in if present)
+  const phys = {};
+  for (const k in (CP.phys || {})) {
+    if (Array.isArray(CP.phys[k])) phys[k] = CP.phys[k].slice(0, tenors);
+  }
+  const physOv = cpGet('cp_phys_ov', {}) || {};
+
+  const liqFee = (CP.liqFee || []).slice(0, tenors);
+
+  const snap = {
+    ts:         new Date().toISOString(),
+    eod_date:   eodIso,
+    freight_ts: localStorage.getItem('freight_last_ts') || null,
+    phys_ts:    localStorage.getItem('phys_last_ts')    || null,
+    gas, freight, phys, physOv, liqFee,
+  };
+
+  snaps.push(snap);
+  // Keep last 365 snapshots (1 yr daily) — guard against runaway growth
+  while (snaps.length > 365) snaps.shift();
+  _fobSaveSnapshots(snaps);
+
+  console.log('[FOB] snapshot captured for EOD', eodIso, '— total', snaps.length);
+  return snap;
+}
+window.fobCaptureSnapshot = fobCaptureSnapshot;
+
+// Compute the FOB time series from saved snapshots, parameterized by
+// (origin, tenor, route_id, idx). Mirrors _fobHistTimeSeries but reads
+// per-snapshot inputs instead of mixing today's freight/phys with
+// historical gas. This is the truthful version.
+function _fobSnapTimeSeries(originType, tenor, routeId, idxName){
+  const snaps = _fobLoadSnapshots();
+  if (!snaps.length) return [];
+  const route = (FOB_ROUTES[originType] || []).find(r => r.id === routeId);
+  if (!route) return [];
+  const sl = CP.hhSlope || 1.15;
+  const out = [];
+  for (const s of snaps) {
+    const i = tenor - 1;
+    const hh  = s.gas?.HH?.[i];
+    const jkm = s.gas?.JKM?.[i];
+    const ttf = s.gas?.TTF?.[i];
+    const fr  = s.freight?.[route.frKey]?.[i];
+    const liq = s.liqFee?.[i] ?? 2.50;
+    const physVal = route.physKey ? (s.phys?.[route.physKey]?.[i] ?? 0) : 0;
+
+    let v = null;
+    if (originType === 'usgc' && idxName === 'FIXED' && hh != null) {
+      // Sabine Cheniere formula
+      v = +(sl * hh + liq).toFixed(3);
+    } else {
+      const idxAtDate = (route.desKey === 'JKM') ? jkm : ttf;
+      if (idxAtDate != null && fr != null) {
+        const desValue = idxAtDate + physVal;
+        if (idxName === 'FIXED') {
+          v = +(desValue - fr).toFixed(3);
+        } else {
+          const idxValAtDate = idxName === 'TTF' ? ttf
+                              : idxName === 'JKM' ? jkm
+                              : (hh != null ? sl * hh : null);
+          if (idxValAtDate != null) v = +(desValue - fr - idxValAtDate).toFixed(3);
+        }
+      }
+    }
+    out.push({ date: new Date(s.eod_date), eod_date: s.eod_date, ts: s.ts, value: v });
+  }
+  return out;
+}
+
+// Track input freshness — called from EOD-load / freight-save / phys-save.
+function _fobMarkFresh(kind){
+  try {
+    if (kind === 'eod')     localStorage.setItem('eod_last_ts',     new Date().toISOString());
+    if (kind === 'freight') localStorage.setItem('freight_last_ts', new Date().toISOString());
+    if (kind === 'phys')    localStorage.setItem('phys_last_ts',    new Date().toISOString());
+  } catch (e) {}
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // FOB Historical · Design 2 · daily time-series at user-selected tenor+route
 //
 // For each EOD date in cache + a chosen (tenor, route, index), compute the
@@ -11469,12 +11602,41 @@ function cpFobHistoricalSection(d){
   const omanRouteLabel = (FOB_ROUTES.oman.find(r=>r.id===oman.route)||{}).label || oman.route;
   const yLabel = (idx) => idx==='FIXED' ? '$/MMBtu (Abs)' : 'spread vs '+(idx==='HH'?'115%HH':idx);
 
+  // ── Snapshot freshness panel ─────────────────────────────────────────
+  const snaps = (typeof _fobLoadSnapshots === 'function' ? _fobLoadSnapshots() : []);
+  const eodTs   = localStorage.getItem('eod_last_ts');
+  const frTs    = localStorage.getItem('freight_last_ts');
+  const physTs  = localStorage.getItem('phys_last_ts');
+  const fmtTs = (iso) => {
+    if (!iso) return '<span style="color:#fbbf24">never</span>';
+    const d = new Date(iso);
+    const ageH = (Date.now() - d.getTime()) / 3600000;
+    const color = ageH < 24 ? '#34d399' : ageH < 168 ? '#fbbf24' : '#fca5a5';
+    return `<span style="color:${color}">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})} ${d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} · ${ageH<24?Math.round(ageH)+'h':Math.round(ageH/24)+'d'} ago</span>`;
+  };
+  const lastSnap = snaps[snaps.length - 1];
+
   return `
     <div class="f-sec" style="margin-top:18px">FOB HISTORICAL · daily time series at selected tenor · route · index</div>
-    <div style="font-size:9px;color:#546e7a;padding:0 14px 8px;line-height:1.5">
-      Per-EOD-date FOB price for the picked tenor, route, and index. Same formula as the panes above.
-      Sabine ABS uses Cheniere formula (1.15×HH + liqFee). All other routes/modes: DES − freight (− idx if spread).
-      <span style="color:#fbbf24">⚠ Freight + phys diffs held at current snapshot — historical replay TBD.</span>
+
+    <div style="margin:0 14px 8px;background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;padding:10px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
+        <div style="font-size:10px;color:#c8cfe0;line-height:1.7">
+          <div><b style="color:#a78bfa">Snapshot freshness</b> — captures all 3 inputs at one moment so the chart is truthful</div>
+          <div>EOD curves: ${fmtTs(eodTs)}</div>
+          <div>Freight: &nbsp;&nbsp;${fmtTs(frTs)}</div>
+          <div>Phys diffs: ${fmtTs(physTs)}</div>
+          <div style="margin-top:4px;color:#6b7280">Snapshots stored: <b style="color:#fff">${snaps.length}</b>${lastSnap?` · last: ${lastSnap.eod_date} (${new Date(lastSnap.ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})})`:''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <button class="f-btn" style="border-color:#a78bfa;color:#a78bfa" onclick="if(fobCaptureSnapshot({force:true})){alert('Snapshot captured. Total: '+_fobLoadSnapshots().length);renderCargoTab();}">📌 SNAPSHOT NOW (force)</button>
+          <button class="f-btn sm" style="border-color:#22c55e;color:#22c55e" onclick="(()=>{const j=_fobLoadSnapshots();const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(j,null,2));a.download='fob_snapshots.json';a.click();})()">↓ EXPORT JSON</button>
+          ${snaps.length?`<button class="f-btn sm" style="border-color:#ef5350;color:#ef5350" onclick="if(confirm('Clear all FOB snapshots?')){localStorage.removeItem('${FOB_SNAP_KEY}');renderCargoTab();}">⚠ CLEAR</button>`:''}
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:9px;color:#6b7280;line-height:1.5">
+        Auto-snapshot fires once per new EOD date. Force-snapshot captures regardless of freshness — use when freight or phys was updated AFTER the EOD load. Each snapshot saves the full M+1..M+24 gas curves + all freight routes + all phys diffs at that moment.
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 14px">
@@ -11507,9 +11669,20 @@ function _fobRenderHistoricalCharts(d){
   const oman = { origin:'oman', tenor: CP.fobOmanHistTenor || 1, route: CP.fobOmanHistRoute || 'oman_tokyo',   idx: CP.fobOmanHistIdx || 'FIXED' };
 
   function renderForOrigin(sel, frontId, color){
-    if (!sDates?.length) return;
-    const series = _fobHistTimeSeries(sel.origin, sel.tenor, sel.route, sel.idx);
-    if (!series.length) return;
+    // Truthful series from saved snapshots only (each snapshot = 3 inputs aligned)
+    const series = _fobSnapTimeSeries(sel.origin, sel.tenor, sel.route, sel.idx);
+    if (!series.length) {
+      const c = document.getElementById(frontId);
+      if (c && c.getContext) {
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0,0,c.width,c.height);
+        ctx.fillStyle = '#546e7a';
+        ctx.font = '11px IBM Plex Mono';
+        ctx.textAlign = 'center';
+        ctx.fillText('No snapshots yet — click 📌 SNAPSHOT NOW above', c.width/2, c.height/2);
+      }
+      return;
+    }
 
     const frontCanvas = document.getElementById(frontId);
     if (!frontCanvas) return;
@@ -11851,9 +12024,9 @@ function cpForceReset(){
   alert('Cache cleared — reinitialising...');initCargo();
 }
 function cpSetPhys(k,i,v){CP.phys[k][i]=+v;cpSet('cp_phys',CP.phys);renderCargoTab();}
-function cpSetOv(t,i,v){const ov=cpGet('cp_phys_ov',{});ov[t+'_'+i]=+v;cpSet('cp_phys_ov',ov);renderCargoTab();}
-function cpResetOv(t,i){const ov=cpGet('cp_phys_ov',{});delete ov[t+'_'+i];cpSet('cp_phys_ov',ov);renderCargoTab();}
-function cpResetAllOv(){cpSet('cp_phys_ov',{});renderCargoTab();}
+function cpSetOv(t,i,v){const ov=cpGet('cp_phys_ov',{});ov[t+'_'+i]=+v;cpSet('cp_phys_ov',ov);try{_fobMarkFresh('phys');}catch(e){}renderCargoTab();}
+function cpResetOv(t,i){const ov=cpGet('cp_phys_ov',{});delete ov[t+'_'+i];cpSet('cp_phys_ov',ov);try{_fobMarkFresh('phys');}catch(e){}renderCargoTab();}
+function cpResetAllOv(){cpSet('cp_phys_ov',{});try{_fobMarkFresh('phys');}catch(e){}renderCargoTab();}
 function cpSetLiqFee(v){CP.liqFee=Array(24).fill(+v);cpSet('cp_liqfee',CP.liqFee);renderCargoTab();}
 function cpSaveHistSnap(){const d=cpDerived();const snap={date:CP.histSnapDate,frDiff:[...d.frDiff],spread:[...d.jkmTtf]};const updated=[snap,...CP.histSnaps.filter(s=>s.date!==CP.histSnapDate)].slice(0,90);CP.histSnaps=updated;cpSet('cp_hist_snaps',updated);renderCargoTab();}
 function cpUploadPhys(evt){
@@ -12387,7 +12560,7 @@ async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.m
   }
   if(eexAdded>0){buildEuHubChart();buildDash();const st=document.getElementById('eex-status');if(st)st.textContent=`${eexDates.length} dates · last ${eexDates[eexDates.length-1]||'—'}`;}
   if(!lngFiles.length){if(eexAdded>0)return;alert('No LNG curve files found (EEX files processed separately).');return;}
-  if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$id('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of lngFiles){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}try{const buf=await toAB(file);if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$id('progfill2');if(pf)pf.style.width=Math.round(done/lngFiles.length*100)+'%';const pt=$id('progtxt2');if(pt)pt.textContent=`${done}/${lngFiles.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
+  if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$id('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of lngFiles){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}try{const buf=await toAB(file);if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$id('progfill2');if(pf)pf.style.width=Math.round(done/lngFiles.length*100)+'%';const pt=$id('progtxt2');if(pt)pt.textContent=`${done}/${lngFiles.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(added>0){try{_fobMarkFresh('eod');setTimeout(()=>{try{fobCaptureSnapshot();}catch(e){}},1500);}catch(e){}}if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
 function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();buildEuHubChart();updHist();if(typeof crxInvalidateCache==='function')crxInvalidateCache();cInit();updSpread();updFC();updSea();}
 function rPK(d,t){const r=new Date(d.getFullYear(),d.getMonth()+parseInt(t),1);return`${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}`;}
 function aPKs(){const s=new Set();for(const ds of sDates)aD[ds].rows.forEach(r=>s.add(r.pk));return[...s].sort();}
