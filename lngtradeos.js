@@ -9534,6 +9534,7 @@ function initCargo(){
   CP.coghMode=cpGet('cp_cogh_mode',false);
   CP.fobUsIdx=cpGet('cp_fob_us_idx','TTF');
   CP.fobOmanIdx=cpGet('cp_fob_oman_idx','TTF');
+  CP.fobOmanHistIdx=cpGet('cp_fob_oman_hist_idx','FIXED');
   CP.fobOmanFixed=cpGet('cp_fob_oman_fixed',10.00);
   CP.tab=0;renderCargo();
 }
@@ -9578,7 +9579,7 @@ function renderCargoTab(){const b=document.getElementById('cp-body');if(!b)retur
   else if(CP.tab===5)b.innerHTML=cpMEIArb(d);
   else if(CP.tab===6)b.innerHTML=cpPacificArb(d);
   else if(CP.tab===7)b.innerHTML=cpFrDiffBasis(d);
-  else if(CP.tab===8)b.innerHTML=cpFobPricing(d);
+  else if(CP.tab===8){b.innerHTML=cpFobPricing(d); setTimeout(()=>{ try{_fobRenderHistoricalCharts(d);}catch(e){console.warn('[FOB hist]',e);} },50);}
   // Browsers do NOT execute <script> tags injected via innerHTML. The FR Diff
   // vs Basis tab emits a Chart.js init block as an inline <script> — re-insert
   // it so it runs. Harmless for tabs that contain no <script>.
@@ -11349,7 +11350,205 @@ function cpFobPricing(d){
     </div>
     ${usPane}
     ${omanPane}
+    ${cpFobHistoricalSection(d)}
   `;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// FOB Historical curves — for each EOD date in cache, compute the M+1..M+24
+// forward curve using the same formula as the static cpFobPricing panes:
+//   USGC FOB = 1.15 × HH(date, M+N) + liqFee[N]
+//   Oman FOB = DES(jktc, date, M+N) − freight(oman_tokyo, M+N) − idxArr[N]
+// Then surface two views per origin:
+//   1. Spaghetti — full M+1..M+24 curves at selected historical dates
+//   2. Front-month time series (M+1 daily history)
+// ════════════════════════════════════════════════════════════════════════════
+function _fobBuildHistoricalCurves(originType, idxName, tenorMax){
+  // Returns Array<{date, ds, curve: [M+1, M+2, ..., M+tenorMax]}> sorted by date.
+  if (!sDates?.length) return [];
+  const sl = CP.hhSlope || 1.15;
+  const out = [];
+  for (const ds of sDates) {
+    const date = aD[ds]?.date; if (!date) continue;
+    const rows = aD[ds]?.rows || [];
+    const curve = [];
+    for (let n = 1; n <= tenorMax; n++) {
+      const pk = rPK(date, n);
+      const row = rows.find(r => r.pk === pk);
+      let v = null;
+      if (row) {
+        if (originType === 'usgc') {
+          // USGC FOB = 1.15 × HH(M+N) + liqFee[N-1]
+          const hh = row.HH;
+          const fee = (CP.liqFee && CP.liqFee[n-1] != null) ? CP.liqFee[n-1] : 2.50;
+          if (hh != null && !isNaN(hh)) v = +(sl * hh + fee).toFixed(3);
+        } else if (originType === 'oman') {
+          // Oman FOB = DES JKTC − Oman→Tokyo freight − idxArr
+          //   DES JKTC ≈ JKM at front (we use JKM directly as DES anchor)
+          //   For 'FIXED' index → return absolute (DES − freight)
+          const jkm = row.JKM;
+          const fr  = (CP.freight?.oman_tokyo?.[n-1]);
+          if (jkm != null && fr != null) {
+            if (idxName === 'FIXED') {
+              v = +(jkm - fr).toFixed(3); // absolute FOB level
+            } else {
+              const idxArr = idxName === 'JKM' ? row.JKM
+                            : idxName === 'HH' ? sl * row.HH
+                            : row.TTF;
+              if (idxArr != null) v = +(jkm - fr - idxArr).toFixed(3);
+            }
+          }
+        }
+      }
+      curve.push(v);
+    }
+    out.push({ date, ds, curve });
+  }
+  return out;
+}
+
+function cpFobHistoricalSection(d){
+  const usIdx   = 'FIXED'; // USGC always shown as absolute (1.15×HH + fee)
+  const omanIdx = CP.fobOmanHistIdx || 'FIXED';
+  return `
+    <div class="f-sec" style="margin-top:18px">FOB HISTORICAL · forward curves over time (M+1 → M+24)</div>
+    <div style="font-size:9px;color:#546e7a;padding:0 14px 8px;line-height:1.5">
+      Same formula as the panes above, applied to every EOD date in cache.
+      USGC = 1.15 × HH + liquefaction fee. Oman = DES JKTC − Oman→Tokyo freight (− idx if spread mode).
+      Spaghetti = full curve at 5 historical dates · Time series = M+1 evolution.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 14px">
+
+      <!-- USGC HISTORICAL -->
+      <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937">
+        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:6px">
+          US (Sabine) FOB · 1.15×HH + liqFee
+        </div>
+        <div style="height:200px"><canvas id="fob-hist-us-spaghetti"></canvas></div>
+        <div style="height:160px;margin-top:8px"><canvas id="fob-hist-us-front"></canvas></div>
+      </div>
+
+      <!-- OMAN HISTORICAL -->
+      <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <span style="font-size:11px;color:#fff;font-weight:500">Oman FOB · JKM − Oman→Tokyo freight</span>
+          <div style="display:flex;gap:3px">
+            ${['FIXED','TTF','JKM','HH'].map(x => `<button class="f-btn sm${omanIdx===x?' on':''}" onclick="CP.fobOmanHistIdx='${x}';cpSet('cp_fob_oman_hist_idx','${x}');renderCargoTab()">${x==='FIXED'?'Abs':x==='HH'?'115%HH':x}</button>`).join('')}
+          </div>
+        </div>
+        <div style="height:200px"><canvas id="fob-hist-oman-spaghetti"></canvas></div>
+        <div style="height:160px;margin-top:8px"><canvas id="fob-hist-oman-front"></canvas></div>
+      </div>
+
+    </div>
+  `;
+}
+
+// Render the historical charts after the FOB tab DOM is mounted.
+function _fobRenderHistoricalCharts(d){
+  const omanIdx = CP.fobOmanHistIdx || 'FIXED';
+
+  function renderForOrigin(origin, idxName, ids){
+    if (!sDates?.length) return;
+    const series = _fobBuildHistoricalCurves(origin, idxName, 24);
+    if (!series.length) return;
+
+    // Pick spaghetti dates: today, -7d, -30d, -90d, -180d
+    const lastIdx = series.length - 1;
+    const dayOffsets = [0, 7, 30, 90, 180];
+    const palette   = ['#34d399','#3b82f6','#a78bfa','#f59e0b','#fca5a5'];
+    const spagDatasets = [];
+    dayOffsets.forEach((off, i) => {
+      // Find row by date offset (calendar days, not snapshot-index)
+      const target = new Date(series[lastIdx].date.getTime() - off*86400000);
+      let pick = series[lastIdx];
+      for (let k = lastIdx; k >= 0; k--) {
+        if (series[k].date <= target) { pick = series[k]; break; }
+      }
+      spagDatasets.push({
+        label: off === 0 ? 'Today' : `T-${off}d (${pick.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})})`,
+        data: pick.curve,
+        borderColor: palette[i],
+        backgroundColor: 'transparent',
+        borderWidth: i === 0 ? 2.2 : 1.2,
+        pointRadius: 0,
+        tension: 0.25,
+        fill: false,
+        spanGaps: true,
+      });
+    });
+
+    // Spaghetti chart — x is M+1..M+24, y is $/MMBtu (or spread)
+    const spagCanvas = document.getElementById(ids.spaghetti);
+    if (spagCanvas) {
+      if (window['_'+ids.spaghetti]) window['_'+ids.spaghetti].destroy();
+      window['_'+ids.spaghetti] = new Chart(spagCanvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: ML.map((m,i) => `M+${i+1}`),
+          datasets: spagDatasets,
+        },
+        options: {
+          ...CD, animation: false,
+          plugins: {
+            ...CD.plugins,
+            legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:8},boxWidth:6,padding:4} },
+          },
+          scales: {
+            x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:13} },
+            y: { ...CD.scales.y,
+                  title:{display:true,text:idxName==='FIXED'?'$/MMBtu':`vs ${idxName}`,color:'#3d5070',font:{size:8}},
+                  ticks:{color:'#3d5070',font:{size:8}} },
+          },
+        }
+      });
+    }
+
+    // Front-month time series — every EOD date, M+1 only
+    const frontCanvas = document.getElementById(ids.front);
+    if (frontCanvas) {
+      if (window['_'+ids.front]) window['_'+ids.front].destroy();
+      const labels = series.map(r => r.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+      const data = series.map(r => r.curve[0]);
+      window['_'+ids.front] = new Chart(frontCanvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'M+1',
+            data,
+            borderColor: '#34d399',
+            backgroundColor: 'rgba(52,211,153,0.10)',
+            borderWidth: 1.6,
+            pointRadius: 0,
+            tension: 0.25,
+            fill: true,
+            spanGaps: true,
+          }]
+        },
+        options: {
+          ...CD, animation: false,
+          plugins: {
+            ...CD.plugins,
+            legend: { display:false },
+            tooltip: { ...CD.plugins.tooltip, callbacks: {
+              label: (ctx) => `${ctx.label}: ${ctx.parsed.y?.toFixed(3)} ${idxName==='FIXED'?'$/MMBtu':'vs '+idxName}`,
+            }},
+          },
+          scales: {
+            x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:8} },
+            y: { ...CD.scales.y, title:{display:true,text:'M+1',color:'#3d5070',font:{size:8}},
+                  ticks:{color:'#3d5070',font:{size:8}} },
+          },
+        }
+      });
+    }
+  }
+
+  renderForOrigin('usgc', 'FIXED', { spaghetti:'fob-hist-us-spaghetti',   front:'fob-hist-us-front'   });
+  renderForOrigin('oman', omanIdx, { spaghetti:'fob-hist-oman-spaghetti', front:'fob-hist-oman-front' });
 }
 
 
