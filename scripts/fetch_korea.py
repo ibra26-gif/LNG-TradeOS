@@ -1334,6 +1334,219 @@ def fetch_dart_kogas_quarterly_inventory():
 
 
 # ────────────────────────────────────────────────────────────────────
+# Data.go.kr — Korean Public Data Portal (no API key required for file
+# datasets; just two-step CSV download via session)
+#
+# Datasets used:
+#   15129906  KOGAS monthly supply by use (city gas vs power) — tons,
+#             monthly, Jan 2016 → present.
+#   15052058  KOGAS power-sector natural-gas tariff (raw material cost +
+#             supply cost) — KRW/Nm³ + KRW/GJ, monthly, Jan 2008 → present.
+#
+# Two-step protocol:
+#   1) GET /tcs/dss/selectFileDataDownload.do?publicDataPk=...&fileDetailSn=1
+#      → JSON metadata containing atchFileId
+#   2) GET /cmm/cmm/fileDownload.do?atchFileId=...&fileDetailSn=1
+#      → CSV bytes (cp949 encoded for Korean files)
+# ────────────────────────────────────────────────────────────────────
+DATA_GO_KR_BASE = 'https://www.data.go.kr'
+
+
+def _data_go_kr_download(public_data_pk, file_detail_sn='1'):
+    """Two-step Data.go.kr file fetch. Returns raw bytes of the CSV file
+    or None on failure. No API key required."""
+    if _USE_REQUESTS:
+        sess = _requests.Session()
+    else:
+        return None  # urllib doesn't support session cleanly enough here
+    sess.headers.update({
+        'User-Agent': UA,
+        'Referer': f'{DATA_GO_KR_BASE}/data/{public_data_pk}/fileData.do',
+    })
+    try:
+        # 1) Metadata call
+        meta_url = f'{DATA_GO_KR_BASE}/tcs/dss/selectFileDataDownload.do'
+        r = sess.get(meta_url,
+                     params={'publicDataPk': str(public_data_pk),
+                              'fileDetailSn': str(file_detail_sn)},
+                     timeout=30)
+        r.raise_for_status()
+        meta = r.json()
+        atch_id = (meta.get('atchFileId')
+                    or (meta.get('fileDataRegistVO') or {}).get('atchFileId'))
+        if not atch_id:
+            print(f'data.go.kr {public_data_pk}: no atchFileId', file=sys.stderr)
+            return None
+        # 2) File download
+        dl_url = f'{DATA_GO_KR_BASE}/cmm/cmm/fileDownload.do'
+        r = sess.get(dl_url,
+                     params={'atchFileId': atch_id, 'fileDetailSn': file_detail_sn},
+                     timeout=120)
+        r.raise_for_status()
+        return r.content
+    except Exception as e:
+        print(f'data.go.kr {public_data_pk} download failed: {e}', file=sys.stderr)
+        return None
+
+
+def _decode_korean_csv(buf):
+    """Korean public-data CSVs may be utf-8-sig, cp949, or euc-kr."""
+    for enc in ('utf-8-sig', 'utf-8', 'cp949', 'euc-kr'):
+        try:
+            return buf.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return buf.decode('cp949', errors='replace')
+
+
+def fetch_kogas_monthly_supply():
+    """Pull KOGAS monthly supply by use (city gas + power) from Data.go.kr.
+    No API key required. CSV columns: 연도, 월, 용도, 공급량 (tons).
+    Coverage: Jan 2016 → present, refreshed quarterly.
+    """
+    import csv as _csv
+    import io as _io
+    cache_path = os.path.join(os.path.dirname(OUT_PATH), 'data_go_kr_kogas_supply.json')
+    today = datetime.now(timezone.utc)
+
+    # Stale cache check — refresh if missing or > 7 days old
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                cached = json.load(f)
+            cached_at = cached.get('cachedAt')
+            if cached_at:
+                age = (today - datetime.fromisoformat(cached_at)).days
+                if age < 7:
+                    return cached
+        except Exception:
+            pass
+
+    buf = _data_go_kr_download('15129906', '1')
+    if not buf:
+        return None
+
+    text = _decode_korean_csv(buf)
+    reader = _csv.DictReader(_io.StringIO(text))
+    by_date = {}
+    for r in reader:
+        try:
+            yr = int(r['연도']); mo = int(r['월'])
+            use = r['용도'].strip()
+            ton = int(str(r['공급량']).replace(',', ''))
+        except (KeyError, ValueError):
+            continue
+        date = f'{yr}-{mo:02d}-01'
+        if date not in by_date:
+            by_date[date] = {'date': date}
+        # 도시가스 = city gas, 발전용 = power generation
+        key = ('cityGas_t' if '도시' in use else
+                'power_t' if '발전' in use else use)
+        by_date[date][key] = ton
+
+    series = sorted(by_date.values(), key=lambda r: r['date'])
+    # Compute total for convenience
+    for r in series:
+        r['total_t'] = (r.get('cityGas_t') or 0) + (r.get('power_t') or 0)
+
+    out = {
+        'cachedAt': today.isoformat(timespec='seconds'),
+        'source':    'data.go.kr · KOGAS_용도별 월 공급량 (15129906)',
+        'sourceUrl': f'{DATA_GO_KR_BASE}/data/15129906/fileData.do',
+        'series':    series,
+    }
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        json.dump(out, f, indent=2, ensure_ascii=False)
+    print(f'data.go.kr KOGAS supply: {len(series)} months '
+          f'({series[0]["date"][:7]}–{series[-1]["date"][:7]})', file=sys.stderr)
+    return out
+
+
+def fetch_kogas_power_tariff():
+    """Pull KOGAS power-sector natural gas tariff from Data.go.kr.
+    No API key required. CSV columns:
+      연월, 원(Nm3 원료비), 원(Nm3 공급비), 원(GJ 원료비), 원(GJ 공급비).
+    Coverage: Jan 2008 → latest (irregular updates).
+
+    Computes total tariff = raw material cost + supply cost (in both KRW/Nm³
+    and KRW/GJ). USD/MMBtu conversion done client-side using ECB FX.
+    """
+    import csv as _csv
+    import io as _io
+    cache_path = os.path.join(os.path.dirname(OUT_PATH), 'data_go_kr_kogas_tariff.json')
+    today = datetime.now(timezone.utc)
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                cached = json.load(f)
+            cached_at = cached.get('cachedAt')
+            if cached_at:
+                age = (today - datetime.fromisoformat(cached_at)).days
+                if age < 7:
+                    return cached
+        except Exception:
+            pass
+
+    buf = _data_go_kr_download('15052058', '1')
+    if not buf:
+        return None
+
+    text = _decode_korean_csv(buf)
+    reader = _csv.DictReader(_io.StringIO(text))
+    series = []
+
+    def _f(s):
+        try:    return float(str(s).replace(',', ''))
+        except (TypeError, ValueError): return None
+
+    for r in reader:
+        date = (r.get('연월') or '').strip()
+        if not date:
+            continue
+        # Date may be 'YYYY-MM-DD' (most common) or 'YYYY-MM' or 'YYYYMM'
+        if len(date) == 10 and date[4] == '-' and date[7] == '-':
+            iso = date
+        elif len(date) == 7 and date[4] == '-':
+            iso = date + '-01'
+        elif len(date) == 6:
+            iso = f'{date[:4]}-{date[4:6]}-01'
+        else:
+            continue
+
+        nm3_raw  = _f(r.get('원(Nm3 원료비)'))
+        nm3_sup  = _f(r.get('원(Nm3 공급비)'))
+        gj_raw   = _f(r.get('원(GJ 원료비)'))
+        gj_sup   = _f(r.get('원(GJ 공급비)'))
+
+        if nm3_raw is None and gj_raw is None:
+            continue
+
+        entry = {'date': iso}
+        if nm3_raw is not None: entry['nm3_raw_krw']    = nm3_raw
+        if nm3_sup is not None: entry['nm3_supply_krw'] = nm3_sup
+        if gj_raw  is not None: entry['gj_raw_krw']     = gj_raw
+        if gj_sup  is not None: entry['gj_supply_krw']  = gj_sup
+        if gj_raw is not None and gj_sup is not None:
+            entry['gj_total_krw'] = round(gj_raw + gj_sup, 2)
+        if nm3_raw is not None and nm3_sup is not None:
+            entry['nm3_total_krw'] = round(nm3_raw + nm3_sup, 2)
+        series.append(entry)
+
+    series.sort(key=lambda r: r['date'])
+    out = {
+        'cachedAt':  today.isoformat(timespec='seconds'),
+        'source':    'data.go.kr · KOGAS_발전용 천연가스요금 (15052058)',
+        'sourceUrl': f'{DATA_GO_KR_BASE}/data/15052058/fileData.do',
+        'series':    series,
+    }
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        json.dump(out, f, indent=2, ensure_ascii=False)
+    print(f'data.go.kr KOGAS tariff: {len(series)} months '
+          f'({series[0]["date"][:7]}–{series[-1]["date"][:7]})', file=sys.stderr)
+    return out
+
+
+# ────────────────────────────────────────────────────────────────────
 # KCGA — Korea City Gas Association monthly bulletin (XLSX)
 #
 # KCGA publishes a monthly Excel bulletin (도시가스사업통계월보) with the
@@ -1733,6 +1946,38 @@ def main():
     except Exception as e:
         out['errors'].append(f'DART quarterly inventory: {e}')
         print(f"DART quarterly inventory failed: {e}", file=sys.stderr)
+
+    # data.go.kr KOGAS monthly supply by use (no API key)
+    try:
+        ds = fetch_kogas_monthly_supply()
+        if ds:
+            out['dataGoKr'] = out.get('dataGoKr') or {}
+            out['dataGoKr']['kogasSupply'] = {
+                'cachedAt': ds.get('cachedAt'),
+                'source':   ds.get('source'),
+                'series':   ds.get('series'),
+            }
+            print(f"data.go.kr KOGAS supply: {len(ds.get('series') or [])} months",
+                  file=sys.stderr)
+    except Exception as e:
+        out['errors'].append(f'data.go.kr KOGAS supply: {e}')
+        print(f"data.go.kr KOGAS supply failed: {e}", file=sys.stderr)
+
+    # data.go.kr KOGAS power-sector tariff (no API key)
+    try:
+        dt = fetch_kogas_power_tariff()
+        if dt:
+            out['dataGoKr'] = out.get('dataGoKr') or {}
+            out['dataGoKr']['kogasTariff'] = {
+                'cachedAt': dt.get('cachedAt'),
+                'source':   dt.get('source'),
+                'series':   dt.get('series'),
+            }
+            print(f"data.go.kr KOGAS tariff: {len(dt.get('series') or [])} months",
+                  file=sys.stderr)
+    except Exception as e:
+        out['errors'].append(f'data.go.kr KOGAS tariff: {e}')
+        print(f"data.go.kr KOGAS tariff failed: {e}", file=sys.stderr)
 
     # KCGA monthly bulletins — sub-sector demand (Res/Gen/Biz/Industrial/CHP/Transport)
     try:
