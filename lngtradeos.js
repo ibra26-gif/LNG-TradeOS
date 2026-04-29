@@ -11417,6 +11417,7 @@ function cpFobHistoricalSection(d){
       Same formula as the panes above, applied to every EOD date in cache.
       USGC = 1.15 × HH + liquefaction fee. Oman = DES JKTC − Oman→Tokyo freight (− idx if spread mode).
       Spaghetti = full curve at 5 historical dates · Time series = M+1 evolution.
+      <span style="color:#fbbf24">⚠ Freight held at the current snapshot — historical BLNG is in F.snaps but the per-route derivation isn't yet replayed per EOD date. FOB swings from freight changes (~±$0.50) not yet reflected.</span>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 14px">
