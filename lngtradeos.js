@@ -11412,35 +11412,32 @@ function cpFobHistoricalSection(d){
   const usIdx   = 'FIXED'; // USGC always shown as absolute (1.15×HH + fee)
   const omanIdx = CP.fobOmanHistIdx || 'FIXED';
   return `
-    <div class="f-sec" style="margin-top:18px">FOB HISTORICAL · forward curves over time (M+1 → M+24)</div>
+    <div class="f-sec" style="margin-top:18px">FOB HISTORICAL · M+1 daily evolution</div>
     <div style="font-size:9px;color:#546e7a;padding:0 14px 8px;line-height:1.5">
       Same formula as the panes above, applied to every EOD date in cache.
-      USGC = 1.15 × HH + liquefaction fee. Oman = DES JKTC − Oman→Tokyo freight (− idx if spread mode).
-      Spaghetti = full curve at 5 historical dates · Time series = M+1 evolution.
-      <span style="color:#fbbf24">⚠ Freight held at the current snapshot — historical BLNG is in F.snaps but the per-route derivation isn't yet replayed per EOD date. FOB swings from freight changes (~±$0.50) not yet reflected.</span>
+      USGC = 1.15 × HH(M+1) + liqFee[0]. Oman = DES JKTC − Oman→Tokyo freight at front month.
+      <span style="color:#fbbf24">⚠ Freight held at the current snapshot — historical BLNG not yet replayed per EOD date.</span>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 14px">
 
-      <!-- USGC HISTORICAL -->
+      <!-- USGC HISTORICAL — front-month line chart -->
       <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937">
         <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:6px">
-          US (Sabine) FOB · 1.15×HH + liqFee
+          US (Sabine) FOB · M+1 · $/MMBtu
         </div>
-        <div style="height:200px"><canvas id="fob-hist-us-spaghetti"></canvas></div>
-        <div style="height:160px;margin-top:8px"><canvas id="fob-hist-us-front"></canvas></div>
+        <div style="height:280px"><canvas id="fob-hist-us-front"></canvas></div>
       </div>
 
-      <!-- OMAN HISTORICAL -->
+      <!-- OMAN HISTORICAL — front-month line chart with index toggle -->
       <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-          <span style="font-size:11px;color:#fff;font-weight:500">Oman FOB · JKM − Oman→Tokyo freight</span>
+          <span style="font-size:11px;color:#fff;font-weight:500">Oman FOB · M+1 · ${omanIdx==='FIXED'?'$/MMBtu (Abs)':'spread vs '+(omanIdx==='HH'?'115%HH':omanIdx)}</span>
           <div style="display:flex;gap:3px">
             ${['FIXED','TTF','JKM','HH'].map(x => `<button class="f-btn sm${omanIdx===x?' on':''}" onclick="CP.fobOmanHistIdx='${x}';cpSet('cp_fob_oman_hist_idx','${x}');renderCargoTab()">${x==='FIXED'?'Abs':x==='HH'?'115%HH':x}</button>`).join('')}
           </div>
         </div>
-        <div style="height:200px"><canvas id="fob-hist-oman-spaghetti"></canvas></div>
-        <div style="height:160px;margin-top:8px"><canvas id="fob-hist-oman-front"></canvas></div>
+        <div style="height:280px"><canvas id="fob-hist-oman-front"></canvas></div>
       </div>
 
     </div>
@@ -11451,105 +11448,54 @@ function cpFobHistoricalSection(d){
 function _fobRenderHistoricalCharts(d){
   const omanIdx = CP.fobOmanHistIdx || 'FIXED';
 
-  function renderForOrigin(origin, idxName, ids){
+  function renderForOrigin(origin, idxName, frontId, color){
     if (!sDates?.length) return;
-    const series = _fobBuildHistoricalCurves(origin, idxName, 24);
+    const series = _fobBuildHistoricalCurves(origin, idxName, 1);
     if (!series.length) return;
 
-    // Pick spaghetti dates: today, -7d, -30d, -90d, -180d
-    const lastIdx = series.length - 1;
-    const dayOffsets = [0, 7, 30, 90, 180];
-    const palette   = ['#34d399','#3b82f6','#a78bfa','#f59e0b','#fca5a5'];
-    const spagDatasets = [];
-    dayOffsets.forEach((off, i) => {
-      // Find row by date offset (calendar days, not snapshot-index)
-      const target = new Date(series[lastIdx].date.getTime() - off*86400000);
-      let pick = series[lastIdx];
-      for (let k = lastIdx; k >= 0; k--) {
-        if (series[k].date <= target) { pick = series[k]; break; }
+    const frontCanvas = document.getElementById(frontId);
+    if (!frontCanvas) return;
+    if (window['_'+frontId]) window['_'+frontId].destroy();
+    const labels = series.map(r => r.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+    const data = series.map(r => r.curve[0]);
+    const isAbs = idxName === 'FIXED';
+    window['_'+frontId] = new Chart(frontCanvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'M+1',
+          data,
+          borderColor: color,
+          backgroundColor: color + '1A',  // 10% alpha
+          borderWidth: 1.8,
+          pointRadius: 0,
+          tension: 0.25,
+          fill: true,
+          spanGaps: true,
+        }]
+      },
+      options: {
+        ...CD, animation: false,
+        plugins: {
+          ...CD.plugins,
+          legend: { display:false },
+          tooltip: { ...CD.plugins.tooltip, callbacks: {
+            label: (ctx) => `${ctx.label}: ${ctx.parsed.y?.toFixed(3)} ${isAbs?'$/MMBtu':'vs '+(idxName==='HH'?'115%HH':idxName)}`,
+          }},
+        },
+        scales: {
+          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:9},maxTicksLimit:10} },
+          y: { ...CD.scales.y,
+                title:{display:true,text:isAbs?'$/MMBtu':'vs '+(idxName==='HH'?'115%HH':idxName),color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:9}} },
+        },
       }
-      spagDatasets.push({
-        label: off === 0 ? 'Today' : `T-${off}d (${pick.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})})`,
-        data: pick.curve,
-        borderColor: palette[i],
-        backgroundColor: 'transparent',
-        borderWidth: i === 0 ? 2.2 : 1.2,
-        pointRadius: 0,
-        tension: 0.25,
-        fill: false,
-        spanGaps: true,
-      });
     });
-
-    // Spaghetti chart — x is M+1..M+24, y is $/MMBtu (or spread)
-    const spagCanvas = document.getElementById(ids.spaghetti);
-    if (spagCanvas) {
-      if (window['_'+ids.spaghetti]) window['_'+ids.spaghetti].destroy();
-      window['_'+ids.spaghetti] = new Chart(spagCanvas.getContext('2d'), {
-        type: 'line',
-        data: {
-          labels: ML.map((m,i) => `M+${i+1}`),
-          datasets: spagDatasets,
-        },
-        options: {
-          ...CD, animation: false,
-          plugins: {
-            ...CD.plugins,
-            legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:8},boxWidth:6,padding:4} },
-          },
-          scales: {
-            x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:13} },
-            y: { ...CD.scales.y,
-                  title:{display:true,text:idxName==='FIXED'?'$/MMBtu':`vs ${idxName}`,color:'#3d5070',font:{size:8}},
-                  ticks:{color:'#3d5070',font:{size:8}} },
-          },
-        }
-      });
-    }
-
-    // Front-month time series — every EOD date, M+1 only
-    const frontCanvas = document.getElementById(ids.front);
-    if (frontCanvas) {
-      if (window['_'+ids.front]) window['_'+ids.front].destroy();
-      const labels = series.map(r => r.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
-      const data = series.map(r => r.curve[0]);
-      window['_'+ids.front] = new Chart(frontCanvas.getContext('2d'), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{
-            label: 'M+1',
-            data,
-            borderColor: '#34d399',
-            backgroundColor: 'rgba(52,211,153,0.10)',
-            borderWidth: 1.6,
-            pointRadius: 0,
-            tension: 0.25,
-            fill: true,
-            spanGaps: true,
-          }]
-        },
-        options: {
-          ...CD, animation: false,
-          plugins: {
-            ...CD.plugins,
-            legend: { display:false },
-            tooltip: { ...CD.plugins.tooltip, callbacks: {
-              label: (ctx) => `${ctx.label}: ${ctx.parsed.y?.toFixed(3)} ${idxName==='FIXED'?'$/MMBtu':'vs '+idxName}`,
-            }},
-          },
-          scales: {
-            x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:8} },
-            y: { ...CD.scales.y, title:{display:true,text:'M+1',color:'#3d5070',font:{size:8}},
-                  ticks:{color:'#3d5070',font:{size:8}} },
-          },
-        }
-      });
-    }
   }
 
-  renderForOrigin('usgc', 'FIXED', { spaghetti:'fob-hist-us-spaghetti',   front:'fob-hist-us-front'   });
-  renderForOrigin('oman', omanIdx, { spaghetti:'fob-hist-oman-spaghetti', front:'fob-hist-oman-front' });
+  renderForOrigin('usgc', 'FIXED', 'fob-hist-us-front',   '#4fc3f7');
+  renderForOrigin('oman', omanIdx, 'fob-hist-oman-front', '#fbbf24');
 }
 
 
