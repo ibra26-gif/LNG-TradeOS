@@ -4822,6 +4822,12 @@ function renderFoundationFinancial(c){
           ${hasData ? `
             <div style="color:#4caf50;font-size:12px;font-weight:600;margin-bottom:4px">● ${sDates.length} EOD DATES CACHED</div>
             <div style="color:#c8d6e5;font-size:11px">Latest: <b>${fmt(latest)}</b></div>
+            ${(window._eexD1Missing && window._eexD1Missing.hubs && window._eexD1Missing.hubs.length) ? `
+              <div style="background:rgba(251,191,36,0.10);border:1px solid rgba(251,191,36,0.45);color:#fbbf24;font-size:10px;padding:6px 8px;border-radius:4px;margin-top:8px;line-height:1.4">
+                ⚠ EEX D-1 incomplete — <b>${window._eexD1Missing.hubs.join(', ')}</b> missing/short for ${window._eexD1Missing.date}.
+                Re-run scraper or upload corrected XLSX (manual uploads now persist across reloads).
+              </div>
+            ` : ''}
             <div style="color:#3d5070;font-size:9px;margin-top:6px">Auto-sync on app open. Analytics downstream will reflect any update after you click SYNC or ADD FILES.</div>
           ` : `
             <div style="color:#ffa726;font-size:12px;font-weight:600;margin-bottom:4px">⚠ NO DATA LOADED</div>
@@ -11814,13 +11820,31 @@ async function syncEEX(){
       console.error('[EEX] aD not populated after 4s — ABORTING parse (would use wrong EUR/USD). Try reloading.');
       return false;
     }
-    // Wipe any stale cache before re-parsing so we don't merge with old data
-    localStorage.removeItem('eex_v1');
-    Object.keys(eexD).forEach(k=>delete eexD[k]);
-    eexDates=[];
+    // BUG-FIX (28-Apr-26): do NOT wipe cache before parsing.
+    // parseEEXFile merges per (pk, hub) with "existing wins" semantics
+    // (line ~12087), so user-uploaded fresher data must persist across
+    // page reloads. Wiping clobbered manual fixes for missing PVB/PEG.
+    // The CLEAR CACHE button remains for explicit user-initiated wipes.
     const added=parseEEXFile(buf);
     const latest=eexDates[eexDates.length-1]||'n/a';
     console.log('[EEX] Parsed OK — '+eexDates.length+' dates, latest='+latest+', EUR/USD used='+getEURUSD(latest));
+
+    // BUG-FIX (28-Apr-26) — Bug #3 part 1: validate D-1 hub coverage and
+    // surface to user via a console warning + global flag for the banner.
+    // (The scraper-side retry handles the upstream cause; this catches
+    //  any case where the repo XLSX still arrives partial.)
+    try{
+      const lastRows=(eexD[latest]||{}).rows||[];
+      const missing=EEX_HUBS.filter(h=>{
+        const cnt=lastRows.filter(r=>r[h]!=null).length;
+        return cnt < 5; // need at least M+1..M+5 to consider hub complete
+      });
+      window._eexD1Missing = missing.length ? {date:latest, hubs:missing} : null;
+      if(missing.length){
+        console.warn('[EEX] D-1 ('+latest+') incomplete — missing/short: '+missing.join(', '));
+      }
+    }catch(e){console.warn('[EEX] coverage check failed:',e.message);}
+
     return true;
   }catch(e){console.warn('[EEX] auto-fetch failed:',e.message);return false;}
 }
