@@ -21953,6 +21953,7 @@ function renderKorBalance(el){
   const origins = dart?.lngOrigins || [];
   const monthly = dart?.monthlySales?.series || []; // [{date, cityGas_kt, power_kt, total_kt}, ...]
   const kcga = _korLive?.kcga?.series || [];        // [{date, residential_km3, industrial_km3, ...}, ...]
+  const inv = dart?.quarterlyInventory?.snapshots || []; // [{end_date, inventory_krw, implied_inventory_kt, quarter, ...}, ...]
 
   // Latest year + YoY (annual context)
   const latest = annual.length ? annual[annual.length - 1] : null;
@@ -22044,6 +22045,29 @@ function renderKorBalance(el){
       </div>
       <div style="height:200px"><canvas id="kor-bal-annual"></canvas></div>
     </div>
+
+    ${monthly.length ? `
+    <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · monthly LNG sales (City + Power) · ${monthly[0].date.slice(0,4)}–${monthly[monthly.length-1].date.slice(0,4)}</span>
+        <span style="font-size:9px;color:#5a6882">DART · y-o-y overlay</span>
+      </div>
+      <div style="height:260px"><canvas id="kor-bal-sales-seasonal"></canvas></div>
+    </div>
+    ` : ''}
+
+    ${inv.length ? `
+    <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · quarterly LNG inventory · ${inv[0].end_date.slice(0,4)}–${inv[inv.length-1].end_date.slice(0,4)}</span>
+        <span style="font-size:9px;color:#5a6882">DART · KOGAS quarterly balance sheet · implied kt (avg cost basis)</span>
+      </div>
+      <div style="height:260px"><canvas id="kor-bal-inv-seasonal"></canvas></div>
+      <div style="margin-top:8px;font-size:9px;color:#6b7280;line-height:1.5">
+        Implied kt = inventory_KRW ÷ annual avg cost basis (COGS ÷ annual sales kt). ±15-20% accuracy — KOGAS doesn't disclose physical inventory directly.
+      </div>
+    </div>
+    ` : ''}
 
     <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:8px;margin-bottom:12px">
 
@@ -22250,6 +22274,112 @@ function renderKorBalance(el){
           y: { ...CD.scales.y, stacked:true,
                 title:{display:true,text:'kt LNG (1 kt = ~1.36 MMscm gas)',color:'#3d5070',font:{size:9}},
                 ticks:{color:'#3d5070',font:{size:9}} },
+        },
+      }
+    });
+  }
+
+  // ── Seasonal · monthly LNG sales (City + Power) y-o-y overlay ──────────
+  if (window._korChartSalesSeasonal) { window._korChartSalesSeasonal.destroy(); window._korChartSalesSeasonal = null; }
+  const cSS = document.getElementById('kor-bal-sales-seasonal');
+  if (cSS && monthly.length) {
+    const byYear = {};
+    for (const r of monthly) {
+      const yr = parseInt(r.date.slice(0,4), 10);
+      const mo = parseInt(r.date.slice(5,7), 10) - 1;
+      if (!byYear[yr]) byYear[yr] = new Array(12).fill(null);
+      if (r.total_kt != null) byYear[yr][mo] = r.total_kt;
+    }
+    const years = Object.keys(byYear).map(Number).sort();
+    const curY = new Date().getFullYear();
+    const palette = ['#475569','#64748b','#94a3b8','#a78bfa','#3b82f6','#fbbf24','#fca5a5','#34d399'];
+    const datasets = years.map((yr, i) => {
+      const isCur = yr === curY;
+      const col = isCur ? '#34d399' : palette[i % palette.length];
+      return {
+        label: String(yr),
+        data: byYear[yr],
+        borderColor: col,
+        backgroundColor: 'transparent',
+        borderWidth: isCur ? 2.5 : 1.2,
+        pointRadius: isCur ? 3 : 0,
+        pointBackgroundColor: col,
+        tension: 0.3,
+        fill: false,
+        spanGaps: true,
+      };
+    });
+    window._korChartSalesSeasonal = new Chart(cSS.getContext('2d'), {
+      type: 'line',
+      data: { labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], datasets },
+      options: {
+        ...CD, animation:false,
+        plugins: {
+          ...CD.plugins,
+          legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8} },
+          tooltip: { ...CD.plugins.tooltip, callbacks: {
+            label: (ctx) => `${ctx.dataset.label} ${ctx.label}: ${ctx.parsed.y?.toLocaleString()} kt`,
+          }},
+        },
+        scales: {
+          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
+          y: { ...CD.scales.y,
+                title:{display:true,text:'kt LNG / month',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
+        },
+      }
+    });
+  }
+
+  // ── Seasonal · quarterly LNG inventory y-o-y overlay ──────────────────
+  if (window._korChartInvSeasonal) { window._korChartInvSeasonal.destroy(); window._korChartInvSeasonal = null; }
+  const cIS = document.getElementById('kor-bal-inv-seasonal');
+  if (cIS && inv.length) {
+    // Pivot: year → [Q1, Q2, Q3, Q4] of implied_inventory_kt
+    const byYear = {};
+    for (const s of inv) {
+      const yr = parseInt(s.end_date.slice(0,4), 10);
+      const q = s.quarter;       // 1..4
+      if (!byYear[yr]) byYear[yr] = [null, null, null, null];
+      const v = s.implied_inventory_kt;
+      if (q && v != null) byYear[yr][q - 1] = v;
+    }
+    const years = Object.keys(byYear).map(Number).sort();
+    const curY = new Date().getFullYear();
+    const palette = ['#475569','#64748b','#94a3b8','#a78bfa','#3b82f6','#fbbf24','#fca5a5','#34d399'];
+    const datasets = years.map((yr, i) => {
+      const isCur = yr === curY;
+      const col = isCur ? '#34d399' : palette[i % palette.length];
+      return {
+        label: String(yr),
+        data: byYear[yr],
+        borderColor: col,
+        backgroundColor: 'transparent',
+        borderWidth: isCur ? 2.5 : 1.2,
+        pointRadius: isCur ? 4 : 2,
+        pointBackgroundColor: col,
+        tension: 0.3,
+        fill: false,
+        spanGaps: true,
+      };
+    });
+    window._korChartInvSeasonal = new Chart(cIS.getContext('2d'), {
+      type: 'line',
+      data: { labels: ['Q1 (Mar)','Q2 (Jun)','Q3 (Sep)','Q4 (Dec)'], datasets },
+      options: {
+        ...CD, animation:false,
+        plugins: {
+          ...CD.plugins,
+          legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8} },
+          tooltip: { ...CD.plugins.tooltip, callbacks: {
+            label: (ctx) => `${ctx.dataset.label} ${ctx.label}: ~${ctx.parsed.y?.toLocaleString()} kt implied`,
+          }},
+        },
+        scales: {
+          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
+          y: { ...CD.scales.y,
+                title:{display:true,text:'kt LNG (implied)',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
         },
       }
     });

@@ -760,6 +760,25 @@ def _dart_parse_period_report_xml(xml_text):
             if 'lngOrigins' in out:
                 break
 
+    # ── Long-term LNG supply contracts ──────────────────────────────────
+    # Look for the table with '계약기간' + '연간계약물량' + '천톤' headers.
+    for t in tables:
+        if ('연간계약물량' in t and '천톤' in t and '계약기간' in t
+                and len(t) < 50000 and len(t) > 5000):
+            contracts = _parse_supply_contracts(t)
+            if contracts and len(contracts) >= 5:
+                out['supplyContracts'] = contracts
+                break
+
+    # ── Annual send-out by terminal (tons) ──────────────────────────────
+    for t in tables:
+        if ('평택기지' in t and '인천기지' in t and '한국가스공사' in t
+                and '톤' in t and len(t) < 8000):
+            sendout = _parse_terminal_sendout(t)
+            if sendout:
+                out['terminalSendout'] = sendout
+                break
+
     return out
 
 
@@ -963,6 +982,137 @@ def fetch_dart_kogas_monthly():
     return out
 
 
+def _dart_extract_quarterly_inventory(api_key, corp_code, year, reprt_code):
+    """Pull a single quarterly snapshot from fnlttSinglAcntAll.
+    Returns dict with end_date, inventory_krw, cogs_krw, sales_krw — or None."""
+    url = (f'{DART_API_BASE}/fnlttSinglAcntAll.json'
+           f'?crtfc_key={api_key}&corp_code={corp_code}'
+           f'&bsns_year={year}&reprt_code={reprt_code}&fs_div=CFS')
+    try:
+        data = _dart_get(url, timeout=30)
+    except Exception as e:
+        return None
+    if data.get('status') != '000':
+        return None
+
+    items = data.get('list') or []
+    out = {'year': year, 'reprt_code': reprt_code}
+
+    # Period-end date by report code
+    end_month = {'11013': 3, '11012': 6, '11014': 9, '11011': 12}.get(reprt_code)
+    if end_month:
+        # Last day of the period quarter
+        if end_month == 3:    out['end_date'] = f'{year}-03-31'
+        elif end_month == 6:  out['end_date'] = f'{year}-06-30'
+        elif end_month == 9:  out['end_date'] = f'{year}-09-30'
+        else:                 out['end_date'] = f'{year}-12-31'
+        out['quarter'] = end_month // 3   # 1, 2, 3, 4
+
+    def _amt(item):
+        try:    return int(item.get('thstrm_amount', '').replace(',', ''))
+        except (ValueError, AttributeError): return None
+
+    for r in items:
+        nm = r.get('account_nm', '') or ''
+        sj = r.get('sj_nm', '') or ''
+        if sj == '재무상태표' and nm == '재고자산':
+            out['inventory_krw'] = _amt(r)
+        elif sj == '포괄손익계산서' and nm == '매출원가':
+            out['cogs_krw'] = _amt(r)
+        elif sj == '포괄손익계산서' and nm == '재화의 판매로 인한 수익':
+            out['sales_krw'] = _amt(r)
+
+    if out.get('inventory_krw') is None:
+        return None
+    return out
+
+
+def _parse_supply_contracts(table_xml):
+    """Parse KOGAS long-term LNG supply contracts table.
+
+    Layout (alternating empty cells between data):
+      [name] [_] [period like '2008~2028'] [_] [volume like '2,000.0'] [_]...
+
+    We strip empties first then scan triplets.
+    """
+    import re
+    text = re.sub(r'<[^>]+>', '|', table_xml)
+    text = re.sub(r'\|+', '|', text)
+    text = re.sub(r'\s+', ' ', text)
+    raw = [c.strip() for c in text.split('|')]
+    # Drop blanks AND header labels we don't want as counterparties
+    HEADER_TOKENS = {'계약기간','연간계약물량(단위: 천톤)','약정의 유형',
+                      '매입약정','재고자산 구매계약','거래상대방'}
+    cells = [c for c in raw if c and c not in HEADER_TOKENS]
+
+    contracts = []
+    i = 0
+    while i + 2 < len(cells):
+        name = cells[i]
+        period = cells[i + 1]
+        vol_str = cells[i + 2]
+        m_period = re.match(r'(\d{4})\s*~\s*(\d{4})$', period)
+        m_vol = re.match(r'^([\d,]+(?:\.\d+)?)$', vol_str)
+        if m_period and m_vol and len(name) >= 3 and not name[0].isdigit():
+            contracts.append({
+                'counterparty': name,
+                'startYear':    int(m_period.group(1)),
+                'endYear':      int(m_period.group(2)),
+                'annual_kt':    float(m_vol.group(1).replace(',', '')),
+            })
+            i += 3
+        else:
+            i += 1
+    # Dedupe (table appears twice in report)
+    seen = set()
+    unique = []
+    for c in contracts:
+        key = (c['counterparty'], c['startYear'], c['endYear'])
+        if key not in seen:
+            seen.add(key)
+            unique.append(c)
+    return unique
+
+
+def _parse_terminal_sendout(table_xml):
+    """Parse the 'Annual send-out by terminal (tons)' table — typically Table #39.
+    Row format: terminal | YYYY current | YYYY-1 | YYYY-2 (3 yrs)."""
+    import re
+    text = re.sub(r'<[^>]+>', '|', table_xml)
+    text = re.sub(r'\|+', '|', text)
+    text = re.sub(r'\s+', ' ', text)
+    cells = [c.strip() for c in text.split('|')]
+
+    # Find years like '25년 / '24년 / '23년
+    years = []
+    for c in cells:
+        m = re.match(r"'(\d{2})년", c)
+        if m and 2000 + int(m.group(1)) not in years:
+            years.append(2000 + int(m.group(1)))
+        if len(years) >= 3: break
+    if len(years) < 2:
+        return None
+
+    TERMINALS = {'평택기지':'pyeongtaek', '인천기지':'incheon',
+                  '통영기지':'tongyeong', '삼척기지':'samcheok',
+                  '제주기지':'jeju'}
+    rows = []
+    for kr_name, en_key in TERMINALS.items():
+        try:
+            idx = cells.index(kr_name)
+        except ValueError:
+            continue
+        nums = []
+        for c in cells[idx+1:idx+1+2*len(years)]:
+            m = re.match(r'^([\d,]+)$', c.replace(' ', ''))
+            if m: nums.append(int(m.group(1).replace(',', '')))
+            if len(nums) >= len(years): break
+        if len(nums) >= len(years):
+            rows.append({'terminal': en_key, 'terminal_kr': kr_name,
+                          **{str(y): nums[i] for i, y in enumerate(years)}})
+    return rows if rows else None
+
+
 def fetch_dart_kogas():
     """Pull KOGAS sectoral data from OpenDART API.
 
@@ -1062,12 +1212,124 @@ def fetch_dart_kogas():
         'contractedVolumes':   sector_data.get('contractedVolumes'),
         'lngOrigins':          sector_data.get('lngOrigins'),
         'lngOriginsKr':        sector_data.get('lngOriginsKr'),
+        'supplyContracts':     sector_data.get('supplyContracts'),
+        'terminalSendout':     sector_data.get('terminalSendout'),
         'source':              'OpenDART (Financial Supervisory Service)',
         'sourceUrl':           'https://opendart.fss.or.kr',
     }
 
     with open(cache_path, 'w', encoding='utf-8') as f:
         json.dump(out, f, indent=2, ensure_ascii=False)
+    return out
+
+
+def fetch_dart_kogas_quarterly_inventory():
+    """Pull KOGAS quarterly inventory snapshots (KRW) from DART
+    fnlttSinglAcntAll. Loops 2020 → current year × 4 reprt_codes.
+
+    Cached in data/dart_kogas_quarterly.json, keyed by (year, reprt_code).
+    Only re-fetches missing snapshots. Cheap — each call returns ~300 lines
+    of JSON (~30KB), 5 yrs × 4 quarters = 20 calls = ~600KB total.
+
+    Computes implied physical inventory in kt using the avg cost basis
+    derived from cumulative COGS / cumulative monthly sales.
+    """
+    api_key = os.environ.get('OPENDART_KEY')
+    if not api_key:
+        return None
+
+    cache_path = os.path.join(os.path.dirname(OUT_PATH), 'dart_kogas_quarterly.json')
+    cached = {'snapshots': []}
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                cached = json.load(f)
+        except Exception:
+            cached = {'snapshots': []}
+
+    # Index by (year, reprt_code)
+    snaps_by_key = {(s['year'], s['reprt_code']): s for s in (cached.get('snapshots') or [])}
+
+    today = datetime.now(timezone.utc)
+    REPRT_CODES = ['11013', '11012', '11014', '11011']  # Q1, H1, Q3, Annual
+
+    fetched = 0
+    for year in range(2020, today.year + 1):
+        for rc in REPRT_CODES:
+            key = (year, rc)
+            # Skip future periods (annual 2026 won't exist until April 2027)
+            month = {'11013': 5, '11012': 8, '11014': 11, '11011': 4}[rc]
+            year_avail = year if rc != '11011' else year + 1
+            avail_date = datetime(year_avail, month, 1, tzinfo=timezone.utc)
+            if today < avail_date:
+                continue
+            # Re-fetch the most recent (might be revised)
+            recent = (year == today.year and rc == REPRT_CODES[0])
+            if key in snaps_by_key and not recent:
+                continue
+            snap = _dart_extract_quarterly_inventory(api_key, DART_KOGAS_CORP_CODE, year, rc)
+            if snap:
+                snaps_by_key[key] = snap
+                fetched += 1
+                time.sleep(0.5)  # be polite to DART API
+
+    snapshots = sorted(snaps_by_key.values(), key=lambda s: s['end_date'])
+
+    # Compute implied physical inventory using cumulative cost basis.
+    # Avg cost basis (KRW/kt) = cumulative COGS / cumulative monthly sales (kt).
+    # We use the monthly-sales series if available (already cached locally).
+    monthly_path = os.path.join(os.path.dirname(OUT_PATH), 'dart_kogas_monthly.json')
+    monthly_series = []
+    if os.path.exists(monthly_path):
+        try:
+            with open(monthly_path, 'r', encoding='utf-8') as f:
+                monthly_series = json.load(f).get('series') or []
+        except Exception:
+            pass
+
+    # Cumulative kt sold by year (sum of monthly totals up to and including month M)
+    def cum_kt(end_date):
+        y = int(end_date[:4]); m = int(end_date[5:7])
+        return sum((r.get('total_kt') or 0)
+                   for r in monthly_series
+                   if r['date'][:4] == str(y) and int(r['date'][5:7]) <= m)
+
+    # Derive a 'normalised' inventory kt using ANNUAL avg cost basis (more stable
+    # than per-quarter cumulative ratios, which get distorted by term/spot mix).
+    # For each quarter, look up the annual cost basis from the SAME year's
+    # full-year COGS (from the Q4/annual snapshot) divided by full-year sales kt.
+    annual_cost_basis = {}  # year → avg KRW/kt
+    for s in snapshots:
+        if s.get('reprt_code') != '11011':  # only annual reports
+            continue
+        cogs = s.get('cogs_krw')
+        y = s['year']
+        full_year_kt = sum((r.get('total_kt') or 0)
+                            for r in monthly_series
+                            if r['date'][:4] == str(y))
+        if cogs and full_year_kt > 0:
+            annual_cost_basis[y] = cogs / full_year_kt
+
+    for s in snapshots:
+        y = s['year']
+        cost = annual_cost_basis.get(y) or annual_cost_basis.get(y - 1)
+        if cost and cost > 0:
+            inv = s.get('inventory_krw')
+            if inv:
+                s['implied_inventory_kt'] = round(inv / cost, 1)
+                s['avg_cost_krw_per_kt'] = round(cost, 0)
+        s['cumulative_sales_kt'] = cum_kt(s['end_date'])
+
+    out = {
+        'cachedAt':  today.isoformat(timespec='seconds'),
+        'source':    'OpenDART · KOGAS quarterly fnlttSinglAcntAll',
+        'sourceUrl': 'https://opendart.fss.or.kr',
+        'snapshots': snapshots,
+    }
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        json.dump(out, f, indent=2, ensure_ascii=False)
+    print(f'DART quarterly inventory: {len(snapshots)} snapshots '
+          f'(fetched {fetched} new this run)', file=sys.stderr)
     return out
 
 
@@ -1455,6 +1717,22 @@ def main():
     except Exception as e:
         out['errors'].append(f'DART KOGAS monthly: {e}')
         print(f"DART KOGAS monthly failed: {e}", file=sys.stderr)
+
+    # Quarterly inventory snapshots from KOGAS balance sheets via DART
+    try:
+        qtr = fetch_dart_kogas_quarterly_inventory()
+        if qtr and out.get('dart') is not None:
+            out['dart']['quarterlyInventory'] = {
+                'cachedAt':   qtr.get('cachedAt'),
+                'source':     qtr.get('source'),
+                'snapshots':  qtr.get('snapshots'),
+            }
+        if qtr:
+            print(f"DART quarterly inventory: {len(qtr.get('snapshots') or [])} snapshots",
+                  file=sys.stderr)
+    except Exception as e:
+        out['errors'].append(f'DART quarterly inventory: {e}')
+        print(f"DART quarterly inventory failed: {e}", file=sys.stderr)
 
     # KCGA monthly bulletins — sub-sector demand (Res/Gen/Biz/Industrial/CHP/Transport)
     try:

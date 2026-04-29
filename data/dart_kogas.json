@@ -1,5 +1,5 @@
 {
-  "asOf": "2026-04-29T06:14:01+00:00",
+  "asOf": "2026-04-29T10:26:22+00:00",
   "corpCode": "00261285",
   "corpName": "한국가스공사",
   "corpNameEn": "Korea Gas Corporation",
@@ -265,6 +265,189 @@
     "카타르",
     "호주",
     "미국"
+  ],
+  "supplyContracts": [
+    {
+      "counterparty": "Malaysia LNG SDN. BHD.",
+      "startYear": 2008,
+      "endYear": 2028,
+      "annual_kt": 2000.0
+    },
+    {
+      "counterparty": "Rasgas Company Limited 1",
+      "startYear": 2007,
+      "endYear": 2026,
+      "annual_kt": 2100.0
+    },
+    {
+      "counterparty": "Rasgas Company Limited 2",
+      "startYear": 2013,
+      "endYear": 2032,
+      "annual_kt": 2000.0
+    },
+    {
+      "counterparty": "Qatar Petroleum",
+      "startYear": 2025,
+      "endYear": 2044,
+      "annual_kt": 2000.0
+    },
+    {
+      "counterparty": "Sakhalin Energy Limited Liability Company",
+      "startYear": 2008,
+      "endYear": 2028,
+      "annual_kt": 1500.0
+    },
+    {
+      "counterparty": "Petronas LNG Ltd.",
+      "startYear": 2023,
+      "endYear": 2039,
+      "annual_kt": 1155.0
+    },
+    {
+      "counterparty": "Shell Eastern Trading (Pte.) Ltd. 1",
+      "startYear": 2013,
+      "endYear": 2038,
+      "annual_kt": 3640.0
+    },
+    {
+      "counterparty": "Shell Eastern Trading (Pte.) Ltd. 2",
+      "startYear": 2023,
+      "endYear": 2026,
+      "annual_kt": 260.0
+    },
+    {
+      "counterparty": "Shell Eastern Trading (Pte.) Ltd. 3",
+      "startYear": 2024,
+      "endYear": 2039,
+      "annual_kt": 150.0
+    },
+    {
+      "counterparty": "Shell Eastern Trading (Pte.) Ltd. 4",
+      "startYear": 2026,
+      "endYear": 2034,
+      "annual_kt": 320.0
+    },
+    {
+      "counterparty": "Shell Eastern Trading (Pte.) Ltd. 5",
+      "startYear": 2027,
+      "endYear": 2036,
+      "annual_kt": 280.0
+    },
+    {
+      "counterparty": "Shell Eastern Trading (Pte.) Ltd. 6",
+      "startYear": 2027,
+      "endYear": 2037,
+      "annual_kt": 400.0
+    },
+    {
+      "counterparty": "TOTAL Gas & Power Limited",
+      "startYear": 2014,
+      "endYear": 2031,
+      "annual_kt": 2000.0
+    },
+    {
+      "counterparty": "TOTALENERGIES GAS & POWER LIMITED",
+      "startYear": 2021,
+      "endYear": 2025,
+      "annual_kt": 200.0
+    },
+    {
+      "counterparty": "Sabine Pass LNG",
+      "startYear": 2017,
+      "endYear": 2037,
+      "annual_kt": 2800.0
+    },
+    {
+      "counterparty": "PT Donggi Senoro LNG",
+      "startYear": 2015,
+      "endYear": 2027,
+      "annual_kt": 700.0
+    },
+    {
+      "counterparty": "BP Singapore Pte. Limited 1",
+      "startYear": 2025,
+      "endYear": 2039,
+      "annual_kt": 1580.0
+    },
+    {
+      "counterparty": "BP Singapore Pte. Limited 2",
+      "startYear": 2026,
+      "endYear": 2036,
+      "annual_kt": 1040.0
+    },
+    {
+      "counterparty": "Trafigura Pte Ltd. 1",
+      "startYear": 2023,
+      "endYear": 2026,
+      "annual_kt": 780.0
+    },
+    {
+      "counterparty": "Trafigura Pte Ltd. 2",
+      "startYear": 2025,
+      "endYear": 2027,
+      "annual_kt": 1260.0
+    },
+    {
+      "counterparty": "Trafigura Pte Ltd. 3",
+      "startYear": 2025,
+      "endYear": 2028,
+      "annual_kt": 1960.0
+    },
+    {
+      "counterparty": "Trafigura Pte Ltd. 4",
+      "startYear": 2027,
+      "endYear": 2034,
+      "annual_kt": 2300.0
+    },
+    {
+      "counterparty": "Woodside Energy Trading Singapore Pte Ltd.",
+      "startYear": 2026,
+      "endYear": 2036,
+      "annual_kt": 500.0
+    },
+    {
+      "counterparty": "Mercuria Energy Trading S.A.",
+      "startYear": 2025,
+      "endYear": 2028,
+      "annual_kt": 420.0
+    }
+  ],
+  "terminalSendout": [
+    {
+      "terminal": "pyeongtaek",
+      "terminal_kr": "평택기지",
+      "2025": 11666184,
+      "2024": 12289762,
+      "2023": 12729045
+    },
+    {
+      "terminal": "incheon",
+      "terminal_kr": "인천기지",
+      "2025": 12648880,
+      "2024": 11933712,
+      "2023": 12073789
+    },
+    {
+      "terminal": "tongyeong",
+      "terminal_kr": "통영기지",
+      "2025": 7780733,
+      "2024": 7745733,
+      "2023": 7519008
+    },
+    {
+      "terminal": "samcheok",
+      "terminal_kr": "삼척기지",
+      "2025": 4372982,
+      "2024": 4069232,
+      "2023": 3852970
+    },
+    {
+      "terminal": "jeju",
+      "terminal_kr": "제주기지",
+      "2025": 244749,
+      "2024": 275419,
+      "2023": 241642
+    }
   ],
   "source": "OpenDART (Financial Supervisory Service)",
   "sourceUrl": "https://opendart.fss.or.kr"
