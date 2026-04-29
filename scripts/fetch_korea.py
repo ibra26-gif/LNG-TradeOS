@@ -763,6 +763,206 @@ def _dart_parse_period_report_xml(xml_text):
     return out
 
 
+def _dart_decode_disclosure(buf):
+    """Decode a KOGAS DART disclosure HTML, ignoring the (often-wrong) meta
+    charset declaration. Newer (2022+) disclosures declare 'euc-kr' but
+    actually contain UTF-8 bytes. Detect by looking for known Korean tech
+    terms in the candidate decoded text."""
+    KEYWORDS = ('도시가스', '발전용', '잠정', '실적')
+    # Try UTF-8 first — most disclosures (incl. 2022+) are UTF-8 despite meta tag
+    try:
+        text = buf.decode('utf-8')
+        if any(k in text for k in KEYWORDS):
+            return text
+    except UnicodeDecodeError:
+        pass
+    # Fall back to cp949/EUC-KR for genuinely old (pre-2022) filings
+    text = buf.decode('cp949', errors='replace')
+    return text
+
+
+def _parse_kogas_monthly_disclosure(html):
+    """Parse one KOGAS '영업(잠정)실적(공정공시)' disclosure HTML.
+
+    Returns dict with monthly sales volume by sector (kt) for the
+    period indicated by 당기실적, plus prev-month + same-month-last-year
+    reference values (for diff-checks).
+    """
+    import re, html as _html
+    text = re.sub(r'<style[\s\S]*?</style>', '', html, flags=re.I)
+    text = re.sub(r'<script[\s\S]*?</script>', '', text, flags=re.I)
+    # Decode HTML entities (&nbsp; etc.) BEFORE regex extraction so the
+    # sector labels match cleanly. Older disclosures wrap label spaces in
+    # &nbsp; (e.g. '기 &nbsp;타' = '기 타').
+    text = _html.unescape(text)
+    flat = re.sub(r'<[^>]+>', '|', text)
+    flat = re.sub(r'\|+', '|', flat)
+    flat = re.sub(r'\s+', ' ', flat)
+
+    # ── Period: find the 당기실적 date range YYYY-MM-DD ~ YYYY-MM-DD ──────
+    # In the cleaned text, after '당기실적' the next two YYYY-MM-DD pairs are
+    # current-period start/end.
+    period_year = None
+    period_month = None
+    m_dr = re.search(r'당기실적[^\d]*(\d{4})-(\d{2})-(\d{2})[^\d]*~[^\d]*(\d{4})-(\d{2})-(\d{2})', flat)
+    if m_dr:
+        period_year = int(m_dr.group(1))
+        period_month = int(m_dr.group(2))
+    else:
+        # Fallback: pull '20'YY월' from the volume table header area.
+        m_yy = re.search(r"\('?(\d{2})\.(\d{1,2})월\)", flat)
+        if m_yy:
+            period_year = 2000 + int(m_yy.group(1))
+            period_month = int(m_yy.group(2))
+
+    # ── Sectoral volumes ────────────────────────────────────────────────
+    def _row_nums(label_alts):
+        """Find any of the label alts in the cleaned text and return numeric
+        tokens that follow, until the next sector keyword."""
+        next_labels = ['도시가스용','발전용','기 타','기타','총 계','총계','2.','정보제공']
+        for label in label_alts:
+            idx = flat.find(label)
+            if idx < 0:
+                continue
+            # carve out the row text (next 250 chars)
+            tail = flat[idx + len(label):idx + len(label) + 350]
+            # stop at next sector header
+            stops = [tail.find(nl) for nl in next_labels if nl != label and tail.find(nl) > 0]
+            if stops:
+                tail = tail[:min(stops)]
+            # extract all numbers
+            nums = re.findall(r'-?\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?', tail)
+            cleaned = [float(n.replace(',', '')) for n in nums if n != '-']
+            return cleaned
+        return []
+
+    city_nums  = _row_nums(['도시가스용'])
+    power_nums = _row_nums(['발전용'])
+    total_nums = _row_nums(['총 계', '총계', '합 계', '합계'])
+
+    def _first_int(arr):
+        return int(arr[0]) if arr else None
+    def _yoy_int(arr):
+        # arr layout: [curr, prev, MoM%, prevYr, YoY%]  (5 nums)
+        return int(arr[3]) if len(arr) >= 4 else None
+
+    if not period_year or not period_month:
+        return None
+    if not (city_nums or power_nums or total_nums):
+        return None
+
+    return {
+        'date':         f'{period_year}-{period_month:02d}-01',
+        'cityGas_kt':   _first_int(city_nums),
+        'power_kt':     _first_int(power_nums),
+        'total_kt':     _first_int(total_nums),
+        'cityGas_kt_yoy':  _yoy_int(city_nums),
+        'power_kt_yoy':    _yoy_int(power_nums),
+        'total_kt_yoy':    _yoy_int(total_nums),
+    }
+
+
+def fetch_dart_kogas_monthly():
+    """Pull every KOGAS '영업(잠정)실적(공정공시)' disclosure from DART and
+    build a monthly sectoral sales time series.
+
+    KOGAS files one of these every month with monthly volumes for City-gas
+    and Power. Each disclosure is ~2.5KB HTML, so ingesting all backfill
+    is fast (~75 disclosures × 2.5KB = 200KB).
+
+    Caches by rcept_no in data/dart_kogas_monthly.json. Skips disclosures
+    already parsed; only fetches new ones (and re-fetches the most recent
+    3 in case of revisions).
+    """
+    api_key = os.environ.get('OPENDART_KEY')
+    if not api_key:
+        return None
+
+    cache_path = os.path.join(os.path.dirname(OUT_PATH), 'dart_kogas_monthly.json')
+    cached = {'series': [], 'parsedRcepts': []}
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                cached = json.load(f)
+        except Exception:
+            cached = {'series': [], 'parsedRcepts': []}
+
+    parsed_set = set(cached.get('parsedRcepts') or [])
+    series_by_date = {r['date']: r for r in (cached.get('series') or [])}
+
+    # ── Enumerate all KOGAS 영업(잠정)실적 disclosures since 2020 ────────
+    today = datetime.now(timezone.utc)
+    all_filings = []
+    for yr in range(2020, today.year + 1):
+        url = (f'{DART_API_BASE}/list.json'
+               f'?crtfc_key={api_key}&corp_code={DART_KOGAS_CORP_CODE}'
+               f'&bgn_de={yr}0101&end_de={yr}1231&page_count=100')
+        try:
+            data = _dart_get(url, timeout=30)
+        except Exception as e:
+            print(f'DART monthly list {yr} failed: {e}', file=sys.stderr)
+            continue
+        if data.get('status') != '000':
+            continue
+        for f in (data.get('list') or []):
+            nm = (f.get('report_nm') or '').strip()
+            # Match: 영업(잠정)실적(공정공시) — but skip 연결재무제표기준 (consolidated FS, quarterly)
+            if '영업(잠정)실적' in nm and '연결' not in nm:
+                all_filings.append({
+                    'rcept_no': f['rcept_no'],
+                    'rcept_dt': f['rcept_dt'],
+                    'report_nm': nm,
+                })
+
+    # ── Determine which to fetch: new + re-fetch latest 3 ────────────────
+    all_rcepts = {f['rcept_no'] for f in all_filings}
+    # Sort by rcept_no descending (most recent first); rcept_no is sortable.
+    sorted_filings = sorted(all_filings, key=lambda f: f['rcept_no'], reverse=True)
+    refetch_recent = {f['rcept_no'] for f in sorted_filings[:3]}
+    todo = [f for f in sorted_filings
+            if f['rcept_no'] not in parsed_set or f['rcept_no'] in refetch_recent]
+
+    print(f'DART monthly: {len(all_filings)} disclosures total, '
+          f'{len(parsed_set)} cached, {len(todo)} to fetch', file=sys.stderr)
+
+    # ── Fetch + parse each ──────────────────────────────────────────────
+    import zipfile, io as _io
+    fetched = 0
+    for f in todo:
+        rno = f['rcept_no']
+        url = f'{DART_API_BASE}/document.xml?crtfc_key={api_key}&rcept_no={rno}'
+        try:
+            buf = _dart_get_zip(url, timeout=120)
+            with zipfile.ZipFile(_io.BytesIO(buf)) as z:
+                with z.open(z.namelist()[0]) as fp:
+                    raw = fp.read()
+            html = _dart_decode_disclosure(raw)
+            parsed = _parse_kogas_monthly_disclosure(html)
+            if parsed:
+                parsed['rcept_no'] = rno
+                parsed['rcept_dt'] = f['rcept_dt']
+                series_by_date[parsed['date']] = parsed
+                parsed_set.add(rno)
+                fetched += 1
+        except Exception as e:
+            print(f'DART monthly disc {rno}: {e}', file=sys.stderr)
+
+    # ── Persist cache ────────────────────────────────────────────────────
+    series = sorted(series_by_date.values(), key=lambda r: r['date'])
+    out = {
+        'cachedAt': today.isoformat(timespec='seconds'),
+        'source':   'OpenDART · KOGAS 영업(잠정)실적(공정공시) monthly disclosures',
+        'sourceUrl':'https://opendart.fss.or.kr',
+        'parsedRcepts': sorted(parsed_set),
+        'series':   series,
+    }
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        json.dump(out, f, indent=2, ensure_ascii=False)
+    print(f'DART monthly: {len(series)} months in series '
+          f'(fetched {fetched} new this run)', file=sys.stderr)
+    return out
+
+
 def fetch_dart_kogas():
     """Pull KOGAS sectoral data from OpenDART API.
 
@@ -1021,6 +1221,24 @@ def main():
     except Exception as e:
         out['errors'].append(f'DART KOGAS: {e}')
         print(f"DART KOGAS failed: {e}", file=sys.stderr)
+
+    # Monthly KOGAS sales — separate fetcher (different filing type)
+    try:
+        monthly = fetch_dart_kogas_monthly()
+        if monthly and out.get('dart') is not None:
+            # Embed monthly series under dart.monthlySales so the front-end
+            # only has to read one key for everything DART-derived.
+            out['dart']['monthlySales'] = {
+                'cachedAt':   monthly.get('cachedAt'),
+                'source':     monthly.get('source'),
+                'series':     monthly.get('series'),
+            }
+        if monthly:
+            print(f"DART monthly: {len(monthly.get('series') or [])} months in series",
+                  file=sys.stderr)
+    except Exception as e:
+        out['errors'].append(f'DART KOGAS monthly: {e}')
+        print(f"DART KOGAS monthly failed: {e}", file=sys.stderr)
 
     # Stabilize for git diff
     round_for_diff_stability(out)

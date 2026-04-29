@@ -1,5 +1,5 @@
 {
-  "updated": "2026-04-28T21:33:41+00:00",
+  "updated": "2026-04-29T06:42:09+00:00",
   "fx": {
     "asOf": "2026-04-28",
     "source": "ECB euro reference rates",
@@ -9,8 +9,8 @@
     "krwUsd": 1476.89
   },
   "khnp": {
-    "asOf": "2026-04-29 06:34:00",
-    "scrapedAt": "2026-04-28T21:34:17+00:00",
+    "asOf": "2026-04-29 15:42:26",
+    "scrapedAt": "2026-04-29T06:42:44+00:00",
     "source": "KHNP Open NPP Operations Info",
     "sourceUrl": "https://npp.khnp.co.kr/",
     "reactors": [
@@ -20,8 +20,8 @@
         "unit_cd": "2112",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 681,
-        "asOf": "2026-04-29 06:33:30"
+        "output_mwe": 680,
+        "asOf": "2026-04-29 15:41:50"
       },
       {
         "name": "Kori-3",
@@ -30,7 +30,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 06:23:45"
+        "asOf": "2026-04-29 15:33:45"
       },
       {
         "name": "Kori-4",
@@ -39,7 +39,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 06:23:45"
+        "asOf": "2026-04-29 15:33:45"
       },
       {
         "name": "Shin-Kori-1",
@@ -47,8 +47,8 @@
         "unit_cd": "2135",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1056,
-        "asOf": "2026-04-29 06:33:10"
+        "output_mwe": 1055,
+        "asOf": "2026-04-29 15:41:45"
       },
       {
         "name": "Shin-Kori-2",
@@ -56,8 +56,8 @@
         "unit_cd": "2136",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1053,
-        "asOf": "2026-04-29 06:33:30"
+        "output_mwe": 1052,
+        "asOf": "2026-04-29 15:41:30"
       },
       {
         "name": "Hanbit-1",
@@ -66,7 +66,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": null,
-        "asOf": "2026-04-29 06:31:11"
+        "asOf": "2026-04-29 15:41:11"
       },
       {
         "name": "Hanbit-2",
@@ -74,8 +74,8 @@
         "unit_cd": "2312",
         "status": "Operational",
         "output_pct": 96.0,
-        "output_mwe": 1025,
-        "asOf": "2026-04-29 06:33:31"
+        "output_mwe": 1023,
+        "asOf": "2026-04-29 15:41:51"
       },
       {
         "name": "Hanbit-3",
@@ -84,7 +84,7 @@
         "status": "Operational",
         "output_pct": 100.0,
         "output_mwe": 1053,
-        "asOf": "2026-04-29 06:33:16"
+        "asOf": "2026-04-29 15:41:51"
       },
       {
         "name": "Hanbit-4",
@@ -92,8 +92,8 @@
         "unit_cd": "2324",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1047,
-        "asOf": "2026-04-29 06:33:21"
+        "output_mwe": 1045,
+        "asOf": "2026-04-29 15:41:51"
       },
       {
         "name": "Hanbit-5",
@@ -101,8 +101,8 @@
         "unit_cd": "2335",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1052,
-        "asOf": "2026-04-29 06:33:36"
+        "output_mwe": 1051,
+        "asOf": "2026-04-29 15:41:41"
       },
       {
         "name": "Hanbit-6",
@@ -111,7 +111,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 06:31:11"
+        "asOf": "2026-04-29 15:41:11"
       },
       {
         "name": "Hanul-1",
@@ -119,8 +119,8 @@
         "unit_cd": "2411",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1020,
-        "asOf": "2026-04-29 06:33:31"
+        "output_mwe": 1018,
+        "asOf": "2026-04-29 15:41:51"
       },
       {
         "name": "Hanul-2",
@@ -128,17 +128,17 @@
         "unit_cd": "2412",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1015,
-        "asOf": "2026-04-29 06:33:31"
+        "output_mwe": 1013,
+        "asOf": "2026-04-29 15:42:16"
       },
       {
         "name": "Hanul-3",
         "site": "Hanul",
         "unit_cd": "2423",
         "status": "Maintenance",
-        "output_pct": 0.0,
+        "output_pct": 3.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 06:32:01"
+        "asOf": "2026-04-29 15:42:26"
       },
       {
         "name": "Hanul-4",
@@ -146,8 +146,8 @@
         "unit_cd": "2424",
         "status": "Operational",
         "output_pct": 99.0,
-        "output_mwe": 1043,
-        "asOf": "2026-04-29 06:33:16"
+        "output_mwe": 1042,
+        "asOf": "2026-04-29 15:42:06"
       },
       {
         "name": "Hanul-5",
@@ -156,7 +156,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 06:24:26"
+        "asOf": "2026-04-29 15:34:26"
       },
       {
         "name": "Hanul-6",
@@ -164,8 +164,8 @@
         "unit_cd": "2436",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1054,
-        "asOf": "2026-04-29 06:33:31"
+        "output_mwe": 1053,
+        "asOf": "2026-04-29 15:42:01"
       },
       {
         "name": "Shin-Hanul-1",
@@ -174,7 +174,7 @@
         "status": "Operational",
         "output_pct": 100.0,
         "output_mwe": 1496,
-        "asOf": "2026-04-29 06:33:31"
+        "asOf": "2026-04-29 15:42:01"
       },
       {
         "name": "Shin-Hanul-2",
@@ -182,8 +182,8 @@
         "unit_cd": "2712",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1500,
-        "asOf": "2026-04-29 06:33:16"
+        "output_mwe": 1502,
+        "asOf": "2026-04-29 15:42:11"
       },
       {
         "name": "Wolsong-2",
@@ -192,7 +192,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 06:33:45"
+        "asOf": "2026-04-29 15:37:11"
       },
       {
         "name": "Wolsong-3",
@@ -201,7 +201,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 06:33:45"
+        "asOf": "2026-04-29 15:37:11"
       },
       {
         "name": "Wolsong-4",
@@ -210,7 +210,7 @@
         "status": "Maintenance",
         "output_pct": 0.0,
         "output_mwe": 0,
-        "asOf": "2026-04-29 06:33:45"
+        "asOf": "2026-04-29 15:37:11"
       },
       {
         "name": "Shin-Wolsong-1",
@@ -218,8 +218,8 @@
         "unit_cd": "2235",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1049,
-        "asOf": "2026-04-29 06:33:31"
+        "output_mwe": 1048,
+        "asOf": "2026-04-29 15:42:01"
       },
       {
         "name": "Shin-Wolsong-2",
@@ -227,8 +227,8 @@
         "unit_cd": "2236",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1049,
-        "asOf": "2026-04-29 06:33:45"
+        "output_mwe": 1051,
+        "asOf": "2026-04-29 15:41:51"
       },
       {
         "name": "Saeul-1",
@@ -237,7 +237,7 @@
         "status": "Operational",
         "output_pct": 100.0,
         "output_mwe": 1478,
-        "asOf": "2026-04-29 06:34:00"
+        "asOf": "2026-04-29 15:42:00"
       },
       {
         "name": "Saeul-2",
@@ -245,8 +245,8 @@
         "unit_cd": "2812",
         "status": "Operational",
         "output_pct": 100.0,
-        "output_mwe": 1498,
-        "asOf": "2026-04-29 06:34:00"
+        "output_mwe": 1494,
+        "asOf": "2026-04-29 15:40:35"
       }
     ],
     "bySite": [
@@ -264,8 +264,8 @@
         ],
         "totalCount": 8,
         "online": 6,
-        "totalCap_GW": 7.13,
-        "onlineCap_GW": 7.13
+        "totalCap_GW": 7.12,
+        "onlineCap_GW": 7.12
       },
       {
         "site": "Hanbit",
@@ -279,8 +279,8 @@
         ],
         "totalCount": 6,
         "online": 4,
-        "totalCap_GW": 4.18,
-        "onlineCap_GW": 4.18
+        "totalCap_GW": 4.17,
+        "onlineCap_GW": 4.17
       },
       {
         "site": "Saeul",
@@ -290,8 +290,8 @@
         ],
         "totalCount": 2,
         "online": 2,
-        "totalCap_GW": 2.98,
-        "onlineCap_GW": 2.98
+        "totalCap_GW": 2.97,
+        "onlineCap_GW": 2.97
       },
       {
         "site": "Kori",
@@ -322,12 +322,12 @@
         "onlineCap_GW": 2.1
       }
     ],
-    "totalOnlineGW": 19.18,
+    "totalOnlineGW": 19.15,
     "onlineCount": 17,
     "totalCount": 26
   },
   "khnpAnnual": {
-    "asOf": "2026-04-28",
+    "asOf": "2026-04-29",
     "source": "KHNP 이용률·가동률",
     "sourceUrl": "https://npp.khnp.co.kr/ON004004002001003",
     "byYear": [
@@ -424,7 +424,7 @@
     ]
   },
   "khnpTrips": {
-    "asOf": "2026-04-28",
+    "asOf": "2026-04-29",
     "source": "KHNP 불시정지",
     "sourceUrl": "https://npp.khnp.co.kr/ON004004002001004",
     "byYear": [
@@ -1192,7 +1192,7 @@
   "kogasTariff": null,
   "kogasImports": null,
   "dart": {
-    "asOf": "2026-04-29T06:14:01+00:00",
+    "asOf": "2026-04-29T06:42:49+00:00",
     "corpCode": "00261285",
     "corpName": "한국가스공사",
     "corpNameEn": "Korea Gas Corporation",
@@ -1460,7 +1460,849 @@
       "미국"
     ],
     "source": "OpenDART (Financial Supervisory Service)",
-    "sourceUrl": "https://opendart.fss.or.kr"
+    "sourceUrl": "https://opendart.fss.or.kr",
+    "monthlySales": {
+      "cachedAt": "2026-04-29T06:42:52+00:00",
+      "source": "OpenDART · KOGAS 영업(잠정)실적(공정공시) monthly disclosures",
+      "series": [
+        {
+          "date": "2019-12-01",
+          "cityGas_kt": 2488,
+          "power_kt": 1724,
+          "total_kt": 4212,
+          "cityGas_kt_yoy": 2721,
+          "power_kt_yoy": null,
+          "total_kt_yoy": 4291,
+          "rcept_no": "20200113800320",
+          "rcept_dt": "20200113"
+        },
+        {
+          "date": "2020-01-01",
+          "cityGas_kt": 2506,
+          "power_kt": 1613,
+          "total_kt": 4119,
+          "cityGas_kt_yoy": 2796,
+          "power_kt_yoy": 1614,
+          "total_kt_yoy": null,
+          "rcept_no": "20200214800308",
+          "rcept_dt": "20200214"
+        },
+        {
+          "date": "2020-02-01",
+          "cityGas_kt": 2238,
+          "power_kt": 1379,
+          "total_kt": 3617,
+          "cityGas_kt_yoy": 2261,
+          "power_kt_yoy": 1262,
+          "total_kt_yoy": null,
+          "rcept_no": "20200316800818",
+          "rcept_dt": "20200316"
+        },
+        {
+          "date": "2020-03-01",
+          "cityGas_kt": 1860,
+          "power_kt": 1315,
+          "total_kt": 3175,
+          "cityGas_kt_yoy": 1959,
+          "power_kt_yoy": 1251,
+          "total_kt_yoy": null,
+          "rcept_no": "20200413800501",
+          "rcept_dt": "20200413"
+        },
+        {
+          "date": "2020-04-01",
+          "cityGas_kt": 1453,
+          "power_kt": 810,
+          "total_kt": 2263,
+          "cityGas_kt_yoy": 1548,
+          "power_kt_yoy": 1192,
+          "total_kt_yoy": 2740,
+          "rcept_no": "20200518800178",
+          "rcept_dt": "20200518"
+        },
+        {
+          "date": "2020-05-01",
+          "cityGas_kt": 980,
+          "power_kt": 652,
+          "total_kt": 1632,
+          "cityGas_kt_yoy": null,
+          "power_kt_yoy": 1019,
+          "total_kt_yoy": 2149,
+          "rcept_no": "20200623800329",
+          "rcept_dt": "20200623"
+        },
+        {
+          "date": "2020-06-01",
+          "cityGas_kt": 852,
+          "power_kt": 916,
+          "total_kt": 1768,
+          "cityGas_kt_yoy": 984,
+          "power_kt_yoy": 928,
+          "total_kt_yoy": 1912,
+          "rcept_no": "20200714800214",
+          "rcept_dt": "20200714"
+        },
+        {
+          "date": "2020-07-01",
+          "cityGas_kt": 885,
+          "power_kt": 911,
+          "total_kt": 1796,
+          "cityGas_kt_yoy": 957,
+          "power_kt_yoy": 1226,
+          "total_kt_yoy": 2183,
+          "rcept_no": "20200814802455",
+          "rcept_dt": "20200814"
+        },
+        {
+          "date": "2020-08-01",
+          "cityGas_kt": 857,
+          "power_kt": 1262,
+          "total_kt": 2119,
+          "cityGas_kt_yoy": 889,
+          "power_kt_yoy": 1247,
+          "total_kt_yoy": 2136,
+          "rcept_no": "20200914800489",
+          "rcept_dt": "20200914"
+        },
+        {
+          "date": "2020-09-01",
+          "cityGas_kt": 907,
+          "power_kt": 1101,
+          "total_kt": 2008,
+          "cityGas_kt_yoy": 891,
+          "power_kt_yoy": null,
+          "total_kt_yoy": 1915,
+          "rcept_no": "20201014800462",
+          "rcept_dt": "20201014"
+        },
+        {
+          "date": "2020-10-01",
+          "cityGas_kt": 1217,
+          "power_kt": 1075,
+          "total_kt": 2292,
+          "cityGas_kt_yoy": 1149,
+          "power_kt_yoy": null,
+          "total_kt_yoy": 2139,
+          "rcept_no": "20201113800121",
+          "rcept_dt": "20201113"
+        },
+        {
+          "date": "2020-11-01",
+          "cityGas_kt": 1760,
+          "power_kt": 1282,
+          "total_kt": 3042,
+          "cityGas_kt_yoy": 1770,
+          "power_kt_yoy": 1298,
+          "total_kt_yoy": null,
+          "rcept_no": "20201211800243",
+          "rcept_dt": "20201211"
+        },
+        {
+          "date": "2020-12-01",
+          "cityGas_kt": 2733,
+          "power_kt": 1803,
+          "total_kt": 4536,
+          "cityGas_kt_yoy": 2488,
+          "power_kt_yoy": 1724,
+          "total_kt_yoy": 4212,
+          "rcept_no": "20210112800460",
+          "rcept_dt": "20210112"
+        },
+        {
+          "date": "2021-01-01",
+          "cityGas_kt": 3073,
+          "power_kt": 1874,
+          "total_kt": 4947,
+          "cityGas_kt_yoy": null,
+          "power_kt_yoy": 1613,
+          "total_kt_yoy": 4119,
+          "rcept_no": "20210215801016",
+          "rcept_dt": "20210215"
+        },
+        {
+          "date": "2021-02-01",
+          "cityGas_kt": 2283,
+          "power_kt": 1443,
+          "total_kt": 3726,
+          "cityGas_kt_yoy": 2238,
+          "power_kt_yoy": 1379,
+          "total_kt_yoy": 3617,
+          "rcept_no": "20210312801097",
+          "rcept_dt": "20210312"
+        },
+        {
+          "date": "2021-03-01",
+          "cityGas_kt": 1885,
+          "power_kt": 1563,
+          "total_kt": 3448,
+          "cityGas_kt_yoy": 1860,
+          "power_kt_yoy": 1315,
+          "total_kt_yoy": 3175,
+          "rcept_no": "20210412800418",
+          "rcept_dt": "20210412"
+        },
+        {
+          "date": "2021-04-01",
+          "cityGas_kt": 1354,
+          "power_kt": 1415,
+          "total_kt": 2769,
+          "cityGas_kt_yoy": 1453,
+          "power_kt_yoy": 810,
+          "total_kt_yoy": 2263,
+          "rcept_no": "20210512800306",
+          "rcept_dt": "20210512"
+        },
+        {
+          "date": "2021-05-01",
+          "cityGas_kt": 1147,
+          "power_kt": 1168,
+          "total_kt": 2315,
+          "cityGas_kt_yoy": 980,
+          "power_kt_yoy": 652,
+          "total_kt_yoy": 1632,
+          "rcept_no": "20210615800289",
+          "rcept_dt": "20210615"
+        },
+        {
+          "date": "2021-06-01",
+          "cityGas_kt": 972,
+          "power_kt": 1324,
+          "total_kt": 2296,
+          "cityGas_kt_yoy": 852,
+          "power_kt_yoy": 916,
+          "total_kt_yoy": 1768,
+          "rcept_no": "20210713800331",
+          "rcept_dt": "20210713"
+        },
+        {
+          "date": "2021-07-01",
+          "cityGas_kt": 954,
+          "power_kt": 1625,
+          "total_kt": 2579,
+          "cityGas_kt_yoy": 886,
+          "power_kt_yoy": null,
+          "total_kt_yoy": null,
+          "rcept_no": "20210812800121",
+          "rcept_dt": "20210812"
+        },
+        {
+          "date": "2021-08-01",
+          "cityGas_kt": 899,
+          "power_kt": 1387,
+          "total_kt": 2286,
+          "cityGas_kt_yoy": 857,
+          "power_kt_yoy": 1262,
+          "total_kt_yoy": 2119,
+          "rcept_no": "20210915800200",
+          "rcept_dt": "20210915"
+        },
+        {
+          "date": "2021-09-01",
+          "cityGas_kt": 927,
+          "power_kt": 1320,
+          "total_kt": 2247,
+          "cityGas_kt_yoy": 906,
+          "power_kt_yoy": 1101,
+          "total_kt_yoy": 2007,
+          "rcept_no": "20211014800289",
+          "rcept_dt": "20211014"
+        },
+        {
+          "date": "2021-10-01",
+          "cityGas_kt": 1268,
+          "power_kt": 1387,
+          "total_kt": 2655,
+          "cityGas_kt_yoy": 1217,
+          "power_kt_yoy": 1075,
+          "total_kt_yoy": 2292,
+          "rcept_no": "20211112800168",
+          "rcept_dt": "20211112"
+        },
+        {
+          "date": "2021-11-01",
+          "cityGas_kt": 1854,
+          "power_kt": 1515,
+          "total_kt": 3369,
+          "cityGas_kt_yoy": 1760,
+          "power_kt_yoy": 1282,
+          "total_kt_yoy": 3042,
+          "rcept_no": "20211214800608",
+          "rcept_dt": "20211214"
+        },
+        {
+          "date": "2021-12-01",
+          "cityGas_kt": 2711,
+          "power_kt": 1563,
+          "total_kt": 4274,
+          "cityGas_kt_yoy": 2733,
+          "power_kt_yoy": 1803,
+          "total_kt_yoy": 4536,
+          "rcept_no": "20220114800128",
+          "rcept_dt": "20220114"
+        },
+        {
+          "date": "2022-01-01",
+          "cityGas_kt": 2985,
+          "power_kt": 1648,
+          "total_kt": 4633,
+          "cityGas_kt_yoy": 3073,
+          "power_kt_yoy": 1874,
+          "total_kt_yoy": 4947,
+          "rcept_no": "20220215800508",
+          "rcept_dt": "20220215"
+        },
+        {
+          "date": "2022-02-01",
+          "cityGas_kt": 2600,
+          "power_kt": 1556,
+          "total_kt": 4156,
+          "cityGas_kt_yoy": null,
+          "power_kt_yoy": 1443,
+          "total_kt_yoy": 3726,
+          "rcept_no": "20220315800575",
+          "rcept_dt": "20220315"
+        },
+        {
+          "date": "2022-03-01",
+          "cityGas_kt": 2055,
+          "power_kt": 1811,
+          "total_kt": 3866,
+          "cityGas_kt_yoy": 1885,
+          "power_kt_yoy": 1563,
+          "total_kt_yoy": 3448,
+          "rcept_no": "20220414800235",
+          "rcept_dt": "20220414"
+        },
+        {
+          "date": "2022-04-01",
+          "cityGas_kt": 1413,
+          "power_kt": 1303,
+          "total_kt": 2716,
+          "cityGas_kt_yoy": 1356,
+          "power_kt_yoy": 1415,
+          "total_kt_yoy": 2771,
+          "rcept_no": "20220513800197",
+          "rcept_dt": "20220513"
+        },
+        {
+          "date": "2022-05-01",
+          "cityGas_kt": 1126,
+          "power_kt": 1399,
+          "total_kt": 2525,
+          "cityGas_kt_yoy": 1148,
+          "power_kt_yoy": 1167,
+          "total_kt_yoy": 2315,
+          "rcept_no": "20220615800281",
+          "rcept_dt": "20220615"
+        },
+        {
+          "date": "2022-06-01",
+          "cityGas_kt": 1015,
+          "power_kt": 1471,
+          "total_kt": 2486,
+          "cityGas_kt_yoy": 972,
+          "power_kt_yoy": 1324,
+          "total_kt_yoy": 2296,
+          "rcept_no": "20220712800453",
+          "rcept_dt": "20220712"
+        },
+        {
+          "date": "2022-07-01",
+          "cityGas_kt": 1013,
+          "power_kt": 1581,
+          "total_kt": 2594,
+          "cityGas_kt_yoy": 954,
+          "power_kt_yoy": 1625,
+          "total_kt_yoy": 2579,
+          "rcept_no": "20220812800435",
+          "rcept_dt": "20220812"
+        },
+        {
+          "date": "2022-08-01",
+          "cityGas_kt": 924,
+          "power_kt": 1372,
+          "total_kt": 2296,
+          "cityGas_kt_yoy": 899,
+          "power_kt_yoy": 1387,
+          "total_kt_yoy": 2286,
+          "rcept_no": "20220915800163",
+          "rcept_dt": "20220915"
+        },
+        {
+          "date": "2022-09-01",
+          "cityGas_kt": 902,
+          "power_kt": 1341,
+          "total_kt": 2243,
+          "cityGas_kt_yoy": null,
+          "power_kt_yoy": null,
+          "total_kt_yoy": null,
+          "rcept_no": "20221012800266",
+          "rcept_dt": "20221012"
+        },
+        {
+          "date": "2022-10-01",
+          "cityGas_kt": 1227,
+          "power_kt": 1375,
+          "total_kt": 2602,
+          "cityGas_kt_yoy": 1268,
+          "power_kt_yoy": null,
+          "total_kt_yoy": 2655,
+          "rcept_no": "20221116800094",
+          "rcept_dt": "20221116"
+        },
+        {
+          "date": "2022-11-01",
+          "cityGas_kt": 1597,
+          "power_kt": 1612,
+          "total_kt": 3209,
+          "cityGas_kt_yoy": 1854,
+          "power_kt_yoy": 1515,
+          "total_kt_yoy": 3369,
+          "rcept_no": "20221214800196",
+          "rcept_dt": "20221214"
+        },
+        {
+          "date": "2022-12-01",
+          "cityGas_kt": 2976,
+          "power_kt": 2036,
+          "total_kt": 5012,
+          "cityGas_kt_yoy": 2711,
+          "power_kt_yoy": 1563,
+          "total_kt_yoy": 4274,
+          "rcept_no": "20230110800151",
+          "rcept_dt": "20230110"
+        },
+        {
+          "date": "2023-01-01",
+          "cityGas_kt": 2852,
+          "power_kt": 1782,
+          "total_kt": 4634,
+          "cityGas_kt_yoy": 2985,
+          "power_kt_yoy": null,
+          "total_kt_yoy": 4669,
+          "rcept_no": "20230213800414",
+          "rcept_dt": "20230213"
+        },
+        {
+          "date": "2023-02-01",
+          "cityGas_kt": 2184,
+          "power_kt": 1755,
+          "total_kt": 3939,
+          "cityGas_kt_yoy": 2600,
+          "power_kt_yoy": 1578,
+          "total_kt_yoy": 4178,
+          "rcept_no": "20230314800472",
+          "rcept_dt": "20230314"
+        },
+        {
+          "date": "2023-03-01",
+          "cityGas_kt": 1706,
+          "power_kt": 1439,
+          "total_kt": 3145,
+          "cityGas_kt_yoy": 2055,
+          "power_kt_yoy": 1811,
+          "total_kt_yoy": 3866,
+          "rcept_no": "20230413800311",
+          "rcept_dt": "20230413"
+        },
+        {
+          "date": "2023-04-01",
+          "cityGas_kt": 1271,
+          "power_kt": 1221,
+          "total_kt": 2492,
+          "cityGas_kt_yoy": 1413,
+          "power_kt_yoy": 1303,
+          "total_kt_yoy": 2716,
+          "rcept_no": "20230517800055",
+          "rcept_dt": "20230517"
+        },
+        {
+          "date": "2023-05-01",
+          "cityGas_kt": 1058,
+          "power_kt": 1092,
+          "total_kt": 2150,
+          "cityGas_kt_yoy": 1126,
+          "power_kt_yoy": 1399,
+          "total_kt_yoy": 2525,
+          "rcept_no": "20230615800224",
+          "rcept_dt": "20230615"
+        },
+        {
+          "date": "2023-06-01",
+          "cityGas_kt": 909,
+          "power_kt": 1193,
+          "total_kt": 2102,
+          "cityGas_kt_yoy": 1015,
+          "power_kt_yoy": 1471,
+          "total_kt_yoy": null,
+          "rcept_no": "20230714800129",
+          "rcept_dt": "20230714"
+        },
+        {
+          "date": "2023-07-01",
+          "cityGas_kt": 919,
+          "power_kt": 1417,
+          "total_kt": 2336,
+          "cityGas_kt_yoy": 1013,
+          "power_kt_yoy": 1581,
+          "total_kt_yoy": 2594,
+          "rcept_no": "20230814801705",
+          "rcept_dt": "20230814"
+        },
+        {
+          "date": "2023-08-01",
+          "cityGas_kt": 881,
+          "power_kt": 1433,
+          "total_kt": 2314,
+          "cityGas_kt_yoy": 924,
+          "power_kt_yoy": 1372,
+          "total_kt_yoy": 2296,
+          "rcept_no": "20230912800373",
+          "rcept_dt": "20230912"
+        },
+        {
+          "date": "2023-09-01",
+          "cityGas_kt": 891,
+          "power_kt": 1250,
+          "total_kt": 2141,
+          "cityGas_kt_yoy": 903,
+          "power_kt_yoy": null,
+          "total_kt_yoy": 2243,
+          "rcept_no": "20231013800132",
+          "rcept_dt": "20231013"
+        },
+        {
+          "date": "2023-10-01",
+          "cityGas_kt": 1123,
+          "power_kt": 1132,
+          "total_kt": 2255,
+          "cityGas_kt_yoy": 1227,
+          "power_kt_yoy": 1375,
+          "total_kt_yoy": 2602,
+          "rcept_no": "20231115800208",
+          "rcept_dt": "20231115"
+        },
+        {
+          "date": "2023-11-01",
+          "cityGas_kt": 1866,
+          "power_kt": 1237,
+          "total_kt": 3103,
+          "cityGas_kt_yoy": 1597,
+          "power_kt_yoy": 1612,
+          "total_kt_yoy": 3209,
+          "rcept_no": "20231215800801",
+          "rcept_dt": "20231215"
+        },
+        {
+          "date": "2023-12-01",
+          "cityGas_kt": 2668,
+          "power_kt": 1416,
+          "total_kt": 4084,
+          "cityGas_kt_yoy": 2976,
+          "power_kt_yoy": 2036,
+          "total_kt_yoy": 5012,
+          "rcept_no": "20240115800595",
+          "rcept_dt": "20240115"
+        },
+        {
+          "date": "2024-01-01",
+          "cityGas_kt": 2804,
+          "power_kt": 1618,
+          "total_kt": 4422,
+          "cityGas_kt_yoy": 2852,
+          "power_kt_yoy": 1782,
+          "total_kt_yoy": 4634,
+          "rcept_no": "20240214800514",
+          "rcept_dt": "20240214"
+        },
+        {
+          "date": "2024-02-01",
+          "cityGas_kt": 2220,
+          "power_kt": 1281,
+          "total_kt": 3501,
+          "cityGas_kt_yoy": 2184,
+          "power_kt_yoy": 1755,
+          "total_kt_yoy": 3939,
+          "rcept_no": "20240313800066",
+          "rcept_dt": "20240313"
+        },
+        {
+          "date": "2024-03-01",
+          "cityGas_kt": 2087,
+          "power_kt": 1400,
+          "total_kt": 3487,
+          "cityGas_kt_yoy": 1706,
+          "power_kt_yoy": 1439,
+          "total_kt_yoy": 3145,
+          "rcept_no": "20240411800568",
+          "rcept_dt": "20240411"
+        },
+        {
+          "date": "2024-04-01",
+          "cityGas_kt": 1251,
+          "power_kt": 1055,
+          "total_kt": 2306,
+          "cityGas_kt_yoy": 1271,
+          "power_kt_yoy": 1221,
+          "total_kt_yoy": 2492,
+          "rcept_no": "20240510800166",
+          "rcept_dt": "20240510"
+        },
+        {
+          "date": "2024-05-01",
+          "cityGas_kt": 1118,
+          "power_kt": 1160,
+          "total_kt": 2278,
+          "cityGas_kt_yoy": 1058,
+          "power_kt_yoy": 1092,
+          "total_kt_yoy": 2150,
+          "rcept_no": "20240613800073",
+          "rcept_dt": "20240613"
+        },
+        {
+          "date": "2024-06-01",
+          "cityGas_kt": 967,
+          "power_kt": 1318,
+          "total_kt": 2285,
+          "cityGas_kt_yoy": 909,
+          "power_kt_yoy": 1193,
+          "total_kt_yoy": 2102,
+          "rcept_no": "20240712800096",
+          "rcept_dt": "20240712"
+        },
+        {
+          "date": "2024-07-01",
+          "cityGas_kt": 968,
+          "power_kt": 1471,
+          "total_kt": 2439,
+          "cityGas_kt_yoy": 918,
+          "power_kt_yoy": 1364,
+          "total_kt_yoy": 2282,
+          "rcept_no": "20240813800618",
+          "rcept_dt": "20240813"
+        },
+        {
+          "date": "2024-08-01",
+          "cityGas_kt": 920,
+          "power_kt": 1643,
+          "total_kt": 2563,
+          "cityGas_kt_yoy": 881,
+          "power_kt_yoy": 1433,
+          "total_kt_yoy": 2314,
+          "rcept_no": "20240913800217",
+          "rcept_dt": "20240913"
+        },
+        {
+          "date": "2024-09-01",
+          "cityGas_kt": 854,
+          "power_kt": 1282,
+          "total_kt": 2136,
+          "cityGas_kt_yoy": 891,
+          "power_kt_yoy": null,
+          "total_kt_yoy": 2141,
+          "rcept_no": "20241011800063",
+          "rcept_dt": "20241011"
+        },
+        {
+          "date": "2024-10-01",
+          "cityGas_kt": 1082,
+          "power_kt": 1056,
+          "total_kt": 2138,
+          "cityGas_kt_yoy": 1123,
+          "power_kt_yoy": 1132,
+          "total_kt_yoy": 2255,
+          "rcept_no": "20241114800640",
+          "rcept_dt": "20241114"
+        },
+        {
+          "date": "2024-11-01",
+          "cityGas_kt": 1583,
+          "power_kt": 1088,
+          "total_kt": 2671,
+          "cityGas_kt_yoy": 1866,
+          "power_kt_yoy": 1237,
+          "total_kt_yoy": 3103,
+          "rcept_no": "20241212800324",
+          "rcept_dt": "20241212"
+        },
+        {
+          "date": "2024-12-01",
+          "cityGas_kt": 2614,
+          "power_kt": 1351,
+          "total_kt": 3967,
+          "cityGas_kt_yoy": 2668,
+          "power_kt_yoy": 1416,
+          "total_kt_yoy": 4084,
+          "rcept_no": "20250109800302",
+          "rcept_dt": "20250109"
+        },
+        {
+          "date": "2025-01-01",
+          "cityGas_kt": 2801,
+          "power_kt": 1504,
+          "total_kt": 4305,
+          "cityGas_kt_yoy": 2804,
+          "power_kt_yoy": 1618,
+          "total_kt_yoy": 4422,
+          "rcept_no": "20250214800134",
+          "rcept_dt": "20250214"
+        },
+        {
+          "date": "2025-02-01",
+          "cityGas_kt": 2669,
+          "power_kt": 1545,
+          "total_kt": 4214,
+          "cityGas_kt_yoy": 2220,
+          "power_kt_yoy": null,
+          "total_kt_yoy": null,
+          "rcept_no": "20250314800369",
+          "rcept_dt": "20250314"
+        },
+        {
+          "date": "2025-03-01",
+          "cityGas_kt": 1976,
+          "power_kt": 1380,
+          "total_kt": 3356,
+          "cityGas_kt_yoy": 2087,
+          "power_kt_yoy": 1400,
+          "total_kt_yoy": 3487,
+          "rcept_no": "20250415800556",
+          "rcept_dt": "20250415"
+        },
+        {
+          "date": "2025-04-01",
+          "cityGas_kt": 1385,
+          "power_kt": 1241,
+          "total_kt": 2626,
+          "cityGas_kt_yoy": 1251,
+          "power_kt_yoy": 1055,
+          "total_kt_yoy": 2306,
+          "rcept_no": "20250515801165",
+          "rcept_dt": "20250515"
+        },
+        {
+          "date": "2025-05-01",
+          "cityGas_kt": 1130,
+          "power_kt": 1263,
+          "total_kt": 2393,
+          "cityGas_kt_yoy": 1118,
+          "power_kt_yoy": 1161,
+          "total_kt_yoy": 2278,
+          "rcept_no": "20250612800092",
+          "rcept_dt": "20250612"
+        },
+        {
+          "date": "2025-06-01",
+          "cityGas_kt": 938,
+          "power_kt": 1063,
+          "total_kt": 2001,
+          "cityGas_kt_yoy": 967,
+          "power_kt_yoy": 1318,
+          "total_kt_yoy": 2285,
+          "rcept_no": "20250714800453",
+          "rcept_dt": "20250714"
+        },
+        {
+          "date": "2025-07-01",
+          "cityGas_kt": 938,
+          "power_kt": 1316,
+          "total_kt": 2254,
+          "cityGas_kt_yoy": 968,
+          "power_kt_yoy": 1471,
+          "total_kt_yoy": null,
+          "rcept_no": "20250813800323",
+          "rcept_dt": "20250813"
+        },
+        {
+          "date": "2025-08-01",
+          "cityGas_kt": 891,
+          "power_kt": 1395,
+          "total_kt": 2286,
+          "cityGas_kt_yoy": 918,
+          "power_kt_yoy": 1643,
+          "total_kt_yoy": 2561,
+          "rcept_no": "20250912800160",
+          "rcept_dt": "20250912"
+        },
+        {
+          "date": "2025-09-01",
+          "cityGas_kt": 911,
+          "power_kt": 1007,
+          "total_kt": 1918,
+          "cityGas_kt_yoy": null,
+          "power_kt_yoy": 1282,
+          "total_kt_yoy": 2134,
+          "rcept_no": "20251014800536",
+          "rcept_dt": "20251014"
+        },
+        {
+          "date": "2025-10-01",
+          "cityGas_kt": 1085,
+          "power_kt": 1183,
+          "total_kt": 2268,
+          "cityGas_kt_yoy": 1081,
+          "power_kt_yoy": 1056,
+          "total_kt_yoy": 2137,
+          "rcept_no": "20251114800309",
+          "rcept_dt": "20251114"
+        },
+        {
+          "date": "2025-11-01",
+          "cityGas_kt": 1715,
+          "power_kt": 1302,
+          "total_kt": 3017,
+          "cityGas_kt_yoy": 1583,
+          "power_kt_yoy": 1088,
+          "total_kt_yoy": 2671,
+          "rcept_no": "20251209800497",
+          "rcept_dt": "20251209"
+        },
+        {
+          "date": "2025-12-01",
+          "cityGas_kt": 2569,
+          "power_kt": 1306,
+          "total_kt": 3875,
+          "cityGas_kt_yoy": 2614,
+          "power_kt_yoy": 1351,
+          "total_kt_yoy": 3967,
+          "rcept_no": "20260115800100",
+          "rcept_dt": "20260115"
+        },
+        {
+          "date": "2026-01-01",
+          "cityGas_kt": 3074,
+          "power_kt": 1854,
+          "total_kt": 4928,
+          "cityGas_kt_yoy": 2801,
+          "power_kt_yoy": null,
+          "total_kt_yoy": 4305,
+          "rcept_no": "20260212801026",
+          "rcept_dt": "20260212"
+        },
+        {
+          "date": "2026-02-01",
+          "cityGas_kt": 2263,
+          "power_kt": 1479,
+          "total_kt": 3742,
+          "cityGas_kt_yoy": 2669,
+          "power_kt_yoy": 1545,
+          "total_kt_yoy": 4214,
+          "rcept_no": "20260313800277",
+          "rcept_dt": "20260313"
+        },
+        {
+          "date": "2026-03-01",
+          "cityGas_kt": 1961,
+          "power_kt": 1595,
+          "total_kt": 3556,
+          "cityGas_kt_yoy": 1976,
+          "power_kt_yoy": 1380,
+          "total_kt_yoy": 3356,
+          "rcept_no": "20260410800420",
+          "rcept_dt": "20260410"
+        }
+      ]
+    }
   },
   "errors": []
 }

@@ -21927,19 +21927,31 @@ function renderKorBalance(el){
   const annual = dart?.sectorVolumesByYear || [];   // [{year, cityGas_kt, power_kt, total_kt}, ...]
   const contracted = dart?.contractedVolumes || []; // [{year, cityGas_kt, power_avg_tariff_kt, ...}, ...]
   const origins = dart?.lngOrigins || [];
+  const monthly = dart?.monthlySales?.series || []; // [{date, cityGas_kt, power_kt, total_kt}, ...]
 
-  // Latest year + YoY
+  // Latest year + YoY (annual context)
   const latest = annual.length ? annual[annual.length - 1] : null;
   const prev   = annual.length >= 2 ? annual[annual.length - 2] : null;
-  const totalYoY   = (latest && prev && prev.total_kt)   ? (latest.total_kt   - prev.total_kt)   / prev.total_kt   : null;
-  const cityYoY    = (latest && prev && prev.cityGas_kt) ? (latest.cityGas_kt - prev.cityGas_kt) / prev.cityGas_kt : null;
-  const powerYoY   = (latest && prev && prev.power_kt)   ? (latest.power_kt   - prev.power_kt)   / prev.power_kt   : null;
 
-  // Power vs City split for latest year
-  const cityShare  = (latest && latest.total_kt) ? latest.cityGas_kt / latest.total_kt : null;
-  const powerShare = (latest && latest.total_kt) ? latest.power_kt   / latest.total_kt : null;
+  // Latest month + YoY (most actionable for trading)
+  const latestMon = monthly.length ? monthly[monthly.length - 1] : null;
+  // Same month last year — search by month
+  let prevMonYoY = null;
+  if (latestMon) {
+    const targetDate = (parseInt(latestMon.date.slice(0,4)) - 1) + latestMon.date.slice(4);
+    prevMonYoY = monthly.find(r => r.date === targetDate) || null;
+  }
+  const monthName = latestMon ? new Date(latestMon.date+'T00:00:00Z').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : null;
 
-  const fmtKt  = (n) => n != null ? (n/1000).toFixed(2) + ' Mt' : '—';
+  const cityYoY  = (latestMon && prevMonYoY && prevMonYoY.cityGas_kt) ? (latestMon.cityGas_kt - prevMonYoY.cityGas_kt) / prevMonYoY.cityGas_kt : null;
+  const powerYoY = (latestMon && prevMonYoY && prevMonYoY.power_kt)   ? (latestMon.power_kt   - prevMonYoY.power_kt)   / prevMonYoY.power_kt   : null;
+  const totalYoY = (latestMon && prevMonYoY && prevMonYoY.total_kt)   ? (latestMon.total_kt   - prevMonYoY.total_kt)   / prevMonYoY.total_kt   : null;
+
+  // Mix shares for latest month
+  const cityShare  = (latestMon && latestMon.total_kt) ? latestMon.cityGas_kt / latestMon.total_kt : null;
+  const powerShare = (latestMon && latestMon.total_kt) ? latestMon.power_kt   / latestMon.total_kt : null;
+
+  const fmtKtMon = (n) => n != null ? (n/1000).toFixed(2) + ' Mt' : '—';
   const fmtPct = (p) => p != null ? ((p>=0?'▲ ':'▼ ') + Math.abs(p*100).toFixed(1) + '%') : '—';
   const pctColor = (p) => p == null ? '#9ca3af' : (p >= 0 ? '#34d399' : '#fca5a5');
 
@@ -21958,20 +21970,20 @@ function renderKorBalance(el){
 
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
       ${korKpiCard({
-        label: latest ? `Total LNG sales · ${latest.year}` : 'Total LNG sales',
-        value: fmtKt(latest?.total_kt),
+        label: monthName ? `Total LNG sales · ${monthName}` : 'Total LNG sales',
+        value: fmtKtMon(latestMon?.total_kt),
         sub: '<span style="color:'+pctColor(totalYoY)+'">'+fmtPct(totalYoY)+' YoY</span>',
         color:'#fff',
       })}
       ${korKpiCard({
-        label: latest ? `City-gas · ${latest.year}` : 'City-gas',
-        value: fmtKt(latest?.cityGas_kt),
+        label: monthName ? `City-gas · ${monthName}` : 'City-gas',
+        value: fmtKtMon(latestMon?.cityGas_kt),
         sub: '<span style="color:'+pctColor(cityYoY)+'">'+fmtPct(cityYoY)+' YoY</span> · '+(cityShare!=null?(cityShare*100).toFixed(0)+'% mix':''),
         color:'#3b82f6',
       })}
       ${korKpiCard({
-        label: latest ? `Power · ${latest.year}` : 'Power',
-        value: fmtKt(latest?.power_kt),
+        label: monthName ? `Power · ${monthName}` : 'Power',
+        value: fmtKtMon(latestMon?.power_kt),
         sub: '<span style="color:'+pctColor(powerYoY)+'">'+fmtPct(powerYoY)+' YoY</span> · '+(powerShare!=null?(powerShare*100).toFixed(0)+'% mix':''),
         color:'#f59e0b',
       })}
@@ -21979,10 +21991,18 @@ function renderKorBalance(el){
 
     <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS sales by sector · 2015–${latest?.year || '—'} · kt LNG</span>
-        <span style="font-size:9px;color:#5a6882">DART · KOGAS quarterly + annual reports</span>
+        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS monthly sales by sector · ${monthly.length ? monthly[0].date.slice(0,7) + '–' + monthly[monthly.length-1].date.slice(0,7) : '—'} · kt LNG</span>
+        <span style="font-size:9px;color:#5a6882">DART · KOGAS monthly preliminary disclosures · ${monthly.length} months</span>
       </div>
-      <div style="height:240px"><canvas id="kor-bal-annual"></canvas></div>
+      <div style="height:260px"><canvas id="kor-bal-monthly"></canvas></div>
+    </div>
+
+    <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS annual sales by sector · 2015–${latest?.year || '—'} · kt LNG</span>
+        <span style="font-size:9px;color:#5a6882">DART · KOGAS annual report</span>
+      </div>
+      <div style="height:200px"><canvas id="kor-bal-annual"></canvas></div>
     </div>
 
     <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:8px;margin-bottom:12px">
@@ -22042,6 +22062,55 @@ function renderKorBalance(el){
       <span style="color:#fca5a5"><b>Coverage gaps:</b> per-terminal tank stocks · daily LNG sendout · KOGAS spot purchase prices · monthly LNG import volumes (annual only via DART)</span>
     </div>
   `;
+
+  // ── Monthly sector stacked bar chart (DART monthly disclosures) ────────
+  if (window._korChartMonthly) { window._korChartMonthly.destroy(); window._korChartMonthly = null; }
+  const cMon = document.getElementById('kor-bal-monthly');
+  if (cMon && monthly.length) {
+    const labels = monthly.map(r => r.date.slice(0,7));
+    const cur = monthly[monthly.length - 1].date.slice(0,7);
+    window._korChartMonthly = new Chart(cMon.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label:'City-gas', data: monthly.map(r => r.cityGas_kt),
+            backgroundColor: labels.map(d => d === cur ? '#60a5fa' : '#3b82f6'),
+            stack:'sales', borderWidth:0 },
+          { label:'Power',    data: monthly.map(r => r.power_kt),
+            backgroundColor: labels.map(d => d === cur ? '#fbbf24' : '#f59e0b'),
+            stack:'sales', borderWidth:0 },
+        ]
+      },
+      options: {
+        ...CD, animation:false,
+        plugins: {
+          ...CD.plugins,
+          legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8} },
+          tooltip: { ...CD.plugins.tooltip, callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} kt`,
+            footer: (items) => {
+              if (items.length < 2) return '';
+              const tot = items.reduce((a,i) => a + i.parsed.y, 0);
+              return `Total: ${tot.toLocaleString()} kt`;
+            },
+          }},
+        },
+        scales: {
+          x: { ...CD.scales.x, stacked:true,
+                ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:18,
+                       callback:function(v,i){
+                         const lab=this.getLabelForValue(v);
+                         // show year only on Jan
+                         return lab.endsWith('-01')?lab.slice(0,4):'';
+                       }} },
+          y: { ...CD.scales.y, stacked:true,
+                title:{display:true,text:'kt LNG',color:'#3d5070',font:{size:9}},
+                ticks:{color:'#3d5070',font:{size:9}} },
+        },
+      }
+    });
+  }
 
   // ── Annual sector stacked bar chart ────────────────────────────────────
   if (_korChartMain) { _korChartMain.destroy(); _korChartMain = null; }
