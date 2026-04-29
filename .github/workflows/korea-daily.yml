@@ -42,7 +42,8 @@ jobs:
 
       - name: Run Korea scraper
         env:
-          OPENDART_KEY: ${{ secrets.OPENDART_KEY }}
+          OPENDART_KEY:  ${{ secrets.OPENDART_KEY }}
+          COMTRADE_KEY:  ${{ secrets.COMTRADE_KEY }}
         run: python3 scripts/fetch_korea.py
 
       - name: Check for material change
@@ -70,6 +71,7 @@ jobs:
                   data/dart_kogas_quarterly.json \
                   data/kcga_monthly.json \
                   data/data_go_kr_kogas_supply.json data/data_go_kr_kogas_tariff.json \
+                  data/comtrade_korea_lng.json \
                   2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No tracked changes — nothing to commit."

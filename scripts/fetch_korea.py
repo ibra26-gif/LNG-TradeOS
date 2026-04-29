@@ -1547,6 +1547,148 @@ def fetch_kogas_power_tariff():
 
 
 # ────────────────────────────────────────────────────────────────────
+# UN Comtrade — Korea LNG imports by origin (HS 271111)
+#
+# Free account at https://comtradeplus.un.org/signin gives a subscription
+# key via "Subscriptions" page. Free tier: 500 calls/day, 100k rows/call,
+# monthly HS data, no Korean phone verification required.
+#
+# Endpoint:
+#   https://comtradeapi.un.org/data/v1/get/C/M/HS
+#   reporterCode=410 (Korea, Rep.)  flowCode=M (imports)  cmdCode=271111
+#   period=YYYYMM     (or comma-separated YYYYMM list)
+#   typeCode=C        (commodity)   freqCode=M (monthly)  clCode=HS
+#
+# Returns rows with: period (YYYYMM), partnerDesc (origin country name),
+# netWgt (kg), primaryValue (USD CIF), partnerCode (M49 country code).
+#
+# We aggregate to: monthly Korea LNG imports total + per-origin breakdown.
+# ────────────────────────────────────────────────────────────────────
+COMTRADE_API_BASE = 'https://comtradeapi.un.org/data/v1/get/C/M/HS'
+
+
+def fetch_comtrade_korea_lng_imports():
+    """Pull Korea (410) monthly LNG imports HS 271111 from UN Comtrade.
+
+    Requires COMTRADE_KEY env var (free key from comtradeplus.un.org).
+    Returns None if key missing.
+
+    Caches in data/comtrade_korea_lng.json keyed by period (YYYYMM).
+    Only fetches missing periods + the latest 3 (in case of revisions).
+    """
+    api_key = os.environ.get('COMTRADE_KEY')
+    if not api_key:
+        print('COMTRADE_KEY not set — skipping UN Comtrade fetch', file=sys.stderr)
+        return None
+
+    cache_path = os.path.join(os.path.dirname(OUT_PATH), 'comtrade_korea_lng.json')
+    cached = {'rowsByPeriod': {}}
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                cached = json.load(f)
+        except Exception:
+            cached = {'rowsByPeriod': {}}
+
+    rows_by_period = cached.get('rowsByPeriod') or {}
+    today = datetime.now(timezone.utc)
+
+    # Build period list: 2018-01 through current month (Comtrade lags ~3 months)
+    cutoff = today - timedelta(days=90)
+    periods = []
+    y, m = 2018, 1
+    while (y, m) <= (cutoff.year, cutoff.month):
+        periods.append(f'{y}{m:02d}')
+        m += 1
+        if m > 12: y += 1; m = 1
+
+    # Refetch latest 6 (in case of revisions); skip already-cached others.
+    refetch_recent = set(periods[-6:])
+    todo = [p for p in periods
+            if p not in rows_by_period or p in refetch_recent]
+
+    print(f'Comtrade Korea LNG: {len(periods)} periods total, '
+          f'{len(rows_by_period)} cached, {len(todo)} to fetch',
+          file=sys.stderr)
+
+    fetched = 0
+    # Comtrade allows multi-period in one call (comma-separated, max ~12 at a time)
+    BATCH = 12
+    for i in range(0, len(todo), BATCH):
+        chunk = todo[i:i + BATCH]
+        url = (f'{COMTRADE_API_BASE}'
+               f'?reporterCode=410&flowCode=M&cmdCode=271111'
+               f'&period={",".join(chunk)}'
+               f'&subscription-key={api_key}')
+        try:
+            text = fetch(url, timeout=60)
+            data = json.loads(text)
+        except Exception as e:
+            print(f'Comtrade fetch failed (chunk {chunk[0]}…): {e}',
+                  file=sys.stderr)
+            time.sleep(2)
+            continue
+        items = data.get('data') or []
+        if not items and data.get('error'):
+            print(f"Comtrade error: {data.get('error')}", file=sys.stderr)
+        for r in items:
+            period = str(r.get('period') or '')
+            partner = r.get('partnerDesc')
+            net_wgt = r.get('netWgt')
+            val = r.get('primaryValue')
+            if not period or not partner:
+                continue
+            entry = rows_by_period.setdefault(period, {})
+            entry[partner] = {
+                'partnerCode': r.get('partnerCode'),
+                'netWgt_kg':   net_wgt,
+                'value_usd':   val,
+            }
+        for p in chunk:
+            if p in rows_by_period:
+                fetched += 1
+        time.sleep(0.5)  # 500 calls/day — be polite
+
+    # Build a flat monthly summary series
+    series = []
+    for period in sorted(rows_by_period.keys()):
+        rows = rows_by_period[period]
+        # Sum across all partners (excluding "World" if present)
+        per_partner = {p: r for p, r in rows.items() if p != 'World'}
+        total_kg = sum((r.get('netWgt_kg') or 0) for r in per_partner.values())
+        total_usd = sum((r.get('value_usd') or 0) for r in per_partner.values())
+        partners = sorted(per_partner.items(),
+                          key=lambda kv: -(kv[1].get('netWgt_kg') or 0))
+        top_partners = [{
+            'partner':    name,
+            'netWgt_kt':  round((r.get('netWgt_kg') or 0) / 1_000_000, 1),
+            'value_musd': round((r.get('value_usd') or 0) / 1_000_000, 1),
+        } for name, r in partners[:10]]
+        series.append({
+            'date':         f'{period[:4]}-{period[4:6]}-01',
+            'period':       period,
+            'totalImports_kt':    round(total_kg / 1_000_000, 1),
+            'totalImports_musd':  round(total_usd / 1_000_000, 1),
+            'cifPrice_usd_per_t': (round(total_usd / total_kg * 1000, 2)
+                                    if total_kg > 0 else None),
+            'topPartners':  top_partners,
+        })
+
+    out = {
+        'cachedAt':       today.isoformat(timespec='seconds'),
+        'source':         'UN Comtrade · Korea (410) imports HS 271111',
+        'sourceUrl':      'https://comtradeplus.un.org/',
+        'rowsByPeriod':   rows_by_period,
+        'series':         series,
+    }
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        json.dump(out, f, indent=2, ensure_ascii=False)
+    print(f'Comtrade Korea LNG: {len(series)} months in series '
+          f'(fetched {fetched} new this run)', file=sys.stderr)
+    return out
+
+
+# ────────────────────────────────────────────────────────────────────
 # KCGA — Korea City Gas Association monthly bulletin (XLSX)
 #
 # KCGA publishes a monthly Excel bulletin (도시가스사업통계월보) with the
@@ -1978,6 +2120,21 @@ def main():
     except Exception as e:
         out['errors'].append(f'data.go.kr KOGAS tariff: {e}')
         print(f"data.go.kr KOGAS tariff failed: {e}", file=sys.stderr)
+
+    # UN Comtrade — Korea LNG imports HS 271111 by origin (gated on COMTRADE_KEY)
+    try:
+        ct = fetch_comtrade_korea_lng_imports()
+        if ct:
+            out['comtrade'] = {
+                'cachedAt': ct.get('cachedAt'),
+                'source':   ct.get('source'),
+                'series':   ct.get('series'),
+            }
+            print(f"Comtrade: {len(ct.get('series') or [])} months",
+                  file=sys.stderr)
+    except Exception as e:
+        out['errors'].append(f'Comtrade: {e}')
+        print(f"Comtrade failed: {e}", file=sys.stderr)
 
     # KCGA monthly bulletins — sub-sector demand (Res/Gen/Biz/Industrial/CHP/Transport)
     try:
