@@ -10,7 +10,7 @@ module.exports = function handler(req, res) {
     return;
   }
 
-  const appPath = path.join(process.cwd(), 'api/private/app.html');
+  const appPath = path.join(process.cwd(), 'api/private/platform-app.txt');
   const html = fs
     .readFileSync(appPath, 'utf8')
     .replaceAll('__LNGTRADEOS_ACCESS_PASSWORD__', process.env.LNGTRADEOS_ACCESS_PASSWORD || '');
