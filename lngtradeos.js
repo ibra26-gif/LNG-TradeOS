@@ -7724,21 +7724,192 @@ function renderHistorical(){
     `;
   }
 
-  // ── ② SPREAD · time-series of BLNGx − BLNGy for a chosen tenor ──
+  // ── ② SPREAD · time-series of BLNGx − BLNGy for a chosen tenor ──────────
   function histSpreadView(){
-    return `<div style="background:#0a1628;border:1px dashed #1e3a5f;padding:24px;text-align:center">
-      <div style="color:#546e7a;font-size:10px;letter-spacing:1px;margin-bottom:6px">SPREAD VIEW — COMING NEXT</div>
-      <div style="color:#3d5070;font-size:9px">BLNG1 − BLNG2 · BLNG1 − BLNG3 · BLNG2 − BLNG3 historical spread charts.</div>
-    </div>`;
+    if(!hasCurves) return '';
+    const sorted = [...curves].sort((a,b)=>a.date.localeCompare(b.date));
+    const range  = F.histSpdRange || 'ALL';
+    const tenor  = F.histSpdTenor==null ? 0 : +F.histSpdTenor;
+    const PAIRS  = [
+      { id:'b1_b2', label:'BLNG1 − BLNG2', a:'BLNG1', b:'BLNG2', col:'#4fc3f7' },
+      { id:'b1_b3', label:'BLNG1 − BLNG3', a:'BLNG1', b:'BLNG3', col:'#81c784' },
+      { id:'b2_b3', label:'BLNG2 − BLNG3', a:'BLNG2', b:'BLNG3', col:'#ffb74d' },
+    ];
+    const sel = F.histSpdSel || { b1_b2:true, b1_b3:true, b2_b3:true };
+    const now = new Date();
+    const filt = ds => {
+      const d = new Date(ds);
+      if (range==='ALL') return true;
+      if (range==='YTD') return d.getFullYear()===now.getFullYear();
+      const months = {'1M':1,'3M':3,'6M':6,'1Y':12}[range];
+      if (!months) return true;
+      const cut = new Date(now); cut.setMonth(cut.getMonth()-months);
+      return d >= cut;
+    };
+    const filtered = sorted.filter(s => filt(s.date));
+    const lineData = PAIRS.filter(p => sel[p.id]).map(p => {
+      const values = filtered.map(s => {
+        const va = s.blng?.[p.a]?.[tenor];
+        const vb = s.blng?.[p.b]?.[tenor];
+        return (va!=null && vb!=null) ? +(va - vb).toFixed(0) : null;
+      });
+      return { name: p.label, color: p.col, values };
+    });
+    const stats = vals => {
+      const x = vals.filter(v=>v!=null&&!isNaN(v));
+      if (!x.length) return null;
+      const s = [...x].sort((a,b)=>a-b);
+      const mean = x.reduce((a,b)=>a+b,0)/x.length;
+      const pct = q => { const i=(s.length-1)*q; const lo=Math.floor(i), hi=Math.ceil(i); return s[lo]+(s[hi]-s[lo])*(i-lo); };
+      const sd = Math.sqrt(x.reduce((a,b)=>a+(b-mean)**2,0)/Math.max(x.length-1,1));
+      return { n:x.length, current:x[x.length-1], mean, median:pct(0.5), sd, min:s[0], p5:pct(0.05), p25:pct(0.25), p75:pct(0.75), p95:pct(0.95), max:s[s.length-1] };
+    };
+    const tSel = `<select class="f-sel" style="min-width:90px" onchange="F.histSpdTenor=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">${ML.map((m,i)=>`<option value="${i}"${i===tenor?' selected':''}>${m}</option>`).join('')}</select>`;
+    const rangeBtns = ['1M','3M','6M','YTD','1Y','ALL'].map(r=>`<button class="f-btn sm${range===r?' on':''}" onclick="F.histSpdRange='${r}';document.getElementById('f-hist-body').innerHTML=renderHistorical()">${r}</button>`).join('');
+    const pairBtns = PAIRS.map(p=>`<button class="f-btn sm${sel[p.id]?' on':''}" style="border-color:${p.col};color:${sel[p.id]?p.col:'#546e7a'}" onclick="F.histSpdSel=F.histSpdSel||{b1_b2:true,b1_b3:true,b2_b3:true};F.histSpdSel['${p.id}']=!F.histSpdSel['${p.id}'];fs('f_hist_spd_sel',F.histSpdSel);document.getElementById('f-hist-body').innerHTML=renderHistorical()">${p.label}</button>`).join('');
+
+    const chart = mkChart(lineData, '', '$/day', true);
+    const statsRows = lineData.map(s => {
+      const st = stats(s.values);
+      return st ? `<tr>
+        <td style="color:${s.color};padding:3px 6px;font-size:10px;font-weight:600">${s.name}</td>
+        ${['current','mean','median','sd','min','p5','p25','p75','p95','max'].map(k=>`<td style="text-align:right;padding:3px 6px;font-size:10px;color:#c8d6e5">${st[k].toLocaleString(undefined,{maximumFractionDigits:0})}</td>`).join('')}
+        <td style="text-align:right;padding:3px 6px;font-size:9px;color:#3d5070">${st.n}</td>
+      </tr>` : '';
+    }).join('');
+    const statsTbl = lineData.length ? `
+      <table class="f-tbl" style="margin-top:8px;width:100%;font-size:10px">
+        <thead><tr style="color:#546e7a;letter-spacing:1px"><th style="text-align:left;padding:3px 6px">PAIR · $/day</th><th style="text-align:right;padding:3px 6px">CURRENT</th><th style="text-align:right;padding:3px 6px">MEAN</th><th style="text-align:right;padding:3px 6px">MEDIAN</th><th style="text-align:right;padding:3px 6px">SD</th><th style="text-align:right;padding:3px 6px">MIN</th><th style="text-align:right;padding:3px 6px">P5</th><th style="text-align:right;padding:3px 6px">P25</th><th style="text-align:right;padding:3px 6px">P75</th><th style="text-align:right;padding:3px 6px">P95</th><th style="text-align:right;padding:3px 6px">MAX</th><th style="text-align:right;padding:3px 6px">N</th></tr></thead>
+        <tbody>${statsRows}</tbody>
+      </table>` : '';
+
+    return `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <span class="f-lbl">CONTRACT MONTH</span> ${tSel}
+      <span style="color:#3d5070">|</span>
+      <span class="f-lbl">PAIRS</span> ${pairBtns}
+      <span style="color:#3d5070">|</span>
+      <span class="f-lbl">RANGE</span> ${rangeBtns}
+      <span style="margin-left:auto;color:#546e7a;font-size:9px">${filtered.length} obs · ${ML[tenor]}</span>
+    </div>
+    ${chart}
+    ${statsTbl}
+    `;
   }
 
-  // ── ④ FREIGHT vs BASIS · JKM−TTF history above, BLNG1/2/3 history below,
-  // both for the same contract month so you can eye the arb evolution.
+  // ── ④ FREIGHT vs BASIS ─────────────────────────────────────────────────
+  // Two stacked charts at the same contract month:
+  //   Top  = JKM − TTF basis ($/MMBtu) from EOD cache (aD)
+  //   Bot  = BLNG1/2/3 ($/day) from histCurves
+  // Side-by-side helps eye when (JKM−TTF spread) > Atlantic→Pacific freight
+  // differential — i.e., when the inter-basin arb opens.
   function histVsBasisView(){
-    return `<div style="background:#0a1628;border:1px dashed #1e3a5f;padding:24px;text-align:center">
-      <div style="color:#546e7a;font-size:10px;letter-spacing:1px;margin-bottom:6px">FREIGHT vs BASIS — COMING NEXT</div>
-      <div style="color:#3d5070;font-size:9px">Two stacked charts: JKM−TTF above, BLNG1/2/3 below, linked by a contract-month dropdown.</div>
-    </div>`;
+    if(!hasCurves) return '';
+    const sortedHist = [...curves].sort((a,b)=>a.date.localeCompare(b.date));
+    const range  = F.histVbRange || 'ALL';
+    const tenor  = F.histVbTenor==null ? 0 : +F.histVbTenor;
+    const blngSel = F.histVbBlng || { BLNG1:true, BLNG2:true, BLNG3:true };
+    const now = new Date();
+    const filt = ds => {
+      const d = new Date(ds);
+      if (range==='ALL') return true;
+      if (range==='YTD') return d.getFullYear()===now.getFullYear();
+      const months = {'1M':1,'3M':3,'6M':6,'1Y':12}[range];
+      if (!months) return true;
+      const cut = new Date(now); cut.setMonth(cut.getMonth()-months);
+      return d >= cut;
+    };
+
+    // TOP chart: JKM − TTF history from EOD cache
+    const basisData = [];
+    if (typeof sDates !== 'undefined' && sDates.length) {
+      for (const ds of sDates) {
+        const d = aD[ds]?.date; if (!d) continue;
+        const dateStr = d.toISOString().slice(0,10);
+        if (!filt(dateStr)) continue;
+        const pk = rPK(d, tenor + 1);  // tenor 0 = M+1
+        const row = (aD[ds].rows || []).find(r => r.pk === pk);
+        const v = (row && row.JKM != null && row.TTF != null) ? +(row.JKM - row.TTF).toFixed(3) : null;
+        basisData.push({ date: dateStr, v });
+      }
+    }
+    const basisLine = [{
+      name: `JKM − TTF · ${ML[tenor]}`, color: '#a78bfa',
+      values: basisData.map(d => d.v),
+    }];
+
+    // BOTTOM chart: BLNG1/2/3 history from histCurves
+    const histFiltered = sortedHist.filter(s => filt(s.date));
+    const blngLines = ['BLNG1','BLNG2','BLNG3'].filter(b => blngSel[b]).map(b => ({
+      name: `${b} · ${ML[tenor]}`, color: BC[b] || '#4fc3f7',
+      values: histFiltered.map(s => s.blng?.[b]?.[tenor] ?? null),
+    }));
+
+    // Build standalone charts (dates differ between basisData and histFiltered)
+    function mkChartAdHoc(series, isBlng){
+      const allVals = series.flatMap(s => s.values.filter(v => v!=null));
+      if (allVals.length < 2) return `<div style="height:160px;display:flex;align-items:center;justify-content:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">No data for this delivery month</div>`;
+      const labels = isBlng ? histFiltered.map(s => s.date.slice(5)) : basisData.map(d => d.date.slice(5));
+      const id = 'vb_'+Math.random().toString(36).slice(2,8);
+      const datasets = series.map(s => {
+        const hexToRgb = h => `${parseInt(h.slice(1,3),16)},${parseInt(h.slice(3,5),16)},${parseInt(h.slice(5,7),16)}`;
+        const rgb = hexToRgb(s.color);
+        return {
+          label: s.name,
+          data: s.values.map((v,i) => ({ x: labels[i], y: v })),
+          borderColor: s.color,
+          backgroundColor: `rgba(${rgb},0.08)`,
+          pointRadius: 2.5, pointHoverRadius: 5,
+          borderWidth: 1.6, tension: 0.3, fill: false, spanGaps: false,
+        };
+      });
+      return `
+      <div style="position:relative;height:200px;background:#070b14;border:1px solid #1e3a5f;border-radius:2px;padding:8px">
+        <canvas id="${id}"></canvas>
+      </div>
+      <script>
+        (function(){
+          const ctx=document.getElementById('${id}').getContext('2d');
+          new Chart(ctx,{type:'line',data:{labels:${JSON.stringify(labels)},datasets:${JSON.stringify(datasets)}},
+            options:{responsive:true,maintainAspectRatio:false,animation:false,
+              plugins:{legend:{position:'bottom',labels:{color:'#9ca3af',font:{size:9},boxWidth:8}},tooltip:{mode:'index',intersect:false}},
+              scales:{x:{ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:14},grid:{color:'#0f1824'}},
+                       y:{ticks:{color:'#3d5070',font:{size:9}},grid:{color:'#0f1824'}}}}});
+        })();
+      </script>`;
+    }
+
+    const tSel = `<select class="f-sel" style="min-width:90px" onchange="F.histVbTenor=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">${ML.map((m,i)=>`<option value="${i}"${i===tenor?' selected':''}>${m}</option>`).join('')}</select>`;
+    const rangeBtns = ['1M','3M','6M','YTD','1Y','ALL'].map(r=>`<button class="f-btn sm${range===r?' on':''}" onclick="F.histVbRange='${r}';document.getElementById('f-hist-body').innerHTML=renderHistorical()">${r}</button>`).join('');
+    const blngBtns = ['BLNG1','BLNG2','BLNG3'].map(b=>`<button class="f-btn sm${blngSel[b]?' on':''}" style="border-color:${BC[b]};color:${blngSel[b]?BC[b]:'#546e7a'}" onclick="F.histVbBlng=F.histVbBlng||{BLNG1:true,BLNG2:true,BLNG3:true};F.histVbBlng['${b}']=!F.histVbBlng['${b}'];fs('f_hist_vb_blng',F.histVbBlng);document.getElementById('f-hist-body').innerHTML=renderHistorical()">${b}</button>`).join('');
+
+    return `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <span class="f-lbl">CONTRACT MONTH</span> ${tSel}
+      <span style="color:#3d5070">|</span>
+      <span class="f-lbl">BLNG</span> ${blngBtns}
+      <span style="color:#3d5070">|</span>
+      <span class="f-lbl">RANGE</span> ${rangeBtns}
+      <span style="margin-left:auto;color:#546e7a;font-size:9px">${ML[tenor]}</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div>
+        <div style="color:#a78bfa;font-size:9px;letter-spacing:1px;margin-bottom:4px">JKM − TTF · $/MMBtu — Asian premium over European</div>
+        ${basisData.length>=2 ? mkChartAdHoc(basisLine, false) : `<div style="height:160px;display:flex;align-items:center;justify-content:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">No EOD data — load OB LNG EOD Curves first</div>`}
+      </div>
+      <div>
+        <div style="color:#4fc3f7;font-size:9px;letter-spacing:1px;margin-bottom:4px">BLNG · $/day — Atlantic / Pacific / Cross-basin freight</div>
+        ${blngLines.length ? mkChartAdHoc(blngLines, true) : `<div style="height:160px;display:flex;align-items:center;justify-content:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">Toggle a BLNG line above</div>`}
+      </div>
+    </div>
+
+    <div style="margin-top:10px;background:rgba(167,139,250,0.04);border-left:2px solid #a78bfa;padding:10px 12px;font-size:10px;color:#c8cfe0;line-height:1.55">
+      <span style="color:#a78bfa;font-size:9px;letter-spacing:.06em">READ</span><br/>
+      Wider <b>JKM − TTF</b> spread vs steady BLNG → arb opens to Asia (sellers can pay extra freight to capture spread).
+      Narrowing JKM − TTF or rising BLNG → arb closes / flows redirect to Europe.
+    </div>
+    `;
   }
 
   // ── MAIN RENDER ───────────────────────────────────────────────────────────
