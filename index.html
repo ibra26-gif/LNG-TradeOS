@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="lngtradeos.css?v=20260422a">
-<script src="lngtradeos.js?v=20260430-hist-freight-spread-vsbasis" defer></script>
+<script src="lngtradeos.js?v=20260430-freight-curve-analysis-card" defer></script>
 </head>
 <body>
 <div id="public-site">
@@ -191,10 +191,11 @@
     <div class="group-hdr"><div class="group-icon">▣</div><div><div class="group-ttl">PHYSICAL TRADING</div><div class="group-sub">Voyage economics, cargo pricing and European regasification</div></div></div>
     <div class="cards-grid">
       <div class="mod-card" onclick="shellNav('physical','freight')"><span class="card-num">01</span><div class="card-ttl">Freight Rate Calculator</div><div class="card-desc">Voyage cost estimation across global LNG shipping routes with BLNG curves and per-month positioning</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','cargo')"><span class="card-num">02</span><div class="card-ttl">LNG Global Netback</div><div class="card-desc">USGC/WAF/Oman arb, DES pricing, FOB netback matrix and global cargo economics</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','mktstr')"><span class="card-num">03</span><div class="card-ttl">Market Structure Pricing</div><div class="card-desc">Near/far curve structure, per-day roll and pricing formula generation for JKM and TTF deals</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','regas')"><span class="card-num">04</span><div class="card-ttl">EU Regas Model</div><div class="card-desc">European regasification terminal pricing, cost graphs, netback analysis and slot valuation</div><span class="s-tag tag-phy">PHYSICAL</span></div>
-      <div class="mod-card" onclick="shellNav('physical','acer')"><span class="card-num">05</span><div class="card-ttl">Historical ACER Price</div><div class="card-desc">ACER daily DES physical NWE · SE · EU — seasonal scatter vs history 2023–2026</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','freight');setTimeout(()=>{if(typeof fMatTab==='function')fMatTab(4);},150)"><span class="card-num">02</span><div class="card-ttl">Freight Curve Analysis</div><div class="card-desc">Historical BLNG observations · spread analysis (BLNG1−BLNG2/3) · forward curves · freight vs JKM−TTF basis arb signal</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','cargo')"><span class="card-num">03</span><div class="card-ttl">LNG Global Netback</div><div class="card-desc">USGC/WAF/Oman arb, DES pricing, FOB netback matrix and global cargo economics</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','mktstr')"><span class="card-num">04</span><div class="card-ttl">Market Structure Pricing</div><div class="card-desc">Near/far curve structure, per-day roll and pricing formula generation for JKM and TTF deals</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','regas')"><span class="card-num">05</span><div class="card-ttl">EU Regas Model</div><div class="card-desc">European regasification terminal pricing, cost graphs, netback analysis and slot valuation</div><span class="s-tag tag-phy">PHYSICAL</span></div>
+      <div class="mod-card" onclick="shellNav('physical','acer')"><span class="card-num">06</span><div class="card-ttl">Historical ACER Price</div><div class="card-desc">ACER daily DES physical NWE · SE · EU — seasonal scatter vs history 2023–2026</div><span class="s-tag tag-phy">PHYSICAL</span></div>
     </div>
   </div>
   <div class="mod-group">
