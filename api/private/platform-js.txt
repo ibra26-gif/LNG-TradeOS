@@ -20433,122 +20433,248 @@ function drawDomProductionCharts(){
   }
 }
 
-// ── GAS BALANCE TABLE ──────────────────────────────────────────────────────────
+// ── GAS BALANCE DASHBOARD ─────────────────────────────────────────────────────
+const EUB_PREF_KEY = 'eub_prefs_v1';
+const EUB_COUNTRIES = [
+  {code:'eu', name:'EU+UK', stor:null, lng:null, dom:null, routes:null},
+  {code:'de', name:'Germany', stor:'de', lng:'de', dom:'germany', routes:[]},
+  {code:'fr', name:'France', stor:'fr', lng:'fr', dom:'france', routes:[]},
+  {code:'it', name:'Italy', stor:'it', lng:'it', dom:'italy', routes:['algeria_italy','libya','tap']},
+  {code:'nl', name:'Netherlands', stor:'nl', lng:'nl', dom:'netherlands', routes:[]},
+  {code:'es', name:'Spain', stor:'es', lng:'es', dom:'spain', routes:['algeria_spain']},
+  {code:'be', name:'Belgium', stor:'be', lng:'be', dom:null, routes:[]},
+  {code:'gb', name:'United Kingdom', stor:null, lng:'gb', dom:'uk', routes:[]},
+];
+
+function eubPrefs(){
+  try{return {...{country:'eu',days:60,unit:GU_SEL||'mcm'},...JSON.parse(localStorage.getItem(EUB_PREF_KEY)||'{}')};}
+  catch{return {country:'eu',days:60,unit:GU_SEL||'mcm'};}
+}
+function eubSetPref(k,v){
+  const p=eubPrefs(); p[k]=v;
+  try{localStorage.setItem(EUB_PREF_KEY,JSON.stringify(p));}catch{}
+}
+function eubCountry(code){return EUB_COUNTRIES.find(c=>c.code===code)||EUB_COUNTRIES[0];}
+function eubUnitLabel(){return GU[GU_SEL]?.lbl?.replace('/month','/d')||'mcm/d';}
+function eubConvMcm(v){return v==null||isNaN(v)?null:GU[GU_SEL].pipe(v);}
+function eubConvGwh(v){return v==null||isNaN(v)?null:GU[GU_SEL].lng(v);}
+function eubFmt(v,dp=1){return v==null||isNaN(v)?'<span style="color:#3d5070">--</span>':Number(v).toFixed(dp);}
+function eubPlain(v,dp=1){return v==null||isNaN(v)?'--':Number(v).toFixed(dp);}
+function eubMonthKey(date){return date.slice(0,7);}
+function eubDaysInMonth(mo){const [y,m]=mo.split('-').map(Number);return new Date(y,m,0).getDate();}
+function eubStorageMcmFromGwh(gwh){return gwh==null?null:gwh/10.55;}
+function eubDailyDates(days){
+  const all=[
+    ...Object.values(GD.pipeDaily||{}).flatMap(o=>Object.keys(o||{})),
+    ...Object.keys(GD.lngDaily||{}),
+    ...Object.keys(GD.storDaily||{}),
+  ].filter(Boolean).sort();
+  const end=all.length?all[all.length-1]:new Date().toISOString().slice(0,10);
+  const endDate=new Date(end+'T00:00:00Z');
+  return Array.from({length:days},(_,i)=>{const d=new Date(endDate);d.setUTCDate(d.getUTCDate()-days+1+i);return d.toISOString().slice(0,10);});
+}
+function eubPipeRoutes(ctry){return ctry.code==='eu'?Object.keys(PIPE_POINTS):(ctry.routes||[]);}
+function eubPipeDaily(date,ctry){
+  let any=false,total=0;
+  eubPipeRoutes(ctry).forEach(route=>{
+    const v=GD.pipeDaily?.[route]?.[date];
+    if(v!=null){total+=v;any=true;}
+  });
+  return any?total:null;
+}
+function eubLngDaily(date,ctry){
+  if(ctry.code==='eu'){
+    const v=GD.lngDaily?.[date]?.sendGWh;
+    return v!=null?eubStorageMcmFromGwh(v):null;
+  }
+  const v=GD.lngDailyByCtry?.[ctry.lng]?.[date]?.sendGWh;
+  return v!=null?eubStorageMcmFromGwh(v):null;
+}
+function eubDomesticDaily(date,ctry){
+  const dom=(window.GA_LIVE&&GA_LIVE.domestic)||{};
+  const mo=eubMonthKey(date);
+  if(ctry.code==='eu'){
+    let sum=0,any=false;
+    DOMPROD_COUNTRIES.forEach(({label})=>{const v=dom[label]?.[mo];if(v!=null){sum+=v;any=true;}});
+    return any?sum/eubDaysInMonth(mo):null;
+  }
+  const v=dom[ctry.dom]?.[mo];
+  return v!=null?v/eubDaysInMonth(mo):null;
+}
+function eubStorageDaily(date,ctry){
+  if(ctry.code==='eu'){
+    const d=GD.storDaily?.[date];
+    return d?{inj:eubStorageMcmFromGwh(d.inj),wdr:eubStorageMcmFromGwh(d.wdr),net:eubStorageMcmFromGwh(d.net),pct:d.pct,twh:d.twh}:null;
+  }
+  const mo=eubMonthKey(date);
+  const d=GD.storByCtry?.[ctry.stor]?.[mo];
+  if(!d||!d.days)return null;
+  return {inj:eubStorageMcmFromGwh(d.inj_sum/d.days),wdr:eubStorageMcmFromGwh(d.wdr_sum/d.days),net:eubStorageMcmFromGwh((d.inj_sum-d.wdr_sum)/d.days),pct:d.pct,twh:d.twh};
+}
+function eubLatestStorage(ctry){
+  if(ctry.code==='eu'){
+    const ds=Object.keys(GD.storDaily||{}).sort();
+    if(ds.length){const d=GD.storDaily[ds[ds.length-1]];return {date:ds[ds.length-1],pct:d.pct,twh:d.twh};}
+    const ms=Object.keys(GD.storage||{}).sort();
+    if(ms.length){const d=GD.storage[ms[ms.length-1]];return {date:d.date||ms[ms.length-1],pct:d.pct,twh:d.twh};}
+    return null;
+  }
+  const ms=Object.keys(GD.storByCtry?.[ctry.stor]||{}).sort();
+  if(!ms.length)return null;
+  const d=GD.storByCtry[ctry.stor][ms[ms.length-1]];
+  return {date:d.date||ms[ms.length-1],pct:d.pct,twh:d.twh};
+}
+function eubPoint(date,ctry){
+  const pipe=eubPipeDaily(date,ctry);
+  const lng=eubLngDaily(date,ctry);
+  const dom=eubDomesticDaily(date,ctry);
+  const stor=eubStorageDaily(date,ctry);
+  const wdr=stor&&stor.net<0?Math.abs(stor.net):0;
+  const inj=stor&&stor.net>0?stor.net:0;
+  const supplyParts=[pipe,lng,dom].filter(v=>v!=null);
+  const supply=supplyParts.length?supplyParts.reduce((s,v)=>s+v,0)+wdr:null;
+  const knownDemand=inj||0;
+  const residual=supply!=null?supply-knownDemand:null;
+  return {date,pipe,lng,dom,wdr,inj,supply,knownDemand,residual,stor};
+}
+function eubLatestPoint(points){
+  for(let i=points.length-1;i>=0;i--) if(points[i].supply!=null||points[i].stor) return points[i];
+  return points[points.length-1]||null;
+}
+function eubSourceTip(kind){
+  const tips={
+    pipe:'ENTSOG Transparency Platform operationalDatas, Physical Flow, daily, converted kWh/d to mcm/d using 10.55 kWh/m3.',
+    lng:'GIE ALSI/AGGI API, sendOut field, daily GWh/d converted to mcm/d using 10.55 kWh/m3.',
+    dom:'ENTSOG production feed, monthly. Displayed daily as monthly total / calendar days when no daily point is available.',
+    storage:'GIE AGSI+ API, injection/withdrawal/gasInStorage/full. Net = injection - withdrawal.',
+    demand:'Power, industry, residential/heating and net exports are not wired to a traceable feed yet, so they are shown as -- and included in residual.'
+  };
+  return tips[kind]||'';
+}
+function eubKpi(label,val,sub,color){
+  return `<div class="ga-kpi" title="${sub||''}"><div class="ga-kpi-lbl">${label}</div><div class="ga-kpi-val" style="color:${color||'#dde4f0'}">${val}</div><div class="ga-kpi-src">${sub||''}</div></div>`;
+}
+
 function renderBalanceTable(pane){
-  const today=new Date();
-  const curY=today.getFullYear();
-  const curM=today.getMonth(); // 0-indexed
-  const selYear=parseInt(pane.querySelector('#bal-yr-sel')?.value||curY);
-  const N = selYear<curY ? 12 : curM+1; // include current partial month
-  const months=Array.from({length:N},(_,i)=>GA_MO[i]);
+  const p=eubPrefs();
+  if(p.unit&&p.unit!==GU_SEL){GU_SEL=p.unit;}
+  const ctry=eubCountry(p.country);
+  const days=Number(p.days)||60;
+  const dates=eubDailyDates(days);
+  const points=dates.map(d=>eubPoint(d,ctry));
+  const latest=eubLatestPoint(points);
+  const latestStor=eubLatestStorage(ctry);
+  const residualPct=latest?.supply?Math.abs(latest.residual||0)/latest.supply*100:null;
+  const daysCover=latestStor?.twh&&latest?.residual>0?(latestStor.twh*1000/10.55)/latest.residual:null;
 
   pane.innerHTML=`
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
-      <span class="ctrl-lbl">YEAR</span>
-      <select class="gsel" id="bal-yr-sel" onchange="renderBalanceTable(document.getElementById('ga-eugas-pane'))">
-        ${GA_AVAIL_YEARS.map(y=>`<option value="${y}"${y===selYear?' selected':''}>${y}</option>`).join('')}
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
+      <span class="ctrl-lbl">COUNTRY</span>
+      <select class="gsel" onchange="eubSetPref('country',this.value);renderBalanceTable(document.getElementById('ga-eugas-pane'))">
+        ${EUB_COUNTRIES.map(c=>`<option value="${c.code}"${c.code===ctry.code?' selected':''}>${c.name}</option>`).join('')}
       </select>
-      <div id="ga-bal-sources" style="display:flex;gap:8px;font-size:9px;flex-wrap:wrap;margin-left:8px"></div>
-      <span style="font-size:9px;color:#3d5070;margin-left:auto">${new Date().toLocaleDateString('en-GB')}</span>
+      <span class="ctrl-lbl">WINDOW</span>
+      <select class="gsel" onchange="eubSetPref('days',this.value);renderBalanceTable(document.getElementById('ga-eugas-pane'))">
+        ${[30,60,90,180].map(n=>`<option value="${n}"${n===days?' selected':''}>Last ${n} days</option>`).join('')}
+      </select>
+      <span class="ctrl-lbl">UNIT</span>
+      <select class="gsel" onchange="GU_SEL=this.value;eubSetPref('unit',this.value);renderBalanceTable(document.getElementById('ga-eugas-pane'))">
+        ${Object.keys(GU).map(k=>`<option value="${k}"${k===GU_SEL?' selected':''}>${GU[k].lbl}</option>`).join('')}
+      </select>
+      <button class="ga-stab" onclick="gaRefreshAll()">↺ REFRESH ALL</button>
+      <span style="font-size:9px;color:#3d5070;margin-left:auto">Traceable balance · ${new Date().toLocaleDateString('en-GB')}</span>
     </div>
-    <div class="ga-card" style="padding:0">
-      <div style="padding:10px 14px 6px;border-bottom:1px solid rgba(77,158,245,.1)">
-        <div style="font-size:10px;color:var(--b);letter-spacing:2px;font-weight:600">OECD EUROPE GAS MARKET BALANCE — ${selYear}</div>
-        <div style="font-size:9px;color:#3d5070;margin-top:2px">EU-28 · ${guLbl()} · ENTSOG + GIE AGSI+ + GIE ALSI</div>
+    <div class="ga-gauto" style="margin-bottom:12px">
+      ${eubKpi("Latest supply", eubPlain(eubConvMcm(latest?.supply),1), `${latest?.date||'--'} · pipeline + LNG + domestic + storage withdrawal`, '#4fc3f7')}
+      ${eubKpi("Visible demand", eubPlain(eubConvMcm(latest?.knownDemand),1), "Storage injection only; sector demand feeds not wired", '#ffb74d')}
+      ${eubKpi("Residual", residualPct==null?'--':`${residualPct.toFixed(1)}%`, "Supply - visible demand. Includes power/industry/residential/net exports/unexplained.", residualPct>15?'#f87171':'#81c784')}
+      ${eubKpi("Storage fill", latestStor?`${latestStor.pct.toFixed(1)}%`:'--', `${latestStor?.date||'--'} · GIE AGSI+`, '#81c784')}
+      ${eubKpi("Days cover", daysCover?daysCover.toFixed(0):'--', "Storage stock divided by residual daily demand proxy", '#ce93d8')}
+    </div>
+    <div class="ga-g2">
+      <div class="ga-card"><div class="ga-sec">STACKED SUPPLY — ${ctry.name.toUpperCase()} <span class="ga-tag ga-tag-live">DAILY</span></div><div class="ga-ch-wrap tall" style="height:310px"><canvas id="eub-supply-c"></canvas></div><div class="ga-source">Sources: ENTSOG pipeline + production; GIE ALSI sendOut; GIE AGSI+ withdrawal. Domestic production is monthly fallback where daily is unavailable.</div></div>
+      <div class="ga-card"><div class="ga-sec">VISIBLE DEMAND + RESIDUAL <span class="ga-tag">EXPLICIT GAP</span></div><div class="ga-ch-wrap tall" style="height:310px"><canvas id="eub-demand-c"></canvas></div><div class="ga-source">Power, industry, residential/heating and net exports: -- until traceable feeds are wired. Residual is not hidden.</div></div>
+    </div>
+    <div class="ga-g2" style="margin-top:12px">
+      <div class="ga-card"><div class="ga-sec">STORAGE TRAJECTORY VS RANGE <span class="ga-tag">AGSI+</span></div><div class="ga-ch-wrap" style="height:270px"><canvas id="eub-storage-c"></canvas></div><div class="ga-source">GIE AGSI+ fill %. EU shows daily; country view uses latest monthly country points where daily country history is unavailable.</div></div>
+      <div class="ga-card"><div class="ga-sec">NET BALANCE LINE <span class="ga-tag">SUPPLY - VISIBLE DEMAND</span></div><div class="ga-ch-wrap" style="height:270px"><canvas id="eub-net-c"></canvas></div><div class="ga-source">Positive line means unallocated demand/residual remains after storage injection.</div></div>
+    </div>
+    <div class="ga-card" style="margin-top:12px;padding:0">
+      <div style="padding:10px 14px;border-bottom:1px solid rgba(77,158,245,.1)">
+        <div style="font-size:10px;color:var(--b);letter-spacing:2px;font-weight:600">SOURCE TRACE & KNOWN GAPS</div>
       </div>
-      <div style="overflow-x:auto;overflow-y:auto;max-height:560px">
-        <table class="ga-tbl" id="ga-bal-tbl" style="min-width:700px">
-          ${buildBalTblHTML(selYear, months)}
-        </table>
-      </div>
-      <div class="ga-source" style="padding:8px 14px">Source: ENTSOG Transparency Platform · GIE AGSI+ · GIE ALSI · ${new Date().toLocaleDateString('en-GB')}</div>
+      <div style="overflow-x:auto">${eubTraceTable(ctry,points.slice(-14))}</div>
+      <div class="ga-source" style="padding:8px 14px">Tooltips/footnotes cite endpoint family and field. Missing feeds are shown as --, never seeded.</div>
     </div>`;
+  drawEubCharts(points,ctry);
   gaUpdateStatusDots();
 }
 
-function buildBalTblHTML(yr, months){
-  const fmtV=(v,conv)=>{ if(v===null)return '<td class="tr" style="color:#3d5070">--</td>'; return `<td class="tr">${conv(v).toFixed(2)}</td>`; };
-  const fmtNA=()=>'<td class="tr" style="color:#3d5070;font-style:italic">n/a</td>';
-  const hdrs='<thead><tr><th class="L">Description</th><th class="L" style="min-width:120px">Destination</th>'
-    +months.map(m=>`<th class="tr" style="min-width:60px">${m}</th>`).join('')+'</tr></thead>';
+function drawEubCharts(points,ctry){
+  const labels=points.map(p=>new Date(p.date+'T00:00:00Z').toLocaleDateString('en-GB',{day:'2-digit',month:'short'}));
+  const axis={...GCD.scales.y,title:{display:true,text:eubUnitLabel(),color:'#3d5070',font:{size:9}}};
+  gaMakeChart('eub-supply-c','bar',{labels,datasets:[
+    {label:'Pipeline imports',data:points.map(p=>eubConvMcm(p.pipe)),backgroundColor:'#4fc3f7',stack:'s'},
+    {label:'LNG sendout',data:points.map(p=>eubConvMcm(p.lng)),backgroundColor:'#80cbc4',stack:'s'},
+    {label:'Domestic production',data:points.map(p=>eubConvMcm(p.dom)),backgroundColor:'#81c784',stack:'s'},
+    {label:'Storage withdrawal',data:points.map(p=>eubConvMcm(p.wdr)),backgroundColor:'#ffb74d',stack:'s'},
+  ]},{scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:18}},y:{...axis,stacked:true}}});
 
-  const rows=[];
-  const tr=(lbl,dest,cells,bold=false,color='')=>`<tr style="${bold?'font-weight:700;':''}${color?`color:${color};`:''}"><td class="L">${lbl}</td><td class="L" style="color:#4b5a72;font-size:9px">${dest}</td>${cells}</tr>`;
+  gaMakeChart('eub-demand-c','bar',{labels,datasets:[
+    {label:'Storage injection',data:points.map(p=>eubConvMcm(p.inj)),backgroundColor:'#ce93d8',stack:'d'},
+    {label:'Residual / unallocated demand',data:points.map(p=>eubConvMcm(Math.max(0,p.residual||0))),backgroundColor:'#ef5350',stack:'d'},
+    {label:'Power / Industry / Residential / Net exports',data:points.map(()=>null),backgroundColor:'#3d5070',stack:'d'},
+  ]},{scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:18}},y:{...axis,stacked:true}}});
 
-  // Norway
-  const norCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('norway',mo); return fmtV(v,guConvPipe); }).join('');
-  rows.push(tr('Norway (Langeled/FLAGS/Norpipe)','UK;GER;FR;BEL;DK',norCells));
+  const curY=new Date().getFullYear();
+  const dayOfYear=points.map(p=>{const d=new Date(p.date+'T00:00:00Z');return Math.floor((d-new Date(Date.UTC(d.getUTCFullYear(),0,0)))/86400000);});
+  const bandYears=[curY-1,curY-2,curY-3].filter(y=>y>=2022);
+  const bandMin=dayOfYear.map(doy=>{
+    const vals=bandYears.map(y=>eubStoragePctForDoy(ctry,y,doy)).filter(v=>v!=null);
+    return vals.length?Math.min(...vals):null;
+  });
+  const bandMax=dayOfYear.map(doy=>{
+    const vals=bandYears.map(y=>eubStoragePctForDoy(ctry,y,doy)).filter(v=>v!=null);
+    return vals.length?Math.max(...vals):null;
+  });
+  gaMakeChart('eub-storage-c','line',{labels,datasets:[
+    {label:'3y range low',data:bandMin,borderColor:'rgba(90,104,130,.35)',backgroundColor:'rgba(90,104,130,.15)',pointRadius:0,fill:false,tension:.25},
+    {label:'3y range high',data:bandMax,borderColor:'rgba(90,104,130,.35)',backgroundColor:'rgba(90,104,130,.15)',pointRadius:0,fill:'-1',tension:.25},
+    {label:`${ctry.name} fill`,data:points.map(p=>p.stor?.pct??null),borderColor:'#81c784',backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,tension:.25},
+  ]},{scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:18}},y:{...GCD.scales.y,min:0,max:100,title:{display:true,text:'% full',color:'#3d5070',font:{size:9}}}}});
 
-  // Algeria IT
-  const algItCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('algeria_italy',mo); return fmtV(v,guConvPipe); }).join('');
-  rows.push(tr('Algeria → Italy (TransMed/Mazara)','ITA',algItCells));
+  gaMakeChart('eub-net-c','line',{labels,datasets:[
+    {label:'Net balance / residual',data:points.map(p=>eubConvMcm(p.residual)),borderColor:'#ef5350',backgroundColor:'rgba(239,83,80,.12)',borderWidth:2,pointRadius:0,tension:.25,fill:true},
+    {label:'Zero',data:points.map(()=>0),borderColor:'#546e7a',borderDash:[4,4],pointRadius:0,borderWidth:1},
+  ]},{scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:18}},y:axis}});
+}
 
-  // Libya
-  const libCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('libya',mo); return fmtV(v,guConvPipe); }).join('');
-  rows.push(tr('Libya → Italy (Greenstream/Gela)','ITA',libCells));
+function eubStoragePctForDoy(ctry,year,doy){
+  const d=new Date(Date.UTC(year,0,doy));
+  const date=d.toISOString().slice(0,10);
+  if(ctry.code==='eu')return GD.storDaily?.[date]?.pct??null;
+  const mo=date.slice(0,7);
+  return GD.storByCtry?.[ctry.stor]?.[mo]?.pct??null;
+}
 
-  // Algeria ES
-  const algEsCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('algeria_spain',mo); return fmtV(v,guConvPipe); }).join('');
-  rows.push(tr('Algeria → Spain (Medgaz/Almería)','ESP',algEsCells));
-
-  // TAP
-  const tapCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('tap',mo); return fmtV(v,guConvPipe); }).join('');
-  rows.push(tr('Caspian (TAP – Azerbaijan → Italy)','ITA',tapCells));
-
-  // Russia
-  const rusCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('russia',mo); return fmtV(v,guConvPipe); }).join('');
-  rows.push(tr('Russia (TurkStream residual)','Balkans/CEE',rusCells));
-
-  // UK Interconnectors
-  const ukicCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('uk_interconn',mo); return fmtV(v,guConvPipe); }).join('');
-  rows.push(tr('UK Interconnectors (IUK/BBL)','UK↔BE/NL',ukicCells));
-
-  // VIP Pirineos (ES ↔ FR)
-  const pirCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('vip_pirineos',mo); return fmtV(v,guConvPipe); }).join('');
-  rows.push(tr('VIP Pirineos','ES ↔ FR',pirCells));
-
-  // VIP Ibérico (ES ↔ PT)
-  const ibeCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const v=gdGetPipeMCM('vip_iberico',mo); return fmtV(v,guConvPipe); }).join('');
-  rows.push(tr('VIP Ibérico','ES ↔ PT',ibeCells));
-
-  // Pipeline total
-  const pipeTotCells=months.map((_,m)=>{
-    const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
-    const vals=[['norway'],['algeria_italy'],['libya'],['algeria_spain'],['tap'],['russia'],['uk_interconn'],['vip_pirineos'],['vip_iberico']].map(([r])=>gdGetPipeMCM(r,mo));
-    if(vals.every(v=>v===null)) return '<td class="tr" style="color:#3d5070">--</td>';
-    const sum=vals.reduce((s,v)=>s+(v||0),0);
-    return `<td class="tr" style="color:var(--b)">${guConvPipe(sum).toFixed(2)}</td>`;
-  }).join('');
-  rows.push(`<tr style="font-weight:700;background:rgba(77,158,245,.04)"><td class="L" style="color:var(--b)">Net Pipeline Imports</td><td class="L"></td>${pipeTotCells}</tr>`);
-
-  // LNG sendout
-  const lngCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const d=GD.lngTotal[mo]; return d?`<td class="tr">${guConvLng(d.sendGWh).toFixed(2)}</td>`:'<td class="tr" style="color:#3d5070">--</td>'; }).join('');
-  rows.push(tr('LNG Imports (EU+UK, all terminals)','EU/UK',lngCells));
-
-  // Domestic production — real data from ENTSOG Production feed
-  const prodRow=months.map((_,m)=>{
-    const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
-    const dom=(window.GA_LIVE && GA_LIVE.domestic)||{};
-    let sum=0, any=false;
-    (typeof DOMPROD_COUNTRIES!=='undefined'?DOMPROD_COUNTRIES:[]).forEach(({label})=>{
-      const v=dom[label]?.[mo]; if(v!=null){sum+=v; any=true;}
-    });
-    return any ? `<td class="tr">${sum.toFixed(1)}</td>` : '<td class="tr" style="color:#3d5070">--</td>';
-  }).join('');
-  rows.push(tr('EU+UK Domestic Production','ENTSOG · NL+UK+RO+DE+IT+DK+PL',prodRow));
-
-  // Storage end-of-month
-  const storPctCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const d=GD.storage[mo]; return d?`<td class="tr" style="color:#4fc3f7">${d.pct.toFixed(1)}%</td>`:'<td class="tr" style="color:#3d5070">--</td>'; }).join('');
-  rows.push(`<tr style="border-top:1px solid rgba(77,158,245,.13)"><td class="L" style="color:#4fc3f7;font-weight:600">Storage % Full (GIE AGSI+)</td><td class="L" style="color:#4b5a72;font-size:9px">EU only</td>${storPctCells}</tr>`);
-
-  const storTWhCells=months.map((_,m)=>{ const mo=`${yr}-${String(m+1).padStart(2,'0')}`; const d=GD.storage[mo]; return d?`<td class="tr">${d.twh.toFixed(0)} TWh</td>`:'<td class="tr" style="color:#3d5070">--</td>'; }).join('');
-  rows.push(tr('End-of-month Storage (TWh)','EU',storTWhCells));
-
-  // Consumption placeholder
-  rows.push(tr('Consumption (28 countries)','EU-28 · no real-time API',months.map(()=>fmtNA()).join('')));
-  rows.push(tr('Surplus / Deficit','EU-28 · derived from balance eq.',months.map(()=>fmtNA()).join('')));
-
-  return hdrs+'<tbody>'+rows.join('')+'</tbody>';
+function eubTraceTable(ctry,points){
+  const row=(label,source,cells,tip)=>`<tr title="${tip}"><td class="L" style="color:#dde4f0">${label}</td><td class="L" style="font-size:8.5px;color:#5a6882">${source}</td>${cells}</tr>`;
+  const th='<thead><tr><th class="L">Item</th><th class="L">Endpoint / field</th>'+points.map(p=>`<th class="tr">${p.date.slice(5)}</th>`).join('')+'</tr></thead>';
+  const cell=(v,dp=1)=>`<td class="tr">${eubFmt(eubConvMcm(v),dp)}</td>`;
+  const dash='<td class="tr" style="color:#3d5070">--</td>';
+  const rows=[
+    row('Pipeline imports','ENTSOG operationalDatas · Physical Flow',points.map(p=>cell(p.pipe)).join(''),eubSourceTip('pipe')),
+    row('LNG sendout','GIE ALSI · sendOut',points.map(p=>cell(p.lng)).join(''),eubSourceTip('lng')),
+    row('Domestic production','ENTSOG Production · monthly fallback',points.map(p=>cell(p.dom)).join(''),eubSourceTip('dom')),
+    row('Storage withdrawal','GIE AGSI+ · withdrawal',points.map(p=>cell(p.wdr)).join(''),eubSourceTip('storage')),
+    row('Storage injection','GIE AGSI+ · injection',points.map(p=>cell(p.inj)).join(''),eubSourceTip('storage')),
+    row('Power demand','not wired',points.map(()=>dash).join(''),eubSourceTip('demand')),
+    row('Industry demand','not wired',points.map(()=>dash).join(''),eubSourceTip('demand')),
+    row('Residential/heating','not wired',points.map(()=>dash).join(''),eubSourceTip('demand')),
+    row('Net exports','not wired',points.map(()=>dash).join(''),eubSourceTip('demand')),
+    row('Residual / unexplained','calculated',points.map(p=>cell(p.residual)).join(''),'Residual = supply - visible demand. This is intentionally shown.'),
+  ];
+  return `<table class="ga-tbl" style="min-width:900px">${th}<tbody>${rows.join('')}</tbody></table>`;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
