@@ -21,40 +21,40 @@
       "msg_id": "2026-96___________________006"
     },
     {
-      "title": "Other unavailability · Unplanned",
-      "asset": "Åsgard",
-      "impact": "+8.0 mcm/d",
-      "from": "2026-04-29",
-      "to": "2026-04-30",
-      "type": "unplanned",
-      "published": "2026-04-29T15:52:39.250000",
-      "msg_id": "2026-199__________________001"
+      "title": "Other unavailability · Planned",
+      "asset": "Oseberg",
+      "impact": "-20.1 mcm/d",
+      "from": "2026-04-30",
+      "to": "2026-05-01",
+      "type": "planned",
+      "published": "2026-04-29T10:26:09.827000",
+      "msg_id": "2026-179__________________003"
     },
     {
-      "title": "Other unavailability · Unplanned",
-      "asset": "Sleipner",
-      "impact": "-7.8 mcm/d",
-      "from": "2026-04-29",
-      "to": "2026-04-30",
-      "type": "unplanned",
-      "published": "2026-04-29T10:27:17.740000",
-      "msg_id": "2026-198__________________001"
-    },
-    {
-      "title": "Gas production field unavailability · Unplanned",
+      "title": "Other unavailability · Planned",
       "asset": "Gullfaks",
-      "impact": "-0.4 mcm/d",
-      "from": "2026-04-29",
-      "to": "2026-04-30",
-      "type": "unplanned",
-      "published": "2026-04-29T09:03:02.200000",
-      "msg_id": "2026-197__________________002"
+      "impact": "-1.4 mcm/d",
+      "from": "2026-04-30",
+      "to": "2026-05-01",
+      "type": "planned",
+      "published": "2026-04-29T09:01:21.943000",
+      "msg_id": "2026-82___________________010"
+    },
+    {
+      "title": "Other unavailability · Planned",
+      "asset": "Dornum",
+      "impact": "+0.0 mcm/d",
+      "from": "2026-03-02",
+      "to": "2029-01-01",
+      "type": "planned",
+      "published": "2026-02-19T10:14:35.540000",
+      "msg_id": "2026-136__________________002"
     }
   ],
   "_meta": {
-    "updated": "2026-04-29T21:51:57Z",
+    "updated": "2026-04-30T08:04:33Z",
     "source": "gassco xlexport",
-    "total_messages": 159,
-    "active_count": 6
+    "total_messages": 156,
+    "active_count": 5
   }
 }
