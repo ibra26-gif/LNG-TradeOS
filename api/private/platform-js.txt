@@ -7369,6 +7369,7 @@ function renderHistorical(){
   const hasCurves=curves.length>0;
   const HIST_WINDOWS = [
     ['30D','30d'],
+    ['60D','60d'],
     ['90D','90d'],
     ['1Y','1y'],
     ['ALL','All'],
@@ -7377,7 +7378,7 @@ function renderHistorical(){
   const histWindowFilter = (ds) => {
     const d = new Date(ds);
     if(histWindow === 'ALL') return true;
-    const days = histWindow === '30D' ? 30 : histWindow === '90D' ? 90 : 365;
+    const days = histWindow === '30D' ? 30 : histWindow === '60D' ? 60 : histWindow === '90D' ? 90 : 365;
     const cut = new Date();
     cut.setDate(cut.getDate() - days);
     return d >= cut;
