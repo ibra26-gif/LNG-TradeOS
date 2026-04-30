@@ -18251,6 +18251,7 @@ const GA_LIVE = {
   domestic: {}, // ENTSOG production: {countryLabel: {YYYY-MM: MCM}}
   ok: {pipeline:false, storage:false, lng:false, domestic:false},
 };
+window.GA_LIVE = GA_LIVE;
 // Country codes for domestic production queries (adjacentSystemTypeLabel=Production)
 const ENTSOG_PRODUCTION_COUNTRIES = {
   NL:'netherlands', UK:'uk', GB:'uk', RO:'romania', DE:'germany',
@@ -20336,11 +20337,11 @@ function drawLNGCharts(){
 function renderDomProductionPane(pane){
   const curY = new Date().getFullYear();
   if(!_domYears || !_domYears.length) _domYears = [curY, curY-1, curY-2];
-  const needsDom = !(window.GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic);
+  const needsDom = !(GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic);
   if(needsDom && typeof gaLoadDomProductionLive === 'function'){
     gaLoadDomProductionLive(`${curY-2}-01-01`, new Date().toISOString().slice(0,10));
   }
-  const okDom = !!(window.GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic);
+  const okDom = !!(GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic);
   const curView = window._domView || 'aggregate';
   pane.innerHTML = `
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
@@ -20386,7 +20387,7 @@ window.gdToggleDomYear = function(y, btn){
 
 function drawDomProductionCharts(){
   const view = document.getElementById('dom-view-sel')?.value || 'aggregate';
-  const dom  = (window.GA_LIVE && GA_LIVE.domestic) || {};
+  const dom  = (GA_LIVE && GA_LIVE.domestic) || {};
   const countryObj = DOMPROD_COUNTRIES.find(c => c.label === view);
   const viewLabel = countryObj ? countryObj.name : 'EU+UK Total';
 
@@ -20435,7 +20436,7 @@ function drawDomProductionCharts(){
     scales:{x:GCD.scales.x, y:{...GCD.scales.y, stacked:true, title:{display:true, text:'mcm/month', color:'#3d5070', font:{size:9}}}}
   });
 
-  if(!(window.GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic)){
+  if(!(GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic)){
     gdErr('dom-sea-chart','ENTSOG production data not loaded — hit ↺ REFRESH ALL');
   }
 }
@@ -20535,7 +20536,7 @@ function buildBalTblHTML(yr, months){
   // Domestic production — real data from ENTSOG Production feed
   const prodRow=months.map((_,m)=>{
     const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
-    const dom=(window.GA_LIVE && GA_LIVE.domestic)||{};
+    const dom=(GA_LIVE && GA_LIVE.domestic)||{};
     let sum=0, any=false;
     (typeof DOMPROD_COUNTRIES!=='undefined'?DOMPROD_COUNTRIES:[]).forEach(({label})=>{
       const v=dom[label]?.[mo]; if(v!=null){sum+=v; any=true;}
