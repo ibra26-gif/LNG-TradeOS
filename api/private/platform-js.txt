@@ -18249,6 +18249,7 @@ const GA_LIVE = {
   lngTotal: {},
   lngByCtry: {},
   domestic: {}, // ENTSOG production: {countryLabel: {YYYY-MM: MCM}}
+  domesticDaily: {}, // ENTSOG production: {countryLabel: {YYYY-MM-DD: MCM}}
   ok: {pipeline:false, storage:false, lng:false, domestic:false},
 };
 window.GA_LIVE = GA_LIVE;
@@ -18559,7 +18560,9 @@ async function gaLoadDomProductionYear(year){
       const mo = date.slice(0,7);
       if(!mo||mo.length<7) return;
       if(!GA_LIVE.domestic[label]) GA_LIVE.domestic[label] = {};
+      if(!GA_LIVE.domesticDaily[label]) GA_LIVE.domesticDaily[label] = {};
       GA_LIVE.domestic[label][mo] = (GA_LIVE.domestic[label][mo]||0) + valMCM;
+      GA_LIVE.domesticDaily[label][date] = (GA_LIVE.domesticDaily[label][date]||0) + valMCM;
     });
     if(Object.values(GA_LIVE.domestic).some(d=>Object.keys(d).length>0)){
       GA_LIVE.ok.domestic = true;
@@ -20343,19 +20346,26 @@ function renderDomProductionPane(pane){
   }
   const okDom = !!(GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic);
   const curView = window._domView || 'aggregate';
+  const chartView = window._domChartView || 'monthly';
   pane.innerHTML = `
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
       <span class="ctrl-lbl">VIEW</span>
       <select class="gsel" id="dom-view-sel" onchange="window._domView=this.value;renderDomProductionPane(document.getElementById('ga-eugas-pane'))">
-        <option value="aggregate"${curView==='aggregate'?' selected':''}>EU+UK Aggregate (7 producers)</option>
+        <option value="aggregate"${curView==='aggregate'?' selected':''}>EU+UK Aggregate (${DOMPROD_COUNTRIES.length} producers)</option>
         ${DOMPROD_COUNTRIES.map(c => `<option value="${c.label}"${curView===c.label?' selected':''}>${c.name}</option>`).join('')}
+      </select>
+      <span class="ctrl-lbl">CHART</span>
+      <select class="gsel" id="dom-chart-view-sel" onchange="window._domChartView=this.value;drawDomProductionCharts()">
+        <option value="monthly"${chartView==='monthly'?' selected':''}>Monthly seasonal</option>
+        <option value="daily60"${chartView==='daily60'?' selected':''}>Daily last 60 days</option>
+        <option value="annual"${chartView==='annual'?' selected':''}>Annual totals</option>
       </select>
       <span class="ctrl-lbl">YEARS</span>
       <div id="dom-yr-btns" style="display:flex;gap:4px">${GA_AVAIL_YEARS.map(y=>`<button class="ga-stab${_domYears.includes(y)?' active':''}" onclick="gdToggleDomYear(${y},this)">${y}</button>`).join('')}</div>
       <span style="font-size:9px;margin-left:auto;color:${okDom?'#34d399':'#f59e0b'}">${okDom?'🟢 ENTSOG live':'🟡 Loading...'}</span>
     </div>
     <div class="ga-card">
-      <div class="ga-sec">EU+UK DOMESTIC PRODUCTION — SEASONAL <span class="ga-tag ga-tag-live">ENTSOG</span></div>
+      <div class="ga-sec" id="dom-main-title">EU+UK DOMESTIC PRODUCTION — SEASONAL <span class="ga-tag ga-tag-live">ENTSOG</span></div>
       <div class="ga-ch-wrap tall" style="height:340px"><canvas id="dom-sea-chart"></canvas></div>
       <div class="ga-source">Source: ENTSOG Transparency Platform · Aggregated production point - TP / TP ExtEU · producing countries only · ${new Date().toLocaleDateString('en-GB')}</div>
     </div>
@@ -20387,35 +20397,97 @@ window.gdToggleDomYear = function(y, btn){
 
 function drawDomProductionCharts(){
   const view = document.getElementById('dom-view-sel')?.value || 'aggregate';
+  const chartView = document.getElementById('dom-chart-view-sel')?.value || window._domChartView || 'monthly';
+  window._domChartView = chartView;
   const dom  = (GA_LIVE && GA_LIVE.domestic) || {};
+  const domDaily = (GA_LIVE && GA_LIVE.domesticDaily) || {};
   const countryObj = DOMPROD_COUNTRIES.find(c => c.label === view);
   const viewLabel = countryObj ? countryObj.name : 'EU+UK Total';
+  const titleEl = document.getElementById('dom-main-title');
+  const getMonthly = (label, mo) => {
+    if(label !== 'aggregate') return dom[label]?.[mo] ?? null;
+    let sum=0, found=false;
+    DOMPROD_COUNTRIES.forEach(c => { const v=dom[c.label]?.[mo]; if(v!=null){ sum+=v; found=true; } });
+    return found ? sum : null;
+  };
+  const getDaily = (label, ds) => {
+    if(label !== 'aggregate') return domDaily[label]?.[ds] ?? null;
+    let sum=0, found=false;
+    DOMPROD_COUNTRIES.forEach(c => { const v=domDaily[c.label]?.[ds]; if(v!=null){ sum+=v; found=true; } });
+    return found ? sum : null;
+  };
 
-  // Seasonal chart — sum across all producers OR a single country's series.
-  const seaDs = _domYears.slice().sort((a,b)=>b-a).map((yr, i) => ({
-    label: `${viewLabel} ${yr}`,
-    data: GA_MO.map((_,m) => {
-      const mo = `${yr}-${String(m+1).padStart(2,'0')}`;
-      if(view === 'aggregate'){
-        let sum=0, found=false;
-        DOMPROD_COUNTRIES.forEach(({label})=>{ const v=dom[label]?.[mo]; if(v!=null){sum+=v;found=true;} });
-        return found ? +sum.toFixed(2) : null;
-      }
-      const v = dom[view]?.[mo];
-      return v != null ? +v.toFixed(2) : null;
-    }),
-    borderColor: GA_COLS[i],
-    backgroundColor: i===0 ? GA_COLS[0]+'18' : 'transparent',
-    borderWidth: i===0 ? 2.5 : 1.5,
-    borderDash: i>0 ? [5,3] : undefined,
-    pointRadius: i===0 ? 3 : 0,
-    tension: 0.3,
-    fill: i===0,
-    spanGaps: false,
-  }));
-  gaMakeChart('dom-sea-chart', 'line', {labels: GA_MO, datasets: seaDs}, {
-    scales:{x:GCD.scales.x, y:{...GCD.scales.y, title:{display:true, text:'mcm/month', color:'#3d5070', font:{size:9}}}}
-  });
+  if(chartView === 'daily60'){
+    if(titleEl) titleEl.innerHTML = 'EU+UK DOMESTIC PRODUCTION — DAILY LAST 60 DAYS <span class="ga-tag ga-tag-live">ENTSOG</span>';
+    const today = new Date();
+    const days = Array.from({length:60}, (_,i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate()-59+i);
+      return d.toISOString().slice(0,10);
+    });
+    gaMakeChart('dom-sea-chart', 'line', {
+      labels: days.map(d => d.slice(5)),
+      datasets: [{
+        label: `${viewLabel} daily`,
+        data: days.map(ds => { const v=getDaily(view, ds); return v!=null ? +v.toFixed(2) : null; }),
+        borderColor: GA_COLS[0],
+        backgroundColor: GA_COLS[0]+'18',
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.25,
+        fill: true,
+        spanGaps: false,
+      }]
+    }, {
+      scales:{x:GCD.scales.x, y:{...GCD.scales.y, title:{display:true, text:'mcm/day', color:'#3d5070', font:{size:9}}}}
+    });
+  } else if(chartView === 'annual'){
+    if(titleEl) titleEl.innerHTML = 'EU+UK DOMESTIC PRODUCTION — ANNUAL TOTALS <span class="ga-tag ga-tag-live">ENTSOG</span>';
+    const years = GA_AVAIL_YEARS.slice().reverse();
+    years.forEach(yr => {
+      const haveYear = Object.values(dom||{}).some(ctry =>
+        Object.keys(ctry||{}).some(mo => mo.startsWith(`${yr}-`))
+      );
+      if(!haveYear && typeof gaLoadDomProductionYear === 'function') gaLoadDomProductionYear(yr);
+    });
+    gaMakeChart('dom-sea-chart', 'bar', {
+      labels: years.map(String),
+      datasets: [{
+        label: viewLabel,
+        data: years.map(yr => {
+          let sum=0, found=false;
+          GA_MO.forEach((_,m) => { const v=getMonthly(view, `${yr}-${String(m+1).padStart(2,'0')}`); if(v!=null){ sum+=v; found=true; } });
+          return found ? +sum.toFixed(1) : null;
+        }),
+        backgroundColor: GA_COLS[0],
+        borderWidth: 0,
+      }]
+    }, {
+      scales:{x:GCD.scales.x, y:{...GCD.scales.y, title:{display:true, text:'mcm/year', color:'#3d5070', font:{size:9}}}}
+    });
+  } else {
+    if(titleEl) titleEl.innerHTML = 'EU+UK DOMESTIC PRODUCTION — SEASONAL <span class="ga-tag ga-tag-live">ENTSOG</span>';
+
+    // Seasonal chart — sum across all producers OR a single country's series.
+    const seaDs = _domYears.slice().sort((a,b)=>b-a).map((yr, i) => ({
+      label: `${viewLabel} ${yr}`,
+      data: GA_MO.map((_,m) => {
+        const v = getMonthly(view, `${yr}-${String(m+1).padStart(2,'0')}`);
+        return v != null ? +v.toFixed(2) : null;
+      }),
+      borderColor: GA_COLS[i],
+      backgroundColor: i===0 ? GA_COLS[0]+'18' : 'transparent',
+      borderWidth: i===0 ? 2.5 : 1.5,
+      borderDash: i>0 ? [5,3] : undefined,
+      pointRadius: i===0 ? 3 : 0,
+      tension: 0.3,
+      fill: i===0,
+      spanGaps: false,
+    }));
+    gaMakeChart('dom-sea-chart', 'line', {labels: GA_MO, datasets: seaDs}, {
+      scales:{x:GCD.scales.x, y:{...GCD.scales.y, title:{display:true, text:'mcm/month', color:'#3d5070', font:{size:9}}}}
+    });
+  }
 
   // Per-producer stacked bar — last 12 months
   const today = new Date();
