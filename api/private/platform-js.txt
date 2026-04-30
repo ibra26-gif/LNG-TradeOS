@@ -11413,11 +11413,10 @@ function cpFrDiffBasis(d){
 }
 
 // ── Tab 7: FOB Pricing ─────────────────────────────────────────────────────
-// Two panes: US FOB (Sabine Pass origin, 4 destinations) and Oman FOB (Oman
-// origin, 3 destinations). Per-pane index toggle: TTF / JKM / 115%HH (+ Fixed
-// for Oman). Formula per cell: FOB = (Index + PhysDiff_destination) − Freight.
-// For "115%HH": DES = hhSlope × HH (+ phys). For Fixed: DES = user-entered flat
-// value (no phys applied); FOB = fixed − freight.
+// Two panes: US FOB (Sabine Pass origin) and Oman FOB (Oman origin).
+// Formula per cell:
+//   Abs netback = DES destination − freight
+//   Spread      = DES destination − freight − selected index
 function cpFobPricing(d){
   const fr=d.freight, fp=CP.fp;
   const vN=horizonIdx(), vMLx=vML();
@@ -11442,7 +11441,7 @@ function cpFobPricing(d){
   //                  (fixed-price quoted indexation, $/MMBtu)
   const renderPane = (title, originLabel, idxChoices, curIdx, setFn, routes) => {
     const idxBtns = idxChoices.map(x=>{
-      const lbl = x==='HH' ? '115% HH' : x==='FIXED' ? 'Fixed' : x;
+      const lbl = x==='HH' ? '115% HH' : x==='FIXED' ? 'Abs netback' : x;
       return `<button class="f-btn sm${curIdx===x?' on':''}" onclick="${setFn}('${x}')">${lbl}</button>`;
     }).join('');
     const isFixed = curIdx==='FIXED';
@@ -11540,7 +11539,7 @@ function cpFobPricing(d){
   const usPane = renderPane(
     'US FOB PRICING',
     'Sabine Pass',
-    ['TTF','JKM','HH'],
+    ['FIXED','TTF','JKM','HH'],
     usIdx,
     "(x=>{CP.fobUsIdx=x;cpSet('cp_fob_us_idx',x);renderCargoTab()})",
     usRoutes
@@ -11663,25 +11662,19 @@ function _fobSnapTimeSeries(originType, tenor, routeId, idxName){
     const jkm = s.gas?.JKM?.[i];
     const ttf = s.gas?.TTF?.[i];
     const fr  = s.freight?.[route.frKey]?.[i];
-    const liq = s.liqFee?.[i] ?? 2.50;
     const physVal = route.physKey ? (s.phys?.[route.physKey]?.[i] ?? 0) : 0;
 
     let v = null;
-    if (originType === 'usgc' && idxName === 'FIXED' && hh != null) {
-      // Sabine Cheniere formula
-      v = +(sl * hh + liq).toFixed(3);
-    } else {
-      const idxAtDate = (route.desKey === 'JKM') ? jkm : ttf;
-      if (idxAtDate != null && fr != null) {
-        const desValue = idxAtDate + physVal;
-        if (idxName === 'FIXED') {
-          v = +(desValue - fr).toFixed(3);
-        } else {
-          const idxValAtDate = idxName === 'TTF' ? ttf
-                              : idxName === 'JKM' ? jkm
-                              : (hh != null ? sl * hh : null);
-          if (idxValAtDate != null) v = +(desValue - fr - idxValAtDate).toFixed(3);
-        }
+    const idxAtDate = (route.desKey === 'JKM') ? jkm : ttf;
+    if (idxAtDate != null && fr != null) {
+      const desValue = idxAtDate + physVal;
+      if (idxName === 'FIXED') {
+        v = +(desValue - fr).toFixed(3);
+      } else {
+        const idxValAtDate = idxName === 'TTF' ? ttf
+                            : idxName === 'JKM' ? jkm
+                            : (hh != null ? sl * hh : null);
+        if (idxValAtDate != null) v = +(desValue - fr - idxValAtDate).toFixed(3);
       }
     }
     out.push({ date: new Date(s.eod_date), eod_date: s.eod_date, ts: s.ts, value: v });
@@ -11706,10 +11699,8 @@ function _fobMarkFresh(kind){
 //   USGC FOB(date, T, route, idx):
 //     desValue = (route.desKey is JKM ? JKM : TTF) + phys[route.desPhysKey] (today)
 //     freight  = CP.freight[route.frKey][T-1]  (today's snapshot)
-//     liqFee   = CP.liqFee[T-1] || 2.50
 //     idxArr   = TTF | JKM | 1.15×HH (at EOD date)
-//     FIXED    → 1.15 × HH(date,T) + liqFee[T-1]   (Sabine FOB special case)
-//                OR DES − freight  (if non-Sabine USGC route)
+//     FIXED    → DES − freight
 //     SPREAD   → DES − freight − idxArr
 //   Oman FOB(date, T, route, idx):
 //     FIXED    → DES − freight
@@ -11747,7 +11738,6 @@ function _fobHistTimeSeries(originType, tenor, routeId, idxName){
   // today's static inputs (freight + phys diffs aren't historical yet)
   const freight = CP.freight?.[route.frKey]?.[tenor - 1];
   const physVal = route.physKey ? (CP.phys?.[route.physKey]?.[tenor - 1] || 0) : 0;
-  const liqFee  = (CP.liqFee && CP.liqFee[tenor - 1] != null) ? CP.liqFee[tenor - 1] : 2.50;
 
   const out = [];
   for (const ds of sDates) {
@@ -11756,13 +11746,6 @@ function _fobHistTimeSeries(originType, tenor, routeId, idxName){
     const pk = rPK(date, tenor);
     const row = rows.find(r => r.pk === pk);
     if (!row) { out.push({ date, value: null }); continue; }
-
-    // Special case: Sabine FOB ABS = 1.15 × HH + liqFee  (the published Cheniere formula)
-    // Use this only when route is a Sabine-origin route AND index is FIXED.
-    if (originType === 'usgc' && idxName === 'FIXED' && row.HH != null) {
-      out.push({ date, value: +(sl * row.HH + liqFee).toFixed(3) });
-      continue;
-    }
 
     // Generic FOB formula: DES_destination − freight (− index if spread mode)
     const idxAtDate = (route.desKey === 'JKM') ? row.JKM : row.TTF;
@@ -11793,7 +11776,7 @@ function cpFobHistoricalSection(d){
     const routes = FOB_ROUTES[origin];
     const tenorBtns = TENORS.map(t => `<button class="f-btn sm${sel.tenor===t?' on':''}" onclick="CP.fob${origin==='usgc'?'Us':'Oman'}HistTenor=${t};cpSet('cp_fob_${origin}_hist_tenor',${t});renderCargoTab()">M+${t}</button>`).join('');
     const routeBtns = routes.map(r => `<button class="f-btn sm${sel.route===r.id?' on':''}" onclick="CP.fob${origin==='usgc'?'Us':'Oman'}HistRoute='${r.id}';cpSet('cp_fob_${origin}_hist_route','${r.id}');renderCargoTab()">${r.label}</button>`).join('');
-    const idxBtns   = ['FIXED','TTF','JKM','HH'].map(x => `<button class="f-btn sm${sel.idx===x?' on':''}" onclick="CP.fob${origin==='usgc'?'Us':'Oman'}HistIdx='${x}';cpSet('cp_fob_${origin}_hist_idx','${x}');renderCargoTab()">${x==='FIXED'?'Abs':x==='HH'?'115%HH':x}</button>`).join('');
+    const idxBtns   = ['FIXED','TTF','JKM','HH'].map(x => `<button class="f-btn sm${sel.idx===x?' on':''}" onclick="CP.fob${origin==='usgc'?'Us':'Oman'}HistIdx='${x}';cpSet('cp_fob_${origin}_hist_idx','${x}');renderCargoTab()">${x==='FIXED'?'Abs netback':x==='HH'?'115%HH':x}</button>`).join('');
     return `
       <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;font-size:9px">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#546e7a;letter-spacing:1px;min-width:50px">TENOR</span> ${tenorBtns}</div>
@@ -11804,7 +11787,7 @@ function cpFobHistoricalSection(d){
 
   const usRouteLabel = (FOB_ROUTES.usgc.find(r=>r.id===us.route)||{}).label || us.route;
   const omanRouteLabel = (FOB_ROUTES.oman.find(r=>r.id===oman.route)||{}).label || oman.route;
-  const yLabel = (idx) => idx==='FIXED' ? '$/MMBtu (Abs)' : 'spread vs '+(idx==='HH'?'115%HH':idx);
+  const yLabel = (idx) => idx==='FIXED' ? '$/MMBtu (Abs netback)' : 'spread vs '+(idx==='HH'?'115%HH':idx);
 
   // ── Snapshot freshness panel ─────────────────────────────────────────
   const snaps = (typeof _fobLoadSnapshots === 'function' ? _fobLoadSnapshots() : []);
