@@ -2,10 +2,15 @@
   "functions": {
     "api/*.js": {
       "maxDuration": 30,
-      "includeFiles": "data/*.csv"
+      "includeFiles": [
+        "data/*.csv",
+        "api/private/**"
+      ]
     }
   },
   "rewrites": [
+    { "source": "/app", "destination": "/api/app" },
+    { "source": "/app-assets", "destination": "/api/app-asset" },
     { "source": "/api/agsi", "destination": "/api/gie?src=agsi" },
     { "source": "/api/aggi", "destination": "/api/gie?src=aggi" }
   ],

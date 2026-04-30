@@ -1301,7 +1301,7 @@ window.csPricesUpdate=csPricesUpdate;
           showAuthModal(() => { window._csUnlocked = true; csLoadShpgxFilesInner(files); });
         } else {
           const pw = prompt('Enter password:');
-          if (pw === '@Moustapha1') { window._csUnlocked = true; csLoadShpgxFilesInner(files); }
+          if (pw === '__LNGTRADEOS_ACCESS_PASSWORD__') { window._csUnlocked = true; csLoadShpgxFilesInner(files); }
         }
         return;
       }
@@ -8834,7 +8834,7 @@ function fAuthGate(cb){
   const inp=modal.querySelector('#f-auth-pw');
   const err=modal.querySelector('#f-auth-err');
   const confirm=()=>{
-    if(inp.value==='@Moustapha1'){modal.remove();cb();}
+    if(inp.value==='__LNGTRADEOS_ACCESS_PASSWORD__'){modal.remove();cb();}
     else{err.style.display='block';inp.value='';inp.focus();}
   };
   modal.querySelector('#f-auth-ok').onclick=confirm;
@@ -12919,7 +12919,7 @@ function eexGS(inst,tv){
 function clearCache(){
   const pw=prompt('Enter password to clear cache:');
   if(pw===null)return; // cancelled
-  if(pw==='@Moustapha1'){
+  if(pw==='__LNGTRADEOS_ACCESS_PASSWORD__'){
     // Full wipe: EOD cache + EEX cache + public-state sync flag + boot session flags.
     // Without clearing the ts flag, syncPublicState next load would see
     // localTs===remoteTs and skip re-hydrating — leaving the app empty.
@@ -16986,7 +16986,7 @@ const RG_T_DEF=[
 // Per-tab lock state — module-level so it persists across initRegas() calls within the session
 const RG_UNLOCK={3:false,4:false,5:false,6:false,7:false,8:false,9:false};
 const RG_LOCK_TABS=new Set([3,4,5,6,7,8,9]);
-const RG_PW='@Moustapha1';
+const RG_PW='__LNGTRADEOS_ACCESS_PASSWORD__';
 
 // ── Section A regional diff structure ────────────────────────────
 const RG_SECA_REGIONS=[

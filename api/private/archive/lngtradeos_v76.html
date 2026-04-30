@@ -6228,7 +6228,7 @@ function fAuthGate(cb){
   const inp=modal.querySelector('#f-auth-pw');
   const err=modal.querySelector('#f-auth-err');
   const confirm=()=>{
-    if(inp.value==='@Moustapha1'){modal.remove();cb();}
+    if(inp.value==='__LNGTRADEOS_ACCESS_PASSWORD__'){modal.remove();cb();}
     else{err.style.display='block';inp.value='';inp.focus();}
   };
   modal.querySelector('#f-auth-ok').onclick=confirm;
@@ -7711,7 +7711,7 @@ function lCache(){try{const raw=localStorage.getItem(CK);if(!raw)return false;co
 function clearCache(){
   const pw=prompt('Enter password to clear cache:');
   if(pw===null)return; // cancelled
-  if(pw==='@Moustapha1'){localStorage.removeItem(CK);location.reload();}
+  if(pw==='__LNGTRADEOS_ACCESS_PASSWORD__'){localStorage.removeItem(CK);location.reload();}
   else alert('Incorrect password.');
 }
 function setupDrop(){
@@ -7806,7 +7806,7 @@ const RG_T_DEF=[
 // Per-tab lock state — module-level so it persists across initRegas() calls within the session
 const RG_UNLOCK={2:false,3:false,4:false,5:false,6:false,7:false};
 const RG_LOCK_TABS=new Set([2,3,4,5,6,7]); // tabs requiring password
-const RG_PW='@Moustapha1';
+const RG_PW='__LNGTRADEOS_ACCESS_PASSWORD__';
 
 let RG={tab:0,eurUsd:1.16,eua:92,cargo:3800000,ttfCurve:Array(24).fill(17.50),hubSpreads:{...RG_SPREAD_DEF},diffs:{},terminals:[],selMonth:1,nbkTerm:'adriatic',nbkSlippage:0,nbkBunker:0.08,nbkCredit:0.05,nbkDeadFreight:0,nbkExtraShipping:0,nbkExtrinsic:false,nbkVol:25,nbkRawExt:0.15,nbkCapture:70,tsoOpex:0.02,gridCapex:0.05,impliedMon:{},cgUnit:'usd',cgShowTotal:false,cgMonth:1};
 
