@@ -18253,8 +18253,9 @@ const GA_LIVE = {
 };
 // Country codes for domestic production queries (adjacentSystemTypeLabel=Production)
 const ENTSOG_PRODUCTION_COUNTRIES = {
-  NL:'netherlands', RO:'romania', DK:'denmark', GB:'uk',
-  IT:'italy', DE:'germany', PL:'poland',
+  NL:'netherlands', UK:'uk', GB:'uk', RO:'romania', DE:'germany',
+  IT:'italy', PL:'poland', FR:'france', ES:'spain', HU:'hungary',
+  HR:'croatia', LV:'latvia', DK:'denmark',
 };
 
 // ── localStorage cache helpers ───────────────────────────────────────────────
@@ -18527,7 +18528,7 @@ async function gaLoadDomProductionYear(year){
   const today = new Date().toISOString().slice(0,10);
   const yStart = `${year}-01-01`;
   const yEnd   = year < new Date().getFullYear() ? `${year}-12-31` : today;
-  const cacheKey = `dom_prod_eu_v4_${year}`;
+  const cacheKey = `dom_prod_eu_v5_${year}`;
   const ttlH = year < new Date().getFullYear() ? 720 : 6; // closed years: 30d, current: 6h
 
   _domYearInflight[year] = (async () => {
@@ -18551,7 +18552,8 @@ async function gaLoadDomProductionYear(year){
       const cc = (d.operatorKey||'').slice(0,2).toUpperCase();
       const label = DOMPROD_CODE_TO_LABEL[cc];
       if(!label) return;
-      const valMCM = (parseFloat(d.value||0)||0) * ENTSOG_KWH_TO_MCM;
+      if(d.value==null || d.value==='') return;
+      const valMCM = (parseFloat(d.value)||0) * ENTSOG_KWH_TO_MCM;
       const date = (d.periodFrom||d.from||'').slice(0,10);
       const mo = date.slice(0,7);
       if(!mo||mo.length<7) return;
@@ -19217,6 +19219,7 @@ async function gaLoadAll(){
   await Promise.allSettled([
     gdLoadStorage(from4y, today),
     gdLoadLNG(from4y, today),
+    gaLoadDomProductionLive(from4y, today),
     pipelineJob,
     // Phase 2 caches (best-effort, non-blocking for core data)
     gdLoadNominationsFromCache(),
@@ -20328,11 +20331,15 @@ function drawLNGCharts(){
 
 // ── DOMESTIC PRODUCTION ─────────────────────────────────────────────────────
 // Replaces the old LNG IMPORTS tab. Source: ENTSOG operationalDatas with
-// adjacentSystemTypeLabel=Production. Only 7 EU/UK producers report — rest
-// have no indigenous output or don't feed ENTSOG.
+// Aggregated production point - TP / TP ExtEU. Only producing countries are
+// listed; missing country/month values remain blank rather than seeded.
 function renderDomProductionPane(pane){
   const curY = new Date().getFullYear();
   if(!_domYears || !_domYears.length) _domYears = [curY, curY-1, curY-2];
+  const needsDom = !(window.GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic);
+  if(needsDom && typeof gaLoadDomProductionLive === 'function'){
+    gaLoadDomProductionLive(`${curY-2}-01-01`, new Date().toISOString().slice(0,10));
+  }
   const okDom = !!(window.GA_LIVE && GA_LIVE.ok && GA_LIVE.ok.domestic);
   const curView = window._domView || 'aggregate';
   pane.innerHTML = `
@@ -20349,7 +20356,7 @@ function renderDomProductionPane(pane){
     <div class="ga-card">
       <div class="ga-sec">EU+UK DOMESTIC PRODUCTION — SEASONAL <span class="ga-tag ga-tag-live">ENTSOG</span></div>
       <div class="ga-ch-wrap tall" style="height:340px"><canvas id="dom-sea-chart"></canvas></div>
-      <div class="ga-source">Source: ENTSOG Transparency Platform · adjacentSystemTypeLabel=Production · NL · UK · RO · DE · IT · DK · PL · ${new Date().toLocaleDateString('en-GB')}</div>
+      <div class="ga-source">Source: ENTSOG Transparency Platform · Aggregated production point - TP / TP ExtEU · producing countries only · ${new Date().toLocaleDateString('en-GB')}</div>
     </div>
     <div class="ga-card" style="margin-top:12px">
       <div class="ga-sec">MONTHLY BREAKDOWN BY PRODUCER <span class="ga-tag ga-tag-live">ENTSOG</span></div>

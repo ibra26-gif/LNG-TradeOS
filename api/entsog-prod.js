@@ -49,6 +49,7 @@ export default async function handler(req, res) {
       fetchOne('Aggregated production point - TP',       from, to),
       fetchOne('Aggregated production point - TP ExtEU', from, to),
     ]);
+    const seen = new Set();
     const rows = [...a, ...b].map(r => ({
       operatorKey: r.operatorKey,
       pointLabel:  r.pointLabel,
@@ -56,7 +57,12 @@ export default async function handler(req, res) {
       value:       r.value,
       unit:        r.unit,
       pointType:   r.pointType,
-    }));
+    })).filter(r => {
+      const key = `${r.operatorKey}|${r.pointLabel}|${r.periodFrom}|${r.pointType}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     res.status(200).json({ rows, meta: { from, to, count: rows.length } });
   } catch (e) {
     res.status(502).json({ error: e.message });
