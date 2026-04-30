@@ -6777,7 +6777,34 @@ function renderMatrixSection(){
     ${[renderMatCurves,renderMatParams,renderMatrix,renderDiff,()=>`<div id="f-hist-body">${renderHistorical()}</div>`][F.matSubTab]()}
   </div>`;
 }
-function fMatTab(i){F.matSubTab=i;document.getElementById('f-mat-body').innerHTML=[renderMatCurves,renderMatParams,renderMatrix,renderDiff,()=>`<div id="f-hist-body">${renderHistorical()}</div>`][i]();}
+// Re-execute inline <script> tags inside a freshly-injected DOM node.
+// Needed because innerHTML doesn't run scripts, and renderHistorical()
+// emits Chart.js init blocks as inline <script> via mkChart.
+function _fReexecScripts(root){
+  if(!root)return;
+  root.querySelectorAll('script').forEach(old=>{
+    const s=document.createElement('script');
+    if(old.src) s.src=old.src; else s.textContent=old.textContent;
+    old.parentNode.replaceChild(s,old);
+  });
+}
+// Refresh the historical body in-place AND re-execute its scripts.
+// Use this from every click handler that swaps the historical inner HTML,
+// so charts re-render after every filter change.
+function _fHistRefresh(){
+  const body=document.getElementById('f-hist-body');
+  if(!body)return;
+  body.innerHTML=renderHistorical();
+  _fReexecScripts(body);
+}
+window._fHistRefresh=_fHistRefresh;
+function fMatTab(i){
+  F.matSubTab=i;
+  const body=document.getElementById('f-mat-body');
+  if(!body)return;
+  body.innerHTML=[renderMatCurves,renderMatParams,renderMatrix,renderDiff,()=>`<div id="f-hist-body">${renderHistorical()}</div>`][i]();
+  _fReexecScripts(body);
+}
 
 function renderMatCurves(){
   const combinedRows=ML.map((m,i)=>`<tr><td style="color:#8a9bb5;white-space:nowrap;min-width:56px">${m}</td>
@@ -7373,7 +7400,7 @@ function renderHistorical(){
     return`
     <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:12px;flex-wrap:wrap">
       <div><span class="f-lbl">OBSERVATION DATE</span>
-        <select class="f-sel" onchange="F.histSelDate=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">
+        <select class="f-sel" onchange="F.histSelDate=+this.value;_fHistRefresh()">
           ${curves.map((s,i)=>`<option value="${i}"${i===idx?' selected':''}>${s.date} — ${s.label}</option>`).join('')}
         </select>
       </div>
@@ -7513,7 +7540,7 @@ function renderHistorical(){
 
     // ── BLNG curve selectors ───────────────────────────────────────────────
     const blngToggle=(key,color)=>`<button style="padding:4px 10px;font-size:9px;font-family:IBM Plex Mono,monospace;cursor:pointer;border:1px solid ${sel[key]?color:'#3d5070'};background:${sel[key]?'#0d1e36':'transparent'};color:${sel[key]?color:'#546e7a'};border-radius:2px"
-      onclick="F.histBlngSel['${key}']=!F.histBlngSel['${key}'];fs('f_hist_blng_sel',F.histBlngSel);document.getElementById('f-hist-body').innerHTML=renderHistorical()">${key}</button>`;
+      onclick="F.histBlngSel['${key}']=!F.histBlngSel['${key}'];fs('f_hist_blng_sel',F.histBlngSel);_fHistRefresh()">${key}</button>`;
 
     const activeSeries=['BLNG1','BLNG2','BLNG3'].filter(c=>sel[c]).map(c=>({
       values:sorted.map(s=>s.blng[c]?.[mi]??null),
@@ -7537,7 +7564,7 @@ function renderHistorical(){
       if(corrLines.length)corrHtml=`<div style="background:#070b14;border:1px solid #1e3a5f;padding:6px 12px;margin-bottom:10px;font-size:9px">${corrLines.join('')}</div>`;
     }
 
-    const monthSel=(stateKey,val,label)=>`<div><span class="f-lbl">${label}</span><select class="f-sel" style="min-width:90px" onchange="F.${stateKey}=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">
+    const monthSel=(stateKey,val,label)=>`<div><span class="f-lbl">${label}</span><select class="f-sel" style="min-width:90px" onchange="F.${stateKey}=+this.value;_fHistRefresh()">
       ${ML.map((m,i)=>`<option value="${i}"${i===val?' selected':''}>${m}</option>`).join('')}
     </select></div>`;
 
@@ -7616,9 +7643,9 @@ function renderHistorical(){
     };
     const st1 = stats(s1.map(d=>d.v));
     const st2 = s2 ? stats(s2.map(d=>d.v)) : null;
-    const bBtns = id => BLNGS.map(b=>`<button class="f-btn sm${(id==='i1'?series1Inst:series2Inst)===b?' on':''}" onclick="F.${id==='i1'?'histSerI1':'histSerI2'}='${b}';document.getElementById('f-hist-body').innerHTML=renderHistorical()">${b}</button>`).join('');
-    const tSel = (id,val) => `<select class="f-sel" style="min-width:90px" onchange="F.${id==='t1'?'histSerT1':'histSerT2'}=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">${ML.map((m,i)=>`<option value="${i}"${i===+val?' selected':''}>${m}</option>`).join('')}</select>`;
-    const rangeBtns = ['1M','3M','6M','YTD','1Y','ALL'].map(r=>`<button class="f-btn sm${range===r?' on':''}" onclick="F.histSerRange='${r}';document.getElementById('f-hist-body').innerHTML=renderHistorical()">${r}</button>`).join('');
+    const bBtns = id => BLNGS.map(b=>`<button class="f-btn sm${(id==='i1'?series1Inst:series2Inst)===b?' on':''}" onclick="F.${id==='i1'?'histSerI1':'histSerI2'}='${b}';_fHistRefresh()">${b}</button>`).join('');
+    const tSel = (id,val) => `<select class="f-sel" style="min-width:90px" onchange="F.${id==='t1'?'histSerT1':'histSerT2'}=+this.value;_fHistRefresh()">${ML.map((m,i)=>`<option value="${i}"${i===+val?' selected':''}>${m}</option>`).join('')}</select>`;
+    const rangeBtns = ['1M','3M','6M','YTD','1Y','ALL'].map(r=>`<button class="f-btn sm${range===r?' on':''}" onclick="F.histSerRange='${r}';_fHistRefresh()">${r}</button>`).join('');
     // Chart data
     const labels = s1.map(d=>d.date.slice(5));
     const lineData = [];
@@ -7710,7 +7737,7 @@ function renderHistorical(){
       <div>
         <span class="f-lbl" style="color:#546e7a">SERIES 2 (optional)</span>
         <div style="display:flex;gap:5px;margin-top:4px;align-items:center">
-          <button class="f-btn sm${series2Inst==='none'?' on':''}" onclick="F.histSerI2='none';document.getElementById('f-hist-body').innerHTML=renderHistorical()">none</button>
+          <button class="f-btn sm${series2Inst==='none'?' on':''}" onclick="F.histSerI2='none';_fHistRefresh()">none</button>
           ${bBtns('i2')} ${series2Inst!=='none'?tSel('t2',tenor2):''}
         </div>
       </div>
@@ -7764,9 +7791,9 @@ function renderHistorical(){
       const sd = Math.sqrt(x.reduce((a,b)=>a+(b-mean)**2,0)/Math.max(x.length-1,1));
       return { n:x.length, current:x[x.length-1], mean, median:pct(0.5), sd, min:s[0], p5:pct(0.05), p25:pct(0.25), p75:pct(0.75), p95:pct(0.95), max:s[s.length-1] };
     };
-    const tSel = `<select class="f-sel" style="min-width:90px" onchange="F.histSpdTenor=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">${ML.map((m,i)=>`<option value="${i}"${i===tenor?' selected':''}>${m}</option>`).join('')}</select>`;
-    const rangeBtns = ['1M','3M','6M','YTD','1Y','ALL'].map(r=>`<button class="f-btn sm${range===r?' on':''}" onclick="F.histSpdRange='${r}';document.getElementById('f-hist-body').innerHTML=renderHistorical()">${r}</button>`).join('');
-    const pairBtns = PAIRS.map(p=>`<button class="f-btn sm${sel[p.id]?' on':''}" style="border-color:${p.col};color:${sel[p.id]?p.col:'#546e7a'}" onclick="F.histSpdSel=F.histSpdSel||{b1_b2:true,b1_b3:true,b2_b3:true};F.histSpdSel['${p.id}']=!F.histSpdSel['${p.id}'];fs('f_hist_spd_sel',F.histSpdSel);document.getElementById('f-hist-body').innerHTML=renderHistorical()">${p.label}</button>`).join('');
+    const tSel = `<select class="f-sel" style="min-width:90px" onchange="F.histSpdTenor=+this.value;_fHistRefresh()">${ML.map((m,i)=>`<option value="${i}"${i===tenor?' selected':''}>${m}</option>`).join('')}</select>`;
+    const rangeBtns = ['1M','3M','6M','YTD','1Y','ALL'].map(r=>`<button class="f-btn sm${range===r?' on':''}" onclick="F.histSpdRange='${r}';_fHistRefresh()">${r}</button>`).join('');
+    const pairBtns = PAIRS.map(p=>`<button class="f-btn sm${sel[p.id]?' on':''}" style="border-color:${p.col};color:${sel[p.id]?p.col:'#546e7a'}" onclick="F.histSpdSel=F.histSpdSel||{b1_b2:true,b1_b3:true,b2_b3:true};F.histSpdSel['${p.id}']=!F.histSpdSel['${p.id}'];fs('f_hist_spd_sel',F.histSpdSel);_fHistRefresh()">${p.label}</button>`).join('');
 
     const chart = mkChart(lineData, '', '$/day', true);
     const statsRows = lineData.map(s => {
@@ -7879,9 +7906,9 @@ function renderHistorical(){
       </script>`;
     }
 
-    const tSel = `<select class="f-sel" style="min-width:90px" onchange="F.histVbTenor=+this.value;document.getElementById('f-hist-body').innerHTML=renderHistorical()">${ML.map((m,i)=>`<option value="${i}"${i===tenor?' selected':''}>${m}</option>`).join('')}</select>`;
-    const rangeBtns = ['1M','3M','6M','YTD','1Y','ALL'].map(r=>`<button class="f-btn sm${range===r?' on':''}" onclick="F.histVbRange='${r}';document.getElementById('f-hist-body').innerHTML=renderHistorical()">${r}</button>`).join('');
-    const blngBtns = ['BLNG1','BLNG2','BLNG3'].map(b=>`<button class="f-btn sm${blngSel[b]?' on':''}" style="border-color:${BC[b]};color:${blngSel[b]?BC[b]:'#546e7a'}" onclick="F.histVbBlng=F.histVbBlng||{BLNG1:true,BLNG2:true,BLNG3:true};F.histVbBlng['${b}']=!F.histVbBlng['${b}'];fs('f_hist_vb_blng',F.histVbBlng);document.getElementById('f-hist-body').innerHTML=renderHistorical()">${b}</button>`).join('');
+    const tSel = `<select class="f-sel" style="min-width:90px" onchange="F.histVbTenor=+this.value;_fHistRefresh()">${ML.map((m,i)=>`<option value="${i}"${i===tenor?' selected':''}>${m}</option>`).join('')}</select>`;
+    const rangeBtns = ['1M','3M','6M','YTD','1Y','ALL'].map(r=>`<button class="f-btn sm${range===r?' on':''}" onclick="F.histVbRange='${r}';_fHistRefresh()">${r}</button>`).join('');
+    const blngBtns = ['BLNG1','BLNG2','BLNG3'].map(b=>`<button class="f-btn sm${blngSel[b]?' on':''}" style="border-color:${BC[b]};color:${blngSel[b]?BC[b]:'#546e7a'}" onclick="F.histVbBlng=F.histVbBlng||{BLNG1:true,BLNG2:true,BLNG3:true};F.histVbBlng['${b}']=!F.histVbBlng['${b}'];fs('f_hist_vb_blng',F.histVbBlng);_fHistRefresh()">${b}</button>`).join('');
 
     return `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
@@ -7932,7 +7959,7 @@ function renderHistorical(){
           <input type="file" id="hist-json-upload" accept=".json" style="display:none" onchange="importHistJson(this)">
           <button class="f-btn" onclick="fAuthGate(()=>exportHistJson())">⬇ EXPORT JSON</button>
         </div>`}
-    ${hasCurves&&!F.histLoading?`<button class="f-btn sm" onclick="fAuthGate(()=>{F.histCurves=[];fs('f_hist_curves',[]);document.getElementById('f-hist-body').innerHTML=renderHistorical()})">CLEAR</button>`:''}
+    ${hasCurves&&!F.histLoading?`<button class="f-btn sm" onclick="fAuthGate(()=>{F.histCurves=[];fs('f_hist_curves',[]);_fHistRefresh()})">CLEAR</button>`:''}
   </div>
   ${F.histLoading&&F.histProgress?.total>0?`
   <div style="background:#0a1628;border:1px solid #1e3a5f;padding:10px 14px;margin-bottom:8px">
@@ -7953,7 +7980,7 @@ function renderHistorical(){
             ['spread','② SPREAD'],
             ['forward','③ FORWARD CURVE'],
             ['vsbasis','④ FREIGHT vs BASIS'],
-          ].map(([k,l])=>`<button class="f-tab${(F.histView||'historical')===k?' active':''}" style="padding:6px 14px;font-size:9px;letter-spacing:1px" onclick="F.histView='${k}';document.getElementById('f-hist-body').innerHTML=renderHistorical()">${l}</button>`).join('')}
+          ].map(([k,l])=>`<button class="f-tab${(F.histView||'historical')===k?' active':''}" style="padding:6px 14px;font-size:9px;letter-spacing:1px" onclick="F.histView='${k}';_fHistRefresh()">${l}</button>`).join('')}
         </div>
         <span style="font-size:9px;color:#546e7a">${curves.length} observation dates in database</span>
       </div>
@@ -8128,7 +8155,7 @@ Rules:
 async function loadFreightFromGmail(){
   F.histLoading=true;
   F.histProgress={total:0,done:0,current:'Searching Gmail for OB LNG EOD Curve emails…',errors:[]};
-  document.getElementById('f-hist-body').innerHTML=renderHistorical();
+  _fHistRefresh();
 
   // ── Date from subject "OB LNG EOD Curve DD.MM.YYYY" ──────────────────────
   function parseDateFromSubject(subj){
@@ -8183,12 +8210,12 @@ Schema: [{"messageId":"...","subject":"...","date":"YYYY-MM-DD"}]
 
     F.histProgress.total=toProcess.length;
     F.histProgress.current=`Found ${valid.length} emails · ${toProcess.length} new to process…`;
-    document.getElementById('f-hist-body').innerHTML=renderHistorical();
+    _fHistRefresh();
 
     if(!toProcess.length){
       alert(`All ${valid.length} email(s) already in database. Nothing new to import.`);
       F.histLoading=false;
-      document.getElementById('f-hist-body').innerHTML=renderHistorical();
+      _fHistRefresh();
       return;
     }
 
@@ -8197,7 +8224,7 @@ Schema: [{"messageId":"...","subject":"...","date":"YYYY-MM-DD"}]
     for(const email of toProcess){
       const isoDate=parseDateFromSubject(email.subject);
       F.histProgress.current=`Extracting ${email.subject} (${F.histProgress.done+1}/${F.histProgress.total})…`;
-      document.getElementById('f-hist-body').innerHTML=renderHistorical();
+      _fHistRefresh();
 
       try{
         const exResp=await fetch('/api/anthropic',{
@@ -8272,7 +8299,7 @@ Rules:
     alert('Gmail scrape failed: '+err.message);
   }finally{
     F.histLoading=false;
-    document.getElementById('f-hist-body').innerHTML=renderHistorical();
+    _fHistRefresh();
   }
 }
 
@@ -8318,7 +8345,7 @@ async function parseHistExcel(el){
 
   F.histLoading=true;
   F.histProgress={total:files.length,done:0,current:'',errors:[]};
-  document.getElementById('f-hist-body').innerHTML=renderHistorical();
+  _fHistRefresh();
 
   function parseDateFromName(name){
     const m=name.match(/(\d{2})\.(\d{2})\.(\d{4})/);
@@ -8350,7 +8377,7 @@ async function parseHistExcel(el){
       continue;
     }
     F.histProgress.current=`Reading ${file.name} (${F.histProgress.done+1}/${F.histProgress.total})…`;
-    document.getElementById('f-hist-body').innerHTML=renderHistorical();
+    _fHistRefresh();
 
     try{
       const buf=await new Promise((res,rej)=>{
@@ -8482,7 +8509,7 @@ async function parseHistExcel(el){
     ?`\n⚠ ${F.histProgress.errors.length} skipped:\n${F.histProgress.errors.slice(0,8).join('\n')}`:'';
   alert(`✓ Loaded ${results.length} curve(s) from ${files.length} Excel file(s).${errMsg}`);
   F.histLoading=false;
-  document.getElementById('f-hist-body').innerHTML=renderHistorical();
+  _fHistRefresh();
 }
 
 
@@ -8528,7 +8555,7 @@ async function parseHistImages(el){
   // ── NOW safe to touch DOM ──────────────────────────────────────────────────
   F.histLoading=true;
   F.histProgress={total:fileData.length,done:0,current:'',errors:[]};
-  document.getElementById('f-hist-body').innerHTML=renderHistorical();
+  _fHistRefresh();
 
   function parseDateFromName(name){
     const m=name.match(/(\d{2})\.(\d{2})\.(\d{4})/);
@@ -8561,7 +8588,7 @@ async function parseHistImages(el){
     }
 
     F.histProgress.current=`Extracting ${fd.name} (${F.histProgress.done+1}/${F.histProgress.total})…`;
-    document.getElementById('f-hist-body').innerHTML=renderHistorical();
+    _fHistRefresh();
 
     try{
       const resp=await fetch('/api/anthropic',{
@@ -8626,13 +8653,13 @@ async function parseHistImages(el){
   const errMsg=F.histProgress.errors.length?`\n⚠ ${F.histProgress.errors.length} skipped:\n${F.histProgress.errors.slice(0,5).join('\n')}`:''
   alert(`✓ Extracted ${results.length} curve(s) from ${fileData.length} image(s).${errMsg}`);
   F.histLoading=false;
-  document.getElementById('f-hist-body').innerHTML=renderHistorical();
+  _fHistRefresh();
 }
 
 async function loadHistFromGDrive(){
   F.histLoading=true;
   F.histProgress={total:0,done:0,current:'',errors:[]};
-  document.getElementById('f-hist-body').innerHTML=renderHistorical();
+  _fHistRefresh();
 
   // ── Helper: parse date from OB_LNG_FFA_CURVE_DD_MM_YYYY or OB_LNG_FFA_Curve__DD_MM_YYYY ──
   function parseDateFromName(name){
@@ -8696,7 +8723,7 @@ Rules:
   try{
     // ── STEP 1: List all files in "LNG Freight Curves" folder ──────────────
     F.histProgress.current='Listing files in Google Drive…';
-    document.getElementById('f-hist-body').innerHTML=renderHistorical();
+    _fHistRefresh();
 
     const listResp=await fetch('/api/anthropic',{
       method:'POST',
@@ -8729,7 +8756,7 @@ List ONLY image files (jpg, jpeg, png). No other text or markdown.`,
     for(const file of validFiles){
       const isoDate=parseDateFromName(file.name);
       F.histProgress.current=`Extracting ${file.name} (${F.histProgress.done+1}/${F.histProgress.total})…`;
-      document.getElementById('f-hist-body').innerHTML=renderHistorical();
+      _fHistRefresh();
 
       try{
         // Download image as base64 via GDrive MCP
@@ -8784,7 +8811,7 @@ List ONLY image files (jpg, jpeg, png). No other text or markdown.`,
     alert('Failed to load from Google Drive: '+err.message);
   }finally{
     F.histLoading=false;
-    document.getElementById('f-hist-body').innerHTML=renderHistorical();
+    _fHistRefresh();
   }
 }
 // ── Persistent param helpers (Section 2 only) ────────────────────────────────
