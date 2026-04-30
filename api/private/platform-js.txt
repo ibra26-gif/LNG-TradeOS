@@ -20514,8 +20514,10 @@ function renderBalanceTable(pane){
   const prefs = (()=>{ try{return JSON.parse(localStorage.getItem('eub_prefs_v1')||'{}');}catch{return{};} })();
   const latest = eubLatestMonth() || new Date().toISOString().slice(0,7);
   const endMo = pane.querySelector('#bal-end-sel')?.value || prefs.endMo || latest;
+  const unit = pane.querySelector('#bal-unit-sel')?.value || prefs.unit || 'bcm';
   const months = eubMonthRange(endMo, 13);
   prefs.endMo = endMo;
+  prefs.unit = unit;
   try{ localStorage.setItem('eub_prefs_v1', JSON.stringify(prefs)); }catch{}
   const kpi = eubCalcMonth(months[months.length-1]);
   const kpiCell = (label,val,sub,col='var(--b)') => `
@@ -20531,6 +20533,12 @@ function renderBalanceTable(pane){
       <select class="gsel" id="bal-end-sel" onchange="renderBalanceTable(document.getElementById('ga-eugas-pane'))">
         ${eubMonthOptions(latest, 30).map(m=>`<option value="${m}"${m===endMo?' selected':''}>${eubMonthLabel(m)}</option>`).join('')}
       </select>
+      <span class="ctrl-lbl">UNIT</span>
+      <select class="gsel" id="bal-unit-sel" onchange="renderBalanceTable(document.getElementById('ga-eugas-pane'))">
+        <option value="bcm"${unit==='bcm'?' selected':''}>bcm</option>
+        <option value="mtpm"${unit==='mtpm'?' selected':''}>mtpm</option>
+        <option value="mcmd"${unit==='mcmd'?' selected':''}>mcm/d</option>
+      </select>
       <span class="ctrl-lbl">VIEW</span>
       <select class="gsel" disabled title="Country drill-down will be enabled only where every component has a real source">
         <option>EU-28 Aggregate</option>
@@ -20539,19 +20547,19 @@ function renderBalanceTable(pane){
       <span style="font-size:9px;color:#3d5070;margin-left:auto">${new Date().toLocaleDateString('en-GB')}</span>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      ${kpiCell('GRANDTOTAL SUPPLY', eubFmt(kpi.supply), eubMonthLabel(endMo), '#bfdbfe')}
-      ${kpiCell('IMPLIED CONSUMPTION', eubFmt(kpi.consumption), 'Supply - storage change', '#bbf7d0')}
-      ${kpiCell('SURPLUS / DEFICIT', eubFmt(kpi.surplus), 'Equals storage change', kpi.surplus!=null && kpi.surplus<0?'#fca5a5':'#c8d6e5')}
+      ${kpiCell('GRANDTOTAL SUPPLY', eubFmtFlow(kpi.supply,endMo,unit), eubUnitLabel(unit), '#bfdbfe')}
+      ${kpiCell('IMPLIED CONSUMPTION', eubFmtFlow(kpi.consumption,endMo,unit), 'Supply - storage change', '#bbf7d0')}
+      ${kpiCell('SURPLUS / DEFICIT', eubFmtFlow(kpi.surplus,endMo,unit), 'Storage change', kpi.surplus!=null && kpi.surplus<0?'#fca5a5':'#c8d6e5')}
       ${kpiCell('STORAGE FILLED', kpi.fill!=null?kpi.fill.toFixed(1)+'%':'--', 'GIE AGSI+', '#fecaca')}
     </div>
     <div class="ga-card" style="padding:0">
       <div style="padding:10px 14px 6px;border-bottom:1px solid rgba(77,158,245,.1)">
-        <div style="font-size:10px;color:var(--b);letter-spacing:2px;font-weight:600">OECD EUROPE GAS MARKET BALANCE — BCM</div>
+        <div style="font-size:10px;color:var(--b);letter-spacing:2px;font-weight:600">OECD EUROPE GAS MARKET BALANCE — ${eubUnitLabel(unit).toUpperCase()}</div>
         <div style="font-size:9px;color:#3d5070;margin-top:2px">Historical monthly template · ENTSOG + GIE AGSI+ + GIE ALSI · demand is implied until sector sources are added</div>
       </div>
       <div style="overflow-x:auto;overflow-y:auto;max-height:560px">
         <table class="ga-tbl" id="ga-bal-tbl" style="min-width:980px">
-          ${buildBalTblHTML(months)}
+          ${buildBalTblHTML(months, unit)}
         </table>
       </div>
       <div class="ga-source" style="padding:8px 14px">Sources: ENTSOG Transparency Platform physical flows + production proxy · GIE AGSI+ storage · GIE ALSI LNG sendout. Sector demand is not sourced yet, so consumption is shown as implied: supply - storage change.</div>
@@ -20588,9 +20596,27 @@ function eubFmt(v, dp=2){
   const s=Math.abs(v).toFixed(dp);
   return v<0 ? `(${s})` : s;
 }
-function eubCell(v, cls=''){
+function eubDaysInMonth(mo){
+  const [y,m]=mo.split('-').map(Number);
+  return new Date(y,m,0).getDate();
+}
+function eubUnitLabel(unit){
+  return unit==='mtpm' ? 'mtpm' : unit==='mcmd' ? 'mcm/d' : 'bcm';
+}
+function eubFlowValue(v, mo, unit){
+  if(v==null || isNaN(v)) return null;
+  if(unit==='mtpm') return v * 0.735;       // bcm gas equivalent -> Mt LNG equivalent
+  if(unit==='mcmd') return v * 1000 / eubDaysInMonth(mo);
+  return v;
+}
+function eubFmtFlow(v, mo, unit){
+  const x=eubFlowValue(v,mo,unit);
+  return eubFmt(x, unit==='mcmd'?1:2);
+}
+function eubCell(v, mo, unit, kind='flow'){
   const col = v==null ? '#3d5070' : v<0 ? '#ef4444' : '';
-  return `<td class="tr ${cls}" style="${col?`color:${col};`:''}">${eubFmt(v)}</td>`;
+  const shown = kind==='stock' ? eubFmt(v) : eubFmtFlow(v, mo, unit);
+  return `<td class="tr" style="${col?`color:${col};`:''}">${shown}</td>`;
 }
 function eubStorageEnd(mo){ return GD.storage[mo]?.twh!=null ? eubBcmFromTwh(GD.storage[mo].twh) : null; }
 function eubPrevMo(mo){
@@ -20630,14 +20656,14 @@ function eubCalcMonth(mo){
   const consumption=(supply!=null&&change!=null)?supply-change:null;
   return {norway,domTotal,production,russian,central,african,other,pipeTotal,lng,supply,begin,end,change,consumption,surplus:change,fill:GD.storage[mo]?.pct??null};
 }
-function buildBalTblHTML(months){
-  const hdrs='<thead><tr><th class="L" style="min-width:250px">OECD Europe Gas Market in bcm</th><th class="L" style="min-width:110px">To</th>'
+function buildBalTblHTML(months, unit='bcm'){
+  const hdrs='<thead><tr><th class="L" style="min-width:250px">OECD Europe Gas Market in '+eubUnitLabel(unit)+'</th><th class="L" style="min-width:110px">To</th>'
     +months.map(m=>`<th class="tr" style="min-width:72px"><div style="color:#93c5fd">${m.slice(0,4)}</div><div>${eubMonthLabel(m).split(' ')[0]}</div></th>`).join('')+'</tr></thead>';
   const row=(label,to,fn,opt={})=>{
     const bg=opt.bg?`background:${opt.bg};`:'';
     const fw=opt.bold?'font-weight:700;':'';
     const u=opt.u?'text-decoration:underline;':'';
-    const cells=months.map(m=>eubCell(fn(m), opt.bold?'':'')).join('');
+    const cells=months.map(m=>eubCell(fn(m), m, unit, opt.kind||'flow')).join('');
     return `<tr title="${opt.title||''}" style="${bg}${fw}"><td class="L" style="${u}">${label}</td><td class="L" style="color:#4b5a72;font-size:9px">${to}</td>${cells}</tr>`;
   };
   const sep=()=>`<tr><td colspan="${months.length+2}" style="height:10px;border:0;background:#070b14"></td></tr>`;
@@ -20663,8 +20689,8 @@ function buildBalTblHTML(months){
   rows.push(row('Industry demand','EU-28',()=>null,{title:'Not sourced yet - no fabricated values'}));
   rows.push(row('Residential / heating demand','EU-28',()=>null,{title:'Not sourced yet - no fabricated values'}));
   rows.push(row('Surplus (Deficit)','EU-28',m=>eubCalcMonth(m).surplus,{bold:true,bg:'rgba(254,215,170,.22)',title:'Supply - implied consumption. This equals monthly storage change when both supply and storage are available.'}));
-  rows.push(row('Storage: beginning of period','EU-28',m=>eubCalcMonth(m).begin,{title:'GIE AGSI+ gasInStorage, previous month end, converted from TWh to bcm'}));
-  rows.push(row('Storage: end of period','EU-28',m=>eubCalcMonth(m).end,{title:'GIE AGSI+ gasInStorage, month end, converted from TWh to bcm'}));
+  rows.push(row('Storage: beginning of period','EU-28',m=>eubCalcMonth(m).begin,{kind:'stock',title:'GIE AGSI+ gasInStorage, previous month end. Stock values remain in bcm because mcm/d is a flow unit.'}));
+  rows.push(row('Storage: end of period','EU-28',m=>eubCalcMonth(m).end,{kind:'stock',title:'GIE AGSI+ gasInStorage, month end. Stock values remain in bcm because mcm/d is a flow unit.'}));
   rows.push(row('Change','EU-28',m=>eubCalcMonth(m).change,{bold:true,title:'End storage - beginning storage. Positive = injection / filling; negative = withdrawal / draw.'}));
   rows.push(`<tr style="background:#ef4444;color:#07101e;font-weight:700" title="GIE AGSI+ full percentage"><td class="L">Storage Filled</td><td class="L">EU-28</td>${months.map(m=>{const v=eubCalcMonth(m).fill;return `<td class="tr">${v!=null?v.toFixed(1)+'%':'--'}</td>`;}).join('')}</tr>`);
   return hdrs+'<tbody>'+rows.join('')+'</tbody>';
