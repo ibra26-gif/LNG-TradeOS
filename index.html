@@ -280,7 +280,7 @@
     if(err)err.style.display='none';
     if(button)button.disabled=true;
     try{
-      const res=await fetch('/api/login',{
+      const res=await fetch('/api/drive?action=login',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({password:input?.value||''})

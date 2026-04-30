@@ -6,8 +6,8 @@
     }
   },
   "rewrites": [
-    { "source": "/app", "destination": "/api/app" },
-    { "source": "/app-assets", "destination": "/api/app-asset" },
+    { "source": "/app", "destination": "/api/drive?action=app" },
+    { "source": "/logout", "destination": "/api/drive?action=logout" },
     { "source": "/api/agsi", "destination": "/api/gie?src=agsi" },
     { "source": "/api/aggi", "destination": "/api/gie?src=aggi" }
   ],
