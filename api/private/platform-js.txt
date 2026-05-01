@@ -18521,7 +18521,6 @@ const ENTSOG_CORRIDOR_POINTS = {
     'Tarifa',               // GME/Maghreb pipeline — Spain ✓
   ],
   tap: [
-    'Kipi (TR) / Kipi (GR)',       // TANAP/TAP non-EU entry → Greece ✓
     'Melendugno - IT / TAP',       // TAP Italy terminal entry ✓
   ],
   russia: [
@@ -18984,7 +18983,7 @@ const PIPE_POINTS = {
   algeria_italy:['Mazara del Vallo'],
   libya:        ['Gela'],
   algeria_spain:['Almería','Tarifa'],
-  tap:          ['Kipi (TR) / Kipi (GR)','Melendugno - IT / TAP'],
+  tap:          ['Melendugno - IT / TAP'],
   russia:       ['Strandzha 2 (BG) / Malkoclar (TR)','Budince',
                  'Uzhhorod (UA) - Velke Kapusany (SK)','Isaccea (RO) - Orlovka (UA) II'],
   uk_interconn: ['Zeebrugge IZT','Bacton (BBL)'],
@@ -26208,13 +26207,13 @@ function renderRegasLngStorage(pane){
     const seasYrs=[curY,curY-1,curY-2];
     const invDs=seasYrs.map((yr,i)=>({
       label:String(yr),
-      data:Array.from({length:12},(_,m)=>{const mo=`${yr}-${String(m+1).padStart(2,'0')}`;const d=data[mo];if(!d)return null;const days=new Date(yr,m+1,0).getDate();return d.invGWh?+(d.invGWh/days/10.55).toFixed(1):null;}),
+      data:Array.from({length:12},(_,m)=>{const mo=`${yr}-${String(m+1).padStart(2,'0')}`;const d=data[mo];if(!d)return null;return d.invGWh?+(d.invGWh/10.55).toFixed(1):null;}),
       borderColor:GA_COLS[i],backgroundColor:GA_COLS[i]+(i===0?'22':'00'),
       borderWidth:i===0?2.5:1.5,pointRadius:2,tension:.3,borderDash:i>0?[5,3]:undefined,spanGaps:true,fill:i===0,
     }));
     const sc={x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y}};
     gaMakeChart('regas-inv-seas','line',{labels:GA_MO,datasets:invDs},{
-      scales:{...sc,y:{...GCD.scales.y,title:{display:true,text:'mcm/d avg',color:'#3d5070',font:{size:9}}}}
+      scales:{...sc,y:{...GCD.scales.y,title:{display:true,text:'mcm stock',color:'#3d5070',font:{size:9}}}}
     });
   },80);
 }
