@@ -9963,6 +9963,7 @@ function initCargo(){
   CP.fobOmanHistTenor = cpGet('cp_fob_oman_hist_tenor', 1);
   CP.fobOmanHistRoute = cpGet('cp_fob_oman_hist_route','oman_tokyo');
   CP.fobOmanHistIdx   = cpGet('cp_fob_oman_hist_idx',  'FIXED');
+  CP.fobHistObsDate   = cpGet('cp_fob_hist_obs_date',   '');
   CP.fobOmanFixed=cpGet('cp_fob_oman_fixed',10.00);
   CP.tab=0;renderCargo();
 }
@@ -11860,8 +11861,11 @@ function fobCaptureSnapshot(opts = {}){
   // Pull gas curves M+1..M+24 from the EOD row set.
   const tenors = 24;
   const gas = { HH: [], JKM: [], TTF: [], NBP: [], Brent: [] };
+  const pks = [], months = [];
   for (let n = 1; n <= tenors; n++) {
     const pk = rPK(eodDate, n);
+    pks.push(pk);
+    months.push(pkL(pk));
     const row = (aD[eodDs].rows || []).find(r => r.pk === pk);
     ['HH','JKM','TTF','NBP','Brent'].forEach(k => gas[k].push(row?.[k] ?? null));
   }
@@ -11885,6 +11889,7 @@ function fobCaptureSnapshot(opts = {}){
     eod_date:   eodIso,
     freight_ts: localStorage.getItem('freight_last_ts') || null,
     phys_ts:    localStorage.getItem('phys_last_ts')    || null,
+    pks, months,
     gas, freight, phys, physOv, liqFee,
   };
 
@@ -11915,6 +11920,73 @@ function _fobRoutePhys(physObj, route, i){
   return route.physKey ? (physObj?.[route.physKey]?.[j] ?? 0) : 0;
 }
 
+function _fobSnapshotMonthLabels(s){
+  if (Array.isArray(s?.months) && s.months.length) return s.months.slice(0, 24);
+  if (Array.isArray(s?.pks) && s.pks.length) return s.pks.slice(0, 24).map(pkL);
+  const ds = s?.eod_date || s?.date || null;
+  const d = ds ? new Date(ds + 'T12:00:00') : null;
+  if (!d || isNaN(d.getTime())) return ML.slice(0, 24);
+  return Array.from({length:24}, (_, i) => pkL(rPK(d, i + 1)));
+}
+
+function _fobOv(physOv, key, i, base){
+  const ov = physOv || {};
+  const k = key + '_' + i;
+  return ov[k] != null && !isNaN(ov[k]) ? +ov[k] : base;
+}
+
+function _fobLocalPrem(key, i, labels){
+  const mo = String(labels?.[i] || ML[i] || '').split('-')[0];
+  const summer = ['Apr','May','Jun','Jul','Aug','Sep'].includes(mo);
+  if (key === 'italy') return summer ? 0.20 : 0.10;
+  return 0;
+}
+
+function _fobSnapshotRoutePhys(s, route, i){
+  const phys = s?.phys || {};
+  const fr = s?.freight || {};
+  const labels = _fobSnapshotMonthLabels(s);
+  const j = i + (route.desOffset || 0);
+
+  if (route.physKey) {
+    const base = phys?.[route.physKey]?.[j];
+    return base != null && !isNaN(base) ? _fobOv(s.physOv, route.physKey, j, +base) : null;
+  }
+
+  if (route.id === 'sabine_rovigo' || route.id === 'oman_rovigo') {
+    const nwe = phys?.nwe?.[i], rov = fr?.sabine_rovigo?.[i], rot = fr?.sabine_rotterdam?.[i];
+    if (nwe == null || rov == null || rot == null || isNaN(nwe) || isNaN(rov) || isNaN(rot)) return null;
+    return _fobOv(s.physOv, 'italy', i, +(nwe + (rov - rot) + _fobLocalPrem('italy', i, labels)).toFixed(3));
+  }
+
+  if (route.id === 'sabine_dahej' || route.id === 'oman_dahej') {
+    const dahej = fr?.angola_dahej?.[i], tokyo = fr?.angola_tokyo?.[i];
+    if (dahej == null || tokyo == null || isNaN(dahej) || isNaN(tokyo)) return null;
+    return _fobOv(s.physOv, 'mei', i, +(dahej - tokyo).toFixed(3));
+  }
+
+  return 0;
+}
+
+function _fobSnapshotFobValue(s, route, idxName, i){
+  const fr = _fobRouteFreight(s?.freight, route, i);
+  const desIdxAtDate = _fobRouteDesIndex(s?.gas, route, i);
+  const physVal = _fobSnapshotRoutePhys(s, route, i);
+  if (desIdxAtDate == null || fr == null || physVal == null || isNaN(desIdxAtDate) || isNaN(fr) || isNaN(physVal)) return null;
+  const desValue = desIdxAtDate + physVal;
+  if (idxName === 'FIXED') return +(desValue - fr).toFixed(3);
+  const idxValAtDate = _fobSelectedIndex(s?.gas, route, idxName, i, CP.hhSlope || 1.15);
+  return idxValAtDate != null && !isNaN(idxValAtDate) ? +(desValue - fr - idxValAtDate).toFixed(3) : null;
+}
+
+function _fobSnapshotCurveRows(s, originType, idxName){
+  const routes = FOB_ROUTES[originType] || [];
+  return routes.map(route => ({
+    route,
+    values: _fobSnapshotMonthLabels(s).map((_, i) => _fobSnapshotFobValue(s, route, idxName, i)),
+  }));
+}
+
 function _fobSelectedIndex(gasObj, route, idxName, i, sl){
   const j = idxName === route.desKey ? i + (route.desOffset || 0) : i;
   if(idxName === 'TTF') return gasObj?.TTF?.[j];
@@ -11931,24 +12003,10 @@ function _fobSnapTimeSeries(originType, tenor, routeId, idxName){
   if (!snaps.length) return [];
   const route = (FOB_ROUTES[originType] || []).find(r => r.id === routeId);
   if (!route) return [];
-  const sl = CP.hhSlope || 1.15;
   const out = [];
   for (const s of snaps) {
     const i = tenor - 1;
-    const fr  = _fobRouteFreight(s.freight, route, i);
-    const desIdxAtDate = _fobRouteDesIndex(s.gas, route, i);
-    const physVal = _fobRoutePhys(s.phys, route, i);
-
-    let v = null;
-    if (desIdxAtDate != null && fr != null) {
-      const desValue = desIdxAtDate + physVal;
-      if (idxName === 'FIXED') {
-        v = +(desValue - fr).toFixed(3);
-      } else {
-        const idxValAtDate = _fobSelectedIndex(s.gas, route, idxName, i, sl);
-        if (idxValAtDate != null) v = +(desValue - fr - idxValAtDate).toFixed(3);
-      }
-    }
+    const v = _fobSnapshotFobValue(s, route, idxName, i);
     out.push({ date: new Date(s.eod_date), eod_date: s.eod_date, ts: s.ts, value: v });
   }
   return out;
@@ -12079,9 +12137,83 @@ function cpFobHistoricalSection(d){
     return `<span style="color:${color}">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})} ${d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} · ${ageH<24?Math.round(ageH)+'h':Math.round(ageH/24)+'d'} ago</span>`;
   };
   const lastSnap = snaps[snaps.length - 1];
+  const snapList = snaps
+    .filter(s => s && (s.eod_date || s.date))
+    .slice()
+    .sort((a,b)=>String(b.eod_date||b.date).localeCompare(String(a.eod_date||a.date)));
+  const selectedSnap = snapList.find(s => (s.eod_date || s.date) === CP.fobHistObsDate) || snapList[0] || null;
+  if (selectedSnap && CP.fobHistObsDate !== (selectedSnap.eod_date || selectedSnap.date)) {
+    CP.fobHistObsDate = selectedSnap.eod_date || selectedSnap.date;
+    cpSet('cp_fob_hist_obs_date', CP.fobHistObsDate);
+  }
+  const histIdxButtons = (origin, curIdx) => ['FIXED','TTF','JKM','HH'].map(x => {
+    const lbl = x === 'FIXED' ? 'Abs netback' : x === 'HH' ? '115%HH' : x;
+    const prop = origin === 'usgc' ? 'fobUsHistIdx' : 'fobOmanHistIdx';
+    const key = origin === 'usgc' ? 'cp_fob_usgc_hist_idx' : 'cp_fob_oman_hist_idx';
+    return `<button class="f-btn sm${curIdx===x?' on':''}" onclick="CP.${prop}='${x}';cpSet('${key}','${x}');renderCargoTab()">${lbl}</button>`;
+  }).join('');
+  const renderArchiveTable = (origin, title, idx, color) => {
+    if (!selectedSnap) return '';
+    const months = _fobSnapshotMonthLabels(selectedSnap);
+    const routeLeg = (route) => {
+      if (route.id === 'sabine_tokyo') return 'Sabine → JKTC · COGH';
+      if (route.id === 'sabine_tokyo_pc') return 'Sabine → JKTC · Panama';
+      const src = origin === 'usgc' ? 'Sabine' : 'Oman';
+      return `${src} → ${route.label}`;
+    };
+    const rows = _fobSnapshotCurveRows(selectedSnap, origin, idx).map(({route, values}) => {
+      const cells = values.map(v => {
+        if (v == null || isNaN(v)) return `<td class="tr" style="color:#3d5070">—</td>`;
+        if (idx === 'FIXED') return `<td class="tr" style="color:#d4e157;font-weight:600">${v.toFixed(3)}</td>`;
+        const col = v > 0 ? '#4ade80' : v < 0 ? '#f87171' : '#c8d6e5';
+        return `<td class="tr" style="color:${col};font-weight:600">${v > 0 ? '+' : ''}${v.toFixed(3)}</td>`;
+      }).join('');
+      return `<tr>
+        <td style="color:#c8d6e5;white-space:nowrap">${route.label}</td>
+        <td style="color:#546e7a;white-space:nowrap">${routeLeg(route)}</td>
+        ${cells}
+      </tr>`;
+    }).join('');
+    return `
+      <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937;margin:0 14px 10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <div style="font-size:11px;color:${color};font-weight:700;letter-spacing:.08em">${title} · ${idx==='FIXED'?'$/MMBtu absolute':'spread vs '+(idx==='HH'?'115%HH':idx)}</div>
+          <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><span class="f-lbl">INDEX</span>${histIdxButtons(origin, idx)}</div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="f-tbl"><thead><tr>
+            <th style="text-align:left;min-width:150px">ROUTE</th>
+            <th style="text-align:left;min-width:145px;color:#546e7a">FREIGHT LEG</th>
+            ${months.map(m=>`<th class="tr" style="min-width:62px">${m}</th>`).join('')}
+          </tr></thead><tbody>${rows}</tbody></table>
+        </div>
+      </div>`;
+  };
+  const renderCurveArchive = () => {
+    if (!snapList.length) return `
+      <div style="margin:0 14px 14px;background:#070b14;border:1px dashed #1e3a5f;padding:12px;color:#546e7a;font-size:10px">
+        No saved FOB snapshots yet.
+      </div>`;
+    const savedAt = selectedSnap?.ts ? new Date(selectedSnap.ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    return `
+      <div class="f-sec" style="margin-top:14px">FOB FORWARD CURVE ARCHIVE · saved daily curves</div>
+      <div style="margin:0 14px 10px;background:#071a2b;border:1px solid #4fc3f7;padding:8px 12px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+        <div><span class="f-lbl">OBSERVATION DATE</span>
+          <select class="f-sel" style="min-width:260px" onchange="CP.fobHistObsDate=this.value;cpSet('cp_fob_hist_obs_date',this.value);renderCargoTab()">
+            ${snapList.map(s=>{const ds=s.eod_date||s.date;return `<option value="${ds}"${selectedSnap===s?' selected':''}>${ds} — saved ${s.ts?new Date(s.ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):'snapshot'}</option>`;}).join('')}
+          </select>
+        </div>
+        <span style="font-size:9px;color:#546e7a">${snapList.length} observation date(s) · selected snapshot saved ${savedAt}</span>
+      </div>
+      ${renderArchiveTable('usgc', 'USGC FOB CURVE', us.idx, '#4fc3f7')}
+      ${renderArchiveTable('oman', 'OMAN FOB CURVE', oman.idx, '#fbbf24')}
+      <div style="margin:0 14px 14px;color:#546e7a;font-size:9px;line-height:1.5">
+        Source: saved FOB snapshot = Financial EOD gas curves + active freight matrix + physical differentials at capture time. Liquefaction fee excluded from FOB netback history.
+      </div>`;
+  };
 
   return `
-    <div class="f-sec" style="margin-top:18px">FOB HISTORICAL · daily time series at selected tenor · route · index</div>
+    <div class="f-sec" style="margin-top:18px">FOB HISTORICAL · snapshot database</div>
 
     <div style="margin:0 14px 8px;background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;padding:10px 14px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
@@ -12103,6 +12235,9 @@ function cpFobHistoricalSection(d){
       </div>
     </div>
 
+    ${renderCurveArchive()}
+
+    <div class="f-sec" style="margin-top:10px">FOB HISTORICAL · daily time series at selected tenor · route · index</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 14px">
 
       <!-- USGC -->
