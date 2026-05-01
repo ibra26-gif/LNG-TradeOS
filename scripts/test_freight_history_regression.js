@@ -28,8 +28,8 @@ assert(
 );
 
 assert(
-  app.includes('20260501-freight-history-restore'),
-  'cache-bust must be bumped for freight history restore'
+  /name=lngtradeos\.js&v=20260501-/.test(app),
+  'script cache-bust must stay bumped for current private bundle'
 );
 
 if (!process.exitCode) console.log('freight history regression checks passed');
