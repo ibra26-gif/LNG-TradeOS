@@ -20976,16 +20976,14 @@ function eubCalcMonth(mo){
   const russian=eubPipe('russia',mo);
   const central=eubPipe('tap',mo);
   const african=eubSum([eubPipe('algeria_italy',mo),eubPipe('libya',mo),eubPipe('algeria_spain',mo)]);
-  const ukInterconn=eubPipe('uk_interconn',mo);
-  const iberian=eubSum([eubPipe('vip_pirineos',mo),eubPipe('vip_iberico',mo)]);
-  const pipeTotal=eubSum([norway,russian,central,african,ukInterconn,iberian]);
+  const pipeTotal=eubSum([norway,russian,central,african]);
   const lng=GD.lngTotal[mo] ? eubBcmFromGwh(GD.lngTotal[mo].sendGWh) : null;
   const supply=eubSum([production,pipeTotal,lng]);
   const end=eubStorageEnd(mo);
   const begin=eubStorageEnd(eubPrevMo(mo));
   const change=(end!=null&&begin!=null)?end-begin:null;
   const consumption=(supply!=null&&change!=null)?supply-change:null;
-  return {norway,domTotal,production,russian,central,african,ukInterconn,iberian,pipeTotal,lng,supply,begin,end,change,consumption,surplus:change,fill:GD.storage[mo]?.pct??null};
+  return {norway,domTotal,production,russian,central,african,pipeTotal,lng,supply,begin,end,change,consumption,surplus:change,fill:GD.storage[mo]?.pct??null};
 }
 function buildBalTblHTML(months, unit='bcm'){
   const hdrs='<thead><tr><th class="L" style="min-width:250px">OECD Europe Gas Market in '+eubUnitLabel(unit)+'</th><th class="L" style="min-width:110px">To</th>'
@@ -21010,9 +21008,7 @@ function buildBalTblHTML(months, unit='bcm'){
   rows.push(row('Russian Pipeline Imp','EU',m=>eubCalcMonth(m).russian,{title:'ENTSOG Russia residual corridor points: TurkStream / Ukraine transit points currently mapped'}));
   rows.push(row('Central Asian Pipeline Imp','CEE/ITA',m=>eubCalcMonth(m).central,{title:'ENTSOG TAP / Azerbaijan mapped points'}));
   rows.push(row('African Pipeline Imports','ITA & ESP',m=>eubCalcMonth(m).african,{title:'ENTSOG Algeria to Italy/Spain plus Libya Greenstream'}));
-  rows.push(row('UK Interconnectors','BE/NL/UK',m=>eubCalcMonth(m).ukInterconn,{title:'ENTSOG IUK and BBL mapped interconnector flows'}));
-  rows.push(row('Iberian Interconnectors','ES/FR/PT',m=>eubCalcMonth(m).iberian,{title:'ENTSOG VIP Pirineos and VIP Iberico mapped flows'}));
-  rows.push(row('Total Pipeline Imports & Exports','EU',m=>eubCalcMonth(m).pipeTotal,{bold:true,title:'Sum of mapped pipeline import/export corridors including Norway'}));
+  rows.push(row('Total Pipeline Imports','EU+UK external',m=>eubCalcMonth(m).pipeTotal,{bold:true,title:'External supply corridors only. Intra-European interconnectors are excluded to avoid double-counting EU+UK aggregate flows.'}));
   rows.push(sep());
   rows.push(row('LNG Imports (Regas: 13 countries)','EU/UK',m=>eubCalcMonth(m).lng,{bold:true,title:'GIE ALSI sendOut field converted from GWh/d to bcm/month'}));
   rows.push(row('Grandtotal Supply','EU-28',m=>eubCalcMonth(m).supply,{bold:true,bg:'rgba(147,197,253,.28)',title:'Production + mapped pipeline imports + LNG sendout'}));
@@ -21049,7 +21045,7 @@ function eubDailyStorageNet(date){
   return net/10.55;
 }
 function eubDailySupply(date){
-  const routes=['norway','russia','tap','algeria_italy','libya','algeria_spain','uk_interconn','vip_pirineos','vip_iberico'];
+  const routes=['norway','russia','tap','algeria_italy','libya','algeria_spain'];
   const vals=[...routes.map(r=>eubDailyPipe(r,date)), eubDailyLng(date), eubDailyDomTotal(date)];
   return eubSum(vals);
 }
