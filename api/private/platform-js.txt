@@ -6373,13 +6373,21 @@ function renderFreight(){
   </div>
   <div class="f-subnav" style="padding:0;gap:0;border-bottom:2px solid #0a0f1e">
     <button class="f-tab${F.mainTab===0?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px;border-right:1px solid #1e3a5f" onclick="fMainTab(0)">① SINGLE VOYAGE CALCULATION</button>
-    <button class="f-tab${F.mainTab===1?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px" onclick="fMainTab(1)">② FREIGHT MATRIX &amp; REPORTS</button>
+    <button class="f-tab${F.mainTab===1?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px;border-right:1px solid #1e3a5f" onclick="fMainTab(1)">② FREIGHT MATRIX &amp; REPORTS</button>
+    <button class="f-tab${F.mainTab===2?' active':''}" style="padding:11px 20px;font-size:10px;letter-spacing:1.5px" onclick="fMainTab(2)">③ HISTORICAL FREIGHT CURVES</button>
   </div>
   <div class="f-body" id="f-body"></div>`;
   renderFMain();
 }
 function fMainTab(i){F.mainTab=i;fs('f_mainTab',i);F.showExportMenu=false;renderFreight();}
-function renderFMain(){const b=document.getElementById('f-body');if(!b)return;b.innerHTML=F.mainTab===0?renderSV():renderMatrixSection();}
+function renderHistoricalStandalone(){
+  return`<div style="padding:14px"><div id="f-hist-body">${renderHistorical()}</div></div>`;
+}
+function renderFMain(){
+  const b=document.getElementById('f-body');if(!b)return;
+  b.innerHTML=F.mainTab===0?renderSV():(F.mainTab===2?renderHistoricalStandalone():renderMatrixSection());
+  _fReexecScripts(b);
+}
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION 1 — SINGLE VOYAGE CALCULATION
 // Local curves/params only — zero impact on the freight matrix
@@ -6803,6 +6811,19 @@ function _fHistRefresh(){
   _fReexecScripts(body);
 }
 window._fHistRefresh=_fHistRefresh;
+function _fRefreshFreightCurveEditor(){
+  const fdHost=document.getElementById('fd-fr-body');
+  if(fdHost&&typeof FD_FR_STATE!=='undefined'&&FD_FR_STATE.subTab===0){
+    _fdFrRenderBody(fdHost);
+    return true;
+  }
+  const matBody=document.getElementById('f-mat-body');
+  if(matBody){
+    fMatTab(0);
+    return true;
+  }
+  return false;
+}
 function fMatTab(i){
   F.matSubTab=i;
   const body=document.getElementById('f-mat-body');
@@ -8333,15 +8354,15 @@ function importHistJson(el){
       const arr=Array.isArray(data)?data:[data];
       const valid=arr.filter(s=>s.date&&s.blng&&s.blng.BLNG1&&s.blng.BLNG2&&s.blng.BLNG3);
       if(!valid.length){alert('No valid curve entries found in JSON file.');return;}
-      const existing=F.histCurves||[];
-      const existDates=new Set(existing.map(e=>e.date));
-      const merged=[...existing,...valid.filter(s=>!existDates.has(s.date))];
-      merged.sort((a,b)=>a.date.localeCompare(b.date));
+      const byDate=new Map((F.histCurves||[]).map(e=>[e.date,e]));
+      valid.forEach(s=>byDate.set(s.date,s));
+      const merged=[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
       F.histCurves=merged;
       fs('f_hist_curves',merged);
       F.histSelDate=merged.length-1;
       alert(`✓ Imported ${valid.length} curve(s). Total in database: ${merged.length}.`);
-      fMatTab(4);
+      if(document.getElementById('f-hist-body'))_fHistRefresh();
+      else if(typeof fMatTab==='function')fMatTab(4);
     }catch(err){alert('Error reading JSON: '+err.message);}
   };
   r.readAsText(f);el.value='';
@@ -8612,7 +8633,7 @@ async function syncFreightHistFromDrive(silent=false,refreshEditor=false){
       alert(`✓ Synced ${m.added+m.updated} freight curve(s) from Drive. Checked ${validSummary}. Total in database: ${m.merged.length}.${errMsg}`);
     }
     if((m.added||m.updated)&&typeof _fHistRefresh==='function')_fHistRefresh();
-    if(refreshEditor&&typeof fMatTab==='function')fMatTab(0);
+    if(refreshEditor&&typeof _fRefreshFreightCurveEditor==='function')_fRefreshFreightCurveEditor();
   }catch(err){
     if(!silent)alert('Failed to load from Google Drive: '+err.message);
     else console.warn('[Freight Drive] sync failed:',err.message);
@@ -8636,38 +8657,10 @@ async function parseHistExcel(el){
   F.histProgress={total:files.length,done:0,current:'',errors:[]};
   _fHistRefresh();
 
-  function parseDateFromName(name){
-    const m=name.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-    return m?`${m[3]}-${m[2]}-${m[1]}`:null;
-  }
-  function alignToML(blngArrays,isoDate){
-    const assessDate=new Date(isoDate);
-    const m1=new Date(assessDate.getFullYear(),assessDate.getMonth()+1,1);
-    const monthToIdx={};
-    for(let i=0;i<24;i++){
-      const d=new Date(m1.getFullYear(),m1.getMonth()+i,1);
-      const lbl=d.toLocaleString('en-GB',{month:'short'}).slice(0,3)+'-'+String(d.getFullYear()).slice(2);
-      monthToIdx[lbl]=i;
-    }
-    const pick=(arr,m)=>{const idx=monthToIdx[m];return(idx!=null&&arr[idx]!=null)?arr[idx]:null;};
-    return{
-      BLNG1:ML.map(m=>pick(blngArrays.BLNG1,m)),
-      BLNG2:ML.map(m=>pick(blngArrays.BLNG2,m)),
-      BLNG3:ML.map(m=>pick(blngArrays.BLNG3,m))
-    };
-  }
-
   const results=[];
   for(const file of files){
-    const isoDate=parseDateFromName(file.name);
-    if(!isoDate){
-      F.histProgress.errors.push(`${file.name}: cannot parse date from filename (need DD.MM.YYYY)`);
-      F.histProgress.done++;
-      continue;
-    }
     F.histProgress.current=`Reading ${file.name} (${F.histProgress.done+1}/${F.histProgress.total})…`;
     _fHistRefresh();
-
     try{
       const buf=await new Promise((res,rej)=>{
         const r=new FileReader();
@@ -8675,120 +8668,16 @@ async function parseHistExcel(el){
         r.onerror=()=>rej(new Error('Read failed'));
         r.readAsArrayBuffer(file);
       });
-
-      const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
-
-      // ── Robust BLNG sheet detector ──────────────────────────────────────
-      // Earlier version matched headers by `cell.includes('BLNG1')`, which
-      // tripped on banner cells like 'OB FFA Rates - BLNG1/2/3' and pointed
-      // c1/c2/c3 at the Date column → values parsed as -26/-27/-28 from
-      // strings like "Apr-26".
-      //
-      // New rules:
-      //  1. Prefer sheets named Monthly/Summary/Sheet1 (in that order).
-      //  2. Header row is the first row whose cells, after trim/upper, contain
-      //     ALL of {'BLNG1','BLNG2','BLNG3'} as exact whole-cell matches.
-      //  3. Column indices come from those exact matches — no false positives.
-      //  4. If the header row also contains 'M IDX' or 'M', use it as the
-      //     monthly alignment key (M+0..M+24) so we drop the assessment
-      //     month and align M+1 → ML[0].
-      //  5. Cells must parse to a finite number AND be in the realistic
-      //     $/day range [5_000, 500_000]; outside that → null. This catches
-      //     date-string slips, percent values, and stray totals.
-      let b1=[], b2=[], b3=[];
-      let found=false;
-      const sheetOrder = (() => {
-        const named = wb.SheetNames.slice();
-        const pri = ['Monthly','Summary','Sheet1'];
-        const head = pri.filter(n=>named.includes(n));
-        const tail = named.filter(n=>!head.includes(n));
-        return [...head, ...tail];
-      })();
-      for(const shName of sheetOrder){
-        const ws=wb.Sheets[shName];
-        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
-        // Find header row with ALL THREE BLNGs as exact cells
-        let hdrRow=-1, c1=-1, c2=-1, c3=-1, cMidx=-1;
-        for(let r=0;r<Math.min(rows.length,20);r++){
-          const h=(rows[r]||[]).map(x=>String(x??'').trim().toUpperCase());
-          const i1=h.indexOf('BLNG1');
-          const i2=h.indexOf('BLNG2');
-          const i3=h.indexOf('BLNG3');
-          if(i1>=0 && i2>=0 && i3>=0){
-            hdrRow=r; c1=i1; c2=i2; c3=i3;
-            cMidx = h.indexOf('M IDX');
-            if(cMidx<0) cMidx = h.indexOf('M');
-            break;
-          }
-        }
-        if(hdrRow<0) continue;
-
-        // Strict numeric coercion + sanity-bound for $/day rates
-        const SANE_MIN = 5000, SANE_MAX = 500000;
-        const pv = v => {
-          if(v==null || v==='') return null;
-          // Reject anything that looks like a date / month string
-          if(typeof v === 'string' && /[A-Za-z]/.test(v)) return null;
-          const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/[, $]/g,''));
-          if(!isFinite(n)) return null;
-          if(n < SANE_MIN || n > SANE_MAX) return null;
-          return n;
-        };
-
-        // Collect data rows. If M idx is available, align M+1..M+24 explicitly
-        // (so OB's "174_CURMON" / M+0 row is dropped and M+1 lands at index 0).
-        const data = rows.slice(hdrRow+1).filter(r=>r && r.some(c=>c!==''&&c!=null));
-        if(cMidx>=0){
-          b1 = Array(24).fill(null); b2 = Array(24).fill(null); b3 = Array(24).fill(null);
-          for(const row of data){
-            const mi = parseInt(row[cMidx]);
-            if(!isFinite(mi)) continue;
-            const out = mi - 1;                         // M+1 → idx 0
-            if(out < 0 || out >= 24) continue;
-            b1[out] = pv(row[c1]);
-            b2[out] = pv(row[c2]);
-            b3[out] = pv(row[c3]);
-          }
-        } else {
-          // No M idx column — fall back to sequential, skipping CURMON / Q / Cal rows.
-          for(const row of data){
-            if(b1.length>=24) break;
-            const label = String(row[0]??'').trim().toUpperCase();
-            if(label.includes('CURMON')) continue;
-            if(label.includes('CURQ') || label.includes('CAL')) continue;
-            if(label.match(/^Q[1-5]\b/)) continue;
-            b1.push(pv(row[c1])); b2.push(pv(row[c2])); b3.push(pv(row[c3]));
-          }
-        }
-        const anyData = b1.some(v=>v!=null) || b2.some(v=>v!=null) || b3.some(v=>v!=null);
-        if(anyData){ found=true; break; }
-        // Otherwise try the next sheet (this one parsed but yielded nulls)
-        b1=[]; b2=[]; b3=[];
-      }
-
-      if(!found||(!b1.some(v=>v!=null)&&!b2.some(v=>v!=null)&&!b3.some(v=>v!=null))){
-        F.histProgress.errors.push(`${file.name}: no BLNG data found in any sheet`);
-        F.histProgress.done++;
-        continue;
-      }
-
-      // Pad to 24
-      while(b1.length<24)b1.push(null);
-      while(b2.length<24)b2.push(null);
-      while(b3.length<24)b3.push(null);
-
-      const aligned=alignToML({BLNG1:b1,BLNG2:b2,BLNG3:b3},isoDate);
-      results.push({date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:aligned});
+      results.push(fHistParseWorkbook(buf,file.name,{_source:'Local Excel upload'}));
     }catch(err){
       F.histProgress.errors.push(`${file.name}: ${err.message}`);
     }
     F.histProgress.done++;
   }
 
-  const existing=F.histCurves||[];
-  const existDates=new Set(existing.map(e=>e.date));
-  const merged=[...existing,...results.filter(r=>!existDates.has(r.date))];
-  merged.sort((a,b)=>a.date.localeCompare(b.date));
+  const byDate=new Map((F.histCurves||[]).map(e=>[e.date,e]));
+  results.forEach(r=>{ if(r&&r.date) byDate.set(r.date,r); });
+  const merged=[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
   F.histCurves=merged;
   fs('f_hist_curves',merged);
   if(merged.length)F.histSelDate=merged.length-1;
