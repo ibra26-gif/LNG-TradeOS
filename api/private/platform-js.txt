@@ -19436,6 +19436,33 @@ async function gdLoadPipelineFromCache(){
   }
 }
 
+async function gdLoadPipelineHistoryFromCache(){
+  try{
+    const r = await fetch('/data/pipeline_history_monthly.json', {cache:'no-store'});
+    if(!r.ok) throw new Error(`History HTTP ${r.status}`);
+    const json = await r.json();
+    const routes = Object.keys(json).filter(k=>k!=='_meta');
+    if(!routes.length) throw new Error('Empty history cache');
+    if(!GD.pipelineHist) GD.pipelineHist = {};
+    let points = 0;
+    routes.forEach(route => {
+      if(!GD.pipelineHist[route]) GD.pipelineHist[route] = {};
+      Object.entries(json[route]||{}).forEach(([mo,mcm]) => {
+        if(!/^\d{4}-\d{2}$/.test(mo)) return;
+        GD.pipelineHist[route][mo] = {mcm:+mcm, days:0};
+        points++;
+      });
+    });
+    console.log(`Pipeline history cache loaded: ${routes.length} routes, ${points} month-points` +
+      (json._meta?.updated ? `, updated ${json._meta.updated}` : ''));
+    gdRerenderActive();
+    return true;
+  }catch(e){
+    console.warn('Pipeline history cache unavailable:', e.message);
+    return false;
+  }
+}
+
 function gaInitAll(){
   if(window.gaInitDone) return;
   window.gaInitDone = true;
@@ -19525,6 +19552,7 @@ async function gaLoadAll(){
     gdLoadStorage(from4y, today),
     gdLoadLNG(from4y, today),
     gaLoadDomProductionLive(from4y, today),
+    gdLoadPipelineHistoryFromCache(),
     pipelineJob,
     // Phase 2 caches (best-effort, non-blocking for core data)
     gdLoadNominationsFromCache(),
@@ -20901,20 +20929,31 @@ function eubMonthLabel(mo){
   return d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'});
 }
 function eubLatestMonth(){
-  const keys=[
+  const all=[...new Set([
     ...Object.keys(GD.storage||{}),
     ...Object.keys(GD.lngTotal||{}),
     ...Object.values(GD.pipeline||{}).flatMap(o=>Object.keys(o||{})),
+    ...Object.values(GD.pipelineHist||{}).flatMap(o=>Object.keys(o||{})),
     ...Object.values((GA_LIVE&&GA_LIVE.domestic)||{}).flatMap(o=>Object.keys(o||{})),
-  ].filter(k=>/^\d{4}-\d{2}$/.test(k));
-  return keys.length ? keys.sort().slice(-1)[0] : null;
+  ])].filter(k=>/^\d{4}-\d{2}$/.test(k)).sort();
+  const complete = all.filter(mo =>
+    GD.storage?.[mo]?.twh != null &&
+    GD.lngTotal?.[mo]?.sendGWh != null &&
+    EUB_PIPE_ROUTES.some(r => gdGetPipeMCM(r,mo)!=null)
+  );
+  return complete.length ? complete[complete.length-1] : (all.length ? all[all.length-1] : null);
 }
 const EUB_PIPE_ROUTES = ['norway','russia','tap','algeria_italy','libya','algeria_spain'];
 const _eubPipeInflight = {};
+let _eubHistCacheAsked = false;
 function eubHasPipeMonth(mo){
   return EUB_PIPE_ROUTES.some(r => gdGetPipeMCM(r,mo)!=null);
 }
 function eubEnsureBalancePipeline(months){
+  if(!_eubHistCacheAsked){
+    _eubHistCacheAsked = true;
+    gdLoadPipelineHistoryFromCache();
+  }
   const curY = new Date().getFullYear();
   const years = [...new Set(months
     .filter(mo => +mo.slice(0,4) <= curY && !eubHasPipeMonth(mo))
