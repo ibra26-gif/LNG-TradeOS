@@ -19163,12 +19163,12 @@ async function gdLoadPipelineYearFast(year){
   })();
 }
 
-async function gdLoadPipelineYear(year){
+async function gdLoadPipelineYear(year, routeList=null){
   const from = `${year}-01-01`;
   const to   = year < new Date().getFullYear()
     ? `${year}-12-31`
     : new Date().toISOString().slice(0,10);
-  const routes = Object.keys(PIPE_POINTS);
+  const routes = (routeList&&routeList.length?routeList:Object.keys(PIPE_POINTS)).filter(r=>PIPE_POINTS[r]);
   for(const route of routes){
     for(const label of PIPE_POINTS[route]){
       try{
@@ -19194,6 +19194,7 @@ async function gdLoadPipelineYear(year){
       await new Promise(r=>setTimeout(r,1500)); // rate limit
     }
   }
+  gdRerenderActive();
 }
 
 // ── Load AGSI EU storage ───────────────────────────────────────────────────────
@@ -20820,6 +20821,7 @@ function renderBalanceTable(pane){
   const endMo = pane.querySelector('#bal-end-sel')?.value || prefs.endMo || latest;
   const unit = pane.querySelector('#bal-unit-sel')?.value || prefs.unit || 'bcm';
   const months = eubMonthRange(endMo, 13);
+  const histLoad = eubEnsureBalancePipeline(months);
   prefs.endMo = endMo;
   prefs.unit = unit;
   try{ localStorage.setItem('eub_prefs_v1', JSON.stringify(prefs)); }catch{}
@@ -20859,7 +20861,7 @@ function renderBalanceTable(pane){
     <div class="ga-card" style="padding:0">
       <div style="padding:10px 14px 6px;border-bottom:1px solid rgba(77,158,245,.1)">
         <div style="font-size:10px;color:var(--b);letter-spacing:2px;font-weight:600">OECD EUROPE GAS MARKET BALANCE — ${eubUnitLabel(unit).toUpperCase()}</div>
-        <div style="font-size:9px;color:#3d5070;margin-top:2px">Historical monthly template · ENTSOG + GIE AGSI+ + GIE ALSI · demand is implied until sector sources are added</div>
+        <div style="font-size:9px;color:#3d5070;margin-top:2px">Historical monthly template · ENTSOG + GIE AGSI+ + GIE ALSI · demand is implied until sector sources are added${histLoad.loading?` · loading ENTSOG history ${histLoad.years.join(', ')}`:''}</div>
       </div>
       <div style="overflow-x:auto;overflow-y:auto;max-height:560px">
         <table class="ga-tbl" id="ga-bal-tbl" style="min-width:980px">
@@ -20906,6 +20908,24 @@ function eubLatestMonth(){
     ...Object.values((GA_LIVE&&GA_LIVE.domestic)||{}).flatMap(o=>Object.keys(o||{})),
   ].filter(k=>/^\d{4}-\d{2}$/.test(k));
   return keys.length ? keys.sort().slice(-1)[0] : null;
+}
+const EUB_PIPE_ROUTES = ['norway','russia','tap','algeria_italy','libya','algeria_spain'];
+const _eubPipeInflight = {};
+function eubHasPipeMonth(mo){
+  return EUB_PIPE_ROUTES.some(r => gdGetPipeMCM(r,mo)!=null);
+}
+function eubEnsureBalancePipeline(months){
+  const curY = new Date().getFullYear();
+  const years = [...new Set(months
+    .filter(mo => +mo.slice(0,4) <= curY && !eubHasPipeMonth(mo))
+    .map(mo => +mo.slice(0,4)))];
+  years.forEach(y => {
+    if(_eubPipeInflight[y]) return;
+    _eubPipeInflight[y] = gdLoadPipelineYear(y, EUB_PIPE_ROUTES)
+      .catch(e => console.warn(`EU balance pipeline ${y}:`, e.message))
+      .finally(() => { delete _eubPipeInflight[y]; });
+  });
+  return {loading: years.length>0, years};
 }
 function eubBcmFromMcm(v){ return v==null ? null : v/1000; }
 function eubBcmFromGwh(v){ return v==null ? null : (v/10.55)/1000; }
