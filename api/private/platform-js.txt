@@ -6217,6 +6217,7 @@ function miniSVG(blng){
 // ── SECTION CONSTANTS ────────────────────────────────────────────────────────
 const FMTABS=['FREIGHT CURVES','SHIP PARAMS','MATRIX','DIFFERENTIALS','HISTORICAL'];
 const FREIGHT_HIST_FOLDER_ID='1PLeK-f1tXTADjETKPvOzQ-9aAyhO2GSb';
+const FREIGHT_HIST_EXCEL_FOLDER_ID='15nSQOFkmCkus9jFjPO7lsa23WzL5KHWA';
 
 
 function initFreight(){
@@ -8463,18 +8464,22 @@ async function syncFreightHistFromDrive(silent=false){
   }
   const errors=[];
   try{
-    const files=[];let pageToken=null;
-    do{
-      let url=`/api/drive?action=list&folderId=${encodeURIComponent(FREIGHT_HIST_FOLDER_ID)}&filter=all`;
-      if(pageToken)url+=`&pageToken=${encodeURIComponent(pageToken)}`;
-      const r=await fetch(url);
-      if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||e.error||'Drive API error');}
-      const d=await r.json();
-      files.push(...(d.files||[]));
-      pageToken=d.nextPageToken||null;
-    }while(pageToken);
+    const files=[];
+    for(const folderId of [FREIGHT_HIST_FOLDER_ID,FREIGHT_HIST_EXCEL_FOLDER_ID]){
+      let pageToken=null;
+      do{
+        let url=`/api/drive?action=list&folderId=${encodeURIComponent(folderId)}&filter=all`;
+        if(pageToken)url+=`&pageToken=${encodeURIComponent(pageToken)}`;
+        const r=await fetch(url);
+        if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||e.error||'Drive API error');}
+        const d=await r.json();
+        files.push(...(d.files||[]).map(f=>({...f,_folderId:folderId})));
+        pageToken=d.nextPageToken||null;
+      }while(pageToken);
+    }
 
-    const valid=files.filter(f=>f.name&&(
+    const byId=new Map(files.map(f=>[f.id,f]));
+    const valid=[...byId.values()].filter(f=>f.name&&(
       (f.name.match(/\.xlsx?$/i)&&fHistDateFromName(f.name))||f.name.match(/\.json$/i)
     ));
     valid.sort((a,b)=>String(a.name).localeCompare(String(b.name)));
