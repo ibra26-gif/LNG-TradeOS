@@ -28,6 +28,14 @@ assert(
 );
 
 assert(
+  js.includes("F.histVbMode=fg('f_hist_vb_mode_v1','spread')") &&
+    js.includes('DUAL AXIS · FREIGHT SPREAD vs JKM−TTF BASIS') &&
+    js.includes('BLNG1 - BLNG2') &&
+    js.includes('③ BASIS vs FREIGHT'),
+  'freight history must include default freight-spread vs basis analysis'
+);
+
+assert(
   /name=lngtradeos\.js&v=20260501-/.test(app),
   'script cache-bust must stay bumped for current private bundle'
 );
