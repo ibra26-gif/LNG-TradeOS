@@ -8549,6 +8549,12 @@ async function syncFreightHistFromDrive(silent=false,refreshEditor=false){
     }
 
     const byId=new Map(files.map(f=>[f.id,f]));
+    const sourceType=f=>{
+      if(f.name&&f.name.match(/\.json$/i))return'JSON';
+      if(f.mimeType&&f.mimeType.startsWith('image/'))return'PNG/image';
+      if(f.name&&f.name.match(/\.xlsx?$/i))return'Excel';
+      return'file';
+    };
     const valid=[...byId.values()].filter(f=>f.name&&(
       (f.name.match(/\.xlsx?$/i)&&fHistDateFromName(f.name))||
       f.name.match(/\.json$/i)||
@@ -8567,8 +8573,10 @@ async function syncFreightHistFromDrive(silent=false,refreshEditor=false){
       const date=fHistDateFromName(f.name),old=existing.get(date);
       return !old||(f.modifiedTime&&old._driveModified&&f.modifiedTime>old._driveModified);
     });
+    const validCounts=valid.reduce((acc,f)=>{const k=sourceType(f);acc[k]=(acc[k]||0)+1;return acc;},{});
+    const validSummary=Object.entries(validCounts).map(([k,v])=>`${v} ${k}`).join(', ')||'0 files';
     if(!toProcess.length){
-      if(!silent)alert(`Freight Drive is already synced. ${valid.length} parseable Excel/JSON/image file(s) checked.`);
+      if(!silent)alert(`Freight Drive is already synced. Checked ${validSummary}.`);
       return;
     }
     if(!silent){F.histProgress.total=toProcess.length;_fHistRefresh();}
@@ -8591,17 +8599,17 @@ async function syncFreightHistFromDrive(silent=false,refreshEditor=false){
           if(buf.byteLength<5000)throw new Error('file too small');
           const h=new Uint8Array(buf.slice(0,4));
           if(!(h[0]===0x50&&h[1]===0x4B))throw new Error('not a valid XLSX file');
-          results.push(fHistParseWorkbook(buf,file.name,{_source:'Google Drive',_driveFileId:file.id,_driveModified:file.modifiedTime||null}));
+          results.push(fHistParseWorkbook(buf,file.name,{_source:'Google Drive Excel',_driveFileId:file.id,_driveModified:file.modifiedTime||null}));
         }
         seen[file.id]=file.modifiedTime||'loaded';
-      }catch(e){errors.push(`${file.name}: ${e.message}`);}
+      }catch(e){errors.push(`[${sourceType(file)}] ${file.name}: ${e.message}`);}
       if(!silent){F.histProgress.done++;_fHistRefresh();}
     }
     const m=fHistMergeCurves(results);
     fs('f_hist_drive_seen_v1',seen);
     if(!silent){
       const errMsg=errors.length?`\n⚠ ${errors.length} skipped:\n${errors.slice(0,8).join('\n')}`:'';
-      alert(`✓ Synced ${m.added+m.updated} freight curve(s) from Drive. Total in database: ${m.merged.length}.${errMsg}`);
+      alert(`✓ Synced ${m.added+m.updated} freight curve(s) from Drive. Checked ${validSummary}. Total in database: ${m.merged.length}.${errMsg}`);
     }
     if((m.added||m.updated)&&typeof _fHistRefresh==='function')_fHistRefresh();
     if(refreshEditor&&typeof fMatTab==='function')fMatTab(0);
