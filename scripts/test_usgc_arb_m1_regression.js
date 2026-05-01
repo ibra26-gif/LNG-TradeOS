@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 
 const root = path.resolve(__dirname, '..');
 const js = fs.readFileSync(path.join(root, 'api/private/platform-js.txt'), 'utf8');
@@ -15,10 +16,38 @@ function assert(cond, msg) {
 
 assert(
   js.includes("const m1Cogh = arbData.today?.arbCogh?.[0]") &&
-    js.includes("COGH ARB · M+1") &&
-    js.includes("The current/assessment month is not used"),
-  'USGC COGH arb must expose an explicit M+1 readout'
+    js.includes("COGH ARB · ${m1Label} LOAD · JKM ${coghDesLabel}") &&
+    js.includes("COGH uses next JKM"),
+  'USGC COGH arb must expose the next-JKM route timing'
 );
+
+assert(
+  js.includes('const usgcJktcCoghDes = ML.map') &&
+    js.includes('const jkmCogh = gas?.JKM?.[i+1]') &&
+    js.includes("label:'JKTC COGH'") &&
+    js.includes("label:'JKTC PC'"),
+  'USGC PC/COGH DES pricing must keep separate same-month and next-month JKM rules'
+);
+
+const fnStart = js.indexOf('function _usgcArbComputeFromInputs');
+const fnEnd = js.indexOf('function _usgcArbCurves', fnStart);
+assert(fnStart >= 0 && fnEnd > fnStart, 'USGC arb compute function must be extractable');
+if (fnStart >= 0 && fnEnd > fnStart) {
+  const ctx = {
+    CP: { hhSlope: 1.15 },
+    PC_NM_RATIO: 0.5,
+    PC_CANAL_FEE_PER_MMBTU_LOCAL: 0.1,
+  };
+  vm.runInNewContext(js.slice(fnStart, fnEnd), ctx);
+  const out = ctx._usgcArbComputeFromInputs(
+    { HH: [2], TTF: [10], JKM: [20, 30] },
+    { sabine_rotterdam: [1], sabine_tokyo: [3] },
+    { nwe: [0], jktc: [0, 0] },
+    []
+  );
+  assert(out.arbCogh[0] === 18, 'COGH arb must use next JKM contract');
+  assert(out.arbPc[0] === 9.4, 'Panama arb must use same-month JKM contract');
+}
 
 assert(
   todo.includes('Spread closing') &&
@@ -28,8 +57,8 @@ assert(
 );
 
 assert(
-  app.includes('20260501-usgc-m1-arb'),
-  'cache-bust must be bumped for USGC M+1 arb change'
+  app.includes('20260501-usgc-route-des-shift'),
+  'cache-bust must be bumped for USGC route DES shift change'
 );
 
-if (!process.exitCode) console.log('USGC arb M+1 regression checks passed');
+if (!process.exitCode) console.log('USGC route DES shift regression checks passed');
