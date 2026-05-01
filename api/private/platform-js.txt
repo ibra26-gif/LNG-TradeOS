@@ -6216,6 +6216,7 @@ function miniSVG(blng){
 
 // ── SECTION CONSTANTS ────────────────────────────────────────────────────────
 const FMTABS=['FREIGHT CURVES','SHIP PARAMS','MATRIX','DIFFERENTIALS','HISTORICAL'];
+const FREIGHT_HIST_FOLDER_ID='1PLeK-f1tXTADjETKPvOzQ-9aAyhO2GSb';
 
 
 function initFreight(){
@@ -6316,6 +6317,7 @@ function initFreight(){
   F.histLoading=false;
   F.showExportMenu=false;
   renderFreight();
+  setTimeout(()=>{try{syncFreightHistFromDrive(true);}catch(e){}},800);
 }
 // ── calcF: parameterised — SV section passes local overrides, matrix uses saved ──
 // Returns cooldown as separate component (split from hire), matching Excel layout
@@ -7962,10 +7964,10 @@ function renderHistorical(){
       :`<div style="display:flex;gap:6px;flex-wrap:wrap">
           ${MCP_AVAILABLE
             ? `<button class="f-btn on" onclick="fAuthGate(()=>loadFreightFromGmail())">📧 SCRAPE FROM GMAIL</button>
-               <button class="f-btn" onclick="fAuthGate(()=>loadHistFromGDrive())">⬇ LOAD FROM DRIVE</button>
                <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-img-upload').click())">📁 UPLOAD IMAGES</button>
                <input type="file" id="hist-img-upload" accept=".png,.jpg,.jpeg" multiple style="display:none" onchange="parseHistImages(this)">`
             : ''}
+          <button class="f-btn" onclick="fAuthGate(()=>loadHistFromGDrive())">⬇ LOAD FROM DRIVE</button>
           <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-xls-upload').click())">📊 UPLOAD EXCEL</button>
           <input type="file" id="hist-xls-upload" accept=".xlsx,.xls" multiple style="display:none" onchange="parseHistExcel(this)">
           <button class="f-btn" onclick="fAuthGate(()=>document.getElementById('hist-json-upload').click())">⬆ IMPORT JSON</button>
@@ -8348,6 +8350,188 @@ function exportHistJson(){
   a.click();URL.revokeObjectURL(a.href);
 }
 
+function fHistDateFromName(name){
+  const s=String(name||'');
+  const mDot=s.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if(mDot)return`${mDot[3]}-${mDot[2]}-${mDot[1]}`;
+  const mUs=s.match(/(?:^|[_\-\s])0*(\d{1,2})[_\-\s]0*(\d{1,2})[_\-\s](\d{4})(?:\D|$)/);
+  if(mUs)return`${mUs[3]}-${mUs[2].padStart(2,'0')}-${mUs[1].padStart(2,'0')}`;
+  const mIso=s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  return mIso?`${mIso[1]}-${mIso[2]}-${mIso[3]}`:null;
+}
+
+function fHistAlignToML(blngArrays,isoDate){
+  const assessDate=new Date(isoDate);
+  const m1=new Date(assessDate.getFullYear(),assessDate.getMonth()+1,1);
+  const monthToIdx={};
+  for(let i=0;i<24;i++){
+    const d=new Date(m1.getFullYear(),m1.getMonth()+i,1);
+    const lbl=d.toLocaleString('en-GB',{month:'short'}).slice(0,3)+'-'+String(d.getFullYear()).slice(2);
+    monthToIdx[lbl]=i;
+  }
+  const pick=(arr,m)=>{const idx=monthToIdx[m];return(idx!=null&&arr&&arr[idx]!=null)?arr[idx]:null;};
+  return{
+    BLNG1:ML.map(m=>pick(blngArrays.BLNG1,m)),
+    BLNG2:ML.map(m=>pick(blngArrays.BLNG2,m)),
+    BLNG3:ML.map(m=>pick(blngArrays.BLNG3,m))
+  };
+}
+
+function fHistParseWorkbook(buf,fileName,meta={}){
+  const isoDate=fHistDateFromName(fileName);
+  if(!isoDate)throw new Error('cannot parse date from filename (need DD.MM.YYYY)');
+  if(typeof XLSX==='undefined')throw new Error('XLSX library not loaded');
+  const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
+  let b1=[], b2=[], b3=[], found=false;
+  const sheetOrder=(()=>{
+    const named=wb.SheetNames.slice();
+    const pri=['Monthly','Summary','Sheet1'];
+    const head=pri.filter(n=>named.includes(n));
+    const tail=named.filter(n=>!head.includes(n));
+    return[...head,...tail];
+  })();
+  for(const shName of sheetOrder){
+    const ws=wb.Sheets[shName];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+    let hdrRow=-1,c1=-1,c2=-1,c3=-1,cMidx=-1;
+    for(let r=0;r<Math.min(rows.length,20);r++){
+      const h=(rows[r]||[]).map(x=>String(x??'').trim().toUpperCase());
+      const i1=h.indexOf('BLNG1'),i2=h.indexOf('BLNG2'),i3=h.indexOf('BLNG3');
+      if(i1>=0&&i2>=0&&i3>=0){
+        hdrRow=r;c1=i1;c2=i2;c3=i3;
+        cMidx=h.indexOf('M IDX');if(cMidx<0)cMidx=h.indexOf('M');
+        break;
+      }
+    }
+    if(hdrRow<0)continue;
+    const pv=v=>{
+      if(v==null||v==='')return null;
+      if(typeof v==='string'&&/[A-Za-z]/.test(v))return null;
+      const n=typeof v==='number'?v:parseFloat(String(v).replace(/[, $]/g,''));
+      if(!isFinite(n)||n<5000||n>500000)return null;
+      return n;
+    };
+    const data=rows.slice(hdrRow+1).filter(r=>r&&r.some(c=>c!==''&&c!=null));
+    if(cMidx>=0){
+      b1=Array(24).fill(null);b2=Array(24).fill(null);b3=Array(24).fill(null);
+      for(const row of data){
+        const mi=parseInt(row[cMidx]);
+        if(!isFinite(mi))continue;
+        const out=mi-1;
+        if(out<0||out>=24)continue;
+        b1[out]=pv(row[c1]);b2[out]=pv(row[c2]);b3[out]=pv(row[c3]);
+      }
+    }else{
+      b1=[];b2=[];b3=[];
+      for(const row of data){
+        if(b1.length>=24)break;
+        const label=String(row[0]??'').trim().toUpperCase();
+        if(label.includes('CURMON')||label.includes('CURQ')||label.includes('CAL')||label.match(/^Q[1-5]\b/))continue;
+        b1.push(pv(row[c1]));b2.push(pv(row[c2]));b3.push(pv(row[c3]));
+      }
+    }
+    if(b1.some(v=>v!=null)||b2.some(v=>v!=null)||b3.some(v=>v!=null)){found=true;break;}
+  }
+  if(!found)throw new Error('no BLNG data found in any sheet');
+  while(b1.length<24)b1.push(null);while(b2.length<24)b2.push(null);while(b3.length<24)b3.push(null);
+  return{date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:fHistAlignToML({BLNG1:b1,BLNG2:b2,BLNG3:b3},isoDate),...meta};
+}
+
+function fHistMergeCurves(results){
+  const byDate=new Map((F.histCurves||[]).map(c=>[c.date,c]));
+  let added=0,updated=0;
+  for(const r of results){
+    if(!r||!r.date)continue;
+    const old=byDate.get(r.date);
+    if(!old){byDate.set(r.date,r);added++;continue;}
+    if(r._driveModified&&old._driveModified&&r._driveModified>old._driveModified){byDate.set(r.date,r);updated++;}
+  }
+  const merged=[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
+  F.histCurves=merged;fs('f_hist_curves',merged);
+  if(merged.length)F.histSelDate=merged.length-1;
+  return{merged,added,updated};
+}
+
+let _freightHistDriveSyncing=false;
+async function syncFreightHistFromDrive(silent=false){
+  if(_freightHistDriveSyncing)return;
+  _freightHistDriveSyncing=true;
+  if(!silent){
+    F.histLoading=true;
+    F.histProgress={total:0,done:0,current:'Listing Excel files in Freight Drive folder…',errors:[]};
+    _fHistRefresh();
+  }
+  const errors=[];
+  try{
+    const files=[];let pageToken=null;
+    do{
+      let url=`/api/drive?action=list&folderId=${encodeURIComponent(FREIGHT_HIST_FOLDER_ID)}&filter=all`;
+      if(pageToken)url+=`&pageToken=${encodeURIComponent(pageToken)}`;
+      const r=await fetch(url);
+      if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||e.error||'Drive API error');}
+      const d=await r.json();
+      files.push(...(d.files||[]));
+      pageToken=d.nextPageToken||null;
+    }while(pageToken);
+
+    const valid=files.filter(f=>f.name&&(
+      (f.name.match(/\.xlsx?$/i)&&fHistDateFromName(f.name))||f.name.match(/\.json$/i)
+    ));
+    valid.sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+    const seen=fg('f_hist_drive_seen_v1',{});
+    const existing=new Map((F.histCurves||[]).map(c=>[c.date,c]));
+    const toProcess=valid.filter(f=>{
+      if(seen[f.id]&&seen[f.id]===f.modifiedTime)return false;
+      if(f.name.match(/\.json$/i))return true;
+      const date=fHistDateFromName(f.name),old=existing.get(date);
+      return !old||(f.modifiedTime&&old._driveModified&&f.modifiedTime>old._driveModified);
+    });
+    if(!toProcess.length){
+      if(!silent)alert(`Freight Drive is already synced. ${valid.length} parseable Excel/JSON file(s) checked.`);
+      return;
+    }
+    if(!silent){F.histProgress.total=toProcess.length;_fHistRefresh();}
+    const results=[];
+    for(const file of toProcess){
+      if(!silent){F.histProgress.current=`Reading ${file.name} (${F.histProgress.done+1}/${F.histProgress.total})…`;_fHistRefresh();}
+      try{
+        const resp=await fetch(`/api/drive?action=file&id=${encodeURIComponent(file.id)}`);
+        if(!resp.ok)throw new Error(`download failed (${resp.status})`);
+        const buf=await toAB(resp);
+        if(file.name.match(/\.json$/i)){
+          const parsed=JSON.parse(new TextDecoder().decode(buf));
+          const arr=Array.isArray(parsed)?parsed:[parsed];
+          const validJson=arr.filter(s=>s&&s.date&&s.blng&&s.blng.BLNG1&&s.blng.BLNG2&&s.blng.BLNG3);
+          if(!validJson.length)throw new Error('no valid freight curves in JSON');
+          results.push(...validJson.map(s=>({...s,_source:'Google Drive JSON',_driveFileId:file.id,_driveModified:file.modifiedTime||null})));
+        }else{
+          if(buf.byteLength<5000)throw new Error('file too small');
+          const h=new Uint8Array(buf.slice(0,4));
+          if(!(h[0]===0x50&&h[1]===0x4B))throw new Error('not a valid XLSX file');
+          results.push(fHistParseWorkbook(buf,file.name,{_source:'Google Drive',_driveFileId:file.id,_driveModified:file.modifiedTime||null}));
+        }
+        seen[file.id]=file.modifiedTime||'loaded';
+      }catch(e){errors.push(`${file.name}: ${e.message}`);}
+      if(!silent){F.histProgress.done++;_fHistRefresh();}
+    }
+    const m=fHistMergeCurves(results);
+    fs('f_hist_drive_seen_v1',seen);
+    if(!silent){
+      const errMsg=errors.length?`\n⚠ ${errors.length} skipped:\n${errors.slice(0,8).join('\n')}`:'';
+      alert(`✓ Synced ${m.added+m.updated} freight curve(s) from Drive. Total in database: ${m.merged.length}.${errMsg}`);
+    }
+    if((m.added||m.updated)&&typeof _fHistRefresh==='function')_fHistRefresh();
+  }catch(err){
+    if(!silent)alert('Failed to load from Google Drive: '+err.message);
+    else console.warn('[Freight Drive] sync failed:',err.message);
+  }finally{
+    _freightHistDriveSyncing=false;
+    if(!silent){F.histLoading=false;F.histProgress.current='';_fHistRefresh();}
+  }
+}
+
+async function loadHistFromGDrive(){return syncFreightHistFromDrive(false);}
+
 
 // Reads multiple OB LNG EOD Curve .xlsx files, extracts BLNG1/2/3 M+1→M+24
 // Date parsed from filename: "OB LNG EOD Curve DD.MM.YYYY.xlsx"
@@ -8669,7 +8853,7 @@ async function parseHistImages(el){
   _fHistRefresh();
 }
 
-async function loadHistFromGDrive(){
+async function loadHistFromGDriveLegacy(){
   F.histLoading=true;
   F.histProgress={total:0,done:0,current:'',errors:[]};
   _fHistRefresh();
