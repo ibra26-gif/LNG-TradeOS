@@ -8408,6 +8408,8 @@ function fHistParseWorkbook(buf,fileName,meta={}){
         const valCol=c=>(n[c]&&n[c].includes('VALUE'))?c:((n[c+1]&&n[c+1].includes('VALUE'))?c+1:c);
         hdrRow=r;c1=valCol(i1);c2=valCol(i2);c3=valCol(i3);
         cMidx=h.indexOf('M IDX');if(cMidx<0)cMidx=h.indexOf('M');
+        if(cMidx<0)cMidx=n.indexOf('M IDX');
+        if(cMidx<0)cMidx=n.indexOf('M');
         break;
       }
       // OB FFA Rates exports sometimes use grouped headers:
@@ -8420,6 +8422,8 @@ function fHistParseWorkbook(buf,fileName,meta={}){
         const valCol=c=>(n[c]&&n[c].includes('VALUE'))?c:((n[c+1]&&n[c+1].includes('VALUE'))?c+1:c);
         hdrRow=r;c1=valCol(g1);c2=valCol(g2);c3=valCol(g3);
         cMidx=h.indexOf('M IDX');if(cMidx<0)cMidx=h.indexOf('M');
+        if(cMidx<0)cMidx=n.indexOf('M IDX');
+        if(cMidx<0)cMidx=n.indexOf('M');
         break;
       }
     }
