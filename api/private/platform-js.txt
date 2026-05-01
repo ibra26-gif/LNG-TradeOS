@@ -13273,11 +13273,11 @@ function bDS(el,wN=false){el.innerHTML=wN?'<option value="none">— None —</op
 function updStatus(){$id('sbar').style.display='flex';$id('stext').textContent=`${sDates.length} DATES — ${fmtD(sDates[0])} → ${fmtD(sDates[sDates.length-1])}`;}
 function initUI(){updStatus();bIS($id('h-i1'));bIS($id('h-i2'),null,true);$id('h-i2').value='TTF';bIS($id('fc-i'));bIS($id('sea-i'));bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();buildEuHubChart();updHist();cInit();updSpread();updFC();updSea();}
 // ── Get M+1 value for an instrument from aD on a given date (or nearest prior) ──
-function aDval(inst, dateStr){
+function aDval(inst, dateStr, contractPk=null){
   const entry=aD[dateStr]||aD[sDates.filter(d=>d<=dateStr).slice(-1)[0]];
   if(!entry) return null;
-  const m1=rollPkFromRows(entry.rows,entry.date,1,inst);
-  return entry.rows.find(r=>r.pk===m1)?.[inst]??null;
+  const pk=contractPk||rollPkFromRows(entry.rows,entry.date,1,inst);
+  return entry.rows.find(r=>r.pk===pk)?.[inst]??null;
 }
 
 function buildDash(){
@@ -13348,7 +13348,7 @@ function buildDash(){
     for(const d of eexDates){
       const pk=rollPkFromRows(eexD[d].rows,eexD[d].date,1,hubK);
       const hv=eexD[d].rows.find(r=>r.pk===pk)?.[hubK];
-      const tv=aDval('TTF',d);
+      const tv=aDval('TTF',d,pk);
       if(hv!=null&&tv!=null)spreads.push(+(hv-tv).toFixed(3));
     }
     const lv=spreads.length>=1?spreads[spreads.length-1]:null;
@@ -13435,7 +13435,7 @@ function dash2SpreadSeriesM1(hubInst, n = DASH2_LOOKBACK){
     const em1 = rollPkFromRows(eexD[ed].rows, eexD[ed].date, 1, hubInst);
     const hv = eexD[ed].rows.find(r => r.pk === em1)?.[hubInst];
     if (hv == null) continue;
-    const tv = (typeof aDval === 'function') ? aDval('TTF', ed) : null;
+    const tv = (typeof aDval === 'function') ? aDval('TTF', ed, em1) : null;
     if (tv == null) continue;
     out.push({ date: eexD[ed].date, value: +(hv - tv).toFixed(4) });
   }
