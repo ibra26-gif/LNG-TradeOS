@@ -1,0 +1,50 @@
+name: Fetch ENTSOG Historical Pipeline Data
+
+on:
+  schedule:
+    # Weekly refresh; historical values can be revised but do not need intraday updates.
+    - cron: '30 3 * * 0'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch ENTSOG historical monthly pipeline data
+        run: python scripts/fetch_entsog_history.py
+        env:
+          OUTPUT_DIR: data
+          HIST_START_YEAR: "2023"
+
+      - name: Commit and push (rebase-retry)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pipeline_history_monthly.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          UPDATED=$(python -c "import json; d=json.load(open('data/pipeline_history_monthly.json')); print(d.get('_meta',{}).get('updated',''))")
+          git commit -m "chore: update historical pipeline data [$UPDATED]"
+          for attempt in 1 2 3 4 5; do
+            if git pull --rebase origin main && git push; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "::error::Failed to push after 5 attempts"
+          exit 1
