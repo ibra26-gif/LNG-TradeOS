@@ -13276,13 +13276,13 @@ function initUI(){updStatus();bIS($id('h-i1'));bIS($id('h-i2'),null,true);$id('h
 function aDval(inst, dateStr){
   const entry=aD[dateStr]||aD[sDates.filter(d=>d<=dateStr).slice(-1)[0]];
   if(!entry) return null;
-  const m1=rPK(entry.date,1);
+  const m1=rollPkFromRows(entry.rows,entry.date,1,inst);
   return entry.rows.find(r=>r.pk===m1)?.[inst]??null;
 }
 
 function buildDash(){
   if(sDates.length<2) return;
-  const ld=sDates[sDates.length-1],pd=sDates[sDates.length-2],lR=aD[ld].rows,pR=aD[pd].rows,m1=rPK(aD[ld].date,1);
+  const ld=sDates[sDates.length-1],pd=sDates[sDates.length-2],lR=aD[ld].rows,pR=aD[pd].rows,m1=rollPkFromRows(lR,aD[ld].date,1);
   // Phase-1 header freshness pill — shows latest EOD date. The full
   // freshness/staleness logic (LIVE vs D-1, stale-Nd badges) lands with the
   // card components in Phase 2/3.
@@ -13297,12 +13297,13 @@ function buildDash(){
   // ── Helper: LNG/global card ────────────────────────────────────────────
   function mcLNG(k){
     const inst=INST[k];
-    const lv=lR.find(r=>r.pk===m1)?.[k]??null,pv=pR.find(r=>r.pk===m1)?.[k]??null;
+    const pk=rollPkFromRows(lR,aD[ld].date,1,k);
+    const lv=lR.find(r=>r.pk===pk)?.[k]??null,pv=pR.find(r=>r.pk===pk)?.[k]??null;
     const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null;
     const pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null;
     const cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼';
     const dp=inst.unit==='$/bbl'?2:3;
-    return `<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(m1)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;
+    return `<div class="mc"><div class="mc-name">${inst.label}</div><div class="mc-tenor">M+1 · ${pkL(pk)}</div><div class="mc-val">${lv!=null?lv.toFixed(dp):'N/A'}</div><div class="mc-row"><span class="mc-chg ${cls}">${chg!=null?arr+' '+Math.abs(chg).toFixed(dp):''}</span><span class="mc-pct ${cls}">${pct!=null?'('+Math.abs(pct).toFixed(1)+'%)':''}</span><span class="mc-unit">${inst.unit}</span></div></div>`;
   }
   // ── Helper: EEX hub card ───────────────────────────────────────────────
   // PSV / PVB / ZTP are less liquid and often miss a settlement on any given
@@ -13314,12 +13315,13 @@ function buildDash(){
     const inst=INST[k];
     const hasEex=eexDates.length>=1;
     const eld=hasEex?eexDates[eexDates.length-1]:null;
-    const em1=hasEex?rPK(eexD[eld].date,1):null;
+    const em1=hasEex?rollPkFromRows(eexD[eld].rows,eexD[eld].date,1,k):null;
     // Collect non-null M+1 values in chronological order
     const vals=[];
     if(hasEex&&em1){
       for(const d of eexDates){
-        const v=eexD[d].rows.find(r=>r.pk===em1)?.[k];
+        const pk=rollPkFromRows(eexD[d].rows,eexD[d].date,1,k);
+        const v=eexD[d].rows.find(r=>r.pk===pk)?.[k];
         if(v!=null)vals.push(v);
       }
     }
@@ -13340,11 +13342,12 @@ function buildDash(){
     const hasEex=eexDates.length>=1;
     if(!hasEex) return `<div class="mc"><div class="mc-name">${spreadLabel}</div><div class="mc-tenor" style="color:#f59e0b">Add EEX file</div><div class="mc-val" style="color:#3d5070;font-size:18px">—</div><div class="mc-row"><span class="mc-unit">$/MMBtu</span></div></div>`;
     const eld=eexDates[eexDates.length-1];
-    const em1=rPK(eexD[eld].date,1);
+    const em1=rollPkFromRows(eexD[eld].rows,eexD[eld].date,1,hubK);
     // Build spread series across dates where both sides exist
     const spreads=[];
     for(const d of eexDates){
-      const hv=eexD[d].rows.find(r=>r.pk===em1)?.[hubK];
+      const pk=rollPkFromRows(eexD[d].rows,eexD[d].date,1,hubK);
+      const hv=eexD[d].rows.find(r=>r.pk===pk)?.[hubK];
       const tv=aDval('TTF',d);
       if(hv!=null&&tv!=null)spreads.push(+(hv-tv).toFixed(3));
     }
@@ -13408,7 +13411,7 @@ function dash2LatestM1(inst){
   if (sDates.length < 2) return null;
   const ld = sDates[sDates.length-1];
   const pd = sDates[sDates.length-2];
-  const m1 = rPK(aD[ld].date, 1);
+  const m1 = rollPkFromRows(aD[ld].rows, aD[ld].date, 1, inst);
   const lv = aD[ld].rows.find(r => r.pk === m1)?.[inst] ?? null;
   const pv = aD[pd].rows.find(r => r.pk === m1)?.[inst] ?? null;
   if (lv == null) return null;
@@ -13429,7 +13432,7 @@ function dash2SpreadSeriesM1(hubInst, n = DASH2_LOOKBACK){
   if (!eexDates.length) return [];
   const out = [];
   for (const ed of eexDates){
-    const em1 = rPK(eexD[ed].date, 1);
+    const em1 = rollPkFromRows(eexD[ed].rows, eexD[ed].date, 1, hubInst);
     const hv = eexD[ed].rows.find(r => r.pk === em1)?.[hubInst];
     if (hv == null) continue;
     const tv = (typeof aDval === 'function') ? aDval('TTF', ed) : null;
@@ -13542,11 +13545,12 @@ function dash2RenderHubCard(hubInst){
     return `<div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px"><div style="font-size:9px;color:#9ca3af">${lbl}</div><div style="font-size:13px;color:#3d5070;margin-top:3px">Add EEX file</div></div>`;
   }
   const eld = eexDates[eexDates.length-1];
-  const em1 = rPK(eexD[eld].date, 1);
+  const em1 = rollPkFromRows(eexD[eld].rows, eexD[eld].date, 1, hubInst);
   // Collect chronological non-null M+1 values WITH their EOD dates.
   const samples = [];
   for (const d of eexDates){
-    const v = eexD[d].rows.find(r => r.pk === em1)?.[hubInst];
+    const pk = rollPkFromRows(eexD[d].rows, eexD[d].date, 1, hubInst);
+    const v = eexD[d].rows.find(r => r.pk === pk)?.[hubInst];
     if (v != null) samples.push({ date: eexD[d].date, value: v });
   }
   if (!samples.length) {
@@ -13596,7 +13600,7 @@ function dash2RenderSpreadCard(hubInst, label){
   let contractLbl = 'M+1';
   if (eexDates.length) {
     const eld = eexDates[eexDates.length-1];
-    contractLbl = `M+1 · ${pkL(rPK(eexD[eld].date, 1))}`;
+    contractLbl = `M+1 · ${pkL(rollPkFromRows(eexD[eld].rows, eexD[eld].date, 1, hubInst))}`;
   }
   return `
     <div style="background:#0d1322;border:1px solid #1f2937;padding:9px 11px">
