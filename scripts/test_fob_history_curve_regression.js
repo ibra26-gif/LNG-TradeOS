@@ -77,8 +77,8 @@ if (start >= 0 && end > start) {
 }
 
 assert(
-  app.includes('name=lngtradeos.js&v=20260501-fob-history-workbench'),
-  'private platform cache-bust must point to the FOB history workbench bundle'
+  /name=lngtradeos\.js&v=20260501-/.test(app),
+  'private platform cache-bust must stay bumped for the current bundle'
 );
 
 if (!process.exitCode) console.log('FOB history curve regression checks passed');

@@ -17381,7 +17381,346 @@ function updSpread(){
   const slc=$id('spLegsChart');if(slc)spLegsChart=new Chart(slc.getContext('2d'),{type:'line',data:{labels:lbls,datasets:[{label:lbl1,data:aligned.map(d=>+d.v1.toFixed(4)),borderColor:'#2d7cff',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:'y'},{label:lbl2,data:aligned.map(d=>+d.v2.toFixed(4)),borderColor:'#f59e0b',borderWidth:1.8,pointRadius:2,tension:.3,fill:false,yAxisID:dualL?'y1':'y'}]},options:{...CD,scales:sL}});
 }
 function exportToExcel(){if(!sDates.length){alert('No data.');return;}const wb=XLSX.utils.book_new(),ik=INSTS.map(i=>i.k),headers=['Date',...ik.map(k=>INST[k].label+' M+1')],rows=[headers];sDates.forEach(ds=>{const{date,rows:dr}=aD[ds],row=[date.toLocaleDateString('en-GB')];ik.forEach(k=>{const m1=rollPkFromRows(dr,date,1,k),r=dr.find(r=>r.pk===m1);row.push(r&&r[k]!=null?r[k]:'');});rows.push(row);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Historical M+1');XLSX.writeFile(wb,'LNG_TradeOS_'+new Date().toLocaleDateString('en-GB').replace(/\//g,'.')+'.xlsx');}
-function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart,eexChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')cInit();if(id==='historical')updHist();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard'){buildGasSnapshot();buildEuHubChart();}if(id==='options')optRender();},60);}
+
+// ════════════════════════════════════════════════════════════════════════════
+// HISTORICAL PRICE ANALYSIS NOTIFICATIONS
+// In-app monitor for outright moves, spread closing/widening, correlation drift
+// and regime changes. Uses existing Financial EOD, EEX, freight history and
+// FOB snapshot stores only; missing series render as "No data".
+// ════════════════════════════════════════════════════════════════════════════
+const HPA_NOTIF_KEY='hpa_notif_prefs_v1';
+const HPA_NOTIF_RULES=[
+  {id:'price-jkm',group:'Financial prices',kind:'price',label:'JKM M+1',inst:'JKM',tenor:'r1',unit:'$/MMBtu'},
+  {id:'price-ttf',group:'Financial prices',kind:'price',label:'TTF M+1',inst:'TTF',tenor:'r1',unit:'$/MMBtu'},
+  {id:'price-hh',group:'Financial prices',kind:'price',label:'HH M+1',inst:'HH',tenor:'r1',unit:'$/MMBtu'},
+  {id:'price-brent',group:'Financial prices',kind:'price',label:'Brent M+1',inst:'Brent',tenor:'r1',unit:'$/bbl',changeThreshold:1.0},
+  {id:'price-slope',group:'Financial prices',kind:'price',label:'Slope M+1',inst:'Slope',tenor:'r1',unit:'%',changeThreshold:0.15},
+  {id:'price-the',group:'Financial prices',kind:'price',label:'THE M+1',inst:'THE',tenor:'r1',unit:'$/MMBtu'},
+  {id:'price-psv',group:'Financial prices',kind:'price',label:'PSV M+1',inst:'PSV',tenor:'r1',unit:'$/MMBtu'},
+  {id:'price-peg',group:'Financial prices',kind:'price',label:'PEG M+1',inst:'PEG',tenor:'r1',unit:'$/MMBtu'},
+  {id:'price-pvb',group:'Financial prices',kind:'price',label:'PVB M+1',inst:'PVB',tenor:'r1',unit:'$/MMBtu'},
+  {id:'price-ztp',group:'Financial prices',kind:'price',label:'ZTP M+1',inst:'ZTP',tenor:'r1',unit:'$/MMBtu'},
+  {id:'spread-jkm-ttf',group:'Spreads',kind:'spread',label:'JKM-TTF M+1',a:'JKM',b:'TTF',tenor:'r1',unit:'$/MMBtu',changeThreshold:0.15},
+  {id:'spread-ttf-hh',group:'Spreads',kind:'spread',label:'TTF-HH M+1',a:'TTF',b:'HH',tenor:'r1',unit:'$/MMBtu',changeThreshold:0.20},
+  {id:'spread-jkm-hh',group:'Spreads',kind:'spread',label:'JKM-HH M+1',a:'JKM',b:'HH',tenor:'r1',unit:'$/MMBtu',changeThreshold:0.20},
+  {id:'spread-nbp-ttf',group:'Spreads',kind:'spread',label:'NBP-TTF M+1',a:'NBP',b:'TTF',tenor:'r1',unit:'$/MMBtu',changeThreshold:0.12},
+  {id:'spread-psv-ttf',group:'Spreads',kind:'spread',label:'PSV-TTF M+1',a:'PSV',b:'TTF',tenor:'r1',unit:'$/MMBtu',changeThreshold:0.12},
+  {id:'spread-the-ttf',group:'Spreads',kind:'spread',label:'THE-TTF M+1',a:'THE',b:'TTF',tenor:'r1',unit:'$/MMBtu',changeThreshold:0.12},
+  {id:'spread-peg-ttf',group:'Spreads',kind:'spread',label:'PEG-TTF M+1',a:'PEG',b:'TTF',tenor:'r1',unit:'$/MMBtu',changeThreshold:0.12},
+  {id:'spread-pvb-ttf',group:'Spreads',kind:'spread',label:'PVB-TTF M+1',a:'PVB',b:'TTF',tenor:'r1',unit:'$/MMBtu',changeThreshold:0.12},
+  {id:'freight-blng1',group:'Freight',kind:'freight',label:'BLNG1 Pacific M+1',curve:'BLNG1',tenor:0,unit:'$/day',changeThreshold:5000},
+  {id:'freight-blng2',group:'Freight',kind:'freight',label:'BLNG2 Atlantic M+1',curve:'BLNG2',tenor:0,unit:'$/day',changeThreshold:5000},
+  {id:'freight-blng3',group:'Freight',kind:'freight',label:'BLNG3 X-Basin M+1',curve:'BLNG3',tenor:0,unit:'$/day',changeThreshold:5000},
+  {id:'freight-spread-b1-b2',group:'Freight',kind:'freightSpread',label:'BLNG1-BLNG2 M+1',curveA:'BLNG1',curveB:'BLNG2',tenor:0,unit:'$/day',changeThreshold:5000},
+  {id:'freight-spread-b1-b3',group:'Freight',kind:'freightSpread',label:'BLNG1-BLNG3 M+1',curveA:'BLNG1',curveB:'BLNG3',tenor:0,unit:'$/day',changeThreshold:5000},
+  {id:'freight-spread-b2-b3',group:'Freight',kind:'freightSpread',label:'BLNG2-BLNG3 M+1',curveA:'BLNG2',curveB:'BLNG3',tenor:0,unit:'$/day',changeThreshold:5000},
+  {id:'fob-usgc-asia-europe',group:'FOB netbacks',kind:'fobSpread',label:'USGC Asia-Europe FOB M+1',origin:'usgc',routeA:'sabine_tokyo',routeB:'sabine_rotterdam',idx:'FIXED',tenor:1,unit:'$/MMBtu',changeThreshold:0.15},
+  {id:'fob-oman-asia-europe',group:'FOB netbacks',kind:'fobSpread',label:'Oman Asia-Europe FOB M+1',origin:'oman',routeA:'oman_tokyo',routeB:'oman_gate',idx:'FIXED',tenor:1,unit:'$/MMBtu',changeThreshold:0.15},
+  {id:'corr-jkm-ttf',group:'Correlation',kind:'correlation',label:'JKM/TTF correlation',a:'JKM',b:'TTF',tenor:'r1',window:30,unit:'r'},
+  {id:'corr-ttf-hh',group:'Correlation',kind:'correlation',label:'TTF/HH correlation',a:'TTF',b:'HH',tenor:'r1',window:30,unit:'r'},
+  {id:'regime-jkm-ttf',group:'Regime',kind:'regime',label:'JKM/TTF regime',a:'JKM',b:'TTF',tenor:'r1',window:30,unit:'r'},
+];
+function hpaDefaultPrefs(){
+  const activeRules={};HPA_NOTIF_RULES.forEach(r=>activeRules[r.id]=true);
+  return{tab:'inbox',range:'90D',activeRules,muted:{},customRules:[],thresholds:{z:2.0,price:0.25,spread:0.15,freight:5000,fob:0.15,corr:0.25,trendMinShare:0.70}};
+}
+function hpaLoadPrefs(){
+  try{
+    const def=hpaDefaultPrefs(),raw=localStorage.getItem(HPA_NOTIF_KEY);
+    if(!raw)return def;
+    const p=JSON.parse(raw)||{};
+    const merged={...def,...p,thresholds:{...def.thresholds,...(p.thresholds||{})},activeRules:{...def.activeRules,...(p.activeRules||{})},muted:{...(p.muted||{})},customRules:Array.isArray(p.customRules)?p.customRules:[]};
+    merged.customRules.forEach(r=>{if(merged.activeRules[r.id]===undefined)merged.activeRules[r.id]=true;});
+    return merged;
+  }catch(e){return hpaDefaultPrefs();}
+}
+function hpaSavePrefs(p){try{localStorage.setItem(HPA_NOTIF_KEY,JSON.stringify(p));}catch(e){}}
+function hpaAllRules(p){return[...HPA_NOTIF_RULES,...((p&&Array.isArray(p.customRules))?p.customRules:[])];}
+function hpaEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function hpaDateKey(d){return d instanceof Date?toStr(d):String(d).slice(0,10);}
+function hpaRangeCut(range){
+  const d=new Date();
+  if(range==='30D'){d.setDate(d.getDate()-30);return d;}
+  if(range==='60D'){d.setDate(d.getDate()-60);return d;}
+  if(range==='90D'){d.setDate(d.getDate()-90);return d;}
+  if(range==='1Y'){d.setFullYear(d.getFullYear()-1);return d;}
+  return null;
+}
+function hpaNum(v){const n=Number(v);return isFinite(n)?n:null;}
+function hpaAlignDiff(sa,sb){
+  const mb=new Map((sb||[]).filter(x=>x&&x.value!=null).map(x=>[hpaDateKey(x.date),x.value]));
+  return(sa||[]).map(x=>{const bv=mb.get(hpaDateKey(x.date));return bv!=null&&x.value!=null?{date:x.date,value:+(x.value-bv).toFixed(4)}:null;}).filter(Boolean);
+}
+function hpaHubTtfSpreadSeries(hub){
+  if(!EEX_HUBS.includes(hub)||!eexDates.length)return[];
+  const out=[];
+  for(const ed of eexDates){
+    const ent=eexD[ed];if(!ent)continue;
+    const pk=rollPkFromRows(ent.rows,ent.date,1,hub);
+    const hv=ent.rows.find(r=>r.pk===pk)?.[hub];
+    if(hv==null)continue;
+    const tv=typeof aDval==='function'?aDval('TTF',ed,pk):null;
+    if(tv==null)continue;
+    out.push({date:ent.date,value:+(hv-tv).toFixed(4)});
+  }
+  return out;
+}
+function hpaFreightSeries(rule){
+  if(typeof F==='undefined'||!Array.isArray(F.histCurves))return[];
+  return[...F.histCurves].filter(s=>s&&s.date).sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(s=>{
+    const i=rule.tenor||0;
+    let v=null;
+    if(rule.kind==='freight')v=hpaNum(s.blng?.[rule.curve]?.[i]);
+    else v=(hpaNum(s.blng?.[rule.curveA]?.[i])!=null&&hpaNum(s.blng?.[rule.curveB]?.[i])!=null)?hpaNum(s.blng?.[rule.curveA]?.[i])-hpaNum(s.blng?.[rule.curveB]?.[i]):null;
+    return v!=null?{date:new Date(String(s.date)+'T12:00:00'),value:+v.toFixed(4)}:null;
+  }).filter(Boolean);
+}
+function hpaFobSpreadSeries(rule){
+  if(typeof _fobSnapTimeSeries!=='function')return[];
+  const a=_fobSnapTimeSeries(rule.origin,rule.tenor||1,rule.routeA,rule.idx||'FIXED');
+  const b=_fobSnapTimeSeries(rule.origin,rule.tenor||1,rule.routeB,rule.idx||'FIXED');
+  return hpaAlignDiff(a,b);
+}
+function hpaCorrelationSeries(rule){
+  if(typeof cRCorr!=='function'||typeof pear!=='function')return[];
+  const s1=gS(rule.a,rule.tenor||'r1'),s2=gS(rule.b,rule.tenor||'r1');
+  if(!s1.length||!s2.length)return[];
+  return cRCorr(s1,s2,rule.window||30,pear).map(x=>({date:x.date,value:+x.value.toFixed(4)}));
+}
+function hpaRuleSeries(rule){
+  if(rule.kind==='price')return(gS(rule.inst,rule.tenor||'r1')||[]).map(x=>({date:x.date,value:x.value}));
+  if(rule.kind==='spread'){
+    if(EEX_HUBS.includes(rule.a)&&rule.b==='TTF')return hpaHubTtfSpreadSeries(rule.a);
+    return hpaAlignDiff(gS(rule.a,rule.tenor||'r1'),gS(rule.b,rule.tenor||'r1'));
+  }
+  if(rule.kind==='freight'||rule.kind==='freightSpread')return hpaFreightSeries(rule);
+  if(rule.kind==='fobSpread')return hpaFobSpreadSeries(rule);
+  if(rule.kind==='correlation'||rule.kind==='regime')return hpaCorrelationSeries(rule);
+  return[];
+}
+function hpaStatsFor(rule,series,range){
+  const cut=hpaRangeCut(range);
+  const clean=(series||[]).filter(p=>p&&p.value!=null&&isFinite(p.value)&&(!cut||p.date>=cut)).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(clean.length<2)return null;
+  const vals=clean.map(p=>p.value),sorted=[...vals].sort((a,b)=>a-b),n=vals.length;
+  const mean=vals.reduce((a,b)=>a+b,0)/n;
+  const sd=Math.sqrt(vals.reduce((s,v)=>s+(v-mean)**2,0)/Math.max(n-1,1));
+  const latest=vals[n-1],prior=vals[n-2],change=latest-prior,z=sd>0?(latest-mean)/sd:0;
+  const pctile=sorted.filter(v=>v<=latest).length/n;
+  const p5=sorted[Math.max(0,Math.floor((n-1)*0.05))],p95=sorted[Math.min(n-1,Math.ceil((n-1)*0.95))];
+  const trendN=Math.min(10,n-1),trendStart=trendN>=1?vals[n-1-trendN]:null;
+  const trendTail=trendN>=1?vals.slice(n-1-trendN):[];
+  let upCount=0,downCount=0;
+  for(let i=1;i<trendTail.length;i++){const d=trendTail[i]-trendTail[i-1];if(d>0)upCount++;else if(d<0)downCount++;}
+  const trendChange=trendStart!=null?latest-trendStart:null;
+  const trendShare=trendN?Math.max(upCount,downCount)/trendN:0;
+  let slope=0;
+  if(trendTail.length>=3){
+    const xs=trendTail.map((_,i)=>i),mx=xs.reduce((a,b)=>a+b,0)/xs.length,my=trendTail.reduce((a,b)=>a+b,0)/trendTail.length;
+    const den=xs.reduce((s,x)=>s+(x-mx)**2,0),num=xs.reduce((s,x,i)=>s+(x-mx)*(trendTail[i]-my),0);
+    slope=den?num/den:0;
+  }
+  return{n,latest,prior,change,z,pctile,p5,p95,mean,sd,date:clean[n-1].date,trendN,trendStart,trendChange,trendShare,upCount,downCount,slope};
+}
+function hpaThresholdFor(rule,prefs){
+  if(rule.changeThreshold!=null)return rule.changeThreshold;
+  if(rule.kind==='freight'||rule.kind==='freightSpread')return prefs.thresholds.freight;
+  if(rule.kind==='spread')return prefs.thresholds.spread;
+  if(rule.kind==='fobSpread')return prefs.thresholds.fob;
+  return prefs.thresholds.price;
+}
+function hpaTrendAlert(rule,st,prefs){
+  if(!st||st.trendN<5||st.trendChange==null)return null;
+  const threshold=rule.kind==='correlation'||rule.kind==='regime'?prefs.thresholds.corr:hpaThresholdFor(rule,prefs);
+  const minMove=(rule.kind==='correlation'||rule.kind==='regime')?threshold:threshold*1.5;
+  if(Math.abs(st.trendChange)<minMove||st.trendShare<(prefs.thresholds.trendMinShare||0.70))return null;
+  const dir=st.trendChange>=0?'increasing':'decreasing';
+  let type=dir==='increasing'?'Outright increasing':'Outright decreasing';
+  if(rule.kind==='spread'||rule.kind==='freightSpread'||rule.kind==='fobSpread'){
+    type=Math.abs(st.latest)>Math.abs(st.trendStart)?'Spread widening':'Spread closing';
+  }
+  if(rule.kind==='correlation')type=st.trendChange>=0?'Correlation increasing':'Correlation decreasing';
+  if(rule.kind==='regime')type=st.trendChange>=0?'Regime strengthening':'Regime weakening';
+  const score=Math.max(Math.abs(st.trendChange)/Math.max(minMove,0.0001),st.trendShare);
+  return{type,direction:dir,score,trend:true};
+}
+function hpaBuildAlert(rule,st,prefs){
+  if(!st||st.n<3)return null;
+  let type='Outright',direction=st.change>=0?'increasing':'decreasing',score=Math.abs(st.z),threshold=hpaThresholdFor(rule,prefs);
+  const trend=hpaTrendAlert(rule,st,prefs);
+  if(rule.kind==='correlation'||rule.kind==='regime'){
+    const delta=st.latest-st.mean;
+    if(Math.abs(delta)<prefs.thresholds.corr&&!trend)return null;
+    type=trend?.type||(rule.kind==='regime'?'Regime changing':'Correlation changing');
+    direction=trend?.direction||(delta>=0?'strengthening':'weakening');
+    score=Math.max(trend?.score||0,Math.abs(delta)/Math.max(prefs.thresholds.corr,0.01));
+  }else{
+    const bigMove=Math.abs(st.change)>=threshold;
+    const extreme=Math.abs(st.z)>=prefs.thresholds.z||st.pctile>=0.95||st.pctile<=0.05;
+    if(!bigMove&&!extreme&&!trend)return null;
+    if(rule.kind==='spread'||rule.kind==='freightSpread'||rule.kind==='fobSpread'){
+      type=Math.abs(st.latest)<Math.abs(st.prior)?'Spread closing':'Spread widening';
+      direction=type.replace('Spread ','');
+    }
+    if(trend&&(!bigMove||trend.score>=score)){type=trend.type;direction=trend.direction;}
+    score=Math.max(Math.abs(st.z),threshold?Math.abs(st.change)/threshold:0);
+    if(trend)score=Math.max(score,trend.score);
+  }
+  const severity=score>=2.5?'high':score>=1.25?'medium':'low';
+  return{rule,type,direction,severity,score,stats:st,title:`${rule.label} · ${type}`,detail:hpaAlertDetail(rule,st)};
+}
+function hpaAlertDetail(rule,st){
+  const unit=rule.unit||'';
+  const ch=st.change>=0?'+'+hpaFmt(rule,st.change):hpaFmt(rule,st.change);
+  const tr=st.trendChange!=null?` · ${st.trendN}obs ${st.trendChange>=0?'+':''}${hpaFmt(rule,st.trendChange)} (${Math.round(st.trendShare*100)}% same direction)`:``;
+  return`Latest ${hpaFmt(rule,st.latest)} ${unit} · ${ch} vs previous${tr} · z ${st.z.toFixed(2)} · n=${st.n}`;
+}
+function hpaFmt(rule,v){
+  if(v==null||!isFinite(v))return'--';
+  if(rule.unit==='$/day')return Math.round(v).toLocaleString();
+  if(rule.unit==='$/bbl')return Number(v).toFixed(2);
+  if(rule.unit==='r')return Number(v).toFixed(3);
+  return Number(v).toFixed(3);
+}
+function hpaSource(rule){
+  if(rule.kind==='price')return EEX_HUBS.includes(rule.inst)?'EEX Market Data Hub · rolling M+1':'Financial EOD cache · rolling M+1';
+  if(rule.kind==='spread')return EEX_HUBS.includes(rule.a)?'EEX hub settlement + Financial EOD TTF matched by contract':'Financial EOD cache · aligned daily M+1 spread';
+  if(rule.kind==='freight'||rule.kind==='freightSpread')return'Foundation Freight Curves · saved BLNG observations';
+  if(rule.kind==='fobSpread')return'FOB Snapshot database · saved gas + freight + physical inputs';
+  return'Financial EOD cache · rolling log-return correlation';
+}
+function hpaScan(){
+  const prefs=hpaLoadPrefs(),rules=hpaAllRules(prefs);
+  const rows=rules.map(rule=>{
+    const active=prefs.activeRules[rule.id]!==false,muted=!!prefs.muted[rule.id];
+    const series=active?hpaRuleSeries(rule):[];
+    const stats=active?hpaStatsFor(rule,series,prefs.range):null;
+    const alert=active&&!muted?hpaBuildAlert(rule,stats,prefs):null;
+    return{rule,active,muted,stats,alert,source:hpaSource(rule)};
+  });
+  const sevRank={high:3,medium:2,low:1};
+  const alerts=rows.filter(r=>r.alert).map(r=>r.alert).sort((a,b)=>(sevRank[b.severity]-sevRank[a.severity])||(b.score-a.score));
+  return{prefs,rows,alerts};
+}
+function hpaSeverityStyle(s){return s==='high'?['#ef4444','rgba(239,68,68,.10)']:s==='medium'?['#f59e0b','rgba(245,158,11,.10)']:['#4fc3f7','rgba(79,195,247,.08)'];}
+function hpaInstOpts(sel){
+  return INSTS.map(i=>`<option value="${i.k}"${i.k===sel?' selected':''}>${i.label}</option>`).join('');
+}
+function hpaRuleControls(rule,prefs){
+  const on=prefs.activeRules[rule.id]!==false,muted=!!prefs.muted[rule.id],custom=String(rule.id).startsWith('custom-');
+  return`
+    <button class="cr-pill${on?' on':''}" onclick="hpaToggleRule('${hpaEsc(rule.id)}')">${on?'ON':'OFF'}</button>
+    <button class="cr-pill" onclick="${muted?`hpaUnmuteRule('${hpaEsc(rule.id)}')`:`hpaMuteRule('${hpaEsc(rule.id)}')`}">${muted?'UNMUTE':'MUTE'}</button>
+    ${custom?`<button class="cr-pill" style="border-color:#ef4444;color:#fca5a5" onclick="hpaDeleteCustomRule('${hpaEsc(rule.id)}')">DELETE</button>`:''}
+  `;
+}
+function hpaRenderInbox(scan){
+  const active=scan.rows.filter(r=>r.active).length,muted=scan.rows.filter(r=>r.muted).length,noData=scan.rows.filter(r=>r.active&&!r.stats).length;
+  const cards=scan.alerts.length?scan.alerts.map(a=>{
+    const[fg,bg]=hpaSeverityStyle(a.severity);
+    return`<div class="acard" style="border-color:${fg};background:${bg};padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:9px;color:${fg};letter-spacing:.12em;font-weight:700">${a.severity.toUpperCase()}</span>
+        <span style="font-size:12px;color:#fff;font-weight:600">${hpaEsc(a.title)}</span>
+        <span style="font-size:9px;color:#5a6882">${a.stats.date?new Date(a.stats.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):''}</span>
+        <span style="flex:1"></span>
+        <button class="cr-pill" onclick="hpaMuteRule('${hpaEsc(a.rule.id)}')">MUTE</button>
+      </div>
+      <div style="font-size:10px;color:#c8cfe0;margin-top:7px;line-height:1.5">${hpaEsc(a.detail)}</div>
+      <div style="font-size:8px;color:#5a6882;margin-top:6px">Source: ${hpaEsc(hpaSource(a.rule))}</div>
+    </div>`;
+  }).join(''):`<div class="acard" style="padding:22px;text-align:center;color:#5a6882;font-size:11px">No active alerts in the selected window. Quiet is useful too.</div>`;
+  return`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px">
+      <div class="acard" style="padding:10px 12px"><div style="font-size:8px;color:#5a6882;letter-spacing:.12em">ALERTS</div><div style="font-size:20px;color:#fff">${scan.alerts.length}</div></div>
+      <div class="acard" style="padding:10px 12px"><div style="font-size:8px;color:#5a6882;letter-spacing:.12em">RULES ON</div><div style="font-size:20px;color:#34d399">${active}</div></div>
+      <div class="acard" style="padding:10px 12px"><div style="font-size:8px;color:#5a6882;letter-spacing:.12em">NO DATA</div><div style="font-size:20px;color:#fbbf24">${noData}</div></div>
+      <div class="acard" style="padding:10px 12px"><div style="font-size:8px;color:#5a6882;letter-spacing:.12em">MUTED</div><div style="font-size:20px;color:#94a3b8">${muted}</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">${cards}</div>`;
+}
+function hpaRenderRules(scan){
+  const p=scan.prefs;
+  const rows=scan.rows.map(r=>{
+    const st=r.stats;
+    const status=!r.active?'Off':r.muted?'Muted':r.alert?`${r.alert.severity.toUpperCase()} alert`:st?'Quiet':'No data';
+    const col=r.alert?hpaSeverityStyle(r.alert.severity)[0]:!r.active?'#5a6882':r.muted?'#a78bfa':st?'#34d399':'#fbbf24';
+    return`<tr>
+      <td style="color:#c8cfe0;font-weight:600">${hpaEsc(r.rule.label)}</td>
+      <td>${hpaEsc(r.rule.group)}</td>
+      <td style="color:${col};font-weight:700">${status}</td>
+      <td class="tr">${st?hpaFmt(r.rule,st.latest):'--'}</td>
+      <td class="tr">${st?st.z.toFixed(2):'--'}</td>
+      <td style="font-size:8px;color:#5a6882">${hpaEsc(r.source)}</td>
+      <td style="white-space:nowrap;text-align:right">${hpaRuleControls(r.rule,p)}</td>
+    </tr>`;
+  }).join('');
+  return`
+    <div class="acard" style="margin-bottom:10px;padding:10px 12px;background:#071a2b;border-color:#1e3a5f">
+      <div class="ctitle" style="margin-bottom:8px">ADD CUSTOM MONITOR<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:8px;color:#5a6882">price or spread · M+1</span></div>
+      <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+        <div><span class="cl">TYPE</span><select id="hpa-custom-kind"><option value="price">PRICE</option><option value="spread">SPREAD</option></select></div>
+        <div><span class="cl">A</span><select id="hpa-custom-a">${hpaInstOpts('JKM')}</select></div>
+        <div><span class="cl">B</span><select id="hpa-custom-b">${hpaInstOpts('TTF')}</select></div>
+        <button class="cr-pill on" onclick="hpaAddCustomRule()">+ ADD RULE</button>
+        <span style="font-size:9px;color:#5a6882">For PRICE, B is ignored. Custom rules persist in ${HPA_NOTIF_KEY}.</span>
+      </div>
+    </div>
+    <div class="acard"><div style="overflow-x:auto"><table class="stbl"><thead><tr><th>Rule</th><th>Group</th><th>Status</th><th class="tr">Latest</th><th class="tr">Z</th><th>Source</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+function hpaRenderMuted(scan){
+  const muted=scan.rows.filter(r=>r.muted);
+  if(!muted.length)return`<div class="acard" style="padding:22px;text-align:center;color:#5a6882;font-size:11px">No muted monitors.</div>`;
+  return`<div class="acard"><div style="overflow-x:auto"><table class="stbl"><thead><tr><th>Muted rule</th><th>Muted since</th><th>Source</th><th></th></tr></thead><tbody>${muted.map(r=>`<tr><td style="color:#c8cfe0">${hpaEsc(r.rule.label)}</td><td>${new Date(scan.prefs.muted[r.rule.id]).toLocaleString('en-GB')}</td><td style="font-size:8px;color:#5a6882">${hpaEsc(r.source)}</td><td class="tr"><button class="cr-pill on" onclick="hpaUnmuteRule('${hpaEsc(r.rule.id)}')">UNMUTE</button></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+function hpaRenderSettings(scan){
+  const t=scan.prefs.thresholds;
+  const inp=(k,label,step)=>`<div><span class="cl">${label}</span><input type="number" step="${step}" value="${t[k]}" onchange="hpaSetThreshold('${k}',this.value)" style="background:#070b14;border:1px solid #1e2d45;color:#c8cfe0;font-family:inherit;font-size:10px;padding:5px 8px;width:90px"></div>`;
+  return`<div class="acard" style="padding:12px 14px">
+    <div class="ctitle" style="margin-bottom:10px">SETTINGS<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:8px;color:#5a6882">in-app only · localStorage</span></div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
+      <div><span class="cl">SCAN WINDOW</span><select onchange="hpaSetRange(this.value)">${['30D','60D','90D','1Y','ALL'].map(r=>`<option value="${r}"${scan.prefs.range===r?' selected':''}>${r}</option>`).join('')}</select></div>
+      ${inp('z','Z-SCORE','0.1')}${inp('price','PRICE MOVE','0.01')}${inp('spread','SPREAD MOVE','0.01')}${inp('freight','FREIGHT MOVE','1000')}${inp('fob','FOB MOVE','0.01')}${inp('corr','CORR DELTA','0.01')}${inp('trendMinShare','TREND SHARE','0.05')}
+      <button class="cr-pill" onclick="hpaResetPrefs()">RESET</button>
+    </div>
+    <div style="font-size:10px;color:#8a9bb5;line-height:1.7">
+      Alerts fire when a rule breaches either the daily move threshold or the distribution threshold. Spread monitors classify <b>closing</b> vs <b>widening</b> by the absolute spread. Correlation and regime monitors compare the latest rolling r against the selected-window baseline. Nothing is pushed externally yet; this is an in-app inbox.
+    </div>
+  </div>`;
+}
+function hpaRenderNotifications(){
+  const el=$id('hpa-notif-body');if(!el)return;
+  const scan=hpaScan(),p=scan.prefs,tab=p.tab||'inbox';
+  const nav=['inbox','rules','muted','settings'].map(t=>`<button class="cr-pill${tab===t?' on':''}" onclick="hpaNotifTab('${t}')">${t.toUpperCase()}</button>`).join('');
+  const last=(sDates&&sDates.length)?sDates[sDates.length-1]:'--';
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #151e30">
+      <div><div style="font-size:12px;color:#c8cfe0;font-weight:600;letter-spacing:.04em">Historical Price Analysis · Notifications</div>
+      <div style="font-size:9px;color:#5a6882;margin-top:3px">Outrights · spread closing/widening · correlation changing · regime changing · freight / FOB snapshots</div></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${nav}<span style="font-size:9px;color:#34d399;margin-left:6px">● EOD ${hpaEsc(last)}</span></div>
+    </div>
+    ${tab==='rules'?hpaRenderRules(scan):tab==='muted'?hpaRenderMuted(scan):tab==='settings'?hpaRenderSettings(scan):hpaRenderInbox(scan)}
+  `;
+}
+window.hpaNotifTab=function(tab){const p=hpaLoadPrefs();p.tab=tab;hpaSavePrefs(p);hpaRenderNotifications();};
+window.hpaToggleRule=function(id){const p=hpaLoadPrefs();p.activeRules[id]=!(p.activeRules[id]!==false);hpaSavePrefs(p);hpaRenderNotifications();};
+window.hpaMuteRule=function(id){const p=hpaLoadPrefs();p.muted[id]=new Date().toISOString();hpaSavePrefs(p);hpaRenderNotifications();};
+window.hpaUnmuteRule=function(id){const p=hpaLoadPrefs();delete p.muted[id];hpaSavePrefs(p);hpaRenderNotifications();};
+window.hpaSetThreshold=function(k,v){const p=hpaLoadPrefs(),n=parseFloat(v);if(isFinite(n)){p.thresholds[k]=n;hpaSavePrefs(p);}hpaRenderNotifications();};
+window.hpaSetRange=function(r){const p=hpaLoadPrefs();p.range=r;hpaSavePrefs(p);hpaRenderNotifications();};
+window.hpaResetPrefs=function(){if(confirm('Reset notification rules and thresholds?')){localStorage.removeItem(HPA_NOTIF_KEY);hpaRenderNotifications();}};
+window.hpaAddCustomRule=function(){
+  const kind=$id('hpa-custom-kind')?.value||'price',a=$id('hpa-custom-a')?.value||'JKM',b=$id('hpa-custom-b')?.value||'TTF';
+  const p=hpaLoadPrefs();
+  const id=`custom-${kind}-${a}-${kind==='spread'?b+'-':''}${Date.now()}`;
+  const rule=kind==='spread'
+    ?{id,group:'Custom',kind:'spread',label:`${a}-${b} M+1`,a,b,tenor:'r1',unit:'$/MMBtu',changeThreshold:p.thresholds.spread}
+    :{id,group:'Custom',kind:'price',label:`${INST[a]?.label||a} M+1`,inst:a,tenor:'r1',unit:INST[a]?.unit||'$/MMBtu',changeThreshold:p.thresholds.price};
+  p.customRules.push(rule);p.activeRules[id]=true;hpaSavePrefs(p);hpaRenderNotifications();
+};
+window.hpaDeleteCustomRule=function(id){const p=hpaLoadPrefs();p.customRules=(p.customRules||[]).filter(r=>r.id!==id);delete p.activeRules[id];delete p.muted[id];hpaSavePrefs(p);hpaRenderNotifications();};
+
+function showSec(id,btn){document.querySelectorAll('#fin-analytics .asec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.anl').forEach(b=>b.classList.remove('active'));const s=$id('sec-'+id);if(s)s.classList.add('active');if(!btn)btn=document.querySelector(`.anl[onclick*="'${id}'"]`);if(btn)btn.classList.add('active');setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart,eexChart].forEach(c=>c&&c.resize());if(id==='spread')updSpread();if(id==='correlation')cInit();if(id==='historical')updHist();if(id==='notifications')hpaRenderNotifications();if(id==='forward')updFC();if(id==='seasonal')updSea();if(id==='dashboard'){buildGasSnapshot();buildEuHubChart();}if(id==='options')optRender();},60);}
 function showAnalyticsUI(){const fd=$id('fin-dropzone'),fa=$id('fin-analytics');if(fd)fd.style.display='none';if(fa)fa.style.display='block';finLoaded=true;setTimeout(()=>{if(window.gaUpdatePriceBoxes)window.gaUpdatePriceBoxes();},200);}
 
 // ══ EU REGAS MODULE v2 ══
