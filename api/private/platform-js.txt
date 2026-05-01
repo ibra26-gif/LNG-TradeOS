@@ -12177,14 +12177,41 @@ function _usgcArbCurves(){
 }
 
 function cpUsgcArbViz(d){
+  const arbData = _usgcArbCurves();
+  const m1Label = ML[0] || 'M+1';
+  const m1Cogh = arbData.today?.arbCogh?.[0] ?? null;
+  const m1Pc = arbData.today?.arbPc?.[0] ?? null;
+  const m1Direction = m1Cogh == null ? '—' : m1Cogh > 0 ? 'Asia' : m1Cogh < 0 ? 'Europe' : 'Flat';
+  const m1Color = m1Cogh == null ? '#94a3b8' : m1Cogh > 0 ? '#34d399' : m1Cogh < 0 ? '#fca5a5' : '#c8d6e5';
+  const fmtM1 = v => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(3)}`;
   return `
     <div class="f-sec">USGC ARB · NE-Asia FOB-netback minus NW-Europe FOB-netback · Sabine Pass loading</div>
 
     <div style="padding:0 14px 8px;font-size:9px;color:#546e7a;line-height:1.5">
       <code style="color:#93c5fd">arb = (DES_JKTC − Sabine→Tokyo − 1.15×HH) − (DES_NWE − Sabine→Gate − 1.15×HH)</code><br/>
+      Assessment focus = <b style="color:#c8d6e5">M+1 / ${m1Label}</b>. The current/assessment month is not used for this USGC COGH arb read.
+      Full curve below remains M+1 → M+24 for context.<br/>
       <span style="color:#34d399">Above 0</span> → arb pointing to Asia (Sabine cargoes net higher to Tokyo).
       <span style="color:#fca5a5">Below 0</span> → arb pointing to Europe.<br/>
       Lines = each <a onclick="CP.tab=8;cpTab(8)" style="color:#a78bfa;cursor:pointer;text-decoration:underline">FOB Snapshot</a> you've captured + today's live curve.
+    </div>
+
+    <div style="padding:0 14px 12px;display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:10px">
+      <div class="acard" style="padding:10px 12px;background:#071a2b;border:1px solid #1e3a5f">
+        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">COGH ARB · M+1 · ${m1Label}</div>
+        <div style="color:${m1Color};font-size:20px;font-weight:700;margin-top:4px">${fmtM1(m1Cogh)}</div>
+        <div style="color:#546e7a;font-size:8px;margin-top:2px">$/MMBtu · Asia minus Europe</div>
+      </div>
+      <div class="acard" style="padding:10px 12px;background:#071a2b;border:1px solid #1e3a5f">
+        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">PANAMA ARB · M+1 · ${m1Label}</div>
+        <div style="color:${m1Pc == null ? '#94a3b8' : m1Pc > 0 ? '#34d399' : m1Pc < 0 ? '#fca5a5' : '#c8d6e5'};font-size:20px;font-weight:700;margin-top:4px">${fmtM1(m1Pc)}</div>
+        <div style="color:#546e7a;font-size:8px;margin-top:2px">$/MMBtu · reference route</div>
+      </div>
+      <div class="acard" style="padding:10px 12px;background:#071a2b;border:1px solid #1e3a5f">
+        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">COGH M+1 DIRECTION</div>
+        <div style="color:${m1Color};font-size:20px;font-weight:700;margin-top:4px">${m1Direction}</div>
+        <div style="color:#546e7a;font-size:8px;margin-top:2px">${arbData.today?.eod_date ? 'Latest EOD '+arbData.today.eod_date : 'Load EOD curves'}</div>
+      </div>
     </div>
 
     <div style="padding:0 14px 14px;display:flex;flex-direction:column;gap:10px">
