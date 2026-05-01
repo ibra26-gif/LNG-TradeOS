@@ -8408,6 +8408,18 @@ function fHistParseWorkbook(buf,fileName,meta={}){
         cMidx=h.indexOf('M IDX');if(cMidx<0)cMidx=h.indexOf('M');
         break;
       }
+      // OB FFA Rates exports sometimes use grouped headers:
+      // "174k vsl / BLNG1" + next-row "Date | Value ($/day)" pairs.
+      const g1=h.findIndex(c=>/\bBLNG1\b/.test(c));
+      const g2=h.findIndex(c=>/\bBLNG2\b/.test(c));
+      const g3=h.findIndex(c=>/\bBLNG3\b/.test(c));
+      if(g1>=0&&g2>=0&&g3>=0){
+        const n=(rows[r+1]||[]).map(x=>String(x??'').trim().toUpperCase());
+        const valCol=c=>(n[c]&&n[c].includes('VALUE'))?c:((n[c+1]&&n[c+1].includes('VALUE'))?c+1:c);
+        hdrRow=r;c1=valCol(g1);c2=valCol(g2);c3=valCol(g3);
+        cMidx=h.indexOf('M IDX');if(cMidx<0)cMidx=h.indexOf('M');
+        break;
+      }
     }
     if(hdrRow<0)continue;
     const pv=v=>{
