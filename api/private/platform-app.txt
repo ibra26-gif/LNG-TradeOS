@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260501-pipeline-history">
-<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260501-fob-history-workbench" defer></script>
+<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260501-hpa-notifications" defer></script>
 </head>
 <body class="app-unlocked">
 <div id="public-site">
@@ -289,6 +289,7 @@
     <div class="anav">
       <button class="anl active" onclick="showSec('dashboard',this)">DASHBOARD</button>
       <button class="anl" onclick="showSec('historical',this)">HISTORICAL</button>
+      <button class="anl" onclick="showSec('notifications',this)">NOTIFICATIONS</button>
       <button class="anl" onclick="showSec('correlation',this)">CORRELATION</button>
       <button class="anl" onclick="showSec('spread',this)">SPREAD</button>
       <button class="anl" onclick="showSec('forward',this)">FORWARD CURVE</button>
@@ -392,6 +393,9 @@
         <div class="acard"><div class="ctitle">DAILY PRICE HISTORY — $/MMBTU</div><div class="cw" style="height:280px"><canvas id="hChart"></canvas></div></div>
         <div class="acard"><div class="ctitle" id="box-title">DISTRIBUTION</div><div class="cw" style="height:130px;position:relative"><canvas id="hBoxChart"></canvas></div></div>
         <div class="acard"><div class="ctitle" id="stats-title">STATISTICS</div><div style="overflow-x:auto"><table class="stbl" id="statsTable"></table></div></div>
+      </div>
+      <div id="sec-notifications" class="asec">
+        <div id="hpa-notif-body" style="padding:0"></div>
       </div>
       <div id="sec-correlation" class="asec">
         <div style="display:flex;border-bottom:1px solid #151e30;background:#070b14;overflow-x:auto;margin-bottom:0">
