@@ -12,6 +12,16 @@
     },
     {
       "title": "Other unavailability · Planned",
+      "asset": "Oseberg",
+      "impact": "-26.6 mcm/d",
+      "from": "2026-05-01",
+      "to": "2026-05-25",
+      "type": "planned",
+      "published": "2026-04-22T12:55:00",
+      "msg_id": "2026-50___________________005"
+    },
+    {
+      "title": "Other unavailability · Planned",
       "asset": "Troll",
       "impact": "-20.9 mcm/d",
       "from": "2026-04-22",
@@ -19,26 +29,6 @@
       "type": "planned",
       "published": "2026-04-20T11:01:34.887000",
       "msg_id": "2026-96___________________006"
-    },
-    {
-      "title": "Other unavailability · Planned",
-      "asset": "Oseberg",
-      "impact": "-20.1 mcm/d",
-      "from": "2026-04-30",
-      "to": "2026-05-01",
-      "type": "planned",
-      "published": "2026-04-29T10:26:09.827000",
-      "msg_id": "2026-179__________________003"
-    },
-    {
-      "title": "Other unavailability · Planned",
-      "asset": "Gullfaks",
-      "impact": "-1.4 mcm/d",
-      "from": "2026-04-30",
-      "to": "2026-05-01",
-      "type": "planned",
-      "published": "2026-04-29T09:01:21.943000",
-      "msg_id": "2026-82___________________010"
     },
     {
       "title": "Other unavailability · Planned",
@@ -52,9 +42,9 @@
     }
   ],
   "_meta": {
-    "updated": "2026-04-30T21:45:22Z",
+    "updated": "2026-05-01T08:04:24Z",
     "source": "gassco xlexport",
-    "total_messages": 156,
-    "active_count": 5
+    "total_messages": 154,
+    "active_count": 4
   }
 }
