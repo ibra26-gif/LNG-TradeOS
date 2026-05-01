@@ -8404,7 +8404,9 @@ function fHistParseWorkbook(buf,fileName,meta={}){
       const h=(rows[r]||[]).map(x=>String(x??'').trim().toUpperCase());
       const i1=h.indexOf('BLNG1'),i2=h.indexOf('BLNG2'),i3=h.indexOf('BLNG3');
       if(i1>=0&&i2>=0&&i3>=0){
-        hdrRow=r;c1=i1;c2=i2;c3=i3;
+        const n=(rows[r+1]||[]).map(x=>String(x??'').trim().toUpperCase());
+        const valCol=c=>(n[c]&&n[c].includes('VALUE'))?c:((n[c+1]&&n[c+1].includes('VALUE'))?c+1:c);
+        hdrRow=r;c1=valCol(i1);c2=valCol(i2);c3=valCol(i3);
         cMidx=h.indexOf('M IDX');if(cMidx<0)cMidx=h.indexOf('M');
         break;
       }
