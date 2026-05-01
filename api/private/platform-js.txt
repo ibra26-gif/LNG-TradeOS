@@ -6829,9 +6829,13 @@ function renderMatCurves(){
         ${histOpts.map((s,i)=>`<option value="${i}">${s.date} — ${s.label}</option>`).join('')}
       </select>
       <button class="f-btn on" onclick="loadHistCurveIntoActive()">LOAD →</button>
+      <button class="f-btn" onclick="fAuthGate(()=>syncFreightHistFromDrive(false,true))">SYNC DRIVE</button>
       <span style="font-size:9px;color:#546e7a">${histOpts.length} observation date(s) in database · loads into active curve below</span>
     </div>`
-    :`<div style="background:#070b14;border:1px dashed #1e3a5f;padding:6px 12px;margin-bottom:10px;font-size:9px;color:#3d5070">No historical curves loaded yet — go to HISTORICAL FREIGHT CURVES tab to import from Google Drive</div>`;
+    :`<div style="background:#070b14;border:1px dashed #1e3a5f;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:9px;color:#3d5070">No historical curves loaded yet</span>
+        <button class="f-btn" onclick="fAuthGate(()=>syncFreightHistFromDrive(false,true))">SYNC DRIVE</button>
+      </div>`;
   return`${histBar}
   <div class="f-sec" style="font-size:11px;letter-spacing:2px;margin-bottom:10px">FORWARD FREIGHT CURVES — SAVED (feed the matrix)</div>
     <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px;margin-top:10px">
@@ -8497,7 +8501,7 @@ function fHistMergeCurves(results){
 }
 
 let _freightHistDriveSyncing=false;
-async function syncFreightHistFromDrive(silent=false){
+async function syncFreightHistFromDrive(silent=false,refreshEditor=false){
   if(_freightHistDriveSyncing)return;
   _freightHistDriveSyncing=true;
   if(!silent){
@@ -8582,6 +8586,7 @@ async function syncFreightHistFromDrive(silent=false){
       alert(`✓ Synced ${m.added+m.updated} freight curve(s) from Drive. Total in database: ${m.merged.length}.${errMsg}`);
     }
     if((m.added||m.updated)&&typeof _fHistRefresh==='function')_fHistRefresh();
+    if(refreshEditor&&typeof fMatTab==='function')fMatTab(0);
   }catch(err){
     if(!silent)alert('Failed to load from Google Drive: '+err.message);
     else console.warn('[Freight Drive] sync failed:',err.message);
