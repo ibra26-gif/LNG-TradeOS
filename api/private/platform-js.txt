@@ -9664,16 +9664,28 @@ function cpDerived(){
     brazil:  ML.map((_,i)=>phyBrazil[i]!=null?fp.TTF[i]+phyBrazil[i]:null),
     argentina:ML.map((_,i)=>phyArgentina[i]!=null?fp.TTF[i]+phyArgentina[i]:null),
   };
+  // USGC Asia route timing:
+  //   - Panama Canal is a same-month DES read (JKM month M).
+  //   - Cape of Good Hope pushes arrival/pricing one month later (JKM month M+1).
+  const usgcJktcPcDes = des.jktc;
+  const usgcJktcCoghDes = ML.map((_,i)=>{
+    const j=i+1;
+    const jkm=fp.JKM?.[j], ph=phys.jktc?.[j] ?? 0;
+    return jkm!=null&&!isNaN(jkm)?+(jkm+ph).toFixed(3):null;
+  });
   // ── USGC FOB cost ──────────────────────────────────────────────────────────
   const usgcFob=ML.map((_,i)=>sl*fp.HH[i]+(CP.liqFee[i]||0));
   // ── FOB Netback expressed as index equivalent ──────────────────────────────
   // formula: DES_price - freight - index_flat → spread over index
   // For USGC (HH-linked): DES - freight - sl*HH
-  function nb(desArr,frArr,idxArr){return ML.map((_,i)=>desArr[i]-frArr[i]-idxArr[i]);}
+  function nb(desArr,frArr,idxArr){return ML.map((_,i)=>{
+    const dv=desArr?.[i], frv=frArr?.[i], iv=idxArr?.[i];
+    return (dv!=null&&frv!=null&&iv!=null&&!isNaN(dv)&&!isNaN(frv)&&!isNaN(iv))?+(dv-frv-iv).toFixed(3):null;
+  });}
   const slHH=ML.map((_,i)=>sl*fp.HH[i]);
   // Atlantic: Sabine (cost base = sl*HH)
   const sabNbNwe  =nb(des.nwe,  freight.sabine_rotterdam,slHH);
-  const sabNbJktc =nb(des.jktc, freight.sabine_tokyo,    slHH);
+  const sabNbJktc =nb(usgcJktcCoghDes, freight.sabine_tokyo, slHH);
   const sabNbMei  =nb(des.mei,  freight.sabine_dahej||freight.sabine_tokyo,slHH);
   const sabNbAin  =nb(des.ain,  freight.sabine_ain,      slHH);
   // Atlantic: Trinidad (cost base = TTF)
@@ -9719,7 +9731,7 @@ function cpDerived(){
   const sabine_tokyo_pc = ML.map((_,i)=>freight.sabine_tokyo?.[i]!=null?+(freight.sabine_tokyo[i]*(9264/15379)+PC_CANAL_FEE_PER_MMBTU).toFixed(3):null);
   const trinidad_tokyo_pc = ML.map((_,i)=>freight.trinidad_tokyo?.[i]!=null?+(freight.trinidad_tokyo[i]*(8901/13231)+PC_CANAL_FEE_PER_MMBTU).toFixed(3):null);
   // Netbacks for the PC-routed variants (Asia only)
-  const sabNbJktcPc = nb(des.jktc, sabine_tokyo_pc, fp.JKM);
+  const sabNbJktcPc = nb(usgcJktcPcDes, sabine_tokyo_pc, fp.JKM);
   const triNbJktcPc = nb(des.jktc, trinidad_tokyo_pc, fp.JKM);
   // ── Swing signal ──────────────────────────────────────────────────────────
   const jkmTtf    =ML.map((_,i)=>CP.fp.SP_JT?.[i]!=null?CP.fp.SP_JT[i]:+(fp.JKM[i]-fp.TTF[i]).toFixed(3));
@@ -9735,7 +9747,7 @@ function cpDerived(){
     qatNbEur,qatNbAsia,qatNbMei,qatNbAin,
     omnNbEur,omnNbAsia,omnNbMei,omnNbAin,
     abNbAsia,abNbAin,agNbAsia,agNbAin,idxNbAsia,idxNbAin,
-    sabine_tokyo_pc,trinidad_tokyo_pc,sabNbJktcPc,triNbJktcPc,
+    usgcJktcPcDes,usgcJktcCoghDes,sabine_tokyo_pc,trinidad_tokyo_pc,sabNbJktcPc,triNbJktcPc,
     jkmTtf,frDiff,arbOpen,profEur,profAsia};
 }
 // ── Freight seed version: bump whenever seed curves change to force cache refresh ──
@@ -10210,12 +10222,15 @@ function cpGlobalArb(d){
   const idxLbl=idx==='HH'?'HH flat':idx+' flat';
   const fr=d.freight;
   // nb = DES - freight - index
-  function nb(desArr,frArr){return ML.map((_,i)=>frArr&&frArr[i]!=null?desArr[i]-frArr[i]-idxArr[i]:null);}
+  function nb(desArr,frArr){return ML.map((_,i)=>{
+    const dv=desArr?.[i], frv=frArr?.[i], iv=idxArr?.[i];
+    return (dv!=null&&frv!=null&&iv!=null&&!isNaN(dv)&&!isNaN(frv)&&!isNaN(iv))?+(dv-frv-iv).toFixed(3):null;
+  });}
   const ORGS=[
     {id:'sabine_cogh', label:'Sabine Pass (CoGH)',basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.des.jktc,fr.sabine_tokyo)}},
+     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.usgcJktcCoghDes||d.des.jktc,fr.sabine_tokyo)}},
     {id:'sabine_pc',   label:'Sabine Pass (PC)',  basin:'ATL',col:'#4fc3f7',
-     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.des.jktc,d.sabine_tokyo_pc)}},
+     routes:{eur:nb(d.des.nwe,fr.sabine_rotterdam),mei:nb(d.des.mei,fr.sabine_dahej),asia:nb(d.usgcJktcPcDes||d.des.jktc,d.sabine_tokyo_pc)}},
     {id:'trinidad',    label:'Trinidad',          basin:'ATL',col:'#4fc3f7',
      routes:{eur:nb(d.des.nwe,fr.trinidad_gate),mei:nb(d.des.mei,fr.trinidad_dahej),asia:nb(d.des.jktc,fr.trinidad_tokyo)}},
     {id:'angola', label:'Angola',     basin:'ATL',col:'#4fc3f7',
@@ -10243,6 +10258,20 @@ function cpGlobalArb(d){
     mei:{bg:'#0d2e15',fg:'#a5d6a7',lbl:'MEI Dahej'},
     asia:{bg:'#2d0f0f',fg:'#ef9a9a',lbl:'JKTC'},
   };
+  function routeDesArr(org, dk){
+    if(dk==='eur') return d.des.nwe;
+    if(dk==='mei') return d.des.mei;
+    if(dk==='asia'&&org?.id==='sabine_cogh') return d.usgcJktcCoghDes||d.des.jktc;
+    if(dk==='asia'&&org?.id==='sabine_pc') return d.usgcJktcPcDes||d.des.jktc;
+    if(dk==='asia') return d.des.jktc;
+    if(dk==='ain') return d.des.ain;
+    return null;
+  }
+  function routeHubArr(org, dk){
+    if(dk==='asia'&&org?.id==='sabine_cogh') return ML.map((_,i)=>CP.fp.JKM?.[i+1]??null);
+    const hub = {eur:'TTF', mei:'JKM', asia:'JKM', ain:'TTF'}[dk];
+    return hub ? CP.fp[hub] : null;
+  }
   function cellStyle(dk){return DEST_STYLE[dk]||{bg:'#0a1628',fg:'#3d5070'};}
   // Build heatmap rows (12 months)
   const MONTHS12=ML.slice(0,12);
@@ -10262,7 +10291,7 @@ function cpGlobalArb(d){
       if(!cands.length){rows+=`<td style="padding:2px"><div style="background:#0a1628;border-radius:5px;padding:5px 3px;text-align:center;color:#1e3a5f;font-size:10px">—</div></td>`;return;}
       const best=cands.reduce((a,b)=>b.v>a.v?b:a);
       const cs=cellStyle(best.dk);
-      const des=best.dk==='eur'?d.des.nwe[i]:best.dk==='ain'?d.des.ain[i]:best.dk==='mei'?d.des.mei[i]:d.des.jktc[i];
+      const des=routeDesArr(org,best.dk)?.[i];
       const frv=org.routes[best.dk][i];
       const idxv=idxArr[i];
       const DS=DEST_STYLE[best.dk];
@@ -10316,7 +10345,6 @@ function cpGlobalArb(d){
   // Enumerate every (origin, destination) pair, pick best two for the
   // selected month, decompose Δ using each destination's natural hub.
   const NAT_HUB = {eur:'TTF', mei:'JKM', asia:'JKM', ain:'TTF'};
-  const DES_SRC = {eur:d.des.nwe, mei:d.des.mei, asia:d.des.jktc, ain:d.des.ain};
   const allPairs=[];
   ORGS.forEach(org=>{
     ['eur','mei','asia'].forEach(dk=>{
@@ -10327,7 +10355,8 @@ function cpGlobalArb(d){
         label: `${org.label} → ${DEST_LBL[dk]}`,
         v: arr[selM],
         arr: arr,                              // nb series (for sparkline)
-        desArr: DES_SRC[dk],                   // DES price at destination
+        desArr: routeDesArr(org, dk),          // route-timed DES price at destination
+        hubArr: routeHubArr(org, dk),
         hub: NAT_HUB[dk],
       });
     });
@@ -10337,7 +10366,7 @@ function cpGlobalArb(d){
 
   let gWhy='';
   if(gr1 && gr2){
-    const nh1=(CP.fp[gr1.hub]||[])[selM], nh2=(CP.fp[gr2.hub]||[])[selM];
+    const nh1=(gr1.hubArr||CP.fp[gr1.hub]||[])[selM], nh2=(gr2.hubArr||CP.fp[gr2.hub]||[])[selM];
     const ar1=gr1.desArr?.[selM],         ar2=gr2.desArr?.[selM];
     // Recover freight from: nb = DES − Freight − index  →  fr = DES − index − nb
     const fr1 = (ar1!=null && idxArr[selM]!=null) ? ar1 - idxArr[selM] - gr1.v : null;
@@ -10487,7 +10516,7 @@ function cpBasinTab(cfg,d){
   function ts(lbl){
     if(lbl==='Ain Sukhna')return{bg:'#1a2010',fg:'#d4e157'};
     if(lbl.includes('Dahej')||lbl.includes('MEI'))return{bg:'#0d2e15',fg:'#a5d6a7'};
-    if(lbl==='JKTC'||lbl==='JKTC (Tokyo)'||lbl.includes('Thailand')||lbl==='Singapore')return{bg:'#2d0f0f',fg:'#ef9a9a'};
+    if(lbl.includes('JKTC')||lbl.includes('Thailand')||lbl==='Singapore')return{bg:'#2d0f0f',fg:'#ef9a9a'};
     return{bg:'#0d2545',fg:'#90caf9'};
   }
   function sl2(lbl){return({'NWE (Gate)':'NWE Gate','UK Terminals':'UK','DES Italy':'Italy',
@@ -10587,7 +10616,7 @@ function cpBasinTab(cfg,d){
   if(top.length>=2){
     const r1=top[0],r2=top[1];
     const hub1=r1.dt.hub, hub2=r2.dt.hub;
-    const nh1=(CP.fp[hub1]||[])[m], nh2=(CP.fp[hub2]||[])[m];
+    const nh1=(r1.dt.hubArr||CP.fp[hub1]||[])[m], nh2=(r2.dt.hubArr||CP.fp[hub2]||[])[m];
     const arr1=r1.dt.arr[m], arr2=r2.dt.arr[m];
     const fr1=(r1.dt.frArr||[])[m], fr2=(r2.dt.frArr||[])[m];
     if(nh1!=null&&nh2!=null&&arr1!=null&&arr2!=null&&fr1!=null&&fr2!=null){
@@ -10725,23 +10754,33 @@ function cpLngArb(d){
   // ── Basis price for FOB-spread expression ────────────────────────────────
   // Returns the index price for month m, or null if basis doesn't apply
   // (e.g., 115% HH for non-Sabine origin → returns null, cell shows '—').
-  function basisPx(origin, dest) {
+  function basisPx(origin, dest, monthIdx = m) {
     if (BASIS === 'FIXED')   return 0;            // FIXED → return absolute FOB
-    if (BASIS === 'TTF')     return fp.TTF[m];
-    if (BASIS === 'JKM')     return fp.JKM[m];
-    if (BASIS === 'HH')      return fp.HH[m];
-    if (BASIS === 'HHSL')    return origin.id === 'sabine' ? sl * fp.HH[m] : null;
-    return fp.TTF[m];
+    if (BASIS === 'TTF')     return fp.TTF[monthIdx];
+    if (BASIS === 'JKM') {
+      const j = origin.id === 'sabine' && dest.id === 'jktc' ? monthIdx + 1 : monthIdx;
+      return fp.JKM[j];
+    }
+    if (BASIS === 'HH')      return fp.HH[monthIdx];
+    if (BASIS === 'HHSL')    return origin.id === 'sabine' ? sl * fp.HH[monthIdx] : null;
+    return fp.TTF[monthIdx];
+  }
+
+  function routeDesPx(origin, dest, monthIdx = m) {
+    if (origin.id === 'sabine' && dest.id === 'jktc') {
+      return d.usgcJktcCoghDes?.[monthIdx] ?? null;
+    }
+    return des[dest.desKey]?.[monthIdx] ?? null;
   }
 
   // ── FOB netback compute: FOB spread vs basis (or absolute if FIXED) ──────
   function fobNetback(origin, dest) {
     if (dest.sabineOnly && origin.id !== 'sabine') return null;
-    const desPx = des[dest.desKey]?.[m];
+    const desPx = routeDesPx(origin, dest, m);
     const frKey = `${origin.frPrefix}_${dest.frKey}`;
     const frPx  = fr[frKey]?.[m];
     if (desPx == null || frPx == null) return null;
-    const bPx = basisPx(origin, dest);
+    const bPx = basisPx(origin, dest, m);
     if (bPx == null) return null;
     return +(desPx - frPx - bPx).toFixed(3);   // FOB spread (or absolute if bPx=0)
   }
@@ -10824,17 +10863,19 @@ function cpLngArb(d){
     // Rank by FOB Δ (best origin economics) — DES is the same price for every
     // origin delivering to a given destination; sorting by FOB surfaces the
     // origin with the cheapest freight (= best seller netback).
-    const desPxValue = des[D.desKey]?.[m];
     const ranked = ORIGINS
-      .map(O => ({ O, fob: matrix[O.id][D.id], desPx: desPxValue }))
+      .map(O => ({ O, fob: matrix[O.id][D.id], desPx: routeDesPx(O, D, m) }))
       .filter(x => x.fob != null && x.desPx != null)
       .sort((a,b) => b.fob - a.fob)
       .slice(0, 5);
+    const desPxValue = D.id === 'jktc' ? null : des[D.desKey]?.[m];
     const physDelta = CP.phys[D.desKey]?.[m];
     const physBadge = physDelta != null
       ? `<span title="${D.hub} basis · phys diff" style="color:#4fc3f7;font-size:9px;padding:2px 6px;border:1px solid #1e3a5f;border-radius:3px;font-weight:600">${D.hub} Δ ${(physDelta>=0?'+':'')+physDelta.toFixed(3)}</span>`
       : '';
-    const desLine = desPxValue != null
+    const desLine = D.id === 'jktc'
+      ? `<div style="font-size:10px;color:#90caf9;font-weight:600;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #1e3a5f">DES route-timed · Sabine COGH uses next JKM</div>`
+      : desPxValue != null
       ? `<div style="font-size:11px;color:#90caf9;font-weight:600;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #1e3a5f">DES $${desPxValue.toFixed(3)}/MMBtu</div>`
       : `<div style="font-size:10px;color:#3d5070;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #1e3a5f">DES —</div>`;
     const originsHtml = ranked.map((x, i) => `
@@ -10854,7 +10895,7 @@ function cpLngArb(d){
   }).join('');
 
   // ── Stash data on window for drawer + modal handlers (avoids re-deriving) ──
-  window.__lngArbCtx = { ORIGINS, DESTS, matrix, basis: BASIS, basisLbl, m, monthLbl: ML[m], des, fr, fp, sl };
+  window.__lngArbCtx = { ORIGINS, DESTS, matrix, basis: BASIS, basisLbl, m, monthLbl: ML[m], des, fr, fp, sl, routeDesPx, basisPx };
 
   // ── View toggle (Cards / Map). Persisted per session in cp_lng_arb_view ──
   if (!CP.lngArbView) CP.lngArbView = cpGet('cp_lng_arb_view', 'cards');
@@ -11071,7 +11112,7 @@ function cpSetLngArbBasis(b){
 function cpLngArbDrawer(kind, id){
   const ctx = window.__lngArbCtx;
   if (!ctx) return;
-  const { ORIGINS, DESTS, matrix, basis, basisLbl, m, monthLbl, des, fr, fp, sl } = ctx;
+  const { ORIGINS, DESTS, matrix, basis, basisLbl, m, monthLbl, des, fr, fp, sl, routeDesPx, basisPx } = ctx;
   const drawer = document.getElementById('lng-arb-drawer');
   if (!drawer) return;
   const fmt = v => v == null || isNaN(v) ? '—' : (+v).toFixed(3);
@@ -11085,7 +11126,7 @@ function cpLngArbDrawer(kind, id){
   if (kind === 'origin') {
     const O = ORIGINS.find(x => x.id === id); if (!O) return;
     const ranked = DESTS
-      .map(D => ({ D, v: matrix[O.id][D.id], desPx: des[D.desKey]?.[m], frPx: fr[`${O.frPrefix}_${D.frKey}`]?.[m] }))
+      .map(D => ({ D, v: matrix[O.id][D.id], desPx: routeDesPx(O,D,m), frPx: fr[`${O.frPrefix}_${D.frKey}`]?.[m], bPx: basisPx(O,D,m) }))
       .filter(x => x.v != null)
       .sort((a,b) => b.v - a.v);
     const basisShow = basis === 'FIXED' ? 0
@@ -11099,7 +11140,7 @@ function cpLngArbDrawer(kind, id){
       <td style="color:#c8d6e5;font-size:10px;padding:4px 8px">${x.D.label}</td>
       <td class="tr" style="color:#c8d6e5;font-size:10px">${fmt(x.desPx)}</td>
       <td class="tr" style="color:#546e7a;font-size:10px">− ${fmt(x.frPx)}</td>
-      <td class="tr" style="color:#546e7a;font-size:10px">− ${fmt(basisShow)}</td>
+      <td class="tr" style="color:#546e7a;font-size:10px">− ${fmt(x.bPx)}</td>
       <td class="tr" style="color:${colorBE(x.v)};font-weight:700;font-size:11px">${fmtSp(x.v)}</td>
     </tr>`).join('');
     const top3 = ranked.slice(0, 3);
@@ -11131,7 +11172,7 @@ function cpLngArbDrawer(kind, id){
     // Rank by FOB Δ (best origin economics) — DES is a single market price
     // for the destination, so sorting by DES would show arbitrary order.
     const ranked = ORIGINS
-      .map(O => ({ O, fob: matrix[O.id][D.id], desPx: des[D.desKey]?.[m], frPx: fr[`${O.frPrefix}_${D.frKey}`]?.[m] }))
+      .map(O => ({ O, fob: matrix[O.id][D.id], desPx: routeDesPx(O,D,m), frPx: fr[`${O.frPrefix}_${D.frKey}`]?.[m] }))
       .filter(x => x.fob != null && x.desPx != null)
       .sort((a,b) => b.fob - a.fob);
     const physDelta = CP.phys[D.desKey]?.[m];
@@ -11230,7 +11271,7 @@ function cpAtlanticArb(d){
        {label:'Aliaga',               hub:'TTF',arr:d.des.ali,      frArr:fr.sabine_ali},
        {label:'MEI (Dahej)',          hub:'JKM',arr:d.des.mei,      frArr:fr.sabine_dahej},
        {label:'Thailand (Map Ta Phut)',hub:'JKM',arr:d.des.thailand,frArr:fr.sabine_maptaphut},
-       {label:'JKTC',                 hub:'JKM',arr:d.des.jktc,     frArr:fr.sabine_tokyo},
+       {label:'JKTC (COGH · JKM+1)',  hub:'JKM',hubArr:ML.map((_,i)=>CP.fp.JKM?.[i+1]??null),arr:d.usgcJktcCoghDes||d.des.jktc, frArr:fr.sabine_tokyo},
      ]},
     {id:'trinidad',label:'Trinidad',col:'#29b6f6',
      hmRoutes:{eur:fr.trinidad_gate,mei:fr.trinidad_dahej,asia:fr.trinidad_tokyo},
@@ -11496,7 +11537,7 @@ function cpFrDiffBasis(d){
     atlantic:{
       label:'Atlantic',
       ports:[
-        {id:'sabine',  label:'Sabine Pass',  frGate:fr.sabine_rotterdam, frAsia:fr.sabine_tokyo,  dir:'asia', spreadFn:(i)=>CP.fp.SP_JT?.[i]??+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3)},
+        {id:'sabine',  label:'Sabine Pass',  frGate:fr.sabine_rotterdam, frAsia:fr.sabine_tokyo,  dir:'asia', spreadFn:(i)=>CP.fp.JKM?.[i+1]!=null&&CP.fp.TTF?.[i]!=null?+(CP.fp.JKM[i+1]-CP.fp.TTF[i]).toFixed(3):null},
         {id:'trinidad',label:'Trinidad',      frGate:fr.trinidad_gate,    frAsia:fr.trinidad_tokyo,dir:'asia', spreadFn:(i)=>CP.fp.SP_JT?.[i]??+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3)},
         {id:'angola',  label:'Angola',        frGate:fr.angola_gate,      frAsia:fr.angola_tokyo,  dir:'asia', spreadFn:(i)=>CP.fp.SP_JT?.[i]??+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3)},
         {id:'nigeria', label:'Nigeria',       frGate:fr.nigeria_gate,     frAsia:fr.nigeria_tokyo, dir:'asia', spreadFn:(i)=>CP.fp.SP_JT?.[i]??+(CP.fp.JKM[i]-CP.fp.TTF[i]).toFixed(3)},
@@ -11522,9 +11563,9 @@ function cpFrDiffBasis(d){
   const basin=BASINS[selBasin];
   const port=basin.ports.find(p=>p.id===selPort)||basin.ports[0];
 
-  const spread12=ML.slice(0,12).map((_,i)=>+(port.spreadFn(i)).toFixed(3));
+  const spread12=ML.slice(0,12).map((_,i)=>{const v=port.spreadFn(i);return v!=null&&!isNaN(v)?+v.toFixed(3):null;});
   const frDiff12 =ML.slice(0,12).map((_,i)=>port.frAsia[i]!=null&&port.frGate[i]!=null?+(port.frAsia[i]-port.frGate[i]).toFixed(3):null);
-  const signal12 =spread12.map((s,i)=>frDiff12[i]!=null?+(s-frDiff12[i]).toFixed(3):null);
+  const signal12 =spread12.map((s,i)=>s!=null&&frDiff12[i]!=null?+(s-frDiff12[i]).toFixed(3):null);
   const sv=signal12[m],spv=spread12[m],fdv=frDiff12[m];
   const asiaOpen=port.dir==='europe'?sv<0:sv>0;
   const sigCol=asiaOpen?'#4ade80':'#f87171';
@@ -11629,7 +11670,7 @@ function cpFobPricing(d){
       const dv = r.desArr?.[i], frv = r.frArr?.[i];
       if(dv==null || frv==null || isNaN(dv) || isNaN(frv)) return null;
       if(isFixed) return +(dv-frv).toFixed(3);
-      const iv = idxVals[i];
+      const iv = idxVals[i + (curIdx==='JKM' ? (r.idxOffset||0) : 0)];
       if(iv==null || isNaN(iv)) return null;
       return +(dv-frv-iv).toFixed(3);
     }));
@@ -11700,8 +11741,8 @@ function cpFobPricing(d){
     {label:'DES Iberia',       freightLbl:'Sabine → Huelva',      desArr:d.des.iberia, frArr:fr.sabine_iberia},
     {label:'DES Italy',        freightLbl:'Sabine → Rovigo',      desArr:d.des.italy,  frArr:fr.sabine_rovigo},
     {label:'DES MEI',          freightLbl:'Sabine → Dahej',       desArr:d.des.mei,    frArr:fr.sabine_dahej},
-    {label:'DES JKTC (COGH)',  freightLbl:'Sabine → JKTC · COGH', desArr:d.des.jktc,   frArr:fr.sabine_tokyo},
-    {label:'DES JKTC (PC)',    freightLbl:'Sabine → JKTC · Panama', desArr:d.des.jktc, frArr:d.sabine_tokyo_pc},
+    {label:'DES JKTC (COGH · JKM+1)', freightLbl:'Sabine → JKTC · COGH', desArr:d.usgcJktcCoghDes||d.des.jktc, frArr:fr.sabine_tokyo, idxOffset:1},
+    {label:'DES JKTC (PC · JKM M)',    freightLbl:'Sabine → JKTC · Panama', desArr:d.usgcJktcPcDes||d.des.jktc, frArr:d.sabine_tokyo_pc},
   ];
 
   // ─── Oman FOB pane (Oman) ──────────────────────────────────────────────────
@@ -11823,6 +11864,30 @@ function fobCaptureSnapshot(opts = {}){
 }
 window.fobCaptureSnapshot = fobCaptureSnapshot;
 
+function _fobRouteFreight(freightObj, route, i){
+  const base = freightObj?.[route.frKey]?.[i];
+  if(base == null || isNaN(base)) return null;
+  if(route.pcRoute) return +(base * PC_NM_RATIO + PC_CANAL_FEE_PER_MMBTU_LOCAL).toFixed(3);
+  return base;
+}
+
+function _fobRouteDesIndex(gasObj, route, i){
+  const j = i + (route.desOffset || 0);
+  return route.desKey === 'JKM' ? gasObj?.JKM?.[j] : gasObj?.TTF?.[j];
+}
+
+function _fobRoutePhys(physObj, route, i){
+  const j = i + (route.desOffset || 0);
+  return route.physKey ? (physObj?.[route.physKey]?.[j] ?? 0) : 0;
+}
+
+function _fobSelectedIndex(gasObj, route, idxName, i, sl){
+  const j = idxName === route.desKey ? i + (route.desOffset || 0) : i;
+  if(idxName === 'TTF') return gasObj?.TTF?.[j];
+  if(idxName === 'JKM') return gasObj?.JKM?.[j];
+  return gasObj?.HH?.[i] != null ? sl * gasObj.HH[i] : null;
+}
+
 // Compute the FOB time series from saved snapshots, parameterized by
 // (origin, tenor, route_id, idx). Mirrors _fobHistTimeSeries but reads
 // per-snapshot inputs instead of mixing today's freight/phys with
@@ -11836,22 +11901,17 @@ function _fobSnapTimeSeries(originType, tenor, routeId, idxName){
   const out = [];
   for (const s of snaps) {
     const i = tenor - 1;
-    const hh  = s.gas?.HH?.[i];
-    const jkm = s.gas?.JKM?.[i];
-    const ttf = s.gas?.TTF?.[i];
-    const fr  = s.freight?.[route.frKey]?.[i];
-    const physVal = route.physKey ? (s.phys?.[route.physKey]?.[i] ?? 0) : 0;
+    const fr  = _fobRouteFreight(s.freight, route, i);
+    const desIdxAtDate = _fobRouteDesIndex(s.gas, route, i);
+    const physVal = _fobRoutePhys(s.phys, route, i);
 
     let v = null;
-    const idxAtDate = (route.desKey === 'JKM') ? jkm : ttf;
-    if (idxAtDate != null && fr != null) {
-      const desValue = idxAtDate + physVal;
+    if (desIdxAtDate != null && fr != null) {
+      const desValue = desIdxAtDate + physVal;
       if (idxName === 'FIXED') {
         v = +(desValue - fr).toFixed(3);
       } else {
-        const idxValAtDate = idxName === 'TTF' ? ttf
-                            : idxName === 'JKM' ? jkm
-                            : (hh != null ? sl * hh : null);
+        const idxValAtDate = _fobSelectedIndex(s.gas, route, idxName, i, sl);
         if (idxValAtDate != null) v = +(desValue - fr - idxValAtDate).toFixed(3);
       }
     }
@@ -11893,7 +11953,8 @@ const FOB_ROUTES = {
     { id:'sabine_iberia',    label:'Iberia',      desKey:'TTF', physKey:'iberia',   frKey:'sabine_iberia'    },
     { id:'sabine_rovigo',    label:'Italy',       desKey:'TTF', physKey:null,       frKey:'sabine_rovigo'    },
     { id:'sabine_dahej',     label:'MEI',         desKey:'JKM', physKey:null,       frKey:'sabine_dahej'     },
-    { id:'sabine_tokyo',     label:'JKTC',        desKey:'JKM', physKey:'jktc',     frKey:'sabine_tokyo'     },
+    { id:'sabine_tokyo',     label:'JKTC COGH',   desKey:'JKM', physKey:'jktc',     frKey:'sabine_tokyo', desOffset:1 },
+    { id:'sabine_tokyo_pc',  label:'JKTC PC',     desKey:'JKM', physKey:'jktc',     frKey:'sabine_tokyo', pcRoute:true },
   ],
   oman: [
     { id:'oman_tokyo',       label:'JKTC',        desKey:'JKM', physKey:'jktc',     frKey:'oman_tokyo'       },
@@ -11914,8 +11975,8 @@ function _fobHistTimeSeries(originType, tenor, routeId, idxName){
   if (!route) return [];
 
   // today's static inputs (freight + phys diffs aren't historical yet)
-  const freight = CP.freight?.[route.frKey]?.[tenor - 1];
-  const physVal = route.physKey ? (CP.phys?.[route.physKey]?.[tenor - 1] || 0) : 0;
+  const freight = _fobRouteFreight(CP.freight, route, tenor - 1);
+  const physVal = _fobRoutePhys(CP.phys, route, tenor - 1);
 
   const out = [];
   for (const ds of sDates) {
@@ -11926,7 +11987,10 @@ function _fobHistTimeSeries(originType, tenor, routeId, idxName){
     if (!row) { out.push({ date, value: null }); continue; }
 
     // Generic FOB formula: DES_destination − freight (− index if spread mode)
-    const idxAtDate = (route.desKey === 'JKM') ? row.JKM : row.TTF;
+    const routeTenor = tenor + (route.desOffset || 0);
+    const routePk = routeTenor === tenor ? pk : rPK(date, routeTenor);
+    const routeRow = routeTenor === tenor ? row : rows.find(r => r.pk === routePk);
+    const idxAtDate = route.desKey === 'JKM' ? routeRow?.JKM : routeRow?.TTF;
     if (idxAtDate == null || freight == null) { out.push({ date, value: null }); continue; }
     const desValue = idxAtDate + physVal;
 
@@ -11934,8 +11998,9 @@ function _fobHistTimeSeries(originType, tenor, routeId, idxName){
     if (idxName === 'FIXED') {
       value = +(desValue - freight).toFixed(3);
     } else {
-      const idxValAtDate = idxName === 'TTF' ? row.TTF
-                          : idxName === 'JKM' ? row.JKM
+      const idxRow = idxName === route.desKey ? routeRow : row;
+      const idxValAtDate = idxName === 'TTF' ? idxRow?.TTF
+                          : idxName === 'JKM' ? idxRow?.JKM
                           : (row.HH != null ? sl * row.HH : null);
       if (idxValAtDate == null) { out.push({ date, value: null }); continue; }
       value = +(desValue - freight - idxValAtDate).toFixed(3);
@@ -12117,14 +12182,16 @@ function _usgcArbComputeFromInputs(gas, freight, phys, liqFee){
   const arbPc   = [];
   for (let i = 0; i < 24; i++) {
     const hh    = gas?.HH?.[i];
-    const jkm   = gas?.JKM?.[i];
+    const jkmPc = gas?.JKM?.[i];
+    const jkmCogh = gas?.JKM?.[i+1];
     const ttf   = gas?.TTF?.[i];
     const physNwe  = phys?.nwe?.[i]  ?? 0;
-    const physJktc = phys?.jktc?.[i] ?? 0;
+    const physJktcPc = phys?.jktc?.[i] ?? 0;
+    const physJktcCogh = phys?.jktc?.[i+1] ?? 0;
     const frGate  = freight?.sabine_rotterdam?.[i];
     const frTokyo = freight?.sabine_tokyo?.[i];
 
-    if (hh == null || jkm == null || ttf == null || frGate == null || frTokyo == null) {
+    if (hh == null || ttf == null || frGate == null || frTokyo == null) {
       arbCogh.push(null); arbPc.push(null); continue;
     }
 
@@ -12132,15 +12199,16 @@ function _usgcArbComputeFromInputs(gas, freight, phys, liqFee){
     // explicit subtraction so the formula reads naturally.
     const idx = sl * hh;
     const desNwe  = ttf + physNwe;
-    const desJktc = jkm + physJktc;
     const europeNb   = desNwe  - frGate  - idx;
-    const asiaCoghNb = desJktc - frTokyo - idx;
+    const desJktcCogh = jkmCogh != null ? jkmCogh + physJktcCogh : null;
+    const asiaCoghNb = desJktcCogh != null ? desJktcCogh - frTokyo - idx : null;
     // PC route: scale COGH freight by NM ratio + canal fee (matches cpDerived)
     const sabTokyoPc = frTokyo * PC_NM_RATIO + PC_CANAL_FEE_PER_MMBTU_LOCAL;
-    const asiaPcNb   = desJktc - sabTokyoPc - idx;
+    const desJktcPc = jkmPc != null ? jkmPc + physJktcPc : null;
+    const asiaPcNb   = desJktcPc != null ? desJktcPc - sabTokyoPc - idx : null;
 
-    arbCogh.push(+(asiaCoghNb - europeNb).toFixed(3));
-    arbPc.push(+(asiaPcNb - europeNb).toFixed(3));
+    arbCogh.push(asiaCoghNb != null ? +(asiaCoghNb - europeNb).toFixed(3) : null);
+    arbPc.push(asiaPcNb != null ? +(asiaPcNb - europeNb).toFixed(3) : null);
   }
   return { arbCogh, arbPc };
 }
@@ -12179,6 +12247,7 @@ function _usgcArbCurves(){
 function cpUsgcArbViz(d){
   const arbData = _usgcArbCurves();
   const m1Label = ML[0] || 'M+1';
+  const coghDesLabel = ML[1] || 'next JKM';
   const m1Cogh = arbData.today?.arbCogh?.[0] ?? null;
   const m1Pc = arbData.today?.arbPc?.[0] ?? null;
   const m1Direction = m1Cogh == null ? '—' : m1Cogh > 0 ? 'Asia' : m1Cogh < 0 ? 'Europe' : 'Flat';
@@ -12189,7 +12258,7 @@ function cpUsgcArbViz(d){
 
     <div style="padding:0 14px 8px;font-size:9px;color:#546e7a;line-height:1.5">
       <code style="color:#93c5fd">arb = (DES_JKTC − Sabine→Tokyo − 1.15×HH) − (DES_NWE − Sabine→Gate − 1.15×HH)</code><br/>
-      Assessment focus = <b style="color:#c8d6e5">M+1 / ${m1Label}</b>. The current/assessment month is not used for this USGC COGH arb read.
+      Route timing: <b style="color:#c8d6e5">Panama uses JKM ${m1Label}</b>; <b style="color:#c8d6e5">COGH uses next JKM ${coghDesLabel}</b> for the same USGC load/freight month.
       Full curve below remains M+1 → M+24 for context.<br/>
       <span style="color:#34d399">Above 0</span> → arb pointing to Asia (Sabine cargoes net higher to Tokyo).
       <span style="color:#fca5a5">Below 0</span> → arb pointing to Europe.<br/>
@@ -12198,17 +12267,17 @@ function cpUsgcArbViz(d){
 
     <div style="padding:0 14px 12px;display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:10px">
       <div class="acard" style="padding:10px 12px;background:#071a2b;border:1px solid #1e3a5f">
-        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">COGH ARB · M+1 · ${m1Label}</div>
+        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">COGH ARB · ${m1Label} LOAD · JKM ${coghDesLabel}</div>
         <div style="color:${m1Color};font-size:20px;font-weight:700;margin-top:4px">${fmtM1(m1Cogh)}</div>
         <div style="color:#546e7a;font-size:8px;margin-top:2px">$/MMBtu · Asia minus Europe</div>
       </div>
       <div class="acard" style="padding:10px 12px;background:#071a2b;border:1px solid #1e3a5f">
-        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">PANAMA ARB · M+1 · ${m1Label}</div>
+        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">PANAMA ARB · JKM ${m1Label}</div>
         <div style="color:${m1Pc == null ? '#94a3b8' : m1Pc > 0 ? '#34d399' : m1Pc < 0 ? '#fca5a5' : '#c8d6e5'};font-size:20px;font-weight:700;margin-top:4px">${fmtM1(m1Pc)}</div>
         <div style="color:#546e7a;font-size:8px;margin-top:2px">$/MMBtu · reference route</div>
       </div>
       <div class="acard" style="padding:10px 12px;background:#071a2b;border:1px solid #1e3a5f">
-        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">COGH M+1 DIRECTION</div>
+        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">COGH ROUTE DIRECTION</div>
         <div style="color:${m1Color};font-size:20px;font-weight:700;margin-top:4px">${m1Direction}</div>
         <div style="color:#546e7a;font-size:8px;margin-top:2px">${arbData.today?.eod_date ? 'Latest EOD '+arbData.today.eod_date : 'Load EOD curves'}</div>
       </div>
@@ -12218,7 +12287,7 @@ function cpUsgcArbViz(d){
 
       <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937">
         <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:6px">
-          USGC Arb via COGH · Sabine→Tokyo (Cape of Good Hope route)
+          USGC Arb via COGH · Sabine→Tokyo (DES JKM shifted +1 month)
         </div>
         <div style="height:300px"><canvas id="usgc-arb-cogh"></canvas></div>
       </div>
@@ -12287,7 +12356,7 @@ function _usgcArbRenderCharts(){
     }
     window['_'+canvasId] = new Chart(c.getContext('2d'), {
       type: 'line',
-      data: { labels: ML.slice(0, 24), datasets },
+      data: { labels: key === 'arbCogh' ? ML.slice(0, 24).map((m,i)=>`${m}→${ML[i+1]||'—'}`) : ML.slice(0, 24), datasets },
       options: {
         ...CD, animation: false,
         plugins: {
