@@ -6218,6 +6218,7 @@ function miniSVG(blng){
 const FMTABS=['FREIGHT CURVES','SHIP PARAMS','MATRIX','DIFFERENTIALS','HISTORICAL'];
 const FREIGHT_HIST_FOLDER_ID='1PLeK-f1tXTADjETKPvOzQ-9aAyhO2GSb';
 const FREIGHT_HIST_EXCEL_FOLDER_ID='15nSQOFkmCkus9jFjPO7lsa23WzL5KHWA';
+const FREIGHT_HIST_IMAGE_FOLDER_ID='1BKSGwAF_Rcx3FgbHDF1s1ZpQG9jo--qJ';
 
 
 function initFreight(){
@@ -8438,6 +8439,48 @@ function fHistParseWorkbook(buf,fileName,meta={}){
   return{date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:fHistAlignToML({BLNG1:b1,BLNG2:b2,BLNG3:b3},isoDate),...meta};
 }
 
+function fHistBufToBase64(buf){
+  const bytes=new Uint8Array(buf);
+  let bin='';
+  const chunk=0x8000;
+  for(let i=0;i<bytes.length;i+=chunk){
+    bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunk));
+  }
+  return btoa(bin);
+}
+
+async function fHistParseImageWithVision(buf,file){
+  const isoDate=fHistDateFromName(file.name);
+  if(!isoDate)throw new Error('cannot parse date from filename');
+  const resp=await fetch('/api/anthropic',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:500,
+      system:`Extract BLNG freight curve data from this OB FFA Rates table image. Return ONLY valid JSON:
+{"BLNG1":[v1,...,v24],"BLNG2":[v1,...,v24],"BLNG3":[v1,...,v24]}
+- Find columns BLNG1/BLNG2/BLNG3 by header label, not basin description.
+- Extract rows 174+1_M through 174+24_M only, exactly 24 values per curve, in $/day.
+- Empty cells = null. Exclude CURMON, quarterly rows, and calendar year rows.
+- Return ONLY the JSON object, no markdown.`,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:file.mimeType||'image/jpeg',data:fHistBufToBase64(buf)}},
+        {type:'text',text:`Extract BLNG1/2/3 M+1 to M+24. Assessment date: ${isoDate}. File: ${file.name}. JSON only.`}
+      ]}]
+    })
+  });
+  if(!resp.ok)throw new Error(`vision API error ${resp.status}`);
+  const data=await resp.json();
+  if(data.error)throw new Error(data.error.message||'vision API error');
+  const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').replace(/```[a-z]*\n?/gi,'').trim();
+  if(!text)throw new Error('empty vision response');
+  const parsed=JSON.parse(text);
+  const hasData=(parsed.BLNG1||[]).some(v=>v!=null)||(parsed.BLNG2||[]).some(v=>v!=null)||(parsed.BLNG3||[]).some(v=>v!=null);
+  if(!hasData)throw new Error('no BLNG data found');
+  return{date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:fHistAlignToML(parsed,isoDate),_source:'Google Drive Image',_driveFileId:file.id,_driveModified:file.modifiedTime||null};
+}
+
 function fHistMergeCurves(results){
   const byDate=new Map((F.histCurves||[]).map(c=>[c.date,c]));
   let added=0,updated=0;
@@ -8459,28 +8502,35 @@ async function syncFreightHistFromDrive(silent=false){
   _freightHistDriveSyncing=true;
   if(!silent){
     F.histLoading=true;
-    F.histProgress={total:0,done:0,current:'Listing Excel files in Freight Drive folder…',errors:[]};
+    F.histProgress={total:0,done:0,current:'Listing Freight Drive files…',errors:[]};
     _fHistRefresh();
   }
   const errors=[];
   try{
     const files=[];
-    for(const folderId of [FREIGHT_HIST_FOLDER_ID,FREIGHT_HIST_EXCEL_FOLDER_ID]){
+    const folderSpecs=[
+      {id:FREIGHT_HIST_FOLDER_ID,filter:'all'},
+      {id:FREIGHT_HIST_EXCEL_FOLDER_ID,filter:'all'}
+    ];
+    if(!silent)folderSpecs.push({id:FREIGHT_HIST_IMAGE_FOLDER_ID,filter:'image'});
+    for(const spec of folderSpecs){
       let pageToken=null;
       do{
-        let url=`/api/drive?action=list&folderId=${encodeURIComponent(folderId)}&filter=all`;
+        let url=`/api/drive?action=list&folderId=${encodeURIComponent(spec.id)}&filter=${encodeURIComponent(spec.filter)}`;
         if(pageToken)url+=`&pageToken=${encodeURIComponent(pageToken)}`;
         const r=await fetch(url);
         if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||e.error||'Drive API error');}
         const d=await r.json();
-        files.push(...(d.files||[]).map(f=>({...f,_folderId:folderId})));
+        files.push(...(d.files||[]).map(f=>({...f,_folderId:spec.id})));
         pageToken=d.nextPageToken||null;
       }while(pageToken);
     }
 
     const byId=new Map(files.map(f=>[f.id,f]));
     const valid=[...byId.values()].filter(f=>f.name&&(
-      (f.name.match(/\.xlsx?$/i)&&fHistDateFromName(f.name))||f.name.match(/\.json$/i)
+      (f.name.match(/\.xlsx?$/i)&&fHistDateFromName(f.name))||
+      f.name.match(/\.json$/i)||
+      (!silent&&f.mimeType&&f.mimeType.startsWith('image/')&&fHistDateFromName(f.name))
     ));
     valid.sort((a,b)=>String(a.name).localeCompare(String(b.name)));
     const seen=fg('f_hist_drive_seen_v1',{});
@@ -8488,11 +8538,15 @@ async function syncFreightHistFromDrive(silent=false){
     const toProcess=valid.filter(f=>{
       if(seen[f.id]&&seen[f.id]===f.modifiedTime)return false;
       if(f.name.match(/\.json$/i))return true;
+      if(f.mimeType&&f.mimeType.startsWith('image/')){
+        const date=fHistDateFromName(f.name);
+        return date&&!existing.has(date);
+      }
       const date=fHistDateFromName(f.name),old=existing.get(date);
       return !old||(f.modifiedTime&&old._driveModified&&f.modifiedTime>old._driveModified);
     });
     if(!toProcess.length){
-      if(!silent)alert(`Freight Drive is already synced. ${valid.length} parseable Excel/JSON file(s) checked.`);
+      if(!silent)alert(`Freight Drive is already synced. ${valid.length} parseable Excel/JSON/image file(s) checked.`);
       return;
     }
     if(!silent){F.histProgress.total=toProcess.length;_fHistRefresh();}
@@ -8509,6 +8563,8 @@ async function syncFreightHistFromDrive(silent=false){
           const validJson=arr.filter(s=>s&&s.date&&s.blng&&s.blng.BLNG1&&s.blng.BLNG2&&s.blng.BLNG3);
           if(!validJson.length)throw new Error('no valid freight curves in JSON');
           results.push(...validJson.map(s=>({...s,_source:'Google Drive JSON',_driveFileId:file.id,_driveModified:file.modifiedTime||null})));
+        }else if(file.mimeType&&file.mimeType.startsWith('image/')){
+          results.push(await fHistParseImageWithVision(buf,file));
         }else{
           if(buf.byteLength<5000)throw new Error('file too small');
           const h=new Uint8Array(buf.slice(0,4));
