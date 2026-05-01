@@ -14,11 +14,17 @@ function assert(cond, msg) {
 }
 
 assert(
-  js.includes('FOB FORWARD CURVE ARCHIVE · saved daily curves') &&
+  js.includes('FOB HISTORY WORKBENCH · route / index / loading point') &&
+    js.includes('LOADING POINT') &&
+    js.includes('INDEXATION') &&
+    js.includes('fob-hist-workbench-curve') &&
+    js.includes('fob-hist-workbench-historical') &&
     js.includes('OBSERVATION DATE') &&
     js.includes('cp_fob_hist_obs_date') &&
+    js.includes('cp_fob_hist_origin') &&
+    js.includes('cp_fob_hist_view') &&
     js.includes('Liquefaction fee excluded from FOB netback history'),
-  'FOB history must expose an observation-date forward-curve archive'
+  'FOB history must expose a route/index/loading-point workbench for curve and historical views'
 );
 
 assert(
@@ -71,8 +77,8 @@ if (start >= 0 && end > start) {
 }
 
 assert(
-  app.includes('name=lngtradeos.js&v=20260501-fob-history-curves'),
-  'private platform cache-bust must point to the FOB history curve bundle'
+  app.includes('name=lngtradeos.js&v=20260501-fob-history-workbench'),
+  'private platform cache-bust must point to the FOB history workbench bundle'
 );
 
 if (!process.exitCode) console.log('FOB history curve regression checks passed');
