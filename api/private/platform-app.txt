@@ -9,8 +9,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260430-eub-units">
-<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260430-eub-units" defer></script>
+<link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260501-freight-drive">
+<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260501-freight-drive" defer></script>
 </head>
 <body class="app-unlocked">
 <div id="public-site">

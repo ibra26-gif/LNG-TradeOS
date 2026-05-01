@@ -147,19 +147,41 @@ export default async function handler(req, res) {
   }
   const folder = folderId || DEFAULT_FOLDER;
   if (action === 'list') {
-    const mimeFilter = [
-      "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
-      "mimeType='application/vnd.ms-excel'",
-      "name contains '.xlsx'",
-      "name contains '.xls'"
-    ].join(' or ');
+    const filter = String(req.query.filter || 'xlsx').toLowerCase();
+    const filters = {
+      xlsx: [
+        "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+        "mimeType='application/vnd.ms-excel'",
+        "name contains '.xlsx'",
+        "name contains '.xls'"
+      ],
+      json: [
+        "mimeType='application/json'",
+        "name contains '.json'"
+      ],
+      image: [
+        "mimeType contains 'image/'",
+        "name contains '.png'",
+        "name contains '.jpg'",
+        "name contains '.jpeg'"
+      ],
+      all: [
+        "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+        "mimeType='application/vnd.ms-excel'",
+        "mimeType='application/json'",
+        "name contains '.xlsx'",
+        "name contains '.xls'",
+        "name contains '.json'"
+      ],
+    };
+    const mimeFilter = (filters[filter] || filters.xlsx).join(' or ');
     let q = `'${folder}' in parents and trashed=false and (${mimeFilter})`;
     if (after) {
       q += ` and modifiedTime > '${after}T12:00:00'`;
     }
     const params = new URLSearchParams({
       q,
-      fields: 'nextPageToken,files(id,name,size,modifiedTime)',
+      fields: 'nextPageToken,files(id,name,size,mimeType,modifiedTime)',
       orderBy: 'name asc',
       pageSize: '1000',
       key: API_KEY,
