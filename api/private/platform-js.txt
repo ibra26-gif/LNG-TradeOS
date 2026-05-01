@@ -9964,6 +9964,8 @@ function initCargo(){
   CP.fobOmanHistRoute = cpGet('cp_fob_oman_hist_route','oman_tokyo');
   CP.fobOmanHistIdx   = cpGet('cp_fob_oman_hist_idx',  'FIXED');
   CP.fobHistObsDate   = cpGet('cp_fob_hist_obs_date',   '');
+  CP.fobHistOrigin    = cpGet('cp_fob_hist_origin',     'usgc');
+  CP.fobHistView      = cpGet('cp_fob_hist_view',       'curve');
   CP.fobOmanFixed=cpGet('cp_fob_oman_fixed',10.00);
   CP.tab=0;renderCargo();
 }
@@ -12107,23 +12109,6 @@ function cpFobHistoricalSection(d){
   const us   = { tenor: CP.fobUsHistTenor   || 1, route: CP.fobUsHistRoute   || 'sabine_tokyo', idx: CP.fobUsHistIdx   || 'FIXED' };
   const oman = { tenor: CP.fobOmanHistTenor || 1, route: CP.fobOmanHistRoute || 'oman_tokyo',   idx: CP.fobOmanHistIdx || 'FIXED' };
 
-  const renderToggles = (origin, sel) => {
-    const routes = FOB_ROUTES[origin];
-    const tenorBtns = TENORS.map(t => `<button class="f-btn sm${sel.tenor===t?' on':''}" onclick="CP.fob${origin==='usgc'?'Us':'Oman'}HistTenor=${t};cpSet('cp_fob_${origin}_hist_tenor',${t});renderCargoTab()">M+${t}</button>`).join('');
-    const routeBtns = routes.map(r => `<button class="f-btn sm${sel.route===r.id?' on':''}" onclick="CP.fob${origin==='usgc'?'Us':'Oman'}HistRoute='${r.id}';cpSet('cp_fob_${origin}_hist_route','${r.id}');renderCargoTab()">${r.label}</button>`).join('');
-    const idxBtns   = ['FIXED','TTF','JKM','HH'].map(x => `<button class="f-btn sm${sel.idx===x?' on':''}" onclick="CP.fob${origin==='usgc'?'Us':'Oman'}HistIdx='${x}';cpSet('cp_fob_${origin}_hist_idx','${x}');renderCargoTab()">${x==='FIXED'?'Abs netback':x==='HH'?'115%HH':x}</button>`).join('');
-    return `
-      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;font-size:9px">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#546e7a;letter-spacing:1px;min-width:50px">TENOR</span> ${tenorBtns}</div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#546e7a;letter-spacing:1px;min-width:50px">ROUTE</span> ${routeBtns}</div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#546e7a;letter-spacing:1px;min-width:50px">INDEX</span> ${idxBtns}</div>
-      </div>`;
-  };
-
-  const usRouteLabel = (FOB_ROUTES.usgc.find(r=>r.id===us.route)||{}).label || us.route;
-  const omanRouteLabel = (FOB_ROUTES.oman.find(r=>r.id===oman.route)||{}).label || oman.route;
-  const yLabel = (idx) => idx==='FIXED' ? '$/MMBtu (Abs netback)' : 'spread vs '+(idx==='HH'?'115%HH':idx);
-
   // ── Snapshot freshness panel ─────────────────────────────────────────
   const snaps = (typeof _fobLoadSnapshots === 'function' ? _fobLoadSnapshots() : []);
   const eodTs   = localStorage.getItem('eod_last_ts');
@@ -12146,67 +12131,110 @@ function cpFobHistoricalSection(d){
     CP.fobHistObsDate = selectedSnap.eod_date || selectedSnap.date;
     cpSet('cp_fob_hist_obs_date', CP.fobHistObsDate);
   }
-  const histIdxButtons = (origin, curIdx) => ['FIXED','TTF','JKM','HH'].map(x => {
-    const lbl = x === 'FIXED' ? 'Abs netback' : x === 'HH' ? '115%HH' : x;
-    const prop = origin === 'usgc' ? 'fobUsHistIdx' : 'fobOmanHistIdx';
-    const key = origin === 'usgc' ? 'cp_fob_usgc_hist_idx' : 'cp_fob_oman_hist_idx';
-    return `<button class="f-btn sm${curIdx===x?' on':''}" onclick="CP.${prop}='${x}';cpSet('${key}','${x}');renderCargoTab()">${lbl}</button>`;
-  }).join('');
-  const renderArchiveTable = (origin, title, idx, color) => {
-    if (!selectedSnap) return '';
-    const months = _fobSnapshotMonthLabels(selectedSnap);
-    const routeLeg = (route) => {
-      if (route.id === 'sabine_tokyo') return 'Sabine → JKTC · COGH';
-      if (route.id === 'sabine_tokyo_pc') return 'Sabine → JKTC · Panama';
-      const src = origin === 'usgc' ? 'Sabine' : 'Oman';
-      return `${src} → ${route.label}`;
-    };
-    const rows = _fobSnapshotCurveRows(selectedSnap, origin, idx).map(({route, values}) => {
-      const cells = values.map(v => {
-        if (v == null || isNaN(v)) return `<td class="tr" style="color:#3d5070">—</td>`;
-        if (idx === 'FIXED') return `<td class="tr" style="color:#d4e157;font-weight:600">${v.toFixed(3)}</td>`;
-        const col = v > 0 ? '#4ade80' : v < 0 ? '#f87171' : '#c8d6e5';
-        return `<td class="tr" style="color:${col};font-weight:600">${v > 0 ? '+' : ''}${v.toFixed(3)}</td>`;
-      }).join('');
-      return `<tr>
-        <td style="color:#c8d6e5;white-space:nowrap">${route.label}</td>
-        <td style="color:#546e7a;white-space:nowrap">${routeLeg(route)}</td>
-        ${cells}
-      </tr>`;
-    }).join('');
-    return `
-      <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937;margin:0 14px 10px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-          <div style="font-size:11px;color:${color};font-weight:700;letter-spacing:.08em">${title} · ${idx==='FIXED'?'$/MMBtu absolute':'spread vs '+(idx==='HH'?'115%HH':idx)}</div>
-          <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><span class="f-lbl">INDEX</span>${histIdxButtons(origin, idx)}</div>
-        </div>
-        <div style="overflow-x:auto">
-          <table class="f-tbl"><thead><tr>
-            <th style="text-align:left;min-width:150px">ROUTE</th>
-            <th style="text-align:left;min-width:145px;color:#546e7a">FREIGHT LEG</th>
-            ${months.map(m=>`<th class="tr" style="min-width:62px">${m}</th>`).join('')}
-          </tr></thead><tbody>${rows}</tbody></table>
-        </div>
-      </div>`;
+  const activeOrigin = CP.fobHistOrigin === 'oman' ? 'oman' : 'usgc';
+  const activeView = CP.fobHistView === 'historical' ? 'historical' : 'curve';
+  const activeSel = activeOrigin === 'usgc' ? us : oman;
+  const activeRoutes = FOB_ROUTES[activeOrigin] || [];
+  if (!activeRoutes.find(r => r.id === activeSel.route) && activeRoutes[0]) {
+    activeSel.route = activeRoutes[0].id;
+    if (activeOrigin === 'usgc') { CP.fobUsHistRoute = activeSel.route; cpSet('cp_fob_usgc_hist_route', activeSel.route); }
+    else { CP.fobOmanHistRoute = activeSel.route; cpSet('cp_fob_oman_hist_route', activeSel.route); }
+  }
+  const activeRoute = activeRoutes.find(r => r.id === activeSel.route) || activeRoutes[0] || null;
+  const routeLeg = (route, origin) => {
+    if (!route) return '—';
+    if (route.id === 'sabine_tokyo') return 'Sabine → JKTC · COGH';
+    if (route.id === 'sabine_tokyo_pc') return 'Sabine → JKTC · Panama';
+    const src = origin === 'usgc' ? 'Sabine' : 'Oman';
+    return `${src} → ${route.label}`;
   };
-  const renderCurveArchive = () => {
+  const idxLabel = (idx) => idx === 'FIXED' ? '$/MMBtu absolute' : 'spread vs ' + (idx === 'HH' ? '115%HH' : idx);
+  const fmtFob = (v, idx) => {
+    if (v == null || isNaN(v)) return '<span style="color:#3d5070">—</span>';
+    if (idx === 'FIXED') return `<span style="color:#d4e157">${v.toFixed(3)}</span>`;
+    const col = v > 0 ? '#4ade80' : v < 0 ? '#f87171' : '#c8d6e5';
+    return `<span style="color:${col}">${v > 0 ? '+' : ''}${v.toFixed(3)}</span>`;
+  };
+  const setPrefix = activeOrigin === 'usgc'
+    ? { route:'fobUsHistRoute', idx:'fobUsHistIdx', tenor:'fobUsHistTenor', routeKey:'cp_fob_usgc_hist_route', idxKey:'cp_fob_usgc_hist_idx', tenorKey:'cp_fob_usgc_hist_tenor' }
+    : { route:'fobOmanHistRoute', idx:'fobOmanHistIdx', tenor:'fobOmanHistTenor', routeKey:'cp_fob_oman_hist_route', idxKey:'cp_fob_oman_hist_idx', tenorKey:'cp_fob_oman_hist_tenor' };
+  const renderWorkbench = () => {
     if (!snapList.length) return `
       <div style="margin:0 14px 14px;background:#070b14;border:1px dashed #1e3a5f;padding:12px;color:#546e7a;font-size:10px">
         No saved FOB snapshots yet.
       </div>`;
+    const months = _fobSnapshotMonthLabels(selectedSnap);
+    const values = activeRoute ? months.map((_, i) => _fobSnapshotFobValue(selectedSnap, activeRoute, activeSel.idx, i)) : [];
     const savedAt = selectedSnap?.ts ? new Date(selectedSnap.ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
-    return `
-      <div class="f-sec" style="margin-top:14px">FOB FORWARD CURVE ARCHIVE · saved daily curves</div>
-      <div style="margin:0 14px 10px;background:#071a2b;border:1px solid #4fc3f7;padding:8px 12px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
-        <div><span class="f-lbl">OBSERVATION DATE</span>
-          <select class="f-sel" style="min-width:260px" onchange="CP.fobHistObsDate=this.value;cpSet('cp_fob_hist_obs_date',this.value);renderCargoTab()">
-            ${snapList.map(s=>{const ds=s.eod_date||s.date;return `<option value="${ds}"${selectedSnap===s?' selected':''}>${ds} — saved ${s.ts?new Date(s.ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):'snapshot'}</option>`;}).join('')}
+    const originBtns = [
+      ['usgc','USGC / Sabine'],
+      ['oman','Oman'],
+    ].map(([k,l])=>`<button class="f-btn sm${activeOrigin===k?' on':''}" onclick="CP.fobHistOrigin='${k}';cpSet('cp_fob_hist_origin','${k}');renderCargoTab()">${l}</button>`).join('');
+    const viewBtns = [
+      ['curve','Forward curve'],
+      ['historical','Historical'],
+    ].map(([k,l])=>`<button class="f-btn sm${activeView===k?' on':''}" onclick="CP.fobHistView='${k}';cpSet('cp_fob_hist_view','${k}');renderCargoTab()">${l}</button>`).join('');
+    const obsSelect = activeView === 'curve' ? `
+      <div><span class="f-lbl">OBSERVATION DATE</span>
+        <select class="f-sel" style="min-width:230px" onchange="CP.fobHistObsDate=this.value;cpSet('cp_fob_hist_obs_date',this.value);renderCargoTab()">
+          ${snapList.map(s=>{const ds=s.eod_date||s.date;return `<option value="${ds}"${selectedSnap===s?' selected':''}>${ds} — saved ${s.ts?new Date(s.ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):'snapshot'}</option>`;}).join('')}
+        </select>
+      </div>` : '';
+    const tenorSelect = activeView === 'historical' ? `
+      <div><span class="f-lbl">TENOR</span>
+        <select class="f-sel" onchange="CP.${setPrefix.tenor}=+this.value;cpSet('${setPrefix.tenorKey}',+this.value);renderCargoTab()">
+          ${TENORS.map(t=>`<option value="${t}"${activeSel.tenor===t?' selected':''}>M+${t}</option>`).join('')}
+        </select>
+      </div>` : '';
+    const controls = `
+      <div class="f-sec" style="margin-top:14px">FOB HISTORY WORKBENCH · route / index / loading point</div>
+      <div style="margin:0 14px 10px;background:#071a2b;border:1px solid #4fc3f7;padding:9px 12px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+        <div><span class="f-lbl">LOADING POINT</span><div style="display:flex;gap:4px;margin-top:4px">${originBtns}</div></div>
+        <div><span class="f-lbl">VIEW</span><div style="display:flex;gap:4px;margin-top:4px">${viewBtns}</div></div>
+        ${obsSelect}
+        <div><span class="f-lbl">ROUTE</span>
+          <select class="f-sel" style="min-width:170px" onchange="CP.${setPrefix.route}=this.value;cpSet('${setPrefix.routeKey}',this.value);renderCargoTab()">
+            ${activeRoutes.map(r=>`<option value="${r.id}"${activeSel.route===r.id?' selected':''}>${r.label}</option>`).join('')}
           </select>
         </div>
+        <div><span class="f-lbl">INDEXATION</span>
+          <select class="f-sel" onchange="CP.${setPrefix.idx}=this.value;cpSet('${setPrefix.idxKey}',this.value);renderCargoTab()">
+            ${['FIXED','TTF','JKM','HH'].map(x=>`<option value="${x}"${activeSel.idx===x?' selected':''}>${x==='FIXED'?'Abs netback':x==='HH'?'115%HH':x}</option>`).join('')}
+          </select>
+        </div>
+        ${tenorSelect}
         <span style="font-size:9px;color:#546e7a">${snapList.length} observation date(s) · selected snapshot saved ${savedAt}</span>
+      </div>`;
+
+    if (activeView === 'historical') {
+      return `${controls}
+        <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937;margin:0 14px 10px">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+            <div style="font-size:11px;color:#fff;font-weight:600">${activeOrigin==='usgc'?'USGC / Sabine':'Oman'} FOB historical · ${routeLeg(activeRoute, activeOrigin)} · M+${activeSel.tenor} · ${idxLabel(activeSel.idx)}</div>
+          </div>
+          <div style="height:260px"><canvas id="fob-hist-workbench-historical"></canvas></div>
+        </div>
+        <div style="margin:0 14px 14px;color:#546e7a;font-size:9px;line-height:1.5">
+          Source: saved FOB snapshots only. Each point uses the gas, freight and physical differential captured on that observation date.
+        </div>`;
+    }
+
+    const table = `
+      <div style="overflow-x:auto;margin-top:8px">
+        <table class="f-tbl"><thead><tr>
+          <th style="text-align:left;min-width:170px">ROUTE</th>
+          ${months.map(m=>`<th class="tr" style="min-width:62px">${m}</th>`).join('')}
+        </tr></thead><tbody><tr>
+          <td style="color:#c8d6e5;white-space:nowrap">${routeLeg(activeRoute, activeOrigin)}</td>
+          ${values.map(v=>`<td class="tr" style="font-weight:700">${fmtFob(v, activeSel.idx)}</td>`).join('')}
+        </tr></tbody></table>
+      </div>`;
+    return `${controls}
+      <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937;margin:0 14px 10px">
+        <div style="font-size:11px;color:#fff;font-weight:600;margin-bottom:8px">${activeOrigin==='usgc'?'USGC / Sabine':'Oman'} FOB forward curve · ${routeLeg(activeRoute, activeOrigin)} · ${idxLabel(activeSel.idx)}</div>
+        <div style="height:260px"><canvas id="fob-hist-workbench-curve"></canvas></div>
+        ${table}
       </div>
-      ${renderArchiveTable('usgc', 'USGC FOB CURVE', us.idx, '#4fc3f7')}
-      ${renderArchiveTable('oman', 'OMAN FOB CURVE', oman.idx, '#fbbf24')}
       <div style="margin:0 14px 14px;color:#546e7a;font-size:9px;line-height:1.5">
         Source: saved FOB snapshot = Financial EOD gas curves + active freight matrix + physical differentials at capture time. Liquefaction fee excluded from FOB netback history.
       </div>`;
@@ -12235,69 +12263,52 @@ function cpFobHistoricalSection(d){
       </div>
     </div>
 
-    ${renderCurveArchive()}
-
-    <div class="f-sec" style="margin-top:10px">FOB HISTORICAL · daily time series at selected tenor · route · index</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 14px">
-
-      <!-- USGC -->
-      <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937">
-        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:6px">
-          US (Sabine) FOB · M+${us.tenor} → ${usRouteLabel} · ${yLabel(us.idx)}
-        </div>
-        ${renderToggles('usgc', us)}
-        <div style="height:240px"><canvas id="fob-hist-us-front"></canvas></div>
-      </div>
-
-      <!-- OMAN -->
-      <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937">
-        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:6px">
-          Oman FOB · M+${oman.tenor} → ${omanRouteLabel} · ${yLabel(oman.idx)}
-        </div>
-        ${renderToggles('oman', oman)}
-        <div style="height:240px"><canvas id="fob-hist-oman-front"></canvas></div>
-      </div>
-
-    </div>
+    ${renderWorkbench()}
   `;
 }
 
 // Render the historical charts after the FOB tab DOM is mounted.
 function _fobRenderHistoricalCharts(d){
-  const us   = { origin:'usgc', tenor: CP.fobUsHistTenor   || 1, route: CP.fobUsHistRoute   || 'sabine_tokyo', idx: CP.fobUsHistIdx   || 'FIXED' };
-  const oman = { origin:'oman', tenor: CP.fobOmanHistTenor || 1, route: CP.fobOmanHistRoute || 'oman_tokyo',   idx: CP.fobOmanHistIdx || 'FIXED' };
+  const snaps = _fobLoadSnapshots();
+  const snapList = snaps
+    .filter(s => s && (s.eod_date || s.date))
+    .slice()
+    .sort((a,b)=>String(b.eod_date||b.date).localeCompare(String(a.eod_date||a.date)));
+  const activeOrigin = CP.fobHistOrigin === 'oman' ? 'oman' : 'usgc';
+  const activeView = CP.fobHistView === 'historical' ? 'historical' : 'curve';
+  const sel = activeOrigin === 'usgc'
+    ? { origin:'usgc', tenor: CP.fobUsHistTenor || 1, route: CP.fobUsHistRoute || 'sabine_tokyo', idx: CP.fobUsHistIdx || 'FIXED' }
+    : { origin:'oman', tenor: CP.fobOmanHistTenor || 1, route: CP.fobOmanHistRoute || 'oman_tokyo', idx: CP.fobOmanHistIdx || 'FIXED' };
+  const route = (FOB_ROUTES[activeOrigin] || []).find(r => r.id === sel.route) || (FOB_ROUTES[activeOrigin] || [])[0];
+  const color = activeOrigin === 'usgc' ? '#4fc3f7' : '#fbbf24';
+  const idxLbl = sel.idx === 'FIXED' ? '$/MMBtu' : 'vs ' + (sel.idx === 'HH' ? '115%HH' : sel.idx);
 
-  function renderForOrigin(sel, frontId, color){
-    // Truthful series from saved snapshots only (each snapshot = 3 inputs aligned)
-    const series = _fobSnapTimeSeries(sel.origin, sel.tenor, sel.route, sel.idx);
-    if (!series.length) {
-      const c = document.getElementById(frontId);
-      if (c && c.getContext) {
-        const ctx = c.getContext('2d');
-        ctx.clearRect(0,0,c.width,c.height);
-        ctx.fillStyle = '#546e7a';
-        ctx.font = '11px IBM Plex Mono';
-        ctx.textAlign = 'center';
-        ctx.fillText('No snapshots yet — click 📌 SNAPSHOT NOW above', c.width/2, c.height/2);
-      }
+  function drawEmpty(id, msg){
+    const c = document.getElementById(id);
+    if (!c || !c.getContext) return;
+    if (window['_'+id]) { window['_'+id].destroy(); window['_'+id]=null; }
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    ctx.fillStyle = '#546e7a';
+    ctx.font = '11px IBM Plex Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText(msg, c.width/2, c.height/2);
+  }
+
+  function renderLine(id, labels, data, label){
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+    if (!data.some(v => v != null && !isNaN(v))) {
+      drawEmpty(id, 'No saved FOB values for this selection');
       return;
     }
-
-    const frontCanvas = document.getElementById(frontId);
-    if (!frontCanvas) return;
-    if (window['_'+frontId]) window['_'+frontId].destroy();
-
-    const labels = series.map(r => r.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
-    const data = series.map(r => r.value);
-    const isAbs = sel.idx === 'FIXED';
-    const idxLbl = isAbs ? '$/MMBtu' : 'vs '+(sel.idx==='HH'?'115%HH':sel.idx);
-
-    window['_'+frontId] = new Chart(frontCanvas.getContext('2d'), {
+    if (window['_'+id]) window['_'+id].destroy();
+    window['_'+id] = new Chart(canvas.getContext('2d'), {
       type: 'line',
       data: {
         labels,
         datasets: [{
-          label: `M+${sel.tenor}`,
+          label,
           data,
           borderColor: color,
           backgroundColor: color + '1A',
@@ -12327,8 +12338,19 @@ function _fobRenderHistoricalCharts(d){
     });
   }
 
-  renderForOrigin(us,   'fob-hist-us-front',   '#4fc3f7');
-  renderForOrigin(oman, 'fob-hist-oman-front', '#fbbf24');
+  if (activeView === 'curve') {
+    const selectedSnap = snapList.find(s => (s.eod_date || s.date) === CP.fobHistObsDate) || snapList[0] || null;
+    if (!selectedSnap || !route) { drawEmpty('fob-hist-workbench-curve', 'No snapshots yet'); return; }
+    const labels = _fobSnapshotMonthLabels(selectedSnap);
+    const data = labels.map((_, i) => _fobSnapshotFobValue(selectedSnap, route, sel.idx, i));
+    renderLine('fob-hist-workbench-curve', labels, data, route.label);
+    return;
+  }
+
+  const series = route ? _fobSnapTimeSeries(sel.origin, sel.tenor, route.id, sel.idx) : [];
+  const labels = series.map(r => r.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+  const data = series.map(r => r.value);
+  renderLine('fob-hist-workbench-historical', labels, data, `${route?.label || 'Route'} M+${sel.tenor}`);
 }
 
 
