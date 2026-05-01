@@ -13177,7 +13177,7 @@ function parseEEXFile(buf){
 }
 
 // ── EEX data access functions (mirrors gSR/gSF for EU hubs) ───────────────
-function eexGSR(inst,t){const out=[];for(const ds of eexDates){const{date,rows}=eexD[ds];const pk=rPK(date,t);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
+function eexGSR(inst,t){const out=[];for(const ds of eexDates){const{date,rows}=eexD[ds];const pk=rollPkFromRows(rows,date,t,inst);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst],pk});}return out;}
 function eexGSF(inst,pk){const out=[];for(const ds of eexDates){const{date,rows}=eexD[ds];const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
 function eexGSS(inst,tv){const sea=gSeaP();const tObj=sea.find(s=>s.v===tv);if(!tObj)return[];const out=[];for(const ds of eexDates){const{date,rows}=eexD[ds];const val=gAgg(inst,tObj,rows);if(val!=null)out.push({date,value:val});}return out;}
 function eexGS(inst,tv){
@@ -13233,8 +13233,15 @@ async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.m
   if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$id('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of lngFiles){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}try{const buf=await toAB(file);if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$id('progfill2');if(pf)pf.style.width=Math.round(done/lngFiles.length*100)+'%';const pt=$id('progtxt2');if(pt)pt.textContent=`${done}/${lngFiles.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(added>0){try{_fobMarkFresh('eod');setTimeout(()=>{try{fobCaptureSnapshot();}catch(e){}},1500);}catch(e){}}if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
 function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();buildEuHubChart();updHist();if(typeof crxInvalidateCache==='function')crxInvalidateCache();cInit();updSpread();updFC();updSea();}
 function rPK(d,t){const r=new Date(d.getFullYear(),d.getMonth()+parseInt(t),1);return`${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}`;}
+function pkKey(pk){const m=String(pk||'').match(/^(\d{4})-(\d{2})$/);return m?(+m[1])*12+(+m[2]):null;}
+function rowHasInst(row,inst){return inst?row?.[inst]!=null:Object.keys(row||{}).some(k=>k!=='pk'&&row[k]!=null);}
+function rollPkFromRows(rows,date,t=1,inst=null){
+  const ref=date.getFullYear()*12+(date.getMonth()+1);
+  const pks=[...new Set((rows||[]).filter(r=>rowHasInst(r,inst)).map(r=>r.pk).filter(pk=>{const k=pkKey(pk);return k&&k>ref;}))].sort();
+  return pks[Math.max(0,parseInt(t,10)-1)]||rPK(date,t);
+}
 function aPKs(){const s=new Set();for(const ds of sDates)aD[ds].rows.forEach(r=>s.add(r.pk));return[...s].sort();}
-function gSR(inst,t){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const pk=rPK(date,t);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
+function gSR(inst,t){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const pk=rollPkFromRows(rows,date,t,inst);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst],pk});}return out;}
 function gSF(inst,pk){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
 function gSS(inst,tv){const sea=gSeaP();const tObj=sea.find(s=>s.v===tv);if(!tObj)return[];const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const val=gAgg(inst,tObj,rows);if(val!=null)out.push({date,value:val});}return out;}
 function gS(inst,tv){if(EEX_HUBS.includes(inst))return eexGS(inst,tv);if(tv.startsWith('r'))return gSR(inst,parseInt(tv.slice(1)));if(tv.startsWith('win-')||tv.startsWith('sum-')||tv.startsWith('q'))return gSS(inst,tv);return gSF(inst,tv);}
@@ -13633,7 +13640,7 @@ function dash2TenorPrice(inst, tenorCode, dateIdx){
   const ent = aD[ds]; if (!ent) return null;
   if (tenorCode.startsWith('r')) {
     const n = parseInt(tenorCode.slice(1), 10);
-    const pk = rPK(ent.date, n);
+    const pk = rollPkFromRows(ent.rows, ent.date, n, inst);
     return ent.rows.find(r => r.pk === pk)?.[inst] ?? null;
   }
   if (tenorCode.startsWith('q') || tenorCode.startsWith('win-') || tenorCode.startsWith('sum-')) {
@@ -13777,15 +13784,22 @@ const DASH2_FWD_HUB_INSTS = ['TTF','THE','PSV','NBP','PEG','PVB','ZTP'];
 // forward as the year passes. Today (auto-memory) = 2026-04-27 → next three
 // monthlies are Jun-26, Jul-26, Aug-26.
 function dash2BuildFwdContracts(){
-  if (!sDates.length) return [];
-  const ld = sDates[sDates.length-1];
-  const refDate = aD[ld].date;
-  const refY = refDate.getFullYear();
-  const refM = refDate.getMonth() + 1; // 1..12
-  // Three nearest forward monthlies starting from refM+1 (skip current month
-  // since front-month is already on the headline + macro/spreads cards).
+  const candidates=[];
+  if(sDates.length){
+    const ent=aD[sDates[sDates.length-1]];
+    const pk=rollPkFromRows(ent.rows,ent.date,1);
+    if(pkKey(pk))candidates.push(pk);
+  }
+  if(typeof eexDates!=='undefined'&&eexDates.length){
+    const ent=eexD[eexDates[eexDates.length-1]];
+    const pk=rollPkFromRows(ent.rows,ent.date,1);
+    if(pkKey(pk))candidates.push(pk);
+  }
+  const front=candidates.sort((a,b)=>pkKey(a)-pkKey(b))[0];
+  if(!front)return[];
+  let [refY,refM]=front.split('-').map(Number);
   const monthly = [];
-  for (let i = 1; i <= 3; i++){
+  for (let i = 0; i < 3; i++){
     let m = refM + i, y = refY;
     while (m > 12) { m -= 12; y += 1; }
     monthly.push({
@@ -13818,6 +13832,11 @@ function dash2FwdPriceAt(inst, contract, which){
   if (idx < 0) return null;
   const ds = dates[idx];
   const ent = store[ds]; if (!ent) return null;
+  if(contract&&contract.startsWith('r')){
+    const n=parseInt(contract.slice(1),10);
+    const pk=rollPkFromRows(ent.rows,ent.date,n,inst);
+    return ent.rows.find(r=>r.pk===pk)?.[inst]??null;
+  }
   if (contract.startsWith('cal-')) {
     const year = contract.slice(4);
     const vals = [];
@@ -14055,7 +14074,7 @@ function buildGasSnapshot(){
   ];
   const datasets=serDefs.map(s=>({
     label:s.label,
-    data:src.map(ds=>{const{date,rows}=aD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?s.fn(row):null;}),
+    data:src.map(ds=>{const{date,rows}=aD[ds];const m1=rollPkFromRows(rows,date,1);const row=rows.find(r=>r.pk===m1);return row?s.fn(row):null;}),
     borderColor:s.color,
     backgroundColor:s.fill?undefined:'transparent',
     fill:s.fill||false,
@@ -14099,7 +14118,7 @@ function buildEuHubChart(){
     // EEX hubs (solid)
     ...EEX_HUBS.map(hub=>({
       label:INST[hub].label,
-      data:src.map(ds=>{const{date,rows}=eexD[ds];const m1=rPK(date,1);const row=rows.find(r=>r.pk===m1);return row?.[hub]??null;}),
+      data:src.map(ds=>{const{date,rows}=eexD[ds];const m1=rollPkFromRows(rows,date,1,hub);const row=rows.find(r=>r.pk===m1);return row?.[hub]??null;}),
       borderColor:hubColors[hub],backgroundColor:'transparent',
       borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true
     }))
