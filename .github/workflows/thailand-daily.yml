@@ -1,0 +1,55 @@
+name: Thailand gas balance refresh
+
+on:
+  schedule:
+    - cron: "20 4 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: thailand-gas-balance
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps
+        run: pip install xlrd
+
+      - name: Fetch EPPO Thailand gas balance
+        run: python3 scripts/fetch_thailand_gas_balance.py
+
+      - name: Commit data if changed
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/thailand_gas_balance.json
+          if git diff --cached --quiet; then
+            echo "No Thailand gas balance change."
+            exit 0
+          fi
+          LATEST=$(python3 -c "import json;print(json.load(open('data/thailand_gas_balance.json'))['latest_month'])")
+          git commit -m "data: thailand gas balance refresh ($LATEST)"
+          for attempt in 1 2 3 4 5; do
+            if git pull --rebase origin main && git push; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "::error::Failed to push Thailand gas balance update"
+          exit 1
