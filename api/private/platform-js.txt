@@ -20975,6 +20975,7 @@ async function renderGaDashboard2(){
           <div style="font-size:8px;color:#3d5070;margin-top:8px;line-height:1.45">No domestic production here by design. These are the pipe signposts you asked for: LNG sendout, Norway, Russia, Algeria to Italy, Algeria to Spain, TAP to Italy, and tracked interconnectors.</div>
         </div>
 
+        <div style="display:grid;gap:12px">
         <div style="background:#0f1221;border:1px solid rgba(248,113,113,.18);padding:12px 14px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid rgba(248,113,113,.12);padding-bottom:6px">
             <div style="font-size:10px;letter-spacing:.12em;color:#f87171;font-weight:600">NORWEGIAN OUTAGE WATCH</div>
@@ -20990,6 +20991,15 @@ async function renderGaDashboard2(){
           </div>
           <div style="font-size:8px;color:#3d5070;margin-top:8px">Alert rule: unplanned or abs(impact) ≥ 20 mcm/d = high. Planned smaller impact = medium.</div>
         </div>
+
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid rgba(77,158,245,.08);padding-bottom:6px">
+            <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600">FRENCH NUCLEAR</div>
+            <div style="font-size:8px;color:#6b7a99">ENTSO-E · RTE</div>
+          </div>
+          <div id="gf2-fr-nuclear"><div style="font-size:9px;color:#3d5070;padding:8px;border:1px dashed #1e3a5f;text-align:center">Loading ENTSO-E / RTE…</div></div>
+        </div>
+        </div>
       </div>
     </section>
 
@@ -21002,13 +21012,8 @@ async function renderGaDashboard2(){
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px">
         <div style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
-          <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600;margin-bottom:10px">EU LNG SENDOUT</div>
-          <div style="font-size:26px;font-weight:700;color:#ffb74d;line-height:1">${fmt(lngMcm,0)} <span style="font-size:10px;color:#6b7a99">mcm/d</span></div>
-          <div style="font-size:9px;color:#3d5070;margin-top:7px">GIE ALSI · ${lngLat?.date||'—'} · 7d avg ${fmt(lng7,0)} mcm/d</div>
-        </div>
-        <div style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
-          <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600;margin-bottom:10px">FRENCH NUCLEAR</div>
-          <div id="gf2-fr-nuclear"><div style="font-size:9px;color:#3d5070;padding:8px;border:1px dashed #1e3a5f;text-align:center">Loading ENTSO-E / RTE…</div></div>
+          <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600;margin-bottom:10px">JKM FLAT vs CHINA LNG TRUCK</div>
+          <div id="gf2-china-truck"><div style="font-size:9px;color:#3d5070;padding:8px;border:1px dashed #1e3a5f;text-align:center">Loading SHPGX / EOD…</div></div>
         </div>
         <div id="gf2-kor-nuclear" style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -21035,10 +21040,6 @@ async function renderGaDashboard2(){
           </div>
           <div style="font-size:26px;font-weight:700;color:#8a9bb5;line-height:1"><span id="gf2-brz-hydro-val">—</span> <span style="font-size:10px;color:#6b7a99">%</span><span id="gf2-brz-hydro-wow" style="font-size:10px;color:#6b7a99;margin-left:6px"></span></div>
           <div id="gf2-brz-hydro-sub" style="font-size:9px;color:#3d5070;margin-top:7px">ONS EAR · SIN aggregate</div>
-        </div>
-        <div style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
-          <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600;margin-bottom:10px">JKM FLAT vs CHINA LNG TRUCK</div>
-          <div id="gf2-china-truck"><div style="font-size:9px;color:#3d5070;padding:8px;border:1px dashed #1e3a5f;text-align:center">Loading SHPGX / EOD…</div></div>
         </div>
       </div>
     </section>

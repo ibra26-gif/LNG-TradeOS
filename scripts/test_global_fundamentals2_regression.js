@@ -31,24 +31,32 @@ assert(
   js.includes('1. EUROPEAN GAS FUNDAMENTALS') &&
     js.includes('PIPELINE IMPORT WATCH') &&
     js.includes('NORWEGIAN OUTAGE WATCH') &&
+    js.includes('FRENCH NUCLEAR') &&
     js.includes('No domestic production here by design') &&
     js.includes("k:'algeria_italy'") &&
     js.includes("k:'algeria_spain'") &&
     js.includes("k:'tap'") &&
     js.includes("k:'russia'") &&
     js.includes("k:'uk_interconn'"),
-  'European half must focus on LNG, Norway, Russia, Algeria IT/ES, TAP, and tracked interconnectors'
+  'European half must focus on LNG, Norway, Russia, Algeria IT/ES, TAP, tracked interconnectors, and French nuclear below outage watch'
 );
 
 assert(
   js.includes('2. LNG FUNDAMENTALS SIGNPOSTS') &&
-    js.includes('FRENCH NUCLEAR') &&
     js.includes('KOREAN NUCLEAR') &&
     js.includes('JAPANESE NUCLEAR') &&
     js.includes('BRAZILIAN HYDRO') &&
     js.includes('JKM FLAT vs CHINA LNG TRUCK') &&
     js.includes('No live Japan nuclear feed wired yet'),
-  'LNG half must include French/Korean/Japanese nuclear, Brazilian hydro, and JKM vs China truck'
+  'LNG half must include Korean/Japanese nuclear, Brazilian hydro, and JKM vs China truck'
+);
+
+assert(
+  js.indexOf('NORWEGIAN OUTAGE WATCH') > -1 &&
+    js.indexOf('gf2-fr-nuclear') > js.indexOf('NORWEGIAN OUTAGE WATCH') &&
+    js.indexOf('gf2-fr-nuclear') < js.indexOf('2. LNG FUNDAMENTALS SIGNPOSTS') &&
+    !js.includes('>EU LNG SENDOUT</div>'),
+  'dashboard2 must place French nuclear below Norwegian outage watch and remove the LNG-half EU sendout card'
 );
 
 assert(
