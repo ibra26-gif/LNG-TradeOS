@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260501-pipeline-history">
-<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260502-eu-balance-anchor" defer></script>
+<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260502-fundamentals-dashboard2" defer></script>
 </head>
 <body class="app-unlocked">
 <div id="public-site">
@@ -579,6 +579,7 @@
   <!-- Main tabs -->
   <div class="ga-maintabs">
     <button class="gmtab active" id="gmtab-dashboard" onclick="gaMainTab('dashboard',this)">GLOBAL FUNDAMENTALS</button>
+    <button class="gmtab" id="gmtab-dashboard2" onclick="gaMainTab('dashboard2',this)">FUNDAMENTALS DASHBOARD 2.0</button>
     <button class="gmtab" id="gmtab-lngbal" onclick="gaMainTab('lngbal',this)">LNG BALANCE</button>
     <button class="gmtab" id="gmtab-eugas"  onclick="gaMainTab('eugas',this)">EU GAS BALANCE</button>
     
@@ -590,6 +591,10 @@
   <!-- TAB 1: CHINA SIGNPOSTS -->
   <div id="ga-tab-dashboard" class="ga-tab-sec active">
     <div id="ga-dashboard-body"><div style="padding:40px;text-align:center;color:#3d5070;font-size:9px">Loading dashboard…</div></div>
+  </div>
+
+  <div id="ga-tab-dashboard2" class="ga-tab-sec">
+    <div id="ga-dashboard2-body"><div style="padding:40px;text-align:center;color:#3d5070;font-size:9px">Loading dashboard 2.0…</div></div>
   </div>
 
   <div id="ga-tab-lngbal" class="ga-tab-sec">

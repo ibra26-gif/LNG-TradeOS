@@ -2134,6 +2134,7 @@ function gaMainTab(id,btn){
   const sec=document.getElementById('ga-tab-'+id);if(sec)sec.classList.add('active');
   if(btn)btn.classList.add('active');
   if(id==='dashboard'){renderGaDashboard();return;}
+  if(id==='dashboard2'){renderGaDashboard2();return;}
   if(id==='lngbal' && typeof csInit==='function') setTimeout(csInit,120);
   if(id==='lngvc'){if(!window.gaInitDone)gaInitAll();setTimeout(renderLngVC,80);return;}
   if(!window.gaInitDone) gaInitAll();
@@ -20424,6 +20425,8 @@ function gdRerenderActive(){
   const id = active.id;
   if(id==='ga-tab-dashboard'){
     renderGaDashboard();
+  } else if(id==='ga-tab-dashboard2'){
+    renderGaDashboard2();
   } else if(id==='ga-tab-lngvc'){
     renderLngVC();
   } else if(id==='ga-tab-eugas'){
@@ -20829,10 +20832,313 @@ async function renderGaDashboard(){
   },120);
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// GAS & LNG ANALYTICS — FUNDAMENTALS DASHBOARD 2.0
+// Purpose: morning-control-room view. Existing Global Fundamentals remains
+// untouched; this tab intentionally focuses on Europe first, LNG signposts
+// second, with missing sources rendered as "—" rather than filled.
+// ══════════════════════════════════════════════════════════════════════════
+async function renderGaDashboard2(){
+  const b=document.getElementById('ga-dashboard2-body'); if(!b) return;
+  if(!window.gaInitDone) gaInitAll();
+
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt=(v,dp=1)=>v==null||!isFinite(v)?'—':Number(v).toFixed(dp);
+  const fmtSigned=(v,dp=0)=>v==null||!isFinite(v)?'—':`${v>0?'+':''}${Number(v).toFixed(dp)}`;
+  const latest=(obj)=>{
+    const dates=Object.keys(obj||{}).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+    if(!dates.length) return null;
+    const date=dates[dates.length-1];
+    return {date,value:obj[date]};
+  };
+  const tailAvg=(obj,n=7)=>{
+    const vals=Object.keys(obj||{}).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort()
+      .map(d=>obj[d]).filter(v=>v!=null&&isFinite(v)).slice(-n);
+    return vals.length?vals.reduce((a,c)=>a+c,0)/vals.length:null;
+  };
+  const nom=(route)=>{
+    if(route==='norway' && window.GASSCO_NOMS?.today_total_mcm!=null){
+      return {mcm:+window.GASSCO_NOMS.today_total_mcm, date:window.GASSCO_NOMS.gasday||new Date().toISOString().slice(0,10), src:'Gassco'};
+    }
+    const data=window.ENTSOG_NOMS?.[route];
+    const lat=latest(data);
+    return lat&&lat.value!=null?{mcm:+lat.value,date:lat.date,src:'ENTSOG nominations'}:null;
+  };
+  const phys=(route)=>{
+    const lat=latest(GD.pipeDaily?.[route]);
+    return lat&&lat.value!=null?{mcm:+lat.value,date:lat.date,src:'ENTSOG physical'}:null;
+  };
+  const routeRows=[
+    {k:'norway',lbl:'Norway',sub:'Gassco terminals + ENTSOG landfalls'},
+    {k:'russia',lbl:'Russian exports',sub:'TurkStream / Ukraine residual mapped points'},
+    {k:'algeria_italy',lbl:'Algeria → Italy',sub:'TransMed · Mazara del Vallo'},
+    {k:'algeria_spain',lbl:'Algeria → Spain',sub:'Medgaz / Tarifa'},
+    {k:'tap',lbl:'TAP → Italy',sub:'Melendugno'},
+    {k:'uk_interconn',lbl:'UK interconnectors',sub:'IUK + BBL net mapped points'},
+    {k:'vip_pirineos',lbl:'VIP Pirineos',sub:'Spain ↔ France'},
+    {k:'vip_iberico',lbl:'VIP Iberico',sub:'Spain ↔ Portugal'},
+  ].map(r=>{
+    const n=nom(r.k), p=phys(r.k), avg=tailAvg(GD.pipeDaily?.[r.k],7);
+    return {...r,n,p,avg};
+  });
+
+  const storLat=latest(GD.storDaily);
+  const stor=storLat?.value;
+  const netMcm=stor?.net!=null?stor.net*GWH_TO_MCM:null;
+  const storState=netMcm==null?'—':netMcm>=0?'LONG / INJECTING':'SHORT / WITHDRAWING';
+  const storCol=netMcm==null?'#8a9bb5':netMcm>=0?'#34d399':'#f87171';
+  const storagePct=stor?.pct!=null?+stor.pct:null;
+  const lngLat=latest(GD.lngDaily);
+  const lngMcm=lngLat?.value?.sendGWh!=null?lngLat.value.sendGWh*GWH_TO_MCM:null;
+  const lng7=tailAvg(Object.fromEntries(Object.entries(GD.lngDaily||{}).map(([d,v])=>[d,(v?.sendGWh||0)*GWH_TO_MCM])),7);
+  const norwayNow=nom('norway');
+  const outages=(window.UMM_ACTIVE||[]).slice().sort((a,b)=>{
+    const ia=Math.abs(parseFloat(String(a.impact||'').replace(/[^\d.-]/g,''))||0);
+    const ib=Math.abs(parseFloat(String(b.impact||'').replace(/[^\d.-]/g,''))||0);
+    return ib-ia;
+  });
+  const outageImpact=outages.reduce((s,m)=>s+(parseFloat(String(m.impact||'').replace(/[^\d.-]/g,''))||0),0);
+  const outageSeverity=outages.some(m=>String(m.type||m.title||'').toLowerCase().includes('unplanned'))||Math.abs(outageImpact)>=25?'HIGH':outages.length?'MED':'—';
+
+  const fresh=[
+    {l:'AGSI',ok:GD.ok.storage,src:'GIE AGSI+'},
+    {l:'ALSI',ok:GD.ok.lng,src:'GIE ALSI'},
+    {l:'ENTSOG',ok:GD.ok.pipeline,src:'Pipeline cache/API'},
+    {l:'Gassco',ok:!!window.GASSCO_NOMS,src:'Norway nominations'},
+    {l:'UMM',ok:!!window.UMM_ACTIVE,src:'Gassco outages'},
+  ].map(x=>`<span title="${x.src}" style="display:inline-flex;align-items:center;gap:4px;color:${x.ok?'#34d399':'#fbbf24'};font-size:8px;letter-spacing:.08em"><span style="width:6px;height:6px;border-radius:50%;background:${x.ok?'#34d399':'#fbbf24'}"></span>${x.l}</span>`).join('');
+
+  const kpi=(title,val,unit,sub,col='#f0f4ff')=>`
+    <div style="background:#0b1422;border:1px solid rgba(77,158,245,.16);padding:12px 14px;min-height:86px">
+      <div style="font-size:8px;color:#6b7a99;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px">${title}</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:24px;line-height:1;font-weight:700;color:${col};font-variant-numeric:tabular-nums">${val}</span>
+        <span style="font-size:9px;color:#6b7a99">${unit||''}</span>
+      </div>
+      <div style="font-size:8px;color:#3d5070;margin-top:8px;line-height:1.35">${sub||''}</div>
+    </div>`;
+
+  const flowRows=routeRows.map(r=>{
+    const dCol=r.n?.mcm==null?'#3d5070':'#60a5fa';
+    const d1Col=r.p?.mcm==null?'#3d5070':'#c8d6e5';
+    const avgCol=r.avg==null?'#3d5070':'#8a9bb5';
+    return `<tr>
+      <td style="padding:7px 8px;color:#dde4f0;font-size:10px">${r.lbl}<div style="font-size:8px;color:#3d5070;margin-top:2px">${r.sub}</div></td>
+      <td style="padding:7px 8px;text-align:right;color:${dCol};font-size:12px;font-weight:600">${fmt(r.n?.mcm,1)}</td>
+      <td style="padding:7px 8px;text-align:right;color:${d1Col};font-size:12px">${fmt(r.p?.mcm,1)}</td>
+      <td style="padding:7px 8px;text-align:right;color:${avgCol};font-size:12px">${fmt(r.avg,1)}</td>
+    </tr>`;
+  }).join('');
+
+  const outageRows=outages.length?outages.slice(0,6).map(m=>{
+    const impact=parseFloat(String(m.impact||'').replace(/[^\d.-]/g,''))||0;
+    const sev=String(m.type||m.title||'').toLowerCase().includes('unplanned')||Math.abs(impact)>=20?'HIGH':'MED';
+    return `<tr>
+      <td style="padding:6px 8px;color:${sev==='HIGH'?'#f87171':'#fbbf24'};font-size:9px;font-weight:700">${sev}</td>
+      <td style="padding:6px 8px;color:#dde4f0;font-size:10px">${esc(m.asset||'—')}<div style="font-size:8px;color:#3d5070">${esc(m.type||m.title||'')}</div></td>
+      <td style="padding:6px 8px;text-align:right;color:${impact<0?'#f87171':'#8a9bb5'};font-size:11px">${esc(m.impact||'—')}</td>
+      <td style="padding:6px 8px;color:#8a9bb5;font-size:9px">${esc(m.from||'—')}</td>
+      <td style="padding:6px 8px;color:#8a9bb5;font-size:9px">${esc(m.to||'—')}</td>
+      <td style="padding:6px 8px;color:#3d5070;font-size:8px">${esc(m.published||'').slice(0,16)}</td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="6" style="padding:16px;text-align:center;color:#3d5070;font-size:10px">No active Gassco UMM outage in cache</td></tr>`;
+
+  b.innerHTML=`
+  <div style="padding:18px 20px;max-width:1760px;margin:0 auto">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(77,158,245,.13)">
+      <div>
+        <div style="font-size:13px;color:#4d9ef5;letter-spacing:.16em;font-weight:700">FUNDAMENTALS DASHBOARD 2.0</div>
+        <div style="font-size:9px;color:#6b7a99;margin-top:4px">First half: European gas physical signposts · Second half: LNG demand and power displacement signposts</div>
+      </div>
+      <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">${fresh}</div>
+    </div>
+
+    <section style="margin-bottom:22px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="font-size:10px;letter-spacing:.18em;color:#60a5fa;font-weight:700">1. EUROPEAN GAS FUNDAMENTALS</div>
+        <div style="height:1px;background:#142238;flex:1"></div>
+        <div style="font-size:8px;color:#3d5070">sources: GIE AGSI+ · GIE ALSI · ENTSOG · Gassco</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-bottom:12px">
+        ${kpi('EU+UK balance',storState,netMcm==null?'':'storage anchor',storLat?`${storLat.date} · storage change is the truth anchor`:'AGSI not loaded',storCol)}
+        ${kpi('Storage action',`${fmtSigned(netMcm,0)}`,'mcm/d',stor?.net!=null?`injection minus withdrawal · AGSI ${storLat.date}`:'AGSI daily net unavailable',storCol)}
+        ${kpi('LNG sendout',fmt(lngMcm,0),'mcm/d',lngLat?`latest ALSI gas day ${lngLat.date} · 7d avg ${fmt(lng7,0)} mcm/d`:'ALSI daily sendout unavailable','#ffb74d')}
+        ${kpi('Norway flows',fmt(norwayNow?.mcm,1),'mcm/d',norwayNow?`${norwayNow.src} · gas day ${norwayNow.date}`:'Gassco nominations unavailable','#60a5fa')}
+        ${kpi('Norway outages',outages.length?`${outages.length}`:'—',outages.length?'active UMM':'',outages.length?`${outageSeverity} · net impact ${fmtSigned(outageImpact,1)} mcm/d`:'Gassco UMM cache empty','#f87171')}
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:12px;align-items:start">
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid rgba(77,158,245,.08);padding-bottom:6px">
+            <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600">PIPELINE IMPORT WATCH</div>
+            <div style="font-size:8px;color:#6b7a99">mcm/d · D nominations vs latest physical</div>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace">
+              <thead><tr style="border-bottom:1px solid rgba(77,158,245,.1);font-size:8px;color:#3d5070;letter-spacing:.12em">
+                <th style="text-align:left;padding:5px 8px;font-weight:500">ROUTE</th>
+                <th style="text-align:right;padding:5px 8px;font-weight:500">TODAY / NOM</th>
+                <th style="text-align:right;padding:5px 8px;font-weight:500">LATEST PHYS</th>
+                <th style="text-align:right;padding:5px 8px;font-weight:500">7D AVG</th>
+              </tr></thead>
+              <tbody>${flowRows}</tbody>
+            </table>
+          </div>
+          <div style="font-size:8px;color:#3d5070;margin-top:8px;line-height:1.45">No domestic production here by design. These are the pipe signposts you asked for: LNG sendout, Norway, Russia, Algeria to Italy, Algeria to Spain, TAP to Italy, and tracked interconnectors.</div>
+        </div>
+
+        <div style="background:#0f1221;border:1px solid rgba(248,113,113,.18);padding:12px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid rgba(248,113,113,.12);padding-bottom:6px">
+            <div style="font-size:10px;letter-spacing:.12em;color:#f87171;font-weight:600">NORWEGIAN OUTAGE WATCH</div>
+            <div style="font-size:8px;color:#6b7a99">Gassco UMM</div>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace">
+              <thead><tr style="border-bottom:1px solid rgba(248,113,113,.12);font-size:8px;color:#3d5070;letter-spacing:.12em">
+                <th style="text-align:left;padding:5px 8px">SEV</th><th style="text-align:left;padding:5px 8px">ASSET</th><th style="text-align:right;padding:5px 8px">IMPACT</th><th style="text-align:left;padding:5px 8px">START</th><th style="text-align:left;padding:5px 8px">END</th><th style="text-align:left;padding:5px 8px">PUB</th>
+              </tr></thead>
+              <tbody>${outageRows}</tbody>
+            </table>
+          </div>
+          <div style="font-size:8px;color:#3d5070;margin-top:8px">Alert rule: unplanned or abs(impact) ≥ 20 mcm/d = high. Planned smaller impact = medium.</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="font-size:10px;letter-spacing:.18em;color:#34d399;font-weight:700">2. LNG FUNDAMENTALS SIGNPOSTS</div>
+        <div style="height:1px;background:#142238;flex:1"></div>
+        <div style="font-size:8px;color:#3d5070">sources: ALSI · RTE/ENTSO-E · KHNP · ONS · SHPGX/EOD</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px">
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
+          <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600;margin-bottom:10px">EU LNG SENDOUT</div>
+          <div style="font-size:26px;font-weight:700;color:#ffb74d;line-height:1">${fmt(lngMcm,0)} <span style="font-size:10px;color:#6b7a99">mcm/d</span></div>
+          <div style="font-size:9px;color:#3d5070;margin-top:7px">GIE ALSI · ${lngLat?.date||'—'} · 7d avg ${fmt(lng7,0)} mcm/d</div>
+        </div>
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
+          <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600;margin-bottom:10px">FRENCH NUCLEAR</div>
+          <div id="gf2-fr-nuclear"><div style="font-size:9px;color:#3d5070;padding:8px;border:1px dashed #1e3a5f;text-align:center">Loading ENTSO-E / RTE…</div></div>
+        </div>
+        <div id="gf2-kor-nuclear" style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600">KOREAN NUCLEAR</div>
+            <div id="gf2-kor-nuclear-badge" style="font-size:8px;letter-spacing:.1em;color:#fbbf24;background:rgba(251,191,36,.1);padding:1px 5px">LOADING</div>
+          </div>
+          <div style="font-size:26px;font-weight:700;color:#8a9bb5;line-height:1"><span id="gf2-kor-nuclear-val">—</span> <span style="font-size:10px;color:#6b7a99">GW</span></div>
+          <div id="gf2-kor-nuclear-units" style="font-size:9px;color:#6b7a99;margin-top:7px">—</div>
+          <div id="gf2-kor-nuclear-util" style="font-size:9px;color:#34d399;margin-top:4px">—</div>
+          <div id="gf2-kor-nuclear-offline" style="font-size:9px;color:#3d5070;margin-top:4px">—</div>
+        </div>
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600">JAPANESE NUCLEAR</div>
+            <div style="font-size:8px;letter-spacing:.1em;color:#6b7a99">SOURCE PENDING</div>
+          </div>
+          <div style="font-size:26px;font-weight:700;color:#8a9bb5;line-height:1">— <span style="font-size:10px;color:#6b7a99">GW</span></div>
+          <div style="font-size:9px;color:#3d5070;margin-top:7px">No live Japan nuclear feed wired yet. Keep blank until JAIF / utility availability source is implemented.</div>
+        </div>
+        <div id="gf2-brz-hydro" style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600">BRAZILIAN HYDRO</div>
+            <div id="gf2-brz-hydro-badge" style="font-size:8px;letter-spacing:.1em;color:#fbbf24;background:rgba(251,191,36,.1);padding:1px 5px">LOADING</div>
+          </div>
+          <div style="font-size:26px;font-weight:700;color:#8a9bb5;line-height:1"><span id="gf2-brz-hydro-val">—</span> <span style="font-size:10px;color:#6b7a99">%</span><span id="gf2-brz-hydro-wow" style="font-size:10px;color:#6b7a99;margin-left:6px"></span></div>
+          <div id="gf2-brz-hydro-sub" style="font-size:9px;color:#3d5070;margin-top:7px">ONS EAR · SIN aggregate</div>
+        </div>
+        <div style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
+          <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600;margin-bottom:10px">JKM FLAT vs CHINA LNG TRUCK</div>
+          <div id="gf2-china-truck"><div style="font-size:9px;color:#3d5070;padding:8px;border:1px dashed #1e3a5f;text-align:center">Loading SHPGX / EOD…</div></div>
+        </div>
+      </div>
+    </section>
+  </div>`;
+
+  setTimeout(()=>{
+    gaUpdateStatusDots();
+    _loadFrNuclear('gf2-fr-nuclear');
+    _loadBrzHydroCard('gf2');
+    _loadGf2ChinaTruckCard();
+    if(typeof korUpdateGlobalFundamentalsCard==='function'){
+      if(_korLive) korUpdateGlobalFundamentalsCard();
+      else if(typeof korFetchLive==='function') korFetchLive();
+    }
+  },100);
+}
+
+async function _loadGf2ChinaTruckCard(){
+  const el=document.getElementById('gf2-china-truck'); if(!el) return;
+  try{
+    let rows=[];
+    const raw=localStorage.getItem('lng_shpgx_v1');
+    if(raw){
+      const parsed=JSON.parse(raw);
+      const r=parsed?.data?.truck?.rows||parsed?.data?.truck||[];
+      rows=Array.isArray(r)?r:[];
+    }
+    if(!rows.length){
+      const r=await fetch('/data/china_shpgx.json?v='+Date.now(),{cache:'no-store'});
+      if(r.ok){
+        const j=await r.json();
+        rows=j?.data?.truck?.rows||[];
+      }
+    }
+    rows=rows.filter(r=>r?.value!=null||r?.price_cny_kg!=null);
+    const north=rows.filter(r=>String(r.region||'').includes('华北'));
+    const sorted=[...(north.length?north:rows)].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+    const truck=sorted[sorted.length-1];
+    let jkm=null,jkmDate='';
+    if(typeof aD!=='undefined'&&typeof sDates!=='undefined'&&sDates.length){
+      const ds=sDates[sDates.length-1];
+      const dt=aD[ds]?.date;
+      if(dt){
+        const pk=rPK(dt,dt.getDate()>=16?2:1);
+        const row=(aD[ds].rows||[]).find(r=>r.pk===pk);
+        if(row?.JKM!=null){ jkm=+row.JKM; jkmDate=ds; }
+      }
+    }
+    if(jkm==null&&typeof cpGet==='function'){
+      const fp=cpGet('cp_fp',null);
+      if(fp?.JKM?.[0]!=null) jkm=+fp.JKM[0];
+    }
+    if(!truck&&!jkm){
+      el.innerHTML='<div style="font-size:9px;color:#3d5070;padding:8px;border:1px dashed #1e3a5f;text-align:center">No SHPGX truck or JKM data loaded</div>';
+      return;
+    }
+    const truckCny=truck?+(truck.value??truck.price_cny_kg):null;
+    const fx=parseFloat(document.getElementById('cs-usdcny')?.value);
+    const truckUsd=(truckCny!=null&&isFinite(fx)&&fx>0)?+(truckCny*1000/fx/52.5).toFixed(2):null;
+    const spread=(truckUsd!=null&&jkm!=null)?+(truckUsd-jkm).toFixed(2):null;
+    el.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">
+        <div style="background:#050c14;border:1px solid #1e3a5f;padding:8px">
+          <div style="font-size:7px;color:#546e7a;letter-spacing:.1em">JKM FLAT</div>
+          <div style="font-size:17px;color:#f0f4ff;font-weight:700">${jkm!=null?'$'+jkm.toFixed(2):'—'}</div>
+          <div style="font-size:7px;color:#3d5070">${jkmDate||'EOD curve'} · $/MMBtu</div>
+        </div>
+        <div style="background:#050c14;border:1px solid #1e3a5f;padding:8px">
+          <div style="font-size:7px;color:#546e7a;letter-spacing:.1em">CHINA TRUCK</div>
+          <div style="font-size:17px;color:#f0f4ff;font-weight:700">${truckUsd!=null?'$'+truckUsd.toFixed(2):truckCny!=null?'¥'+truckCny.toFixed(2):'—'}</div>
+          <div style="font-size:7px;color:#3d5070">${truck?.date||''} · ${truckUsd!=null?'$/MMBtu':'CNY/kg'}</div>
+        </div>
+        <div style="background:#050c14;border:1px solid #1e3a5f;padding:8px">
+          <div style="font-size:7px;color:#546e7a;letter-spacing:.1em">TRUCK - JKM</div>
+          <div style="font-size:17px;color:${spread==null?'#8a9bb5':spread>=0?'#34d399':'#f87171'};font-weight:700">${spread!=null?`${spread>0?'+':''}${spread.toFixed(2)}`:'—'}</div>
+          <div style="font-size:7px;color:#3d5070">SHPGX + EOD · FX ${isFinite(fx)?fx.toFixed(3):'—'}</div>
+        </div>
+      </div>`;
+  }catch(e){
+    el.innerHTML=`<div style="font-size:9px;color:#f87171;padding:8px;border:1px solid rgba(248,113,113,.25)">China truck card unavailable · ${e.message}</div>`;
+  }
+}
+
 // Fills the Brazil hydro placeholder in Global Fundamentals using the same
 // ONS EAR endpoint that populates the South America → Brazil hydro pane.
-async function _loadBrzHydroCard(){
-  const el = document.getElementById('gf-brz-hydro');
+async function _loadBrzHydroCard(prefix='gf'){
+  const el = document.getElementById(`${prefix}-brz-hydro`);
   if(!el) return;
   try{
     const r = await fetch('/api/brazil-ons-hydro');
@@ -20840,10 +21146,10 @@ async function _loadBrzHydroCard(){
     const j = await r.json();
     const agg = j.aggregate;
     if(!agg || agg.current==null) return;
-    const badge = document.getElementById('gf-brz-hydro-badge');
-    const val   = document.getElementById('gf-brz-hydro-val');
-    const wow   = document.getElementById('gf-brz-hydro-wow');
-    const sub   = document.getElementById('gf-brz-hydro-sub');
+    const badge = document.getElementById(`${prefix}-brz-hydro-badge`);
+    const val   = document.getElementById(`${prefix}-brz-hydro-val`);
+    const wow   = document.getElementById(`${prefix}-brz-hydro-wow`);
+    const sub   = document.getElementById(`${prefix}-brz-hydro-sub`);
     if(badge){ badge.textContent='LIVE'; badge.style.color='#4ade80'; badge.style.background='rgba(74,222,128,0.1)'; }
     if(val){
       val.textContent = agg.current.toFixed(1);
@@ -20904,8 +21210,8 @@ function _drawDbMiniCharts(){
 // ══════════════════════════════════════════════════════════════════════════
 // FRENCH NUCLEAR — ENTSO-E via server proxy (CORS blocked in browser)
 // ══════════════════════════════════════════════════════════════════════════
-async function _loadFrNuclear(){
-  const el=document.getElementById('db-fr-nuclear'); if(!el) return;
+async function _loadFrNuclear(targetId='db-fr-nuclear'){
+  const el=document.getElementById(targetId); if(!el) return;
   const ENTSOE_KEY='5543d284-22f5-4467-969a-cd1d5b9ef39b';
   const today=new Date();
   const yr=today.getFullYear(), mo=String(today.getMonth()+1).padStart(2,'0'), dy=String(today.getDate()).padStart(2,'0');
@@ -24027,37 +24333,35 @@ function korFetchLive(){
 // the GF card isn't currently in the DOM (user may be on a different tab).
 function korUpdateGlobalFundamentalsCard(){
   const k = _korLive?.khnp; if (!k) return;
-  const valEl = document.getElementById('gf-kor-nuclear-val');
-  const unitsEl = document.getElementById('gf-kor-nuclear-units');
-  const badgeEl = document.getElementById('gf-kor-nuclear-badge');
-  const offEl = document.getElementById('gf-kor-nuclear-offline');
-  if (valEl) {
-    valEl.textContent = (k.totalOnlineGW != null ? k.totalOnlineGW.toFixed(2) : '—');
-    valEl.style.color = '#34d399';
-  }
-  if (unitsEl) unitsEl.textContent = `· ${k.onlineCount}/${k.totalCount} units`;
-  if (badgeEl) {
-    badgeEl.textContent = 'LIVE';
-    badgeEl.style.color = '#34d399';
-    badgeEl.style.background = 'rgba(52,211,153,0.10)';
-  }
   // Utilization: fleet online output ÷ fleet nameplate capacity (incl. offline reactors)
-  const utilEl = document.getElementById('gf-kor-nuclear-util');
-  if (utilEl && k.totalOnlineGW != null) {
-    const fleetNameplateGW = (k.reactors || []).reduce((s, r) =>
-      s + ((NUCLEAR_NAMEPLATE[r.name] || 1000) / 1000), 0);
-    const util = fleetNameplateGW > 0 ? (k.totalOnlineGW / fleetNameplateGW * 100) : null;
-    utilEl.textContent = util != null ? `Utilization · ${util.toFixed(1)}%` : '';
-  }
-  if (offEl) {
-    const offCount = (k.reactors || []).filter(r => r.status !== 'Operational').length;
-    const offGW = (k.reactors || []).filter(r => r.status !== 'Operational')
-      .reduce((s, r) => {
-        const cap = (r.output_mwe && r.output_mwe > 5) ? r.output_mwe : (NUCLEAR_NAMEPLATE[r.name] || 1000);
-        return s + cap;
-      }, 0) / 1000;
-    offEl.textContent = `${offCount} offline · ~${offGW.toFixed(2)} GW unavailable · KHNP ${k.asOf || ''}`;
-  }
+  const fleetNameplateGW = (k.reactors || []).reduce((s, r) =>
+    s + ((NUCLEAR_NAMEPLATE[r.name] || 1000) / 1000), 0);
+  const util = (fleetNameplateGW > 0 && k.totalOnlineGW != null) ? (k.totalOnlineGW / fleetNameplateGW * 100) : null;
+  const offCount = (k.reactors || []).filter(r => r.status !== 'Operational').length;
+  const offGW = (k.reactors || []).filter(r => r.status !== 'Operational')
+    .reduce((s, r) => {
+      const cap = (r.output_mwe && r.output_mwe > 5) ? r.output_mwe : (NUCLEAR_NAMEPLATE[r.name] || 1000);
+      return s + cap;
+    }, 0) / 1000;
+  ['gf','gf2'].forEach(prefix=>{
+    const valEl = document.getElementById(`${prefix}-kor-nuclear-val`);
+    const unitsEl = document.getElementById(`${prefix}-kor-nuclear-units`);
+    const badgeEl = document.getElementById(`${prefix}-kor-nuclear-badge`);
+    const utilEl = document.getElementById(`${prefix}-kor-nuclear-util`);
+    const offEl = document.getElementById(`${prefix}-kor-nuclear-offline`);
+    if (valEl) {
+      valEl.textContent = (k.totalOnlineGW != null ? k.totalOnlineGW.toFixed(2) : '—');
+      valEl.style.color = '#34d399';
+    }
+    if (unitsEl) unitsEl.textContent = `· ${k.onlineCount}/${k.totalCount} units`;
+    if (badgeEl) {
+      badgeEl.textContent = 'LIVE';
+      badgeEl.style.color = '#34d399';
+      badgeEl.style.background = 'rgba(52,211,153,0.10)';
+    }
+    if (utilEl && util != null) utilEl.textContent = `Utilization · ${util.toFixed(1)}%`;
+    if (offEl) offEl.textContent = `${offCount} offline · ~${offGW.toFixed(2)} GW unavailable · KHNP ${k.asOf || ''}`;
+  });
 }
 
 // ── Shell ──────────────────────────────────────────────────────────────────
