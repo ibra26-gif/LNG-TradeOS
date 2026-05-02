@@ -23,6 +23,8 @@ assert(
     js.includes('cp_fob_hist_obs_date') &&
     js.includes('cp_fob_hist_origin') &&
     js.includes('cp_fob_hist_view') &&
+    js.includes('cp_fob_hist_window') &&
+    js.includes('function keepByWindow') &&
     js.includes('Liquefaction fee excluded from FOB netback history'),
   'FOB history must expose a route/index/loading-point workbench for curve and historical views'
 );
@@ -41,6 +43,7 @@ assert(start >= 0 && end > start, 'FOB snapshot helper block must be extractable
 
 if (start >= 0 && end > start) {
   const ctx = {
+    window: {},
     CP: { hhSlope: 1.15 },
     ML: ['May-26', 'Jun-26'],
     PC_NM_RATIO: 0.5,
