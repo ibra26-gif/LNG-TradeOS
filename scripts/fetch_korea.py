@@ -8,10 +8,11 @@ Sources (all globally accessible, no API key, no Korean-IP requirement):
     realTimeMgr path is blocked. The npp. subdomain serves the same data
     via a JSON API used by their public dashboard, refreshed every ~3 min.)
   - ECB euro reference rates — KRW/USD via cross-rate
+  - KOGAS official power-sector tariff page — current monthly tariff
 
-KOGAS tariff Excel and KOGAS imports remain manual until either a Korean
-proxy lands or the user enters values. DART quarterly filings need the
-user's free OpenDART API key (1-week approval).
+KOGAS imports remain manual until either a Korean proxy lands or the user
+enters values. DART quarterly filings need the user's free OpenDART API key
+(1-week approval).
 
 Output: data/korea.json
 Cadence: daily 17:30 UTC (configurable; KHNP refreshes every ~3 min, but
@@ -1350,6 +1351,126 @@ def fetch_dart_kogas_quarterly_inventory():
 #      → CSV bytes (cp949 encoded for Korean files)
 # ────────────────────────────────────────────────────────────────────
 DATA_GO_KR_BASE = 'https://www.data.go.kr'
+KOGAS_POWER_TARIFF_URL = 'https://www.kogas.or.kr/site/koGas/1040402000000'
+
+
+def _load_json_file(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _parse_korean_float(s):
+    try:
+        return float(str(s).replace(',', '').strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _iso_date_from_parts(y, m, d):
+    return f'{int(y):04d}-{int(m):02d}-{int(d):02d}'
+
+
+def _kogas_tariff_stale(end_iso, now=None):
+    if not end_iso:
+        return True
+    now = now or datetime.now(timezone.utc)
+    try:
+        end_dt = datetime.fromisoformat(end_iso).replace(tzinfo=timezone.utc)
+        return end_dt.date() < now.date()
+    except Exception:
+        return True
+
+
+def fetch_kogas_current_power_tariff():
+    """Pull current KOGAS power-sector tariff from the official KOGAS page.
+
+    Source page exposes the effective period and the current KRW/GJ table:
+      - direct-supplied power producers (100MW+)
+      - general power producers / CHP
+
+    The page can be slow or intermittently unreachable from non-Korean
+    networks. On fetch/parse failure, return the last cached official value
+    with a fetchError flag instead of inventing a tariff.
+    """
+    import html as _html
+    cache_path = os.path.join(os.path.dirname(OUT_PATH), 'kogas_current_power_tariff.json')
+    today = datetime.now(timezone.utc)
+    cached = _load_json_file(cache_path)
+
+    if cached and cached.get('cachedAt'):
+        try:
+            age_h = (today - datetime.fromisoformat(cached['cachedAt'])).total_seconds() / 3600
+            if age_h < 12:
+                cached['stale'] = _kogas_tariff_stale(cached.get('effectiveEnd'), today)
+                return cached
+        except Exception:
+            pass
+
+    try:
+        raw = fetch(KOGAS_POWER_TARIFF_URL, timeout=30, retries=2)
+        if isinstance(raw, bytes):
+            raw = raw.decode('utf-8', errors='replace')
+        text = _html.unescape(re.sub(r'<[^>]+>', ' ', raw))
+        text = re.sub(r'\s+', ' ', text)
+
+        date_re = re.search(
+            r'(\d{4})\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})\s*~\s*'
+            r'(\d{4})\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})',
+            text
+        )
+        vals_re = re.search(
+            r'원료비\s*([0-9,]+(?:\.[0-9]+)?)\s*([0-9,]+(?:\.[0-9]+)?)\s*'
+            r'공급비\s*([0-9,]+(?:\.[0-9]+)?)\s*([0-9,]+(?:\.[0-9]+)?)\s*'
+            r'합계\s*([0-9,]+(?:\.[0-9]+)?)\s*([0-9,]+(?:\.[0-9]+)?)',
+            text
+        )
+        if not date_re or not vals_re:
+            raise ValueError('effective period or tariff rows not found')
+
+        start = _iso_date_from_parts(*date_re.groups()[:3])
+        end = _iso_date_from_parts(*date_re.groups()[3:])
+        vals = [_parse_korean_float(v) for v in vals_re.groups()]
+        if any(v is None for v in vals):
+            raise ValueError('tariff values not numeric')
+
+        out = {
+            'cachedAt': today.isoformat(timespec='seconds'),
+            'source': 'KOGAS official · 발전용 천연가스 요금',
+            'sourceUrl': KOGAS_POWER_TARIFF_URL,
+            'unit': 'KRW/GJ',
+            'effectiveStart': start,
+            'effectiveEnd': end,
+            'directPower': {
+                'label': 'KOGAS direct-supplied power producers (100MW+)',
+                'raw_krw_gj': vals[0],
+                'supply_krw_gj': vals[2],
+                'total_krw_gj': vals[4],
+            },
+            'generalPowerChp': {
+                'label': 'General power producers / CHP',
+                'raw_krw_gj': vals[1],
+                'supply_krw_gj': vals[3],
+                'total_krw_gj': vals[5],
+            },
+        }
+        out['stale'] = _kogas_tariff_stale(out['effectiveEnd'], today)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            json.dump(out, f, indent=2, ensure_ascii=False)
+        print(f"KOGAS current tariff: {out['effectiveStart']}–{out['effectiveEnd']} "
+              f"direct={out['directPower']['total_krw_gj']} KRW/GJ",
+              file=sys.stderr)
+        return out
+    except Exception as e:
+        if cached:
+            cached['fetchError'] = 'official page unreachable; using cached tariff'
+            cached['stale'] = True
+            print(f'KOGAS current tariff fetch failed, using cache: {e}', file=sys.stderr)
+            return cached
+        print(f'KOGAS current tariff fetch failed: {e}', file=sys.stderr)
+        return None
 
 
 def _data_go_kr_download(public_data_pk, file_detail_sn='1'):
@@ -2120,6 +2241,17 @@ def main():
     except Exception as e:
         out['errors'].append(f'data.go.kr KOGAS tariff: {e}')
         print(f"data.go.kr KOGAS tariff failed: {e}", file=sys.stderr)
+
+    # Official KOGAS current-month power-sector tariff
+    try:
+        kt = fetch_kogas_current_power_tariff()
+        if kt:
+            out['kogasTariff'] = kt
+            print(f"KOGAS current tariff: {kt.get('effectiveStart')}–{kt.get('effectiveEnd')}",
+                  file=sys.stderr)
+    except Exception as e:
+        out['errors'].append(f'KOGAS current tariff: {e}')
+        print(f"KOGAS current tariff failed: {e}", file=sys.stderr)
 
     # UN Comtrade — Korea LNG imports HS 271111 by origin (gated on COMTRADE_KEY)
     try:

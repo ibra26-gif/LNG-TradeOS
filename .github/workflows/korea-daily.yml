@@ -71,6 +71,7 @@ jobs:
                   data/dart_kogas_quarterly.json \
                   data/kcga_monthly.json \
                   data/data_go_kr_kogas_supply.json data/data_go_kr_kogas_tariff.json \
+                  data/kogas_current_power_tariff.json \
                   data/comtrade_korea_lng.json \
                   2>/dev/null || true
           if git diff --cached --quiet; then
