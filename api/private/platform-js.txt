@@ -20135,8 +20135,11 @@ function gdRerenderActive(){
     storTab(sub);
   } else if(id==='ga-tab-regas'){
     const activeSub = document.querySelector('#ga-regas-subtabs .ga-stab.active');
-    const sub = activeSub?.textContent?.toLowerCase().includes('heat')?'heatmap':
-                activeSub?.textContent?.toLowerCase().includes('country')?'country':'sendout';
+    const txt = (activeSub?.textContent || '').toLowerCase();
+    const sub = txt.includes('regional') ? 'regions' :
+                txt.includes('terminal') ? 'terminals' :
+                txt.includes('heat') ? 'heatmap' :
+                txt.includes('country') ? 'country' : 'sendout';
     regasTab(sub);
   }
 }
@@ -22296,6 +22299,214 @@ window.gaExportStorTermHeatmap = function(){
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
+// ── Regional terminal utilisation ──────────────────────────────────────────
+let _regasRegionLoadToken = 0;
+async function renderRegasRegionalUtil(pane){
+  const prefs = regasRegionPrefs();
+  const period = prefs.period || 'd30';
+  const daysBack = period==='d90' ? 90 : period==='d60' ? 60 : period==='d14' ? 14 : 30;
+  const today = new Date();
+  const dayStrs = [];
+  for(let i=daysBack-1;i>=0;i--){
+    const d=new Date(today); d.setDate(d.getDate()-i);
+    dayStrs.push(d.toISOString().slice(0,10));
+  }
+  const token = ++_regasRegionLoadToken;
+  const terms = regasAllRegionTerminals();
+  const regionCounts = REGAS_REGION_DEFS.reduce((acc,r)=>{acc[r.id]=terms.filter(t=>t.region===r.id).length;return acc;},{});
+
+  pane.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 0;border-bottom:1px solid rgba(77,158,245,.1)">
+      <span class="ctrl-lbl">PERIOD</span>
+      <select class="gsel" onchange="gaRegasSetRegionPeriod(this.value)">
+        <option value="d14"${period==='d14'?' selected':''}>Daily - Last 14 days</option>
+        <option value="d30"${period==='d30'?' selected':''}>Daily - Last 30 days</option>
+        <option value="d60"${period==='d60'?' selected':''}>Daily - Last 60 days</option>
+        <option value="d90"${period==='d90'?' selected':''}>Daily - Last 90 days</option>
+      </select>
+      <span style="font-size:8px;color:#546e7a;margin-left:8px">weighted utilisation = sum(sendOut) / sum(dtrs) by terminal region</span>
+      <span id="regas-region-progress" style="font-size:9px;color:#4fc3f7;margin-left:auto">Loading 0 / ${terms.length} terminals...</span>
+    </div>
+    <div id="regas-region-kpis" class="ga-g4" style="margin-bottom:12px">
+      ${REGAS_REGION_DEFS.map(r=>`<div class="ga-kpi">
+        <div class="ga-kpi-lbl">${r.label} UTILISATION</div>
+        <div class="ga-kpi-val" style="color:${r.color}">--<span class="ga-kpi-unit"> %</span></div>
+        <div class="ga-kpi-note">${regionCounts[r.id]||0} terminals · loading ALSI</div>
+      </div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="ga-card">
+        <div class="ga-sec">TERMINAL UTILISATION BY REGION <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
+        <div class="ga-ch-wrap" style="height:300px"><canvas id="regas-region-util-chart"></canvas></div>
+        <div class="ga-source" id="regas-region-util-src">Source: GIE ALSI terminal sendOut and dtrs · ${daysBack} gas days</div>
+      </div>
+      <div class="ga-card">
+        <div class="ga-sec">REGIONAL SENDOUT <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
+        <div class="ga-ch-wrap" style="height:300px"><canvas id="regas-region-send-chart"></canvas></div>
+        <div class="ga-source" id="regas-region-send-src">GIE ALSI · terminal sendOut · converted to mcm/d</div>
+      </div>
+    </div>
+    <div class="ga-card">
+      <div class="ga-sec">TERMINAL DETAIL BY REGION <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
+      <div id="regas-region-table" style="overflow:auto;max-height:520px"></div>
+      <div class="ga-source">No estimates. Blank cells mean the terminal row has no dtrs/sendOut for the selected period.</div>
+    </div>`;
+
+  await regasLoadRegionTerminals(terms, dayStrs, token);
+  if(token !== _regasRegionLoadToken) return;
+  regasDrawRegionalUtil(dayStrs, terms);
+}
+
+async function regasLoadRegionTerminals(terms, dayStrs, token){
+  const fromStr=dayStrs[0], toStr=dayStrs[dayStrs.length-1];
+  let done=0;
+  for(const t of terms){
+    if(token !== _regasRegionLoadToken) return;
+    const key=regasTermKey(t);
+    let daily=GD_ALSI_TERM_DAILY[key];
+    const haveAll=daily && dayStrs.every(d=>d in daily);
+    if(!haveAll){
+      try{
+        const rows=await aggiPaginated(`country=${t.ctry}&company=${encodeURIComponent(t.company)}&facility=${encodeURIComponent(t.facility)}&from=${fromStr}&to=${toStr}`);
+        if(!GD_ALSI_TERM_DAILY[key]) GD_ALSI_TERM_DAILY[key]={};
+        rows.forEach(d=>{
+          const date=d.gasDayStart||d.gas_day||'';
+          if(!date)return;
+          GD_ALSI_TERM_DAILY[key][date]={
+            sendGWh:parseFloat(d.sendOut||d.sendout||0)||0,
+            dtrsGWh:parseFloat(d.dtrs||0)||0,
+            invGWh:parseFloat((d.inventory&&d.inventory.gwh)||0)||0,
+          };
+        });
+      }catch(e){
+        console.warn('[regas-region]', key, e.message);
+      }
+    }
+    done++;
+    const p=document.getElementById('regas-region-progress');
+    if(p)p.textContent=done<terms.length?`Loading ${done} / ${terms.length} terminals...`:`Loaded ${terms.length} terminals`;
+    if(!haveAll) await new Promise(r=>setTimeout(r,250));
+  }
+}
+
+function regasRegionAgg(dayStrs, terms){
+  const byRegion=REGAS_REGION_DEFS.reduce((acc,r)=>{acc[r.id]={};return acc;},{});
+  dayStrs.forEach(d=>{
+    REGAS_REGION_DEFS.forEach(r=>{byRegion[r.id][d]={sendGWh:0,dtrsGWh:0,rows:0,active:0};});
+  });
+  terms.forEach(t=>{
+    const daily=GD_ALSI_TERM_DAILY[regasTermKey(t)]||{};
+    dayStrs.forEach(d=>{
+      const row=daily[d];
+      if(!row)return;
+      const b=byRegion[t.region][d];
+      b.sendGWh += row.sendGWh||0;
+      b.dtrsGWh += row.dtrsGWh||0;
+      b.rows++;
+      if((row.sendGWh||0)>0 || (row.dtrsGWh||0)>0)b.active++;
+    });
+  });
+  return byRegion;
+}
+
+function regasRegionWindow(regionDays, dayStrs, n){
+  const days=dayStrs.slice(-n);
+  return days.reduce((a,d)=>{
+    const r=regionDays[d]||{};
+    a.sendGWh += r.sendGWh||0;
+    a.dtrsGWh += r.dtrsGWh||0;
+    a.rows += r.rows||0;
+    a.active += r.active||0;
+    return a;
+  },{sendGWh:0,dtrsGWh:0,rows:0,active:0});
+}
+
+function regasDrawRegionalUtil(dayStrs, terms){
+  const byRegion=regasRegionAgg(dayStrs,terms);
+  const latest = [...dayStrs].reverse().find(d=>REGAS_REGION_DEFS.some(r=>{
+    const x=byRegion[r.id][d]; return x && x.dtrsGWh>0;
+  })) || dayStrs[dayStrs.length-1];
+  const labels=dayStrs.map(d=>{const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});});
+  const utilDs=REGAS_REGION_DEFS.map(r=>({
+    label:r.label,
+    data:dayStrs.map(d=>{const x=byRegion[r.id][d];return x?.dtrsGWh>0?+(x.sendGWh/x.dtrsGWh*100).toFixed(1):null;}),
+    borderColor:r.color,backgroundColor:r.color+'18',borderWidth:2,pointRadius:0,pointHoverRadius:3,tension:.2,spanGaps:false,
+  }));
+  gaMakeChart('regas-region-util-chart','line',{labels,datasets:utilDs},{
+    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:14}},y:{...GCD.scales.y,min:0,max:100,title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}}
+  });
+  const sendDs=REGAS_REGION_DEFS.map(r=>({
+    label:r.label,
+    data:dayStrs.map(d=>{const x=byRegion[r.id][d];return x?.sendGWh?+(x.sendGWh/10.55).toFixed(1):null;}),
+    backgroundColor:r.color+'99',borderWidth:0,stack:'s',
+  }));
+  gaMakeChart('regas-region-send-chart','bar',{labels,datasets:sendDs},{
+    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:14}},y:{...GCD.scales.y,stacked:true,title:{display:true,text:'mcm/d',color:'#3d5070',font:{size:9}}}}
+  });
+
+  const kpi=document.getElementById('regas-region-kpis');
+  if(kpi){
+    kpi.innerHTML=REGAS_REGION_DEFS.map(r=>{
+      const lat=byRegion[r.id][latest]||{};
+      const avg7=regasRegionWindow(byRegion[r.id],dayStrs,7);
+      const util=lat.dtrsGWh>0?lat.sendGWh/lat.dtrsGWh*100:null;
+      const avgUtil=avg7.dtrsGWh>0?avg7.sendGWh/avg7.dtrsGWh*100:null;
+      const send=lat.sendGWh?lat.sendGWh/10.55:null;
+      const dtrs=lat.dtrsGWh?lat.dtrsGWh/10.55:null;
+      return `<div class="ga-kpi" title="${r.desc} · source: GIE ALSI terminal sendOut/dtrs">
+        <div class="ga-kpi-lbl">${r.label} UTILISATION · ${latest||'--'}</div>
+        <div class="ga-kpi-val" style="color:${r.color}">${util!=null?util.toFixed(1):'--'}<span class="ga-kpi-unit"> %</span></div>
+        <div class="ga-kpi-note">7d ${avgUtil!=null?avgUtil.toFixed(1)+'%':'--'} · send ${send!=null?send.toFixed(1):'--'} / dtrs ${dtrs!=null?dtrs.toFixed(1):'--'} mcm/d</div>
+      </div>`;
+    }).join('');
+  }
+
+  const rows=terms.map(t=>{
+    const daily=GD_ALSI_TERM_DAILY[regasTermKey(t)]||{};
+    const lat=daily[latest]||null;
+    const last7=dayStrs.slice(-7).reduce((a,d)=>{
+      const x=daily[d]; if(!x)return a;
+      a.sendGWh+=x.sendGWh||0; a.dtrsGWh+=x.dtrsGWh||0; a.n++;
+      return a;
+    },{sendGWh:0,dtrsGWh:0,n:0});
+    const util=lat&&lat.dtrsGWh?lat.sendGWh/lat.dtrsGWh*100:null;
+    const util7=last7.dtrsGWh?last7.sendGWh/last7.dtrsGWh*100:null;
+    const send=lat?.sendGWh?lat.sendGWh/10.55:null;
+    const dtrs=lat?.dtrsGWh?lat.dtrsGWh/10.55:null;
+    const def=REGAS_REGION_DEFS.find(r=>r.id===t.region);
+    return {t,def,util,util7,send,dtrs};
+  }).sort((a,b)=>a.t.region.localeCompare(b.t.region)||((b.util??-1)-(a.util??-1)));
+  const table=document.getElementById('regas-region-table');
+  if(table){
+    const TH='style="position:sticky;top:0;background:var(--bg2);color:#4fc3f7;font-size:9px;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.16);text-align:right"';
+    const THL='style="position:sticky;top:0;background:var(--bg2);color:#4fc3f7;font-size:9px;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.16);text-align:left"';
+    table.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:9px;min-width:850px">
+      <thead><tr><th ${THL}>REGION</th><th ${THL}>TERMINAL</th><th ${THL}>COUNTRY</th><th ${TH}>LATEST %</th><th ${TH}>7D %</th><th ${TH}>SENDOUT</th><th ${TH}>DTRS</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr style="border-bottom:1px solid rgba(77,158,245,.08)">
+        <td style="padding:5px 8px;color:${r.def?.color||'#c8d6e5'};font-weight:700">${r.def?.label||r.t.region}</td>
+        <td style="padding:5px 8px;color:#c8d6e5">${r.t.name}</td>
+        <td style="padding:5px 8px;color:#6b7a99">${r.t.ctry.toUpperCase()}</td>
+        <td style="padding:5px 8px;text-align:right;color:${r.util!=null&&r.util>=75?'#fbbf24':r.util!=null?'#c8d6e5':'#3d5070'}">${r.util!=null?r.util.toFixed(1)+'%':'--'}</td>
+        <td style="padding:5px 8px;text-align:right;color:${r.util7!=null?'#c8d6e5':'#3d5070'}">${r.util7!=null?r.util7.toFixed(1)+'%':'--'}</td>
+        <td style="padding:5px 8px;text-align:right;color:${r.send!=null?'#c8d6e5':'#3d5070'}">${r.send!=null?r.send.toFixed(1):'--'} mcm/d</td>
+        <td style="padding:5px 8px;text-align:right;color:${r.dtrs!=null?'#6b7a99':'#3d5070'}">${r.dtrs!=null?r.dtrs.toFixed(1):'--'} mcm/d</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+  const src=document.getElementById('regas-region-util-src');
+  if(src)src.textContent=`Source: GIE ALSI terminal sendOut and dtrs · latest ${latest} · weighted by terminal dtrs`;
+  const src2=document.getElementById('regas-region-send-src');
+  if(src2)src2.textContent=`GIE ALSI terminal sendOut · latest ${latest} · converted GWh/d to mcm/d via /10.55`;
+}
+
+window.gaRegasSetRegionPeriod = function(val){
+  const p=regasRegionPrefs();
+  p.period = ['d14','d30','d60','d90'].includes(val) ? val : 'd30';
+  regasSaveRegionPrefs(p);
+  const pane=document.getElementById('ga-regas-pane');
+  if(pane) renderRegasRegionalUtil(pane);
+};
+
 function renderStorLNG(pane){
   const curY=new Date().getFullYear();
   const today=new Date();
@@ -22535,13 +22746,14 @@ function regasTab(sub, btn){
   document.querySelectorAll('#ga-regas-subtabs .ga-stab').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   else {
-    const map={'heatmap':0,'terminals':1,'sendout':2};
+    const map={'heatmap':0,'terminals':1,'regions':2,'sendout':3};
     const btns=document.querySelectorAll('#ga-regas-subtabs .ga-stab');
     const b=btns[map[sub]??0]; if(b)b.classList.add('active');
   }
   const pane=document.getElementById('ga-regas-pane');if(!pane)return;
   if(sub==='heatmap')         renderRegasHeatmap(pane);
   else if(sub==='terminals')  renderStorTerminalsHeatmap(pane);
+  else if(sub==='regions')    renderRegasRegionalUtil(pane);
   // 'sendout' tab now covers sendout + utilisation + inventory seasonal;
   // legacy 'lngstorage' kept as an alias so any saved URL still works.
   else if(sub==='sendout' || sub==='lngstorage') renderRegasSendoutNew(pane);
@@ -22748,7 +22960,7 @@ function gaEuSub(id,btn){
   eugasTab(id==='overview'?'pipeline':id==='balance'?'balance':id==='pipeline'?'pipeline':id==='lngimp'?'lngimp':'pipeline',btn);
 }
 function gaStorSub(id,btn){ storTab(id,btn); }
-function gaRegasSub(id,btn){ regasTab(id==='hm'?'heatmap':id==='sendout'?'sendout':id==='country'?'country':'sendout',btn); }
+function gaRegasSub(id,btn){ regasTab(id==='hm'?'heatmap':id==='terms'?'terminals':id==='regions'?'regions':id==='sendout'?'sendout':id==='country'?'country':'sendout',btn); }
 function gaSpSub(id,btn){}  // placeholder
 
 function gaSnapshotPDF(){ alert('Morning Snapshot PDF — coming soon'); }
@@ -26538,6 +26750,43 @@ const ALSI_TERMINAL_DB = {
   ],
   hr: [{name:'Krk (FSRU LNG Croatia)', company:'31X-LNG-HR-----7', facility:'31W-0000-G-000-Z'}],
 };
+
+// ── Regional regas buckets ────────────────────────────────────────────────
+// Terminal-level utilisation is grouped by geography, not by country aggregate.
+// Classification remains explicit so a terminal can be moved without touching
+// the ALSI query keys. NWE = Atlantic / North Sea terminals; Med = French Med,
+// Italy, Greece, Croatia; Baltic = Baltic Sea LNG/FSRU terminals; Iberia =
+// Spain + Portugal.
+const REGAS_REGION_PREF_KEY = 'regas_region_prefs_v1';
+const REGAS_REGION_DEFS = [
+  {id:'nwe',    label:'NWE',    color:'#4fc3f7', desc:'UK, BE, NL, North Sea DE, Atlantic FR'},
+  {id:'med',    label:'Med',    color:'#ffb74d', desc:'French Med, Italy, Greece, Croatia'},
+  {id:'baltic', label:'Baltic', color:'#81c784', desc:'PL, LT, FI, German Baltic FSRUs'},
+  {id:'iberia', label:'Iberia', color:'#ce93d8', desc:'Spain and Portugal'},
+];
+function regasRegionPrefs(){
+  try{return JSON.parse(localStorage.getItem(REGAS_REGION_PREF_KEY)||'{}')||{};}catch{return{};}
+}
+function regasSaveRegionPrefs(p){
+  try{localStorage.setItem(REGAS_REGION_PREF_KEY,JSON.stringify(p));}catch{}
+}
+function regasTerminalRegion(ctry, term){
+  const n=(term?.name||'').toLowerCase();
+  if(ctry==='es'||ctry==='pt') return 'iberia';
+  if(ctry==='it'||ctry==='gr'||ctry==='hr') return 'med';
+  if(ctry==='fr' && n.includes('fos')) return 'med';
+  if(ctry==='pl'||ctry==='lt'||ctry==='fi') return 'baltic';
+  if(ctry==='de' && (n.includes('lubmin')||n.includes('mukran'))) return 'baltic';
+  return 'nwe';
+}
+function regasAllRegionTerminals(){
+  const terms=[];
+  Object.entries(ALSI_TERMINAL_DB).forEach(([ctry,list])=>{
+    (list||[]).forEach(t=>terms.push({...t,ctry,region:regasTerminalRegion(ctry,t)}));
+  });
+  return terms;
+}
+function regasTermKey(t){return `${t.ctry}_${t.facility}`;}
 // ── LNG Regas: ALSI terminal discovery ───────────────────────────────────────
 // Cache for terminal lists per country: {code: [{name,company,send,dtrs,inventory},...]}
 const GD_ALSI_TERMS = {};
