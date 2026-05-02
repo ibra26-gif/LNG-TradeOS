@@ -37,11 +37,21 @@ assert(
 assert(
   js.includes('function eubDailyPipeTotal') &&
     js.includes('return eubStrictSum(routes.map(r=>eubDailyPipe(r,date)))') &&
-    js.includes('return eubStrictSum([eubDailyPipeTotal(date), eubDailyLng(date), eubDailyDomTotal(date)])') &&
+    js.includes('function eubDailyParts') &&
+    js.includes('const supply=closed ? eubStrictSum([pipeline,lng,domestic]) : null') &&
     js.includes('function eubDailyImpliedDemand') &&
     js.includes('function eubLatestStorageDate') &&
     js.includes('latest complete supply day'),
   'daily S&D chart must use complete gas days only'
+);
+
+assert(
+  js.includes('DAILY SUPPLY STACK VS IMPLIED DEMAND') &&
+    js.includes('Pipeline imports') &&
+    js.includes('Domestic production') &&
+    js.includes('LATEST DAILY BALANCE CHECK') &&
+    js.includes('Coverage is strict: open gas day and missing supply legs stay partial'),
+  'daily balance must show stacked supply components, implied demand, and source coverage'
 );
 
 assert(
