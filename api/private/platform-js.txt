@@ -21346,29 +21346,29 @@ function renderLngVC(){
   const wwMo=allMos[allMos.length-2]||null;
 
   function fmtV(v,d,u){return v!=null?v.toFixed(d||1)+(u||''):'—';}
-  function fmtD(v,ref,u){
+  function fmtD(v,ref,u,dp=2){
     if(v==null||ref==null)return'<span style="color:#546e7a">—</span>';
-    const d=+(v-ref).toFixed(2);const pct=ref?+(d/ref*100).toFixed(1):null;
+    const d=+(v-ref).toFixed(dp);const pct=ref?+(d/ref*100).toFixed(1):null;
     const col=d>0?'#4ade80':d<0?'#f87171':'#c8d6e5';
     return'<span style="color:'+col+'">'+(d>=0?'+':'')+d+(u||'')+(pct?` (${pct>0?'+':''}${pct}%)`:'')+' </span>';
   }
+  const flowDp=u==='mtpm'?4:u==='gwh'?1:2;
+  const flowUnit=' '+uLbl();
   const latPct=getStorPct(code,latMo),lyPct=getStorPct(code,lyMo),wwPct=getStorPct(code,wwMo);
   const latSend=getSend(code,latMo),lySend=getSend(code,lyMo),wwSend=getSend(code,wwMo);
   const latInj=getInj(code,latMo),lyInj=getInj(code,lyMo),wwInj=getInj(code,wwMo);
   const latWdr=getWdr(code,latMo),lyWdr=getWdr(code,lyMo),wwWdr=getWdr(code,wwMo);
-  const latSV=latInj!=null&&latWdr!=null?+(latInj-latWdr).toFixed(2):null;
-  const lySV=lyInj!=null&&lyWdr!=null?+(lyInj-lyWdr).toFixed(2):null;
-  const wwSV=wwInj!=null&&wwWdr!=null?+(wwInj-wwWdr).toFixed(2):null;
+  const latSV=getNet(code,latMo), lySV=getNet(code,lyMo), wwSV=getNet(code,wwMo);
   const selName=code==='all'?'EU Aggregate':(REGAS_COUNTRIES.find(c=>c.code===code)?.name||code.toUpperCase());
 
   const TH='style="color:#4fc3f7;font-size:9px;padding:5px 8px;background:#080e1c;border-bottom:1px solid #1e3a5f;text-align:right"';
   const THL='style="color:#4fc3f7;font-size:9px;padding:5px 8px;background:#080e1c;border-bottom:1px solid #1e3a5f"';
   const statRows=[
     ['Storage Fill %',fmtV(latPct,1,'%'),fmtD(latPct,wwPct,'pp'),fmtD(latPct,lyPct,'pp')],
-    ['LNG Sendout ('+uLbl()+')',fmtV(latSend,2),fmtD(latSend,wwSend),fmtD(latSend,lySend)],
-    ['Storage Injection (TWh/d)',fmtV(latInj,2),fmtD(latInj,wwInj),fmtD(latInj,lyInj)],
-    ['Withdrawal (TWh/d)',fmtV(latWdr,2),fmtD(latWdr,wwWdr),fmtD(latWdr,lyWdr)],
-    ['Storage Variation (TWh/d)',fmtV(latSV,2),fmtD(latSV,wwSV),fmtD(latSV,lySV)],
+    ['LNG Sendout ('+uLbl()+')',fmtV(latSend,flowDp),fmtD(latSend,wwSend,flowUnit,flowDp),fmtD(latSend,lySend,flowUnit,flowDp)],
+    ['Storage Injection ('+uLbl()+')',fmtV(latInj,flowDp),fmtD(latInj,wwInj,flowUnit,flowDp),fmtD(latInj,lyInj,flowUnit,flowDp)],
+    ['Withdrawal ('+uLbl()+')',fmtV(latWdr,flowDp),fmtD(latWdr,wwWdr,flowUnit,flowDp),fmtD(latWdr,lyWdr,flowUnit,flowDp)],
+    ['Storage Variation ('+uLbl()+')',fmtV(latSV,flowDp),fmtD(latSV,wwSV,flowUnit,flowDp),fmtD(latSV,lySV,flowUnit,flowDp)],
   ].map(([lbl,cur,wow,yoy],i)=>{
     const isVar=i===4;
     return`<tr style="border-bottom:0.5px solid #0d1929${isVar?';background:rgba(79,195,247,0.04)':''}">
