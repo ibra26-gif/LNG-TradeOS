@@ -5,6 +5,7 @@
   Runs scripts/acer_fetch.py at 19:00 local time (after ACER publishes ~18:30 CET).
   Install:
     cp scripts/com.lngtradeos.acer.plist ~/Library/LaunchAgents/
+    sed -i '' "s|__LNGTRADEOS_REPO__|$(pwd)|g" ~/Library/LaunchAgents/com.lngtradeos.acer.plist
     launchctl load ~/Library/LaunchAgents/com.lngtradeos.acer.plist
   Test now:
     launchctl start com.lngtradeos.acer
@@ -18,12 +19,13 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/bin/python3</string>
-    <string>/Users/iboumar/Desktop/lngtradeos-fix/scripts/acer_fetch.py</string>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>cd "__LNGTRADEOS_REPO__" &amp;&amp; /usr/bin/python3 scripts/acer_fetch.py</string>
   </array>
 
   <key>WorkingDirectory</key>
-  <string>/Users/iboumar/Desktop/lngtradeos-fix</string>
+  <string>__LNGTRADEOS_REPO__</string>
 
   <key>StartCalendarInterval</key>
   <dict>

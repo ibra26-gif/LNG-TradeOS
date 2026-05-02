@@ -29,7 +29,11 @@ export default function handler(req, res) {
 
   try {
     const text = readFileSync(CSV_PATH, 'utf-8');
+    const rows = text.trim().split(/\r?\n/).slice(1);
+    const latest = rows[0]?.split(',')?.[0]?.replace(/"/g, '') || '';
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    if (latest) res.setHeader('X-LNGTradeOS-Latest-Date', latest);
+    res.setHeader('X-LNGTradeOS-Row-Count', String(rows.length));
     res.setHeader('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=7200');
     res.status(200).send(text);
   } catch (e) {

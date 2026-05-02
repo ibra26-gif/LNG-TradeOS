@@ -26143,6 +26143,15 @@ function acer_init(){
 // spreads used by the UI, where TTF_ref = NWE - BENCHMARK and EURUSD comes
 // from the LNG EOD daily cache (getEURUSD). Replaces ACER_D in place and
 // re-renders if the tab is mounted.
+function acer_freshness(latest){
+  const el=document.getElementById('acer-lastUpdate');
+  if(!el||!latest)return;
+  const ageD=Math.floor((Date.now()-new Date(latest+'T00:00:00Z').getTime())/86400000);
+  const stale=ageD>4;
+  el.textContent=`${ACER_D[0].d} \u2192 ${latest} \u00b7 ${ACER_D.length} sessions \u00b7 ${stale?'stale':'fresh'}`;
+  el.className='st '+(stale?'err':'ok');
+  el.title=`Source: /api/acer?action=csv · latest ACER DATE ${latest} · ${ageD} calendar day(s) old`;
+}
 async function acer_loadLive(){
   try{
     const r = await fetch('/api/acer?action=csv',{cache:'no-store'});
@@ -26185,12 +26194,15 @@ async function acer_loadLive(){
       rows.sort((a,b)=>a.d.localeCompare(b.d));
       ACER_D = rows;
       const latest = rows[rows.length-1].d;
+      acer_freshness(latest);
       console.log('[ACER] live loaded — '+rows.length+' rows · latest '+latest);
       if(document.getElementById('acer-histChart') && typeof acer_renderHist==='function'){
         acer_renderHist();
       }
     }
   }catch(e){
+    const el=document.getElementById('acer-lastUpdate');
+    if(el){el.textContent='Live ACER CSV failed · using embedded fallback';el.className='st err';}
     console.warn('[ACER] live fetch failed, keeping seeded data:',e.message);
   }
 }

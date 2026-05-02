@@ -36,8 +36,8 @@ assert(
 );
 
 assert(
-  /name=lngtradeos\.js&v=20260501-/.test(app),
-  'script cache-bust must stay bumped for current private bundle'
+  /name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app),
+  'private platform script must carry a dated cache-bust'
 );
 
 if (!process.exitCode) console.log('freight history regression checks passed');

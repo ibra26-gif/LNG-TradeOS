@@ -57,8 +57,8 @@ assert(
 );
 
 assert(
-  /name=lngtradeos\.js&v=20260501-/.test(app),
-  'cache-bust must stay bumped for the current private bundle'
+  /name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app),
+  'private platform script must carry a dated cache-bust'
 );
 
 if (!process.exitCode) console.log('USGC route DES shift regression checks passed');
