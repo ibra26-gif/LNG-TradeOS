@@ -1400,15 +1400,6 @@ def fetch_kogas_current_power_tariff():
     today = datetime.now(timezone.utc)
     cached = _load_json_file(cache_path)
 
-    if cached and cached.get('cachedAt'):
-        try:
-            age_h = (today - datetime.fromisoformat(cached['cachedAt'])).total_seconds() / 3600
-            if age_h < 12:
-                cached['stale'] = _kogas_tariff_stale(cached.get('effectiveEnd'), today)
-                return cached
-        except Exception:
-            pass
-
     try:
         raw = fetch(KOGAS_POWER_TARIFF_URL, timeout=30, retries=2)
         if isinstance(raw, bytes):

@@ -24474,7 +24474,7 @@ function thaiRenderSeasonal(){
 // Tab 3 (Tariffs): KOGAS power tariff, JKM, and Brent 11-14% 3-0-1 range.
 
 let _korTab = 'snd';
-let _korChartMain = null, _korChartNuclear = null, _korChartPrices = null;
+let _korChartMain = null, _korChartNuclear = null;
 
 // Seed data (values from spec mock — replace with scrapers in follow-ups)
 // All Korea data is now sourced from live scrapers (KHNP / DART / KCGA /
@@ -25780,14 +25780,6 @@ function renderKorPrices(el){
       <div style="height:260px"><canvas id="kor-tariff-seasonal"></canvas></div>
     </div>
 
-    <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">Latest monthly market curve · JKM vs Brent slope band 14%–11% (3,0,1)</span>
-        <span style="font-size:9px;color:#5a6882">— JKM · ▮ 14–11% Brent band</span>
-      </div>
-      <div style="height:240px"><canvas id="kor-prices-chart"></canvas></div>
-    </div>
-
     <div style="font-size:9px;color:#6b7280;margin-bottom:10px">
       Slope band = (11% to 14%) × Brent (3,0,1) — 3-month avg, 0-month lag, 1-month application. Spot above the band = market tighter than oil-linked term · below = looser
     </div>
@@ -25797,33 +25789,6 @@ function renderKorPrices(el){
       <span style="color:#a78bfa;font-size:9px;letter-spacing:.06em">READ</span><br>
       <b>JKM at $${jkmM1.toFixed(2)}</b> sits ${jkmVsBand>=0?'+':''}<b>$${jkmVsBand.toFixed(2)}</b> ${jkmVsBand>=0?'above':'below'} 14% Brent.
       ${jkmVsKogas!=null ? ` Versus the official KOGAS direct-power tariff, JKM is ${jkmVsKogas>=0?'+':''}<b>$${jkmVsKogas.toFixed(2)}</b> ${jkmVsKogas>=0?'higher':'lower'}.` : ''}
-    </div>
-    ` : ''}
-
-    ${tariffHistory.length ? `
-    <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-top:12px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS power-sector tariff · history + official current · 2008–${lastTariff.date.slice(0,7)}</span>
-        <span style="font-size:9px;color:#5a6882">data.go.kr historical + KOGAS official current · KRW/GJ</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
-        <div style="background:#0a1628;border-radius:4px;padding:8px 10px">
-          <div style="font-size:9px;color:#6b7280">${lastTariff.source==='KOGAS official current'?'Official current':'Latest available'} (${lastTariff.date.slice(0,7)})</div>
-          <div style="font-size:14px;color:#fff;font-weight:600">${lastTariff.krwGj_total?.toLocaleString() || '—'} KRW/GJ</div>
-          <div style="font-size:10px;color:#a78bfa">≈ \$${lastTariff.usdMmbtu_total?.toFixed(2) || '—'}/MMBtu  <span style="color:#3d5070">@ ${lastTariff.source==='KOGAS official current' ? (fxLive?'live':'fallback') : 'ref'} FX</span></div>
-        </div>
-        <div style="background:#0a1628;border-radius:4px;padding:8px 10px">
-          <div style="font-size:9px;color:#6b7280">Composition (${lastTariff.date.slice(0,7)})</div>
-          <div style="font-size:11px;color:#c8cfe0">Raw material: <b style="color:#3b82f6">${lastTariff.krwGj_raw?.toLocaleString() || '—'}</b> KRW/GJ</div>
-          <div style="font-size:11px;color:#c8cfe0">Supply cost: &nbsp;<b style="color:#34d399">${lastTariff.krwGj_supply?.toLocaleString() || '—'}</b> KRW/GJ</div>
-        </div>
-      </div>
-      <div style="height:240px"><canvas id="kor-tariff-history"></canvas></div>
-      <div style="margin-top:8px;font-size:9px;color:#6b7280;line-height:1.5">
-        Raw-material cost (원료비) tracks LNG procurement; supply cost (공급비) is the regulated transmission/regas margin.
-        Peak Dec-22 = ${tariffHistory.find(r=>r.date==='2022-12-01')?.krwGj_total?.toLocaleString() || '—'} KRW/GJ ≈ \$${tariffHistory.find(r=>r.date==='2022-12-01')?.usdMmbtu_total?.toFixed(2) || '—'}/MMBtu (energy crisis).
-        Historical public file stops ${lastHistoricalTariff?.date?.slice(0,7) || '—'}; official KOGAS page supplies the current monthly tariff.
-      </div>
     </div>
     ` : ''}
 
@@ -25867,124 +25832,6 @@ function renderKorPrices(el){
     });
   }
 
-  // Combined chart
-  if (_korChartPrices) { _korChartPrices.destroy(); _korChartPrices = null; }
-  const c = document.getElementById('kor-prices-chart');
-  if (!c) return;
-
-  // Build x-axis: last 12 months ending current month
-  const now = new Date();
-  const months = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    months.push({ ym:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
-                  label: d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}) });
-  }
-  // JKM monthly (real EOD if available)
-  const jkmMonthlyArr = korJkmMonthly();
-  const jkmMap = new Map(jkmMonthlyArr.map(r => [r.ym, r.jkm]));
-  const jkmSeries = months.map(m => jkmMap.get(m.ym) ?? null);
-  // Brent monthly (real if available)
-  const brentMonthlyArr = korBrentMonthly();
-  const brentMap = new Map(brentMonthlyArr.map(r => [r.ym, r.brent]));
-  const slopeBand = korSlopeBand(brentMonthlyArr);
-  const slopeMap = new Map(slopeBand.map(r => [r.ym, r]));
-  // Fallback: if no Brent history, generate band from constant (brent latest)
-  const lowerSeries = months.map(m => {
-    const sb = slopeMap.get(m.ym);
-    if (sb && sb.lower != null) return sb.lower;
-    return brentMap.get(m.ym) != null ? +(brentMap.get(m.ym)*0.11).toFixed(2) : null;
-  });
-  const upperSeries = months.map(m => {
-    const sb = slopeMap.get(m.ym);
-    if (sb && sb.upper != null) return sb.upper;
-    return brentMap.get(m.ym) != null ? +(brentMap.get(m.ym)*0.14).toFixed(2) : null;
-  });
-
-  _korChartPrices = new Chart(c.getContext('2d'), {
-    type:'line',
-    data: {
-      labels: months.map(m => m.label),
-      datasets: [
-        // Lower band line
-        { label:'11% Brent', data:lowerSeries, borderColor:'rgba(167,139,250,0.30)', borderWidth:1, borderDash:[4,3], pointRadius:0, fill:false, tension:0.3 },
-        // Upper band line — fills down to the lower band
-        { label:'14% Brent', data:upperSeries, borderColor:'rgba(167,139,250,0.30)', borderWidth:1, borderDash:[4,3], pointRadius:0, fill:'-1', backgroundColor:'rgba(167,139,250,0.10)', tension:0.3 },
-        // JKM (live monthly resample from EOD files)
-        { label:'JKM', data:jkmSeries, borderColor:'#3b82f6', borderWidth:2, pointRadius:3, tension:0.3, fill:false, spanGaps:true },
-      ]
-    },
-    options: {
-      ...CD, animation:false,
-      interaction: { mode:'index', intersect:false },
-      plugins: {
-        ...CD.plugins,
-        legend: { display:true, position:'top', labels:{color:'#9ca3af',font:{size:9},boxWidth:8,
-          filter:(item) => item.text === 'JKM'  /* hide the band line entries from legend */
-        } },
-      },
-      scales: {
-        x: { ...CD.scales.x },
-        y: { ...CD.scales.y, title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}}, ticks:{color:'#3d5070',font:{size:8}} },
-      },
-    }
-  });
-
-  // ── Historical KOGAS tariff chart ─────────────────────────────────────────
-  if (window._korChartTariffHistory) { window._korChartTariffHistory.destroy(); window._korChartTariffHistory = null; }
-  const cTH = document.getElementById('kor-tariff-history');
-  if (cTH && tariffHistory.length) {
-    const labels = tariffHistory.map(r => r.date.slice(0,7));
-    window._korChartTariffHistory = new Chart(cTH.getContext('2d'), {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          { label:'Total tariff (KRW/GJ)', data: tariffHistory.map(r => r.krwGj_total),
-            borderColor:'#fbbf24', backgroundColor:'transparent',
-            borderWidth:2, pointRadius:0, tension:0.3, fill:false, yAxisID:'y' },
-          { label:'Raw material',  data: tariffHistory.map(r => r.krwGj_raw),
-            borderColor:'#3b82f6', backgroundColor:'transparent',
-            borderWidth:1, pointRadius:0, tension:0.3, fill:false, yAxisID:'y',
-            borderDash:[3,3] },
-          { label:'Supply cost',   data: tariffHistory.map(r => r.krwGj_supply),
-            borderColor:'#34d399', backgroundColor:'transparent',
-            borderWidth:1, pointRadius:0, tension:0.3, fill:false, yAxisID:'y',
-            borderDash:[3,3] },
-          { label:'Total ≈ \$/MMBtu (ref FX)', data: tariffHistory.map(r => r.usdMmbtu_total),
-            borderColor:'#a78bfa', backgroundColor:'transparent',
-            borderWidth:1.2, pointRadius:0, tension:0.3, fill:false, yAxisID:'y1' },
-        ]
-      },
-      options: {
-        ...CD, animation:false,
-        plugins: {
-          ...CD.plugins,
-          legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8} },
-          tooltip: { ...CD.plugins.tooltip, callbacks: {
-            label: (ctx) => {
-              const v = ctx.parsed.y; if (v == null) return '';
-              if (ctx.dataset.label.includes('MMBtu')) return `${ctx.dataset.label}: \$${v.toFixed(2)}`;
-              return `${ctx.dataset.label}: ${v.toLocaleString()} KRW/GJ`;
-            },
-          }},
-        },
-        scales: {
-          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:8},maxTicksLimit:18,
-                callback: function(v,i){
-                  const lab = this.getLabelForValue(v);
-                  return lab.endsWith('-01') ? lab.slice(0,4) : '';
-                }} },
-          y:  { ...CD.scales.y, position:'left',
-                title:{display:true,text:'KRW/GJ',color:'#3d5070',font:{size:9}},
-                ticks:{color:'#3d5070',font:{size:9}} },
-          y1: { ...CD.scales.y, position:'right', grid:{drawOnChartArea:false},
-                title:{display:true,text:'\$/MMBtu (ref ' + FX_REF + ' KRW/USD)',color:'#3d5070',font:{size:9}},
-                ticks:{color:'#3d5070',font:{size:9}} },
-        },
-      }
-    });
-  }
 }
 
 
