@@ -29,15 +29,17 @@ jobs:
       - name: Install Python deps
         run: pip install xlrd
 
-      - name: Fetch EPPO Thailand gas balance
-        run: python3 scripts/fetch_thailand_gas_balance.py
+      - name: Fetch Thailand gas balance and weather
+        run: |
+          python3 scripts/fetch_thailand_gas_balance.py
+          python3 scripts/fetch_thailand_weather.py
 
       - name: Commit data if changed
         run: |
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/thailand_gas_balance.json
+          git add data/thailand_gas_balance.json data/thailand_weather_cdd.json
           if git diff --cached --quiet; then
             echo "No Thailand gas balance change."
             exit 0
