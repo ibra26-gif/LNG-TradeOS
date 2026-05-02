@@ -920,6 +920,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
       <button data-tab="paper">Paper Book</button>
       <button data-tab="exposure">Exposure Book</button>
       <button data-tab="spec">Spec Book</button>
+      <button data-tab="contract-mtm">Contract MtM</button>
       <span class="sep"></span>
       <button data-tab="pnl">P&amp;L</button>
       <span class="sep"></span>
@@ -1645,7 +1646,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
               </div>
               <div class="field readonly">
                 <label>Distance (NM)</label>
-                <input type="number" id="v-nm" value="4,902" readonly>
+                <input type="number" id="v-nm" value="" readonly>
                 <div class="hint">From NM database</div>
               </div>
               <div class="field">
@@ -2628,6 +2629,109 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
         <span class="meta">unit price + progress bar · click to focus</span>
       </div>
       <div id="spec-snapshots" class="spec-snapshots"><!-- populated by JS --></div>
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════════
+       CONTRACT MTM — SPAs and strips vs market
+       ══════════════════════════════════════════════ -->
+  <section class="sec" id="sec-contract-mtm">
+
+    <div class="page-head">
+      <div>
+        <h1>Contract MtM</h1>
+        <div class="sub">SPAs and strips marked versus current market reference · rolling 24 months · monthly and quarterly views.</div>
+      </div>
+      <div class="right">
+        <select id="cmtm-parent-filter" onchange="setContractMtmParent(this.value)" style="min-width:220px">
+          <option value="all">All contracts</option>
+        </select>
+        <div class="view-toggle" id="cmtm-view-toggle">
+          <button class="active" data-cmtm-view="monthly">Monthly</button>
+          <button data-cmtm-view="quarterly">Quarterly</button>
+        </div>
+        <button class="btn ghost" onclick="exportContractMtmCSV()">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="metric-label">Rolling 24M MtM</div>
+        <div class="metric-value" id="cmtm-total">—</div>
+        <div class="metric-sub" id="cmtm-total-sub">contract value vs market</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">In the money</div>
+        <div class="metric-value pos" id="cmtm-itm">—</div>
+        <div class="metric-sub" id="cmtm-itm-sub">months / quarters</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Out of the money</div>
+        <div class="metric-value neg" id="cmtm-otm">—</div>
+        <div class="metric-sub" id="cmtm-otm-sub">months / quarters</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Best contract</div>
+        <div class="metric-value pos" id="cmtm-best">—</div>
+        <div class="metric-sub" id="cmtm-best-sub">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Worst contract</div>
+        <div class="metric-value neg" id="cmtm-worst">—</div>
+        <div class="metric-sub" id="cmtm-worst-sub">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Contract summary</h3>
+        <span class="meta" id="cmtm-summary-meta">By parent deal · current curve snapshot</span>
+      </div>
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Contract</th>
+            <th>Type</th>
+            <th>Side</th>
+            <th>Tenor shown</th>
+            <th class="num" style="text-align:right">Volume</th>
+            <th class="num" style="text-align:right">Avg edge</th>
+            <th class="num" style="text-align:right">MtM</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="cmtm-summary-body"><!-- populated by JS --></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3 id="cmtm-table-title">Monthly detail</h3>
+        <span class="meta" id="cmtm-table-meta">Contract price versus market reference</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl spec-table">
+          <thead>
+            <tr id="cmtm-table-head">
+              <th>Contract</th>
+              <th>Period</th>
+              <th>Side</th>
+              <th class="num" style="text-align:right">Volume</th>
+              <th class="num" style="text-align:right">Contract</th>
+              <th class="num" style="text-align:right">Market</th>
+              <th class="num" style="text-align:right">Edge</th>
+              <th class="num" style="text-align:right">MtM</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="cmtm-table-body"><!-- populated by JS --></tbody>
+          <tfoot id="cmtm-table-foot"><!-- populated by JS --></tfoot>
+        </table>
+      </div>
+      <div class="hint" id="cmtm-footnote" style="margin-top:12px">
+        Buy-side SPAs: market DES reference less delivered contract cost. Sell-side strips: fixed sale less market sourcing reference. MtM uses current Financial Trading curves, Freight curves, and the existing NM_DB via calcVoyage().
+      </div>
     </div>
 
   </section>
@@ -5341,6 +5445,7 @@ function renderAll() {
   if (typeof renderPaperTable  === 'function') renderPaperTable();
   if (typeof renderCargoTable  === 'function') renderCargoTable();
   if (typeof renderSpecBook    === 'function') renderSpecBook();
+  if (typeof renderContractMtm === 'function') renderContractMtm();
   if (typeof renderMorningBook === 'function') renderMorningBook();
   if (typeof renderExposureGrid=== 'function') renderExposureGrid(currentExposureView);
   if (typeof renderOptionality === 'function') renderOptionality();
@@ -8322,6 +8427,295 @@ document.querySelectorAll('#spec-filter-toggle button').forEach(b => {
 });
 
 // ════════════════════════════════════════════════
+//  CONTRACT MTM — SPAs and strips vs market reference
+// ════════════════════════════════════════════════
+let contractMtmView = 'monthly';     // monthly | quarterly
+let contractMtmParent = 'all';
+
+function _cmtmEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
+}
+function _cmtmMoney(v) {
+  if (v == null || !isFinite(v)) return '—';
+  const sign = v > 0 ? '+' : v < 0 ? '−' : '';
+  const a = Math.abs(v);
+  if (a >= 1000) return `${sign}$${(a / 1000).toFixed(2)}B`;
+  if (a >= 1) return `${sign}$${a.toFixed(2)}M`;
+  if (a >= 0.001) return `${sign}$${(a * 1000).toFixed(0)}k`;
+  return '$0';
+}
+function _cmtmPrice(v) {
+  return (v == null || !isFinite(v)) ? '—' : v.toFixed(3);
+}
+function _cmtmEdge(v) {
+  return (v == null || !isFinite(v)) ? '—' : (v > 0 ? '+' : '') + v.toFixed(3);
+}
+function _cmtmCurrentMonth() {
+  const d = new Date();
+  return `${_MONTH_NAMES[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
+}
+function _cmtmRollingMonths(n) {
+  const start = _cmtmCurrentMonth();
+  return Array.from({ length: n || 24 }, (_, i) => shiftMonth(start, i));
+}
+function _cmtmMonthSortKey(m) {
+  const idx = _monthStrToIdx(m);
+  if (isFinite(idx)) return idx;
+  const q = /^Q([1-4])-(\d{2})$/.exec(m || '');
+  if (q) return (2000 + +q[2]) * 12 + ((+q[1] - 1) * 3);
+  const c = /^Cal-(\d{2})$/.exec(m || '');
+  if (c) return (2000 + +c[1]) * 12;
+  return 999999;
+}
+function _cmtmQuarterForMonth(m) {
+  const mt = /^([A-Za-z]{3})-(\d{2})$/.exec(m || '');
+  if (!mt) return m || 'Unknown';
+  const mi = _MONTH_NAMES.indexOf(mt[1]);
+  const q = Math.floor(mi / 3) + 1;
+  return `Q${q}-${mt[2]}`;
+}
+function _cmtmSide(c) {
+  if (c.coverage === 'unsold') return 'Long supply';
+  if (c.coverage === 'uncovered') return 'Short sale';
+  return 'Covered spread';
+}
+function _cmtmParentName(parent) {
+  return `${parent.id} · ${parent.name || parent.cpty || parent.kind || 'Contract'}`;
+}
+function _cmtmPricing(c, v) {
+  const deliveredCost = v && v.edq > 0
+    ? (v.supply + v.shipping) / v.edq
+    : (v?.buyPx || 0) + (v?.freight || 0);
+  const saleOrMarket = v?.sellPx ?? null;
+  if (c.coverage === 'unsold') {
+    return {
+      contractPx: deliveredCost,
+      marketPx: saleOrMarket,
+      edge: saleOrMarket == null ? null : saleOrMarket - deliveredCost,
+    };
+  }
+  return {
+    contractPx: saleOrMarket,
+    marketPx: deliveredCost,
+    edge: saleOrMarket == null ? null : saleOrMarket - deliveredCost,
+  };
+}
+function _cmtmMonthlyRows() {
+  const months = _cmtmRollingMonths(24);
+  const monthSet = new Set(months);
+  const parents = (typeof getParentDeals === 'function') ? getParentDeals() : [];
+  const rows = [];
+  for (const parent of parents) {
+    if (contractMtmParent !== 'all' && parent.id !== contractMtmParent) continue;
+    const children = (typeof getChildrenOf === 'function') ? getChildrenOf(parent.id) : [];
+    for (const c of children) {
+      const periodMonths = periodToMonths(c.loadMonth || c.sellMonth);
+      const matched = periodMonths.filter(m => monthSet.has(m));
+      if (!matched.length) continue;
+      const v = computeCargoValues(c);
+      const p = _cmtmPricing(c, v);
+      const monthDenom = Math.max(1, periodMonths.length);
+      const qtyShare = (v.edq || v.loaded || 0) / monthDenom;
+      const mtmShare = (v.mtm || 0) / monthDenom;
+      for (const m of matched) {
+        rows.push({
+          parentId: parent.id,
+          parentName: parent.name || parent.id,
+          parentKind: parent.kind || '',
+          cpty: parent.cpty || '',
+          period: m,
+          sourcePeriod: c.loadMonth || c.sellMonth || m,
+          side: _cmtmSide(c),
+          tbtu: qtyShare,
+          contractPx: p.contractPx,
+          marketPx: p.marketPx,
+          edge: p.edge,
+          mtmM: mtmShare,
+          childId: c.id,
+          curveDate: getActiveCurveDate(),
+          freightDate: getActiveFreightDate(),
+        });
+      }
+    }
+  }
+  return rows.sort((a, b) => _cmtmMonthSortKey(a.period) - _cmtmMonthSortKey(b.period) || a.parentId.localeCompare(b.parentId));
+}
+function _cmtmAggregateRows(rows, keyFn, labelFn) {
+  const acc = {};
+  for (const r of rows) {
+    const key = keyFn(r);
+    const slot = acc[key] = acc[key] || {
+      parentId: r.parentId, parentName: r.parentName, parentKind: r.parentKind, cpty: r.cpty,
+      period: labelFn(r), side: r.side, tbtu: 0, mtmM: 0,
+      contractWeighted: 0, marketWeighted: 0, edgeWeighted: 0,
+      weight: 0, childCount: 0, curveDate: r.curveDate, freightDate: r.freightDate,
+    };
+    const w = Math.abs(r.tbtu || 0);
+    slot.tbtu += r.tbtu || 0;
+    slot.mtmM += r.mtmM || 0;
+    slot.contractWeighted += (r.contractPx || 0) * w;
+    slot.marketWeighted += (r.marketPx || 0) * w;
+    slot.edgeWeighted += (r.edge || 0) * w;
+    slot.weight += w;
+    slot.childCount += 1;
+  }
+  return Object.values(acc).map(r => ({
+    ...r,
+    contractPx: r.weight ? r.contractWeighted / r.weight : null,
+    marketPx: r.weight ? r.marketWeighted / r.weight : null,
+    edge: r.weight ? r.edgeWeighted / r.weight : null,
+  })).sort((a, b) => _cmtmMonthSortKey(a.period) - _cmtmMonthSortKey(b.period) || a.parentId.localeCompare(b.parentId));
+}
+function getContractMtmRows(view) {
+  const monthly = _cmtmMonthlyRows();
+  if ((view || contractMtmView) === 'quarterly') {
+    return _cmtmAggregateRows(
+      monthly,
+      r => `${r.parentId}|${_cmtmQuarterForMonth(r.period)}`,
+      r => _cmtmQuarterForMonth(r.period)
+    );
+  }
+  return monthly;
+}
+function getContractMtmSummary() {
+  const rows = _cmtmMonthlyRows();
+  return _cmtmAggregateRows(rows, r => r.parentId, r => 'Rolling 24M')
+    .sort((a, b) => b.mtmM - a.mtmM);
+}
+function setContractMtmView(view) {
+  contractMtmView = view === 'quarterly' ? 'quarterly' : 'monthly';
+  document.querySelectorAll('#cmtm-view-toggle button').forEach(b =>
+    b.classList.toggle('active', b.dataset.cmtmView === contractMtmView));
+  renderContractMtm();
+}
+function setContractMtmParent(parentId) {
+  contractMtmParent = parentId || 'all';
+  renderContractMtm();
+}
+
+function renderContractMtm() {
+  const body = document.getElementById('cmtm-table-body');
+  if (!body) return;
+  const parents = (typeof getParentDeals === 'function') ? getParentDeals() : [];
+  if (contractMtmParent !== 'all' && !parents.some(p => p.id === contractMtmParent)) contractMtmParent = 'all';
+  const sel = document.getElementById('cmtm-parent-filter');
+  if (sel) {
+    const current = contractMtmParent;
+    sel.innerHTML = '<option value="all">All contracts</option>' +
+      parents.map(p => `<option value="${_cmtmEsc(p.id)}">${_cmtmEsc(_cmtmParentName(p))}</option>`).join('');
+    sel.value = current;
+  }
+  document.querySelectorAll('#cmtm-view-toggle button').forEach(b =>
+    b.classList.toggle('active', b.dataset.cmtmView === contractMtmView));
+
+  const rows = getContractMtmRows(contractMtmView);
+  const monthlyRows = _cmtmMonthlyRows();
+  const summaryRows = getContractMtmSummary();
+  const totalMtm = monthlyRows.reduce((a, r) => a + (r.mtmM || 0), 0);
+  const itm = rows.filter(r => (r.mtmM || 0) > 0).length;
+  const otm = rows.filter(r => (r.mtmM || 0) < 0).length;
+  const best = summaryRows[0];
+  const worst = summaryRows[summaryRows.length - 1];
+  const g = id => document.getElementById(id);
+  if (g('cmtm-total')) {
+    g('cmtm-total').textContent = _cmtmMoney(totalMtm);
+    g('cmtm-total').className = 'metric-value ' + (totalMtm >= 0 ? 'pos' : 'neg');
+  }
+  if (g('cmtm-total-sub')) g('cmtm-total-sub').textContent = `${monthlyRows.length} monthly marks · ${getActiveCurveDate() || 'no curve date'}`;
+  if (g('cmtm-itm')) g('cmtm-itm').textContent = String(itm);
+  if (g('cmtm-itm-sub')) g('cmtm-itm-sub').textContent = contractMtmView === 'quarterly' ? 'profitable quarters' : 'profitable months';
+  if (g('cmtm-otm')) g('cmtm-otm').textContent = String(otm);
+  if (g('cmtm-otm-sub')) g('cmtm-otm-sub').textContent = contractMtmView === 'quarterly' ? 'loss-making quarters' : 'loss-making months';
+  if (g('cmtm-best')) g('cmtm-best').textContent = best ? best.parentId : '—';
+  if (g('cmtm-best-sub')) g('cmtm-best-sub').textContent = best ? _cmtmMoney(best.mtmM) : '—';
+  if (g('cmtm-worst')) g('cmtm-worst').textContent = worst ? worst.parentId : '—';
+  if (g('cmtm-worst-sub')) g('cmtm-worst-sub').textContent = worst ? _cmtmMoney(worst.mtmM) : '—';
+
+  const summaryBody = document.getElementById('cmtm-summary-body');
+  if (summaryBody) {
+    summaryBody.innerHTML = summaryRows.length === 0
+      ? `<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-4)">No parent SPA or strip deals in the rolling 24-month window.</td></tr>`
+      : summaryRows.map(r => {
+          const cls = (r.mtmM || 0) >= 0 ? 'pos' : 'neg';
+          const status = (r.mtmM || 0) >= 0 ? '<span class="pill fixed">ITM</span>' : '<span class="pill sl">OTM</span>';
+          return `<tr>
+            <td class="id">${_cmtmEsc(r.parentId)}<br><span style="font-size:10.5px;color:var(--text-3);font-weight:400">${_cmtmEsc(r.parentName)}</span></td>
+            <td>${(r.parentKind || '').toUpperCase()}</td>
+            <td>${_cmtmEsc(r.side)}</td>
+            <td class="mono">${_cmtmEsc(r.period)}</td>
+            <td class="num" style="text-align:right">${r.tbtu.toFixed(2)} TBtu</td>
+            <td class="num ${cls}" style="text-align:right">${_cmtmEdge(r.edge)}</td>
+            <td class="num ${cls}" style="text-align:right;font-weight:700">${_cmtmMoney(r.mtmM)}</td>
+            <td>${status}</td>
+          </tr>`;
+        }).join('');
+  }
+
+  if (g('cmtm-table-title')) g('cmtm-table-title').textContent = contractMtmView === 'quarterly' ? 'Quarterly detail' : 'Monthly detail';
+  if (g('cmtm-table-meta')) g('cmtm-table-meta').textContent = `Curves ${getActiveCurveDate() || '—'} · Freight ${getActiveFreightDate() || '—'} · ${rows.length} rows`;
+  body.innerHTML = rows.length === 0
+    ? `<tr><td colspan="9" style="text-align:center; padding:30px; color:var(--text-4)">No contract marks in the selected view.</td></tr>`
+    : rows.map(r => {
+        const cls = (r.mtmM || 0) >= 0 ? 'pos' : 'neg';
+        const status = (r.mtmM || 0) >= 0 ? '<span class="pill fixed">ITM</span>' : '<span class="pill sl">OTM</span>';
+        return `<tr>
+          <td class="id">${_cmtmEsc(r.parentId)}<br><span style="font-size:10.5px;color:var(--text-3);font-weight:400">${_cmtmEsc(r.parentName)}</span></td>
+          <td class="mono">${_cmtmEsc(r.period)}</td>
+          <td>${_cmtmEsc(r.side)}</td>
+          <td class="num" style="text-align:right">${(r.tbtu || 0).toFixed(2)}</td>
+          <td class="num mono" style="text-align:right">${_cmtmPrice(r.contractPx)}</td>
+          <td class="num mono" style="text-align:right">${_cmtmPrice(r.marketPx)}</td>
+          <td class="num mono ${cls}" style="text-align:right">${_cmtmEdge(r.edge)}</td>
+          <td class="num ${cls}" style="text-align:right;font-weight:700">${_cmtmMoney(r.mtmM)}</td>
+          <td>${status}</td>
+        </tr>`;
+      }).join('');
+  const foot = document.getElementById('cmtm-table-foot');
+  if (foot) {
+    const vol = rows.reduce((a, r) => a + (r.tbtu || 0), 0);
+    const mtm = rows.reduce((a, r) => a + (r.mtmM || 0), 0);
+    const edge = vol ? rows.reduce((a, r) => a + ((r.edge || 0) * Math.abs(r.tbtu || 0)), 0) / rows.reduce((a, r) => a + Math.abs(r.tbtu || 0), 0) : 0;
+    foot.innerHTML = `<tr>
+      <td colspan="3">Total selected view</td>
+      <td class="num" style="text-align:right">${vol.toFixed(2)}</td>
+      <td></td><td></td>
+      <td class="num ${mtm >= 0 ? 'pos' : 'neg'}" style="text-align:right">${_cmtmEdge(edge)}</td>
+      <td class="num ${mtm >= 0 ? 'pos' : 'neg'}" style="text-align:right;font-weight:700">${_cmtmMoney(mtm)}</td>
+      <td></td>
+    </tr>`;
+  }
+}
+
+function exportContractMtmCSV() {
+  const rows = getContractMtmRows(contractMtmView).map(r => ({
+    Contract: r.parentId,
+    Name: r.parentName,
+    Type: (r.parentKind || '').toUpperCase(),
+    Period: r.period,
+    SourcePeriod: r.sourcePeriod || '',
+    Side: r.side,
+    Volume_TBtu: +(r.tbtu || 0).toFixed(4),
+    Contract_USD_per_MMBtu: r.contractPx == null ? '' : +r.contractPx.toFixed(4),
+    Market_USD_per_MMBtu: r.marketPx == null ? '' : +r.marketPx.toFixed(4),
+    Edge_USD_per_MMBtu: r.edge == null ? '' : +r.edge.toFixed(4),
+    MtM_USD_M: +(r.mtmM || 0).toFixed(4),
+    Status: (r.mtmM || 0) >= 0 ? 'ITM' : 'OTM',
+    CurveDate: r.curveDate || '',
+    FreightDate: r.freightDate || '',
+  }));
+  downloadCSV(`contract-mtm_${contractMtmView}_${new Date().toISOString().slice(0,10)}.csv`, Object.keys(rows[0] || {
+    Contract:'', Name:'', Type:'', Period:'', SourcePeriod:'', Side:'', Volume_TBtu:'',
+    Contract_USD_per_MMBtu:'', Market_USD_per_MMBtu:'', Edge_USD_per_MMBtu:'', MtM_USD_M:'',
+    Status:'', CurveDate:'', FreightDate:'',
+  }), rows);
+}
+window.getContractMtmRows = getContractMtmRows;
+window.getContractMtmSummary = getContractMtmSummary;
+window.renderContractMtm = renderContractMtm;
+
+// ════════════════════════════════════════════════
 //  TOAST notifications
 // ════════════════════════════════════════════════
 // ════════════════════════════════════════════════
@@ -11199,6 +11593,7 @@ renderPaperTable();
 renderCargoTable();
 renderMorningBook();
 renderSpecBook();
+renderContractMtm();
 
 // ────────────────────────────────────────────────────────────────────────────
 // PARENT DASHBOARD INTEGRATION (Pattern A · postMessage)
@@ -11291,6 +11686,7 @@ document.querySelectorAll('.tabbar button[data-tab="paper"]').forEach(b => b.add
 document.querySelectorAll('.tabbar button[data-tab="morning"]').forEach(b => b.addEventListener('click', renderMorningBook));
 document.querySelectorAll('.tabbar button[data-tab="exposure"]').forEach(b => b.addEventListener('click', () => renderExposureGrid(currentExposureView)));
 document.querySelectorAll('.tabbar button[data-tab="cargo"]').forEach(b => b.addEventListener('click', renderCargoTable));
+document.querySelectorAll('.tabbar button[data-tab="contract-mtm"]').forEach(b => b.addEventListener('click', renderContractMtm));
 document.querySelectorAll('.tabbar button[data-tab="curves"]').forEach(b => b.addEventListener('click', renderCurvesTab));
 document.querySelectorAll('.tabbar button[data-tab="freight"]').forEach(b => b.addEventListener('click', renderFreightTab));
 document.querySelectorAll('.tabbar button[data-tab="settings"]').forEach(b => b.addEventListener('click', renderSettingsTab));
@@ -11303,6 +11699,11 @@ document.querySelectorAll('#curve-view-toggle button').forEach(b => {
 // Freight view toggle wiring
 document.querySelectorAll('#freight-view-toggle button').forEach(b => {
   b.addEventListener('click', () => setFreightView(b.dataset.freightView));
+});
+
+// Contract MtM view toggle wiring
+document.querySelectorAll('#cmtm-view-toggle button').forEach(b => {
+  b.addEventListener('click', () => setContractMtmView(b.dataset.cmtmView));
 });
 
 // Cargo window-filter toggle wiring

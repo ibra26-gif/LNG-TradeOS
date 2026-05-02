@@ -17,14 +17,17 @@ function assert(cond, msg) {
 }
 
 assert(
-  app.includes('src="portfolio/morning_book.html?v=20260501-portfolio-restore"'),
+  app.includes('src="portfolio/morning_book.html?v=20260502-contract-mtm"'),
   'private platform must iframe the restored Portfolio Valuation page with cache-bust'
 );
 
 assert(
   portfolio.length > 500000 &&
     portfolio.includes('Morning Book') &&
+    portfolio.includes('Contract MtM') &&
     portfolio.includes('function renderMorningBook()') &&
+    portfolio.includes('function renderContractMtm()') &&
+    portfolio.includes('function getContractMtmRows') &&
     portfolio.includes('lng-tradeos.state.v1'),
   'portfolio/morning_book.html must remain the full standalone valuation app'
 );
