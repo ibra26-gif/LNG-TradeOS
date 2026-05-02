@@ -38,6 +38,18 @@ assert(
 );
 
 assert(
+  js.includes('const REGAS_REGION_EXCLUDED_TERMINALS = [') &&
+    js.includes("Lubmin (Deutsche ReGas · FSRU Neptune)") &&
+    js.includes("Le Havre (TELSF · FSRU Cape Ann)") &&
+    js.includes("Isle of Grain (National Grid)") &&
+    js.includes("South Hook (QATARGAS UK)") &&
+    js.includes("Stade (DET · FSRU Energos Force)") &&
+    js.includes('regasRegionUtilExclusion(t)') &&
+    js.includes('Excluded inactive/no-data terminals are not part of the denominator'),
+  'regional utilisation must exclude decommissioning, inactive, not-started, and no-data terminals from the denominator'
+);
+
+assert(
   js.includes("else if(sub==='regions')    renderRegasRegionalUtil(pane)") &&
     js.includes("txt.includes('regional') ? 'regions'") &&
     js.includes("'regions':2"),
