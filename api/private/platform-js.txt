@@ -24227,6 +24227,9 @@ window.renderBalance=renderBalance;
 // ════════════════════════════════════════════════════════════════════════════
 const THAI_PREF_KEY = 'thai_gb_prefs_v1';
 let _thaiData = null;
+let _thaiWeather = null;
+let _thaiWeatherError = null;
+let _thaiTab = 'balance';
 let _thaiRange = '24M';
 let _thaiUnit = 'mmscfd';
 let _thaiComponent = 'total_supply_mmscfd';
@@ -24248,6 +24251,7 @@ const THAI_COMPONENTS = [
 function thaiLoadPrefs(){
   try{
     const p = JSON.parse(localStorage.getItem(THAI_PREF_KEY) || '{}');
+    if(p.tab) _thaiTab = p.tab;
     if(p.range) _thaiRange = p.range;
     if(p.unit) _thaiUnit = p.unit;
     if(p.component) _thaiComponent = p.component;
@@ -24255,17 +24259,21 @@ function thaiLoadPrefs(){
   }catch(e){}
 }
 function thaiSavePrefs(){
-  try{localStorage.setItem(THAI_PREF_KEY, JSON.stringify({range:_thaiRange, unit:_thaiUnit, component:_thaiComponent, years:_thaiYears}));}catch(e){}
+  try{localStorage.setItem(THAI_PREF_KEY, JSON.stringify({tab:_thaiTab, range:_thaiRange, unit:_thaiUnit, component:_thaiComponent, years:_thaiYears}));}catch(e){}
 }
 function thaiInit(){
   const container = document.getElementById('thai-container');
   if(!container) return;
   thaiLoadPrefs();
   if(_thaiData){ thaiRender(); return; }
-  container.innerHTML = `<div style="padding:28px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">Loading Thailand EPPO gas balance...</div>`;
-  fetch('/data/thailand_gas_balance.json?v=' + Date.now(), {cache:'no-store'})
+  container.innerHTML = `<div style="padding:28px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">Loading Thailand EPPO gas balance and CDD weather monitor...</div>`;
+  const balanceReq = fetch('/data/thailand_gas_balance.json?v=' + Date.now(), {cache:'no-store'})
     .then(r=>{if(!r.ok) throw new Error('HTTP '+r.status); return r.json();})
-    .then(j=>{_thaiData=j; thaiRender();})
+  const weatherReq = fetch('/data/thailand_weather_cdd.json?v=' + Date.now(), {cache:'no-store'})
+    .then(r=>{if(!r.ok) throw new Error('HTTP '+r.status); return r.json();})
+    .catch(err=>{_thaiWeatherError=err.message; return null;});
+  Promise.all([balanceReq, weatherReq])
+    .then(([j,w])=>{_thaiData=j; _thaiWeather=w; thaiRender();})
     .catch(err=>{
       container.innerHTML = `<div style="padding:28px;text-align:center;color:#f87171;font-size:10px;border:1px solid rgba(248,113,113,.3)">Thailand gas balance data unavailable: ${err.message}</div>`;
     });
@@ -24275,6 +24283,7 @@ window.thaiInit = thaiInit;
 function thaiSetRange(v){_thaiRange=v;thaiSavePrefs();thaiRender();}
 function thaiSetUnit(v){_thaiUnit=v;thaiSavePrefs();thaiRender();}
 function thaiSetComponent(v){_thaiComponent=v;thaiSavePrefs();thaiRender();}
+function thaiShowTab(v){_thaiTab=v;thaiSavePrefs();thaiRender();}
 function thaiToggleYear(yr){
   const years = thaiAvailableYears();
   if(!_thaiYears) _thaiYears = years.slice(-5);
@@ -24302,6 +24311,7 @@ function thaiAddYear(yr){
 window.thaiSetRange = thaiSetRange;
 window.thaiSetUnit = thaiSetUnit;
 window.thaiSetComponent = thaiSetComponent;
+window.thaiShowTab = thaiShowTab;
 window.thaiToggleYear = thaiToggleYear;
 window.thaiAddYear = thaiAddYear;
 
@@ -24349,6 +24359,21 @@ function thaiRow(label, key, rows, cls='', title=''){
 function thaiRender(){
   const container = document.getElementById('thai-container');
   if(!container || !_thaiData?.rows?.length) return;
+  const active = _thaiTab === 'weather' ? 'weather' : 'balance';
+  container.innerHTML = `
+    <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">GAS & LNG ANALYTICS · THAILAND</div>
+    <div style="display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(77,158,245,.13);margin-bottom:12px">
+      ${[['balance','GAS BALANCE'],['weather','WEATHER MONITOR']].map(([k,l])=>`<button class="f-tab${active===k?' active':''}" style="padding:8px 16px;font-size:10px;letter-spacing:1px" onclick="thaiShowTab('${k}')">${l}</button>`).join('')}
+      <span style="margin-left:auto;color:#3d5070;font-size:9px;padding-right:4px">EPPO monthly balance · Open-Meteo CDD</span>
+    </div>
+    <div id="thai-tab-body"></div>`;
+  const body = document.getElementById('thai-tab-body');
+  if(active === 'weather') thaiRenderWeather(body);
+  else thaiRenderBalance(body);
+}
+
+function thaiRenderBalance(container){
+  if(!container || !_thaiData?.rows?.length) return;
   const rows = thaiLatestRows();
   const allRows = _thaiData.rows;
   const latest = allRows[allRows.length-1];
@@ -24365,7 +24390,6 @@ function thaiRender(){
   const src = _thaiData.sources || {};
 
   container.innerHTML = `
-    <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">GAS & LNG ANALYTICS · THAILAND MONTHLY BALANCE</div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid rgba(77,158,245,.13);padding-bottom:10px;margin-bottom:12px">
       <span style="font-size:9px;color:#546e7a">TABLE</span>
       ${['12M','24M','ALL'].map(r=>`<button class="f-btn sm${_thaiRange===r?' on':''}" onclick="thaiSetRange('${r}')">${r}</button>`).join('')}
@@ -24462,6 +24486,134 @@ function thaiRenderSeasonal(){
     },
     plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}
   });
+}
+
+function thaiWeatherRows(){
+  return (_thaiWeather?.monthly || []).filter(r=>r?.month).sort((a,b)=>a.month.localeCompare(b.month));
+}
+function thaiWeatherProratedNormal(row){
+  if(row?.normal_cdd_to_date != null) return row.normal_cdd_to_date;
+  if(!row?.normal_cdd) return null;
+  const dim = thaiDaysInMonth(row.month);
+  const days = row.days || dim;
+  return +(row.normal_cdd * Math.min(days, dim) / dim).toFixed(2);
+}
+function thaiPct(a,b){
+  if(a==null||b==null||!isFinite(a)||!isFinite(b)||!b) return null;
+  return +(((a-b)/b)*100).toFixed(1);
+}
+function thaiWeatherRenderSignal(cddAnom, powerYoY, lngYoY, supplyYoY){
+  if(cddAnom==null) return {label:'WAITING FOR WEATHER', color:'#8a9bb5', note:'CDD index unavailable'};
+  const hot = cddAnom > 5;
+  const cold = cddAnom < -5;
+  const powerUp = powerYoY!=null && powerYoY > 0;
+  const lngUp = lngYoY!=null && lngYoY > 0;
+  const supplyDown = supplyYoY!=null && supplyYoY < 0;
+  if(hot && (powerUp || lngUp) && supplyDown) return {label:'LNG CALL RISK HIGH', color:'#f87171', note:'Hotter CDD + demand support + domestic/Myanmar pressure'};
+  if(hot && (powerUp || supplyDown || lngUp)) return {label:'LNG CALL RISK FIRM', color:'#fbbf24', note:'Hotter-than-normal weather is adding pressure'};
+  if(cold && !powerUp) return {label:'WEATHER RELIEF', color:'#4ade80', note:'CDD below normal; power gas pressure softer'};
+  return {label:'NEUTRAL WATCH', color:'#4fc3f7', note:'No strong weather/power confirmation yet'};
+}
+function thaiRenderWeather(el){
+  if(!el) return;
+  const weather = thaiWeatherRows();
+  if(!weather.length){
+    el.innerHTML = `<div style="padding:28px;text-align:center;color:#fbbf24;font-size:10px;border:1px dashed rgba(251,191,36,.35)">Thailand weather monitor unavailable${_thaiWeatherError?': '+_thaiWeatherError:''}</div>`;
+    return;
+  }
+  const balance = (_thaiData?.rows || []).filter(r=>r?.month);
+  const bByMonth = Object.fromEntries(balance.map(r=>[r.month,r]));
+  const latestW = weather[weather.length-1];
+  const latestB = balance[balance.length-1] || null;
+  const latestNorm = thaiWeatherProratedNormal(latestW);
+  const latestAnom = latestNorm!=null ? +(latestW.cdd - latestNorm).toFixed(1) : null;
+  const prevYearB = latestB ? bByMonth[`${+latestB.month.slice(0,4)-1}-${latestB.month.slice(5,7)}`] : null;
+  const latestPower = thaiRawVal(latestB,'electricity_mmscfd');
+  const prevPower = thaiRawVal(prevYearB,'electricity_mmscfd');
+  const latestLng = thaiRawVal(latestB,'lng_imports_mmscfd');
+  const prevLng = thaiRawVal(prevYearB,'lng_imports_mmscfd');
+  const latestSupplyCore = (thaiRawVal(latestB,'domestic_production_mmscfd')||0) + (thaiRawVal(latestB,'pipeline_imports_mmscfd')||0);
+  const prevSupplyCore = prevYearB ? (thaiRawVal(prevYearB,'domestic_production_mmscfd')||0) + (thaiRawVal(prevYearB,'pipeline_imports_mmscfd')||0) : null;
+  const powerYoY = thaiPct(latestPower, prevPower);
+  const lngYoY = thaiPct(latestLng, prevLng);
+  const supplyYoY = thaiPct(latestSupplyCore, prevSupplyCore);
+  const signal = thaiWeatherRenderSignal(latestAnom, powerYoY, lngYoY, supplyYoY);
+  const selected = (_thaiYears && _thaiYears.length ? _thaiYears : thaiAvailableYears().slice(-5)).slice().sort((a,b)=>b-a);
+  const weatherYears = [...new Set(weather.map(r=>+r.month.slice(0,4)))].filter(Boolean).sort((a,b)=>b-a);
+  const yearButtons = [...new Set([...weatherYears.slice(0,10), ...selected])].sort((a,b)=>b-a);
+  const aligned = weather.filter(w=>bByMonth[w.month]).slice(-48);
+  const cityWeights = _thaiWeather?.city_weights || [];
+  const latestCity = latestW.cities || {};
+  const cityCards = cityWeights.map(c=>{
+    const v = latestCity[c.id];
+    return `<div class="ga-kpi" style="padding:8px 10px"><div class="ga-kpi-lbl">${c.name}</div><div class="ga-kpi-val" style="font-size:15px;color:#c8d6e5">${v?.cdd!=null?v.cdd.toFixed(1):'--'}</div><div class="ga-kpi-note">CDD · weight ${(c.weight*100).toFixed(0)}%</div></div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid rgba(77,158,245,.13);padding-bottom:10px;margin-bottom:12px">
+      <span style="font-size:9px;color:#546e7a">YEARS</span>
+      ${yearButtons.map(yr=>`<button class="f-btn sm${selected.includes(yr)?' on':''}" onclick="thaiToggleYear(${yr})">${yr}</button>`).join('')}
+      <span style="font-size:9px;color:#3d5070;margin-left:auto">Open-Meteo daily mean temperature · CDD base ${_thaiWeather.base_temp_c}C · latest ${latestW.month} (${latestW.days}d)</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px">
+      <div class="ga-kpi"><div class="ga-kpi-lbl">CDD index · ${latestW.month}</div><div class="ga-kpi-val" style="color:#fbbf24">${latestW.cdd?.toFixed(1) || '--'}</div><div class="ga-kpi-note">MTD weighted city basket</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">CDD anomaly</div><div class="ga-kpi-val" style="color:${latestAnom!=null&&latestAnom>=0?'#f87171':'#4ade80'}">${latestAnom!=null?(latestAnom>=0?'+':'')+latestAnom.toFixed(1):'--'}</div><div class="ga-kpi-note">vs prorated ${_thaiWeather.normal_period} normal</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">Power gas · ${latestB?.month||'--'}</div><div class="ga-kpi-val" style="color:#ffb74d">${latestPower!=null?thaiFmt(latestPower,latestB.month):'--'}<span class="ga-kpi-unit"> ${thaiUnitLabel()}</span></div><div class="ga-kpi-note">${powerYoY!=null?(powerYoY>=0?'+':'')+powerYoY+'% YoY':'YoY --'}</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">Domestic + Myanmar</div><div class="ga-kpi-val" style="color:#4fc3f7">${latestSupplyCore?thaiFmt(latestSupplyCore,latestB.month):'--'}<span class="ga-kpi-unit"> ${thaiUnitLabel()}</span></div><div class="ga-kpi-note">${supplyYoY!=null?(supplyYoY>=0?'+':'')+supplyYoY+'% YoY':'YoY --'}</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">${signal.label}</div><div class="ga-kpi-val" style="color:${signal.color};font-size:14px">●</div><div class="ga-kpi-note">${signal.note}</div></div>
+    </div>
+
+    <div class="ga-card" style="margin-bottom:12px">
+      <div class="ga-sec">THAILAND CDD INDEX — SEASONAL <span class="ga-tag">CDD base ${_thaiWeather.base_temp_c}C</span></div>
+      <div class="ga-ch-wrap" style="height:260px"><canvas id="thai-cdd-seasonal-chart"></canvas></div>
+      <div class="ga-source">Open-Meteo daily mean temperature · weighted city basket. Current month is month-to-date, not forecast to month-end.</div>
+    </div>
+
+    <div class="ga-card" style="margin-bottom:12px">
+      <div class="ga-sec">CDD vs POWER GAS BURN vs LNG IMPORTS <span class="ga-tag">last 48 matched months</span></div>
+      <div class="ga-ch-wrap" style="height:280px"><canvas id="thai-cdd-power-chart"></canvas></div>
+      <div class="ga-source">CDD from Open-Meteo; power gas burn and LNG imports from EPPO. Different latest dates are shown explicitly.</div>
+    </div>
+
+    <div class="ga-card">
+      <div class="ga-sec">REGIONAL CDD BASKET <span class="ga-tag">${latestW.month}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">${cityCards}</div>
+      <div class="ga-source">Weights are a trading proxy for power/industrial exposure: Bangkok/Central, Rayong/EEC, Chiang Mai/North, Khon Kaen/Northeast, Hat Yai/South.</div>
+    </div>`;
+
+  setTimeout(()=>{
+    const wByMonth = Object.fromEntries(weather.map(r=>[r.month,r]));
+    const ds = selected.map((yr,i)=>({
+      label:String(yr),
+      data:Array.from({length:12},(_,m)=>wByMonth[`${yr}-${String(m+1).padStart(2,'0')}`]?.cdd ?? null),
+      borderColor:GA_COLS[i % GA_COLS.length],
+      backgroundColor:GA_COLS[i % GA_COLS.length] + (i===0 ? '22':'00'),
+      borderWidth:i===0?2.4:1.6,
+      borderDash:i>0?[5,3]:undefined,
+      pointRadius:2,
+      tension:.25,
+      spanGaps:false,
+    }));
+    gaMakeChart('thai-cdd-seasonal-chart','line',{labels:GA_MO,datasets:ds},{
+      scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'CDD',color:'#3d5070',font:{size:9}}}},
+      plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}
+    });
+    const labels = aligned.map(r=>GA_MO[+r.month.slice(5,7)-1]+"'"+r.month.slice(2,4));
+    gaMakeChart('thai-cdd-power-chart','bar',{labels,datasets:[
+      {label:'CDD index',data:aligned.map(r=>r.cdd),backgroundColor:'rgba(251,191,36,.40)',borderColor:'#fbbf24',borderWidth:1,yAxisID:'y'},
+      {label:'Power gas burn',data:aligned.map(r=>thaiRawVal(bByMonth[r.month],'electricity_mmscfd')),type:'line',borderColor:'#ffb74d',borderWidth:2,pointRadius:1.8,fill:false,tension:.25,yAxisID:'y1'},
+      {label:'LNG imports',data:aligned.map(r=>thaiRawVal(bByMonth[r.month],'lng_imports_mmscfd')),type:'line',borderColor:'#1D9E75',borderWidth:2,pointRadius:1.8,fill:false,tension:.25,yAxisID:'y1'},
+    ]},{
+      interaction:{mode:'index',intersect:false},
+      scales:{
+        x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:16}},
+        y:{...GCD.scales.y,position:'left',title:{display:true,text:'CDD',color:'#3d5070',font:{size:9}}},
+        y1:{...GCD.scales.y,position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'MMSCFD',color:'#3d5070',font:{size:9}}},
+      },
+      plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}
+    });
+  },60);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
