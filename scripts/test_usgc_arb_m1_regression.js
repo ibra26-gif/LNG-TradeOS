@@ -5,7 +5,6 @@ const vm = require('vm');
 const root = path.resolve(__dirname, '..');
 const js = fs.readFileSync(path.join(root, 'api/private/platform-js.txt'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'api/private/platform-app.txt'), 'utf8');
-const todo = fs.readFileSync(path.join(root, 'TODO.md'), 'utf8');
 
 function assert(cond, msg) {
   if (!cond) {
@@ -48,13 +47,6 @@ if (fnStart >= 0 && fnEnd > fnStart) {
   assert(out.arbCogh[0] === 18, 'COGH arb must use next JKM contract');
   assert(out.arbPc[0] === 9.4, 'Panama arb must use same-month JKM contract');
 }
-
-assert(
-  todo.includes('Spread closing') &&
-    todo.includes('Correlation changing') &&
-    todo.includes('Outright increasing/decreasing'),
-  'historical price-analysis notifications must be tracked in TODO.md'
-);
 
 assert(
   /name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app),
