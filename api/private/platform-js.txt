@@ -22011,10 +22011,24 @@ function renderBalanceTable(pane){
           <div style="font-size:10px;color:#34d399;letter-spacing:.12em;font-weight:700">STORAGE CHANGE IS THE TRUTH ANCHOR</div>
           <div style="font-size:9px;color:#8a9bb5;margin-top:3px">EU+UK market tightness is inferred from what the system had to inject into, or withdraw from, storage.</div>
         </div>
-        ${kpiCell('LATEST GAS DAY', latestGasDay||'--', 'GIE AGSI+ storage anchor', '#93c5fd')}
-        ${kpiCell('LONG / SHORT', eubDailyFmt(eubDailyValue(latestNet, latestGasDay||new Date().toISOString().slice(0,10), unit), unit), latestNet==null?'storage net missing':(latestNet>=0?'net injection / long':'net withdrawal / short'), latestNet!=null&&latestNet<0?'#fca5a5':'#bbf7d0')}
-        ${kpiCell('SUPPLY EX-STORAGE', eubDailyFmt(eubDailyValue(latestSupply, latestCompleteGasDay||latestGasDay||new Date().toISOString().slice(0,10), unit), unit), latestCompleteGasDay?`complete day ${latestCompleteGasDay}`:'waiting for all supply legs', '#bfdbfe')}
-        ${kpiCell('IMPLIED DEMAND', eubDailyFmt(eubDailyValue(latestDemand, latestCompleteGasDay||latestGasDay||new Date().toISOString().slice(0,10), unit), unit), 'supply - net storage injection', '#bbf7d0')}
+      ${kpiCell('LATEST GAS DAY', latestGasDay||'--', 'GIE AGSI+ storage anchor', '#93c5fd')}
+      ${kpiCell('LONG / SHORT', eubDailyFmt(eubDailyValue(latestNet, latestGasDay||new Date().toISOString().slice(0,10), unit), unit), latestNet==null?'storage net missing':(latestNet>=0?'net injection / long':'net withdrawal / short'), latestNet!=null&&latestNet<0?'#fca5a5':'#bbf7d0')}
+      ${kpiCell('SUPPLY EX-STORAGE', eubDailyFmt(eubDailyValue(latestSupply, latestCompleteGasDay||latestGasDay||new Date().toISOString().slice(0,10), unit), unit), latestCompleteGasDay?`complete day ${latestCompleteGasDay}`:'waiting for all supply legs', '#bfdbfe')}
+      ${kpiCell('IMPLIED DEMAND', eubDailyFmt(eubDailyValue(latestDemand, latestCompleteGasDay||latestGasDay||new Date().toISOString().slice(0,10), unit), unit), 'supply - net storage injection', '#bbf7d0')}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px">
+      <div style="border:1px solid rgba(77,158,245,.15);background:#07101e;padding:8px 10px">
+        <div style="font-size:8px;color:#60a5fa;letter-spacing:.12em;font-weight:700">FREQUENCY</div>
+        <div style="font-size:9px;color:#8a9bb5;margin-top:3px">Daily chart = closed gas days only. Monthly table = full historical month, current month = MTD.</div>
+      </div>
+      <div style="border:1px solid rgba(77,158,245,.15);background:#07101e;padding:8px 10px">
+        <div style="font-size:8px;color:#60a5fa;letter-spacing:.12em;font-weight:700">SUPPLY</div>
+        <div style="font-size:9px;color:#8a9bb5;margin-top:3px">Domestic production + external pipeline imports + LNG sendout. Intra-EU interconnectors stay out.</div>
+      </div>
+      <div style="border:1px solid rgba(77,158,245,.15);background:#07101e;padding:8px 10px">
+        <div style="font-size:8px;color:#60a5fa;letter-spacing:.12em;font-weight:700">DEMAND</div>
+        <div style="font-size:9px;color:#8a9bb5;margin-top:3px">Implied demand = supply - net storage injection. Residual stays blank until sector demand is independently sourced.</div>
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -22037,8 +22051,8 @@ function renderBalanceTable(pane){
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
       <div class="ga-card">
-        <div class="ga-sec">DAILY SUPPLY VS IMPLIED DEMAND — LAST 60 GAS DAYS <span class="ga-tag ga-tag-live">ENTSOG · GIE</span></div>
-        <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">Supply = pipeline + LNG sendout + domestic production. Implied demand = supply - net storage injection. Supply/demand lines only plot where every mapped supply leg is present.</div>
+        <div class="ga-sec">DAILY SUPPLY STACK VS IMPLIED DEMAND — LAST 60 GAS DAYS <span class="ga-tag ga-tag-live">ENTSOG · GIE</span></div>
+        <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">Bars = pipeline + LNG + domestic production. Line = implied demand. Supply only plots where every mapped supply leg is present on a closed gas day.</div>
         <div class="ga-ch-wrap" style="height:300px"><canvas id="eub-daily-sd-chart"></canvas></div>
         <div class="ga-source" id="eub-daily-sd-src">Daily source: ENTSOG physical flows + GIE ALSI sendOut + GIE AGSI injection/withdrawal</div>
       </div>
@@ -22048,6 +22062,12 @@ function renderBalanceTable(pane){
         <div class="ga-ch-wrap" style="height:300px"><canvas id="eub-daily-bal-chart"></canvas></div>
         <div class="ga-source" id="eub-daily-bal-src">Daily balance = AGSI injection - withdrawal</div>
       </div>
+    </div>
+    <div class="ga-card" style="margin-top:12px;padding:0">
+      <div style="padding:10px 14px;border-bottom:1px solid rgba(77,158,245,.1)">
+        <div class="ga-sec" style="margin:0">LATEST DAILY BALANCE CHECK <span class="ga-tag">SOURCE COVERAGE</span></div>
+      </div>
+      <div id="eub-daily-check" style="overflow-x:auto"></div>
     </div>`;
   gaUpdateStatusDots();
   drawBalanceDailyCharts(unit);
@@ -22169,6 +22189,10 @@ function eubCell(v, mo, unit, kind='flow'){
   const shown = kind==='stock' ? eubFmt(v) : eubFmtFlow(v, mo, unit);
   return `<td class="tr" style="${col?`color:${col};`:''}">${shown}</td>`;
 }
+function eubClosedGasDay(date){
+  const today=new Date().toISOString().slice(0,10);
+  return date && date < today;
+}
 function eubStorageEnd(mo){ return GD.storage[mo]?.twh!=null ? eubBcmFromTwh(GD.storage[mo].twh) : null; }
 function eubPrevMo(mo){
   const [y,m]=mo.split('-').map(Number);
@@ -22242,6 +22266,9 @@ function buildBalTblHTML(months, unit='bcm'){
   rows.push(row('Norway','UK; GER; FR; BEL; DK',m=>eubCalcMonth(m).norway,{title:'ENTSOG physical flow entry points: Zeebrugge, Dornum, Emden, Easington, St Fergus, Nybro, Dunkerque'}));
   rows.push(row('Russian Pipeline Imp','EU',m=>eubCalcMonth(m).russian,{title:'ENTSOG Russia residual corridor points: TurkStream / Ukraine transit points currently mapped'}));
   rows.push(row('Central Asian Pipeline Imp','CEE/ITA',m=>eubCalcMonth(m).central,{title:'ENTSOG TAP / Azerbaijan mapped points'}));
+  rows.push(row('Algeria → Italy','ITA',m=>eubCalcMonth(m).algeriaItaly,{title:'ENTSOG Mazara del Vallo physical flow entry'}));
+  rows.push(row('Libya → Italy','ITA',m=>eubCalcMonth(m).libya,{title:'ENTSOG Gela / Greenstream physical flow entry'}));
+  rows.push(row('Algeria → Spain','ESP',m=>eubCalcMonth(m).algeriaSpain,{title:'ENTSOG Almería + Tarifa physical flow entries'}));
   rows.push(row('African Pipeline Imports','ITA & ESP',m=>eubCalcMonth(m).african,{title:'ENTSOG Algeria to Italy/Spain plus Libya Greenstream. Requires all three mapped legs; otherwise blank.'}));
   rows.push(row('Total Pipeline Imports','EU+UK external',m=>eubCalcMonth(m).pipeTotal,{bold:true,title:'External supply corridors only. Requires Norway, Russia, TAP and African corridor data. Intra-European interconnectors are excluded to avoid double-counting EU+UK aggregate flows.'}));
   rows.push(sep());
@@ -22281,12 +22308,27 @@ function eubDailyPipeTotal(date){
   const routes=['norway','russia','tap','algeria_italy','libya','algeria_spain'];
   return eubStrictSum(routes.map(r=>eubDailyPipe(r,date)));
 }
+function eubDailyParts(date){
+  const pipeline=eubDailyPipeTotal(date);
+  const lng=eubDailyLng(date);
+  const domestic=eubDailyDomTotal(date);
+  const storageNet=eubDailyStorageNet(date);
+  const closed=eubClosedGasDay(date);
+  const supply=closed ? eubStrictSum([pipeline,lng,domestic]) : null;
+  const impliedDemand=(supply!=null&&storageNet!=null)?supply-storageNet:null;
+  const missing=[];
+  if(!closed) missing.push('open gas day');
+  EUB_PIPE_ROUTES.forEach(r=>{ if(eubDailyPipe(r,date)==null) missing.push(PIPE_LABELS[r]||r); });
+  if(lng==null) missing.push('LNG sendout');
+  if(domestic==null) missing.push('domestic production');
+  if(storageNet==null) missing.push('storage net');
+  return {pipeline,lng,domestic,storageNet,supply,impliedDemand,missing,complete:supply!=null&&storageNet!=null};
+}
 function eubDailySupply(date){
-  return eubStrictSum([eubDailyPipeTotal(date), eubDailyLng(date), eubDailyDomTotal(date)]);
+  return eubDailyParts(date).supply;
 }
 function eubDailyImpliedDemand(date){
-  const s=eubDailySupply(date), n=eubDailyStorageNet(date);
-  return s!=null && n!=null ? s-n : null;
+  return eubDailyParts(date).impliedDemand;
 }
 function eubDailyUnitLabel(unit){
   if(unit==='bcm') return 'bcm/d';
@@ -22314,7 +22356,7 @@ function eubLatestCompleteDailyDate(){
     ...Object.keys(GD.storDaily||{}),
     ...Object.values((GA_LIVE&&GA_LIVE.domesticDaily)||{}).flatMap(o=>Object.keys(o||{})),
   ].filter(Boolean);
-  const complete=[...new Set(dates)].filter(d=>eubDailySupply(d)!=null&&eubDailyStorageNet(d)!=null).sort();
+  const complete=[...new Set(dates)].filter(d=>eubDailyParts(d).complete).sort();
   return complete.length ? complete[complete.length-1] : null;
 }
 function eubDailyDates(){
@@ -22325,21 +22367,30 @@ function eubDailyDates(){
 function drawBalanceDailyCharts(unit='bcm'){
   const days=eubDailyDates();
   const labels=days.map(d=>d.slice(5));
-  const supply=days.map(d=>eubDailySupply(d));
+  const parts=days.map(d=>eubDailyParts(d));
+  const pipe=parts.map(p=>p.supply!=null?p.pipeline:null);
+  const lng=parts.map(p=>p.supply!=null?p.lng:null);
+  const domestic=parts.map(p=>p.supply!=null?p.domestic:null);
   const net=days.map(d=>eubDailyStorageNet(d));
-  const implied=days.map(d=>eubDailyImpliedDemand(d));
+  const implied=parts.map(p=>p.impliedDemand);
+  const net7=net.map((_,i)=>{
+    const xs=net.slice(Math.max(0,i-6),i+1).filter(v=>v!=null&&!isNaN(v));
+    return xs.length>=3?xs.reduce((s,v)=>s+v,0)/xs.length:null;
+  });
   const conv=arr=>arr.map((v,i)=>eubDailyValue(v,days[i],unit));
   const yTitle=eubDailyUnitLabel(unit);
   const latestStorage=eubLatestStorageDate() || days[days.length-1];
   const latestComplete=eubLatestCompleteDailyDate();
-  gaMakeChart('eub-daily-sd-chart','line',{
+  gaMakeChart('eub-daily-sd-chart','bar',{
     labels,
     datasets:[
-      {label:'Daily Supply',data:conv(supply),borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,.12)',borderWidth:2,pointRadius:0,tension:.25,spanGaps:false},
-      {label:'Implied Demand',data:conv(implied),borderColor:'#bbf7d0',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.25,spanGaps:false},
+      {label:'Pipeline imports',data:conv(pipe),backgroundColor:'rgba(96,165,250,.62)',borderWidth:0,stack:'s'},
+      {label:'LNG sendout',data:conv(lng),backgroundColor:'rgba(251,191,36,.62)',borderWidth:0,stack:'s'},
+      {label:'Domestic production',data:conv(domestic),backgroundColor:'rgba(52,211,153,.56)',borderWidth:0,stack:'s'},
+      {type:'line',label:'Implied demand',data:conv(implied),borderColor:'#f9a8d4',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.25,spanGaps:false,yAxisID:'y'},
     ]
   },{
-    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:yTitle,color:'#3d5070',font:{size:9}}}}
+    scales:{x:{...GCD.scales.x,stacked:true,ticks:{...GCD.scales.x.ticks,maxTicksLimit:12}},y:{...GCD.scales.y,stacked:true,title:{display:true,text:yTitle,color:'#3d5070',font:{size:9}}}}
   });
   gaMakeChart('eub-daily-bal-chart','bar',{
     labels,
@@ -22348,15 +22399,58 @@ function drawBalanceDailyCharts(unit='bcm'){
       data:conv(net),
       backgroundColor:ctx=>(ctx.raw||0)>=0?'rgba(52,211,153,.65)':'rgba(248,113,113,.65)',
       borderWidth:0,
+    },{
+      type:'line',
+      label:'7d avg',
+      data:conv(net7),
+      borderColor:'#e5e7eb',
+      backgroundColor:'transparent',
+      borderWidth:1.5,
+      pointRadius:0,
+      tension:.25,
     }]
   },{
-    plugins:{legend:{display:false}},
     scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:yTitle,color:'#3d5070',font:{size:9}}}}
   });
   const sd=document.getElementById('eub-daily-sd-src');
   const bal=document.getElementById('eub-daily-bal-src');
   if(sd) sd.textContent=`Daily source: ENTSOG physical flows + GIE ALSI sendOut + GIE AGSI injection/withdrawal · latest complete supply day ${latestComplete||'--'} · ${yTitle}`;
   if(bal) bal.textContent=`Daily balance = AGSI injection - withdrawal · storage anchor latest ${latestStorage||'--'} · ${yTitle}`;
+  eubRenderDailyCheck(days.slice(-10),unit);
+}
+
+function eubRenderDailyCheck(days,unit){
+  const el=document.getElementById('eub-daily-check'); if(!el) return;
+  const rows=days.slice().reverse().map(d=>{
+    const p=eubDailyParts(d);
+    const fmt=v=>eubDailyFmt(eubDailyValue(v,d,unit),unit);
+    const status=p.complete?'complete':p.missing.length?'partial':'--';
+    const col=p.complete?'#34d399':p.missing.includes('open gas day')?'#64748b':'#fbbf24';
+    return `<tr title="${p.missing.length?p.missing.join(', '):'All mapped daily components present'}">
+      <td style="color:#93c5fd;white-space:nowrap">${d}</td>
+      <td class="tr">${fmt(p.pipeline)}</td>
+      <td class="tr">${fmt(p.lng)}</td>
+      <td class="tr">${fmt(p.domestic)}</td>
+      <td class="tr" style="font-weight:700;color:#bfdbfe">${fmt(p.supply)}</td>
+      <td class="tr" style="color:${p.storageNet!=null&&p.storageNet<0?'#fca5a5':'#bbf7d0'}">${fmt(p.storageNet)}</td>
+      <td class="tr" style="font-weight:700;color:#f9a8d4">${fmt(p.impliedDemand)}</td>
+      <td style="color:${col};font-size:8px">${status}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML=`<table class="ga-tbl" style="min-width:760px">
+    <thead><tr>
+      <th class="L">Gas day</th>
+      <th class="tr">Pipeline</th>
+      <th class="tr">LNG</th>
+      <th class="tr">Domestic</th>
+      <th class="tr">Supply</th>
+      <th class="tr">Storage net</th>
+      <th class="tr">Implied demand</th>
+      <th class="L">Coverage</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="ga-source" style="padding:8px 12px">Coverage is strict: open gas day and missing supply legs stay partial. Unit: ${eubDailyUnitLabel(unit)}.</div>`;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
