@@ -943,7 +943,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
     <div class="page-head">
       <div>
         <h1>Good morning, Ibrahim.</h1>
-        <div class="sub">Combined book marked at $86.22M · 4 cargoes active, 2 hedges open, 4 spec positions</div>
+        <div class="sub">Physical + hedge · next 24M physical · hedge book · spec book</div>
       </div>
       <div class="right" style="position:relative">
         <div id="mb-export-wrap" style="display:inline-block; position:relative">
@@ -961,45 +961,30 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
       </div>
     </div>
 
-    <div class="metrics-grid">
-      <div class="metric"><div class="metric-label">Physical MTM</div><div class="metric-value pos">$101.14M</div><div class="metric-sub">4 cargoes · 13.61 TBtu</div></div>
-      <div class="metric"><div class="metric-label">Hedge P&amp;L</div><div class="metric-value pos">+$364k</div><div class="metric-sub">2 trades · HH + TTF</div></div>
-      <div class="metric"><div class="metric-label">Spec MtM</div><div class="metric-value neg">−$15.27M</div><div class="metric-sub">4 positions · 1 near SL</div></div>
-      <div class="metric"><div class="metric-label">Combined Book</div><div class="metric-value pos">$86.22M</div><div class="metric-sub">phys + hedge + spec</div></div>
+    <div class="metrics-grid" style="grid-template-columns: repeat(4, 1fr);">
       <div class="metric">
-        <div class="metric-label">Floating / Treasury</div>
-        <div class="metric-value" id="metric-floating-pct" style="font-size:22px">—</div>
-        <div class="metric-sub" id="metric-floating-sub">— floating · — Treasury</div>
+        <div class="metric-label">Physical next 24M</div>
+        <div class="metric-value" id="mb-phys24">—</div>
+        <div class="metric-sub" id="mb-phys24-sub">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Hedge P&amp;L</div>
+        <div class="metric-value" id="mb-hedge">—</div>
+        <div class="metric-sub" id="mb-hedge-sub">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Physical + Hedge</div>
+        <div class="metric-value" id="mb-phys-hedge">—</div>
+        <div class="metric-sub" id="mb-phys-hedge-sub">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Spec MtM</div>
+        <div class="metric-value" id="mb-spec">—</div>
+        <div class="metric-sub" id="mb-spec-sub">—</div>
       </div>
     </div>
 
     <div class="grid-2">
-      <div>
-        <div class="card">
-          <div class="card-head"><h3>Cargo book — live positions</h3><span class="meta">Assessment 17 Mar · $/MMBtu</span></div>
-          <table class="tbl">
-            <thead><tr><th>#</th><th>Origin</th><th>Del.</th><th>Index</th><th>Status</th><th style="text-align:right">MTM</th></tr></thead>
-            <tbody>
-              <tr><td class="id">C-246</td><td>Sabine Pass</td><td class="mono">Jul-26</td><td class="mono">HH→TTF</td><td><span class="pill fixed">Fixed</span></td><td class="num pos">+$32.76M</td></tr>
-              <tr><td class="id">C-247</td><td>Gorgon</td><td class="mono">Oct-26</td><td class="mono">Brent→JKM</td><td><span class="pill fixed">Fixed</span></td><td class="num pos">+$35.28M</td></tr>
-              <tr><td class="id">C-248</td><td>Sabine Pass</td><td class="mono">Nov-26</td><td class="mono">HH→TTF</td><td><span class="pill fixed">Fixed</span></td><td class="num pos">+$30.95M</td></tr>
-              <tr><td class="id">C-249</td><td>Ras Laffan</td><td class="mono">Dec-26</td><td class="mono">JKM→JKM</td><td><span class="pill fixed">Fixed</span></td><td class="num pos">+$2.53M</td></tr>
-            </tbody>
-            <tfoot><tr><td colspan="5">Total physical MTM</td><td class="num pos">+$101.14M</td></tr></tfoot>
-          </table>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Hedge book</h3><span class="meta">Exchange-cleared</span></div>
-          <table class="tbl">
-            <thead><tr><th>Trade</th><th>Index</th><th>Dir</th><th>Month</th><th style="text-align:right">Lots</th><th style="text-align:right">Exec</th><th style="text-align:right">Mark</th><th style="text-align:right">P&amp;L</th></tr></thead>
-            <tbody>
-              <tr><td class="id">1234</td><td class="mono">HH</td><td>Buy</td><td class="mono">Apr-26</td><td class="num">100</td><td class="num">3.350</td><td class="num">3.030</td><td class="num neg">−$80k</td></tr>
-              <tr><td class="id">1235</td><td class="mono">TTF</td><td>Sell</td><td class="mono">Jul-26</td><td class="num">120</td><td class="num">17.650</td><td class="num">17.280</td><td class="num pos">+$444k</td></tr>
-            </tbody>
-            <tfoot><tr><td colspan="7">Total hedge P&amp;L</td><td class="num pos">+$364k</td></tr></tfoot>
-          </table>
-        </div>
-      </div>
       <div>
         <div class="card">
           <div class="card-head"><h3>P&amp;L attribution — today vs T-1</h3><span class="meta">17 Mar → 18 Mar · $M</span></div>
@@ -1013,6 +998,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
             <div class="wf-row base close"><div class="wf-lbl">Closing MTM (today)</div><div class="wf-bar-wrap"><div class="wf-axis"></div><div class="wf-bar base" style="left:50%; width:21%"></div></div><div class="wf-val pos">+$2.04M</div></div>
           </div>
         </div>
+      </div>
+      <div>
         <div class="card">
           <div class="card-head"><h3>Certain / Uncertain / Treasury</h3><span class="meta">Fair-value decomposition</span></div>
           <div class="cut-container">
@@ -1023,6 +1010,33 @@ main { max-width: 1600px; margin: 0 auto; padding: 24px 24px 80px; }
             <div class="raf-banner"><span class="k">RAF · 51%</span><span>of book floats with curves · decays as fixings print</span></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <div class="card-head"><h3>Cargo book — live positions</h3><span class="meta">Next 24M · freight included where applicable</span></div>
+          <table class="tbl">
+            <thead><tr><th>#</th><th>Origin</th><th>Del.</th><th>Index</th><th>Freight</th><th>Status</th><th style="text-align:right">MTM</th></tr></thead>
+            <tbody>
+              <tr><td class="id">—</td><td>—</td><td class="mono">—</td><td class="mono">—</td><td class="num">—</td><td>—</td><td class="num">—</td></tr>
+            </tbody>
+            <tfoot><tr><td colspan="6">Total physical MTM · next 24M</td><td class="num">—</td></tr></tfoot>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Hedge book</h3><span class="meta">Exchange-cleared</span></div>
+          <table class="tbl">
+            <thead><tr><th>Trade</th><th>Index</th><th>Dir</th><th>Month</th><th style="text-align:right">Lots</th><th style="text-align:right">Exec</th><th style="text-align:right">Mark</th><th style="text-align:right">P&amp;L</th></tr></thead>
+            <tbody>
+              <tr><td class="id">—</td><td class="mono">—</td><td>—</td><td class="mono">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+            </tbody>
+            <tfoot><tr><td colspan="7">Total hedge P&amp;L</td><td class="num">—</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div>
         <div class="card">
           <div class="card-head"><h3>Spec book — live positions</h3><span class="meta">4 open · 1 near stop</span></div>
           <div>
@@ -9876,6 +9890,33 @@ function renderPaperTable() {
 // ════════════════════════════════════════════════
 //  MORNING BOOK — derive hedge + spec summaries from state
 // ════════════════════════════════════════════════
+function _mbCargoMonth(c) {
+  const months = periodToMonths(c.sellMonth || c.loadMonth);
+  return months[0] || c.sellMonth || c.loadMonth || '';
+}
+function _mbCargoesNextMonths(cargoes, horizon) {
+  const months = new Set(_cmtmRollingMonths(horizon || 24));
+  return cargoes.filter(c => periodToMonths(c.sellMonth || c.loadMonth).some(m => months.has(m)))
+    .sort((a, b) => _cmtmMonthSortKey(_mbCargoMonth(a)) - _cmtmMonthSortKey(_mbCargoMonth(b)) || (a.id || '').localeCompare(b.id || ''));
+}
+function _mbWithMarkDates(curveDate, freightDate, fn) {
+  const prevCurve = STATE.curves?.activeDate;
+  const prevFreight = STATE.freightCurves?.activeDate;
+  if (curveDate && STATE.curves) STATE.curves.activeDate = curveDate;
+  if (freightDate && STATE.freightCurves) STATE.freightCurves.activeDate = freightDate;
+  try { return fn(); }
+  finally {
+    if (STATE.curves) STATE.curves.activeDate = prevCurve;
+    if (STATE.freightCurves) STATE.freightCurves.activeDate = prevFreight;
+  }
+}
+function _mbReportSnapshot(cargoes) {
+  const phys24 = cargoes.reduce((a, c) => a + computeCargoValues(c).mtm, 0) * 1e6;
+  const hedge = getHedges().reduce((a, t) => a + tradePnL(t), 0);
+  const spec = getSpecs().reduce((a, t) => a + tradePnL(t), 0);
+  return { phys24, hedge, physHedge: phys24 + hedge, spec };
+}
+
 function renderMorningBook() {
   // Hedge book table — find it by its heading and rebuild the tbody
   const hedgeCard = Array.from(document.querySelectorAll('#sec-morning .card'))
@@ -9947,11 +9988,7 @@ function renderMorningBook() {
     }
   }
 
-  // Top KPI strip — Hedge P&L, Spec MtM
-  const hedgePnl = getHedges().reduce((a, t) => a + tradePnL(t), 0);
-  const specPnl  = getSpecs().reduce((a, t) => a + tradePnL(t), 0);
-  const kpiVals  = document.querySelectorAll('#sec-morning .metric-value');
-  const kpiSubs  = document.querySelectorAll('#sec-morning .metric-sub');
+  // Top KPI strip — Physical next 24M, Hedge, Physical+Hedge, Spec.
   const fmtBig = v => {
     const a = Math.abs(v);
     if (a >= 1e9) return (v >= 0 ? '+$' : '−$') + (a / 1e9).toFixed(2) + 'B';
@@ -9959,111 +9996,157 @@ function renderMorningBook() {
     if (a >= 1e3) return (v >= 0 ? '+$' : '−$') + (a / 1e3).toFixed(0) + 'k';
     return (v >= 0 ? '+$' : '−$') + a.toFixed(0);
   };
-  // Physical MTM — derived from cargo state.  computeCargoValues returns $M (because
-  // sell $/MMBtu × EDQ TBtu gives $M directly); multiply by 1e6 to get raw $ for the
-  // formatter that's shared with hedge/spec P&L.
   const cargoes = getCargoes();
-  const physMtmM = cargoes.reduce((a, c) => a + computeCargoValues(c).mtm, 0);
-  const physMtm = physMtmM * 1e6;
-  const totalTBtu = cargoes.reduce((a, c) => a + ((cargoLoadedCbm(c) * c.energyFactor) / 1e6), 0);
-  if (kpiVals[0]) {
-    kpiVals[0].textContent = fmtBig(physMtm);
-    kpiVals[0].className = 'metric-value ' + (physMtm >= 0 ? 'pos' : 'neg');
-  }
-  if (kpiSubs[0]) {
-    kpiSubs[0].textContent = `${cargoes.length} cargo${cargoes.length === 1 ? '' : 'es'} · ${totalTBtu.toFixed(2)} TBtu`;
-  }
-  if (kpiVals[1]) {  // Hedge P&L
-    kpiVals[1].textContent = fmtBig(hedgePnl);
-    kpiVals[1].className = 'metric-value ' + (hedgePnl >= 0 ? 'pos' : 'neg');
-  }
-  if (kpiSubs[1]) {
-    kpiSubs[1].textContent = `${getHedges().length} trade${getHedges().length === 1 ? '' : 's'} · mixed indices`;
-  }
-  if (kpiVals[2]) {  // Spec MtM
-    kpiVals[2].textContent = fmtBig(specPnl);
-    kpiVals[2].className = 'metric-value ' + (specPnl >= 0 ? 'pos' : 'neg');
-  }
-  if (kpiSubs[2]) {
-    const specs = getSpecs();
-    const nearSlCount = specs.filter(s => {
-      if (!s.sl) return false;
-      const m = markForTrade(s);
-      return s.dir === 'Buy' ? m <= s.sl * 1.02 : m >= s.sl * 0.98;
-    }).length;
-    kpiSubs[2].textContent = `${specs.length} position${specs.length === 1 ? '' : 's'}${nearSlCount > 0 ? ` · ${nearSlCount} near SL` : ''}`;
-  }
-  // Combined book KPI (tile 4)
-  const combinedMtm = physMtm + hedgePnl + specPnl;
-  // Daily Δ: combined - yesterday's combined
-  const yest = getPnlYesterday();
-  const dayDelta = yest ? (combinedMtm - yest.combined) : null;
-  if (kpiVals[3]) {
-    const deltaStr = dayDelta != null
-      ? `<span style="font-size:11px; font-weight:500; margin-left:6px; color:${dayDelta >= 0 ? 'var(--pos)' : 'var(--neg)'}">${fmtBig(dayDelta)} Δ</span>`
-      : '';
-    kpiVals[3].innerHTML = `<span class="${combinedMtm >= 0 ? 'pos' : 'neg'}">${fmtBig(combinedMtm)}</span>${deltaStr}`;
-    kpiVals[3].className = 'metric-value';
-  }
-  if (kpiSubs[3]) {
-    kpiSubs[3].textContent = yest
-      ? `phys + hedge + spec · vs ${yest.date}`
-      : 'phys + hedge + spec · no baseline yet';
+  const mbCargoes = _mbCargoesNextMonths(cargoes, 24);
+  const activeSnapshot = _mbReportSnapshot(mbCargoes);
+  const baselineCurve = getBaselineCurveDate();
+  const baselineFreight = getBaselineFreightDate();
+  const baselineSnapshot = baselineCurve
+    ? _mbWithMarkDates(baselineCurve, baselineFreight, () => _mbReportSnapshot(mbCargoes))
+    : null;
+  const totalTBtu24 = mbCargoes.reduce((a, c) => a + ((cargoLoadedCbm(c) * c.energyFactor) / 1e6), 0);
+  const specs = getSpecs();
+  const nearSlCount = specs.filter(s => {
+    if (!s.sl) return false;
+    const m = markForTrade(s);
+    return s.dir === 'Buy' ? m <= s.sl * 1.02 : m >= s.sl * 0.98;
+  }).length;
+  const dodText = (value, baselineValue) => baselineValue == null
+    ? 'DoD —'
+    : `DoD ${fmtBig(value - baselineValue)}`;
+  const setMetric = (valueId, subId, value, baselineValue, sub) => {
+    const valEl = document.getElementById(valueId);
+    const subEl = document.getElementById(subId);
+    if (valEl) {
+      valEl.textContent = fmtBig(value);
+      valEl.className = 'metric-value ' + (value >= 0 ? 'pos' : 'neg');
+    }
+    if (subEl) {
+      const delta = baselineValue == null ? '' : ` · ${dodText(value, baselineValue)}`;
+      subEl.textContent = `${sub}${delta}`;
+    }
+  };
+  setMetric('mb-phys24', 'mb-phys24-sub', activeSnapshot.phys24, baselineSnapshot?.phys24,
+    `${mbCargoes.length} cargo${mbCargoes.length === 1 ? '' : 'es'} · ${totalTBtu24.toFixed(2)} TBtu`);
+  setMetric('mb-hedge', 'mb-hedge-sub', activeSnapshot.hedge, baselineSnapshot?.hedge,
+    `${getHedges().length} trade${getHedges().length === 1 ? '' : 's'} · hedge book`);
+  setMetric('mb-phys-hedge', 'mb-phys-hedge-sub', activeSnapshot.physHedge, baselineSnapshot?.physHedge,
+    'physical next 24M + hedge');
+  setMetric('mb-spec', 'mb-spec-sub', activeSnapshot.spec, baselineSnapshot?.spec,
+    `${specs.length} position${specs.length === 1 ? '' : 's'}${nearSlCount > 0 ? ` · ${nearSlCount} near SL` : ''}`);
+
+  // P&L attribution — physical + hedge only, since Spec gets its own box.
+  const pnlCard = Array.from(document.querySelectorAll('#sec-morning .card'))
+    .find(c => c.querySelector('.card-head h3')?.textContent.includes('P&L attribution'));
+  if (pnlCard) {
+    const meta = pnlCard.querySelector('.card-head .meta');
+    const wf = pnlCard.querySelector('.waterfall');
+    if (meta) meta.textContent = `${baselineCurve || 'baseline'} → ${getActiveCurveDate() || 'active'} · physical + hedge`;
+    if (wf) {
+      const basePhysHedge = baselineSnapshot?.physHedge ?? 0;
+      const physMove = baselineSnapshot ? activeSnapshot.phys24 - baselineSnapshot.phys24 : 0;
+      const hedgeMove = baselineSnapshot ? activeSnapshot.hedge - baselineSnapshot.hedge : 0;
+      const closePhysHedge = activeSnapshot.physHedge;
+      const maxAbs = Math.max(1, Math.abs(basePhysHedge), Math.abs(physMove), Math.abs(hedgeMove), Math.abs(closePhysHedge));
+      const barStyle = v => {
+        const width = Math.max(3, Math.min(48, Math.abs(v) / maxAbs * 48));
+        return v >= 0 ? `left:50%; width:${width}%` : `right:50%; width:${width}%`;
+      };
+      const row = (label, value, cls, extraCls = '') => `<div class="wf-row ${extraCls}">
+        <div class="wf-lbl">${label}</div>
+        <div class="wf-bar-wrap"><div class="wf-axis"></div><div class="wf-bar ${cls}" style="${barStyle(value)}"></div></div>
+        <div class="wf-val ${value >= 0 ? 'pos' : 'neg'}">${fmtBig(value)}</div>
+      </div>`;
+      wf.innerHTML = baselineSnapshot
+        ? [
+            row('Opening physical + hedge', basePhysHedge, 'base', 'base'),
+            row('Physical next 24M move', physMove, physMove >= 0 ? 'pos' : 'neg'),
+            row('Hedge P&L move', hedgeMove, hedgeMove >= 0 ? 'pos' : 'neg'),
+            row('Closing physical + hedge', closePhysHedge, 'base', 'base close'),
+          ].join('')
+        : row('Current physical + hedge', closePhysHedge, 'base', 'base close');
+    }
   }
 
-  // Floating / Treasury KPI (tile 5)
-  // Floating = sum MTM of cargoes where status !== 'Actualized' (still moves with curves)
-  // Treasury = sum MTM of cargoes where status === 'Actualized' (locked)
-  const floatingCargoes = cargoes.filter(c => c.status !== 'Actualized');
-  const treasuryCargoes = cargoes.filter(c => c.status === 'Actualized');
-  const floatingMtm = floatingCargoes.reduce((a, c) => a + computeCargoValues(c).mtm, 0) * 1e6;
-  const treasuryMtm = treasuryCargoes.reduce((a, c) => a + computeCargoValues(c).mtm, 0) * 1e6;
-  const totalAbs = Math.abs(floatingMtm) + Math.abs(treasuryMtm);
-  const floatingPct = totalAbs > 0 ? Math.abs(floatingMtm) / totalAbs * 100 : 0;
-  const floatingPctEl = document.getElementById('metric-floating-pct');
-  const floatingSubEl = document.getElementById('metric-floating-sub');
-  if (floatingPctEl) {
-    floatingPctEl.innerHTML = `${floatingCargoes.length} <span style="font-size:13px; color:var(--text-3); font-weight:500">floating</span> <span style="color:var(--text-4)">/</span> ${treasuryCargoes.length} <span style="font-size:13px; color:var(--text-3); font-weight:500">T</span>`;
-    floatingPctEl.className = 'metric-value';
-  }
-  if (floatingSubEl) {
-    floatingSubEl.innerHTML = `<span style="color:var(--text-1); font-weight:600">${fmtBig(floatingMtm)}</span> floating · <span style="color:var(--info-text); font-weight:600">${fmtBig(treasuryMtm)}</span> locked`;
+  // Certain / Uncertain / Treasury — next 24M physical cargoes only.
+  const cutCard = Array.from(document.querySelectorAll('#sec-morning .card'))
+    .find(c => c.querySelector('.card-head h3')?.textContent.includes('Certain / Uncertain / Treasury'));
+  if (cutCard) {
+    const meta = cutCard.querySelector('.card-head .meta');
+    const container = cutCard.querySelector('.cut-container');
+    const buckets = {
+      certain: { label:'Certain', value:0, count:0, note:'priced / fixed enough to treat as locked' },
+      uncertain: { label:'Uncertain', value:0, count:0, note:'still exposed to curve or open-leg moves' },
+      treasury: { label:'Treasury', value:0, count:0, note:'actualized cargoes, cash-settled' },
+    };
+    mbCargoes.forEach(c => {
+      const v = computeCargoValues(c).mtm * 1e6;
+      const key = c.status === 'Actualized'
+        ? 'treasury'
+        : (c.coverage === 'covered' && (c.fixedDays || 0) >= (c.totalPricingDays || 1))
+          ? 'certain'
+          : 'uncertain';
+      buckets[key].value += v;
+      buckets[key].count += 1;
+    });
+    const totalAbsCut = Object.values(buckets).reduce((a, b) => a + Math.abs(b.value), 0);
+    const row = (key) => {
+      const b = buckets[key];
+      const pct = totalAbsCut ? Math.abs(b.value) / totalAbsCut * 100 : 0;
+      return `<div class="cut-row">
+        <div class="cut-top"><div class="lbl"><span class="dot ${key}"></span> ${b.label}</div><div class="val ${b.value >= 0 ? 'pos' : 'neg'}">${fmtBig(b.value)}</div></div>
+        <div class="cut-bar"><div class="fill ${key}" style="width:${pct.toFixed(0)}%"></div></div>
+        <div class="cut-sub">${pct.toFixed(0)}% of abs MTM · ${b.count} cargo${b.count === 1 ? '' : 'es'} · ${b.note}</div>
+      </div>`;
+    };
+    const uncertainPct = totalAbsCut ? Math.abs(buckets.uncertain.value) / totalAbsCut * 100 : 0;
+    if (meta) meta.textContent = `Next 24M physical · ${mbCargoes.length} cargoes`;
+    if (container) {
+      container.innerHTML = row('certain') + row('uncertain') + row('treasury') +
+        `<div class="cut-total"><span class="lbl">Total physical next 24M</span><span class="val ${activeSnapshot.phys24 >= 0 ? 'pos' : 'neg'}">${fmtBig(activeSnapshot.phys24)}</span></div>
+         <div class="raf-banner"><span class="k">RAF · ${uncertainPct.toFixed(0)}%</span><span>of next-24M physical MTM still moves with curves/open legs</span></div>`;
+    }
   }
 
-  // Morning Book Cargo-book list — live from state
+  // Morning Book Cargo-book list — live next-24M view from state.
   const mbCargoCard = Array.from(document.querySelectorAll('#sec-morning .card'))
     .find(c => c.querySelector('.card-head h3')?.textContent.includes('Cargo book'));
   if (mbCargoCard) {
+    const meta = mbCargoCard.querySelector('.card-head .meta');
     const tbody = mbCargoCard.querySelector('tbody');
     const tfoot = mbCargoCard.querySelector('tfoot');
+    if (meta) meta.textContent = `${mbCargoes.length} of ${cargoes.length} cargoes · freight included for FOB/DES`;
     if (tbody) {
-      tbody.innerHTML = cargoes.slice().sort((a,b) => (a.id < b.id ? -1 : 1)).map(c => {
+      tbody.innerHTML = mbCargoes.length === 0
+        ? `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-4)">No physical cargoes in the next 24 months.</td></tr>`
+        : mbCargoes.map(c => {
         const v = computeCargoValues(c);
         const mtmRaw = v.mtm * 1e6;
         const statusPill = c.status === 'Actualized' ? '<span class="pill actualized">Actualized</span>' : '<span class="pill fixed">Fixed</span>';
         const buyIdx = c.coverage === 'uncovered' ? c.refBuy?.idx : c.buy?.idx;
         const sellIdx = c.coverage === 'unsold' ? c.refSell?.idx : c.sell?.idx;
+        const freightText = v.freightApplies && v.freight > 0 ? `−${v.freight.toFixed(3)}` : '—';
         return `<tr onclick="editCargo('${c.id}')" style="cursor:pointer">
           <td class="id">${c.id}</td>
-          <td>${c.loadPort}</td>
-          <td class="mono">${c.sellMonth}</td>
+          <td>${c.loadPort || '—'}</td>
+          <td class="mono">${_mbCargoMonth(c)}</td>
           <td class="mono">${buyIdx || '—'}→${sellIdx || '—'}</td>
+          <td class="num mono" style="color:var(--text-3)">${freightText}</td>
           <td>${statusPill}</td>
           <td class="num ${mtmRaw >= 0 ? 'pos' : 'neg'}">${fmtBig(mtmRaw)}</td>
         </tr>`;
       }).join('');
     }
     if (tfoot) {
-      tfoot.innerHTML = `<tr><td colspan="5">Total physical MTM</td><td class="num ${physMtm >= 0 ? 'pos' : 'neg'}">${fmtBig(physMtm)}</td></tr>`;
+      tfoot.innerHTML = `<tr><td colspan="6">Total physical MTM · next 24M</td><td class="num ${activeSnapshot.phys24 >= 0 ? 'pos' : 'neg'}">${fmtBig(activeSnapshot.phys24)}</td></tr>`;
     }
   }
 
   // Update the summary line at top
   const sub = document.querySelector('#sec-morning .page-head .sub');
   if (sub) {
-    const specs = getSpecs().length;
     const hedges = getHedges().length;
-    sub.textContent = `Combined book marked at ${fmtBig(combinedMtm).replace(/^\+/, '')} · ${cargoes.length} cargo${cargoes.length === 1 ? '' : 'es'} active, ${hedges} hedge${hedges === 1 ? '' : 's'} open, ${specs} spec position${specs === 1 ? '' : 's'}`;
+    sub.textContent = `Physical + hedge ${fmtBig(activeSnapshot.physHedge).replace(/^\+/, '')} · next 24M physical ${fmtBig(activeSnapshot.phys24).replace(/^\+/, '')} · ${hedges} hedge${hedges === 1 ? '' : 's'} · spec ${fmtBig(activeSnapshot.spec).replace(/^\+/, '')}`;
   }
 
   // Morning Book greeting — "Good morning, Ibrahim." keep as-is

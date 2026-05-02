@@ -17,13 +17,16 @@ function assert(cond, msg) {
 }
 
 assert(
-  app.includes('src="portfolio/morning_book.html?v=20260502-contract-mtm"'),
+  app.includes('src="portfolio/morning_book.html?v=20260503-morning-book-report"'),
   'private platform must iframe the restored Portfolio Valuation page with cache-bust'
 );
 
 assert(
   portfolio.length > 500000 &&
     portfolio.includes('Morning Book') &&
+    portfolio.includes('Physical next 24M') &&
+    portfolio.includes('Physical + Hedge') &&
+    portfolio.includes('freight included for FOB/DES') &&
     portfolio.includes('Contract MtM') &&
     portfolio.includes('function renderMorningBook()') &&
     portfolio.includes('function renderContractMtm()') &&
