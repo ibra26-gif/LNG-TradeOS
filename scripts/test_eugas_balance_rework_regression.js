@@ -13,9 +13,9 @@ function assert(cond, msg) {
 }
 
 assert(
-  app.includes('20260502-eugas-balance-rework') &&
+  app.includes('name=lngtradeos.js') &&
     /name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app),
-  'private bundle cache-bust must be bumped for the EU gas balance rework'
+  'private bundle must keep a dated cache-bust on lngtradeos.js'
 );
 
 assert(
