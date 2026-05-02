@@ -17625,7 +17625,7 @@ const HPA_NOTIF_RULES=[
 ];
 function hpaDefaultPrefs(){
   const activeRules={};HPA_NOTIF_RULES.forEach(r=>activeRules[r.id]=true);
-  return{tab:'inbox',range:'90D',activeRules,muted:{},customRules:[],thresholds:{z:2.0,price:0.25,spread:0.15,freight:5000,fob:0.15,corr:0.25,trendMinShare:0.70}};
+  return{tab:'inbox',range:'90D',filter:'all',activeRules,muted:{},customRules:[],thresholds:{z:2.0,price:0.25,spread:0.15,freight:5000,fob:0.15,corr:0.25,trendMinShare:0.70}};
 }
 function hpaLoadPrefs(){
   try{
@@ -17643,6 +17643,8 @@ function hpaEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function hpaDateKey(d){return d instanceof Date?toStr(d):String(d).slice(0,10);}
 function hpaRangeCut(range){
   const d=new Date();
+  if(range==='5D'){d.setDate(d.getDate()-5);return d;}
+  if(range==='20D'){d.setDate(d.getDate()-20);return d;}
   if(range==='30D'){d.setDate(d.getDate()-30);return d;}
   if(range==='60D'){d.setDate(d.getDate()-60);return d;}
   if(range==='90D'){d.setDate(d.getDate()-90);return d;}
@@ -17723,7 +17725,7 @@ function hpaStatsFor(rule,series,range){
     const den=xs.reduce((s,x)=>s+(x-mx)**2,0),num=xs.reduce((s,x,i)=>s+(x-mx)*(trendTail[i]-my),0);
     slope=den?num/den:0;
   }
-  return{n,latest,prior,change,z,pctile,p5,p95,mean,sd,date:clean[n-1].date,trendN,trendStart,trendChange,trendShare,upCount,downCount,slope};
+  return{n,latest,prior,change,z,pctile,p5,p95,mean,sd,date:clean[n-1].date,trendN,trendStart,trendChange,trendShare,upCount,downCount,slope,clean};
 }
 function hpaThresholdFor(rule,prefs){
   if(rule.changeThreshold!=null)return rule.changeThreshold;
@@ -17770,7 +17772,11 @@ function hpaBuildAlert(rule,st,prefs){
     if(trend)score=Math.max(score,trend.score);
   }
   const severity=score>=2.5?'high':score>=1.25?'medium':'low';
-  return{rule,type,direction,severity,score,stats:st,title:`${rule.label} · ${type}`,detail:hpaAlertDetail(rule,st)};
+  const persistence=hpaPersistenceFor(rule,st,type,direction);
+  const context=hpaContextFor(st,prefs.range);
+  const question=hpaQuestionFor(rule,type,direction);
+  const move=hpaMoveFor(rule,st);
+  return{rule,type,direction,severity,score,stats:st,title:`${rule.label} · ${type}`,detail:hpaAlertDetail(rule,st),persistence,context,question,move};
 }
 function hpaAlertDetail(rule,st){
   const unit=rule.unit||'';
@@ -17784,6 +17790,65 @@ function hpaFmt(rule,v){
   if(rule.unit==='$/bbl')return Number(v).toFixed(2);
   if(rule.unit==='r')return Number(v).toFixed(3);
   return Number(v).toFixed(3);
+}
+function hpaOrdinal(n){
+  const v=Math.abs(Math.round(n));
+  const mod100=v%100,mod10=v%10;
+  const suf=(mod100>=11&&mod100<=13)?'th':mod10===1?'st':mod10===2?'nd':mod10===3?'rd':'th';
+  return`${v}${suf}`;
+}
+function hpaContextFor(st,range){
+  if(!st||st.latest==null||st.p5==null||st.p95==null)return{label:'No range',short:'No range',color:'#5a6882'};
+  const rng=range==='ALL'?'full-history':range;
+  if(st.latest<st.p5||st.latest>st.p95)return{label:`Outside ${rng} range`,short:'Outside range',color:'#f59e0b'};
+  if(st.pctile<=0.15||st.pctile>=0.85)return{label:`Near ${rng} edge`,short:'Near edge',color:'#4fc3f7'};
+  return{label:`Inside ${rng} range`,short:'Inside range',color:'#34d399'};
+}
+function hpaPersistenceFor(rule,st,type,direction){
+  const clean=st?.clean||[];
+  if(clean.length<2)return{count:1,label:'New today'};
+  const isSpread=['spread','freightSpread','fobSpread'].includes(rule.kind);
+  let want=0;
+  if(isSpread){
+    if(String(type).includes('widening'))want=1;
+    else if(String(type).includes('closing'))want=-1;
+  }
+  if(!want){
+    want=(direction==='decreasing'||direction==='weakening'||String(type).includes('decreasing')||String(type).includes('weakening'))?-1:1;
+  }
+  let count=0;
+  for(let i=clean.length-1;i>0;i--){
+    const a=clean[i-1].value,b=clean[i].value;
+    const step=isSpread?Math.abs(b)-Math.abs(a):b-a;
+    if(!isFinite(step)||step===0)break;
+    if((want>0&&step>0)||(want<0&&step<0))count++;
+    else break;
+  }
+  count=Math.max(1,count);
+  return{count,label:count<=1?'New today':`${hpaOrdinal(count)} observation`};
+}
+function hpaMoveFor(rule,st){
+  if(!st)return'--';
+  const ch=st.change>=0?'+'+hpaFmt(rule,st.change):hpaFmt(rule,st.change);
+  const latest=hpaFmt(rule,st.latest);
+  const tr=st.trendChange!=null&&Math.abs(st.trendChange)>Math.abs(st.change||0)
+    ?` · ${st.trendN}obs ${st.trendChange>=0?'+':''}${hpaFmt(rule,st.trendChange)}`
+    :'';
+  return`${ch} d/d · latest ${latest}${tr}`;
+}
+function hpaQuestionFor(rule,type,direction){
+  const id=String(rule.id||''),lbl=String(rule.label||'');
+  if(rule.kind==='correlation'||rule.kind==='regime')return direction==='weakening'||String(type).includes('weakening')||String(type).includes('decreasing')
+    ?'Has the hedge relationship weakened?'
+    :'Is the relationship tightening again?';
+  if(id.includes('jkm-ttf'))return String(type).includes('closing')?'Is the Asia premium fading vs Europe?':'Is Asia premium repricing shipping economics?';
+  if(id.includes('ttf-hh')||id.includes('jkm-hh'))return String(type).includes('closing')?'Is US/global gas convergence returning?':'Is global gas repricing vs US feedgas?';
+  if(id.includes('nbp-ttf'))return'Is the UK/NWE balancing relationship changing?';
+  if(['THE','PEG','PVB','PSV','ZTP'].some(h=>lbl.includes(h)))return'Is the local hub premium shifting vs TTF?';
+  if(rule.kind==='freight'||rule.kind==='freightSpread')return'Is freight changing the arb threshold?';
+  if(rule.kind==='fobSpread')return'Is the route netback preference shifting?';
+  if(rule.kind==='price')return direction==='decreasing'?'Is the outright selloff broadening?':'Is the outright rally broadening?';
+  return'This relationship is moving differently from recent behavior.';
 }
 function hpaSource(rule){
   if(rule.kind==='price')return EEX_HUBS.includes(rule.inst)?'EEX Market Data Hub · rolling M+1':'Financial EOD cache · rolling M+1';
@@ -17817,22 +17882,41 @@ function hpaRuleControls(rule,prefs){
     ${custom?`<button class="cr-pill" style="border-color:#ef4444;color:#fca5a5" onclick="hpaDeleteCustomRule('${hpaEsc(rule.id)}')">DELETE</button>`:''}
   `;
 }
+function hpaRenderFilterButtons(scan){
+  const filt=scan.prefs.filter||'all';
+  return['all','high','new'].map(f=>{
+    const lbl=f==='all'?'ALL':f==='high'?'HIGH ONLY':'NEW TODAY';
+    return`<button class="cr-pill${filt===f?' on':''}" onclick="hpaSetFilter('${f}')">${lbl}</button>`;
+  }).join('');
+}
 function hpaRenderInbox(scan){
   const active=scan.rows.filter(r=>r.active).length,muted=scan.rows.filter(r=>r.muted).length,noData=scan.rows.filter(r=>r.active&&!r.stats).length;
-  const cards=scan.alerts.length?scan.alerts.map(a=>{
+  const filter=scan.prefs.filter||'all';
+  const alerts=scan.alerts.filter(a=>filter==='high'?a.severity==='high':filter==='new'?a.persistence?.count<=1:true);
+  const rows=alerts.length?alerts.map(a=>{
     const[fg,bg]=hpaSeverityStyle(a.severity);
-    return`<div class="acard" style="border-color:${fg};background:${bg};padding:12px 14px">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:9px;color:${fg};letter-spacing:.12em;font-weight:700">${a.severity.toUpperCase()}</span>
-        <span style="font-size:12px;color:#fff;font-weight:600">${hpaEsc(a.title)}</span>
-        <span style="font-size:9px;color:#5a6882">${a.stats.date?new Date(a.stats.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):''}</span>
-        <span style="flex:1"></span>
+    const dt=a.stats.date?new Date(a.stats.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):'--';
+    return`<tr style="background:${bg}">
+      <td style="color:${fg};font-weight:800;letter-spacing:.10em">${a.severity.toUpperCase()}</td>
+      <td style="color:#f0f4ff;font-weight:700">${hpaEsc(a.type)}<div style="font-size:8px;color:#5a6882;margin-top:2px">${dt}</div></td>
+      <td style="color:#c8cfe0">${hpaEsc(a.rule.label)}</td>
+      <td>${hpaEsc(scan.prefs.range)}</td>
+      <td style="color:#c8cfe0">${hpaEsc(a.move)}</td>
+      <td style="color:${a.persistence?.count>1?'#fbbf24':'#4fc3f7'};font-weight:700">${hpaEsc(a.persistence?.label||'New today')}</td>
+      <td style="color:${a.context?.color||'#5a6882'};font-weight:700" title="${hpaEsc(a.context?.label||'')}">${hpaEsc(a.context?.short||'--')}</td>
+      <td style="color:#9fb0c8;min-width:190px">${hpaEsc(a.question)}</td>
+      <td class="tr" style="white-space:nowrap">
+        ${['price','spread'].includes(a.rule.kind)?`<button class="cr-pill" onclick="hpaOpenRule('${hpaEsc(a.rule.id)}')">OPEN</button>`:''}
         <button class="cr-pill" onclick="hpaMuteRule('${hpaEsc(a.rule.id)}')">MUTE</button>
-      </div>
-      <div style="font-size:10px;color:#c8cfe0;margin-top:7px;line-height:1.5">${hpaEsc(a.detail)}</div>
-      <div style="font-size:8px;color:#5a6882;margin-top:6px">Source: ${hpaEsc(hpaSource(a.rule))}</div>
-    </div>`;
-  }).join(''):`<div class="acard" style="padding:22px;text-align:center;color:#5a6882;font-size:11px">No active alerts in the selected window. Quiet is useful too.</div>`;
+      </td>
+    </tr>`;
+  }).join(''):'';
+  const table=rows?`<div class="acard" style="padding:0;overflow-x:auto">
+    <table class="stbl"><thead><tr>
+      <th>Severity</th><th>Signal</th><th>Market</th><th>Window</th><th>Move</th><th>Persistence</th><th>Context</th><th>Question</th><th></th>
+    </tr></thead><tbody>${rows}</tbody></table>
+    <div style="font-size:8px;color:#5a6882;padding:8px 10px;border-top:1px solid #151e30">Sources: Financial EOD, EEX hub settlements, Foundation freight curves and FOB snapshots. Signals are structure detectors, not forecasts.</div>
+  </div>`:`<div class="acard" style="padding:22px;text-align:center;color:#5a6882;font-size:11px">No active alerts for this filter/window. Quiet is useful too.</div>`;
   return`
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px">
       <div class="acard" style="padding:10px 12px"><div style="font-size:8px;color:#5a6882;letter-spacing:.12em">ALERTS</div><div style="font-size:20px;color:#fff">${scan.alerts.length}</div></div>
@@ -17840,7 +17924,14 @@ function hpaRenderInbox(scan){
       <div class="acard" style="padding:10px 12px"><div style="font-size:8px;color:#5a6882;letter-spacing:.12em">NO DATA</div><div style="font-size:20px;color:#fbbf24">${noData}</div></div>
       <div class="acard" style="padding:10px 12px"><div style="font-size:8px;color:#5a6882;letter-spacing:.12em">MUTED</div><div style="font-size:20px;color:#94a3b8">${muted}</div></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px">${cards}</div>`;
+    <div class="acard" style="padding:10px 12px;margin-bottom:10px;background:#071a2b;border-color:#1e3a5f">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:9px;color:#5a6882;letter-spacing:.12em">SHOW</span>
+        ${hpaRenderFilterButtons(scan)}
+        <span style="font-size:9px;color:#5a6882;margin-left:auto">"${hpaEsc('This relationship is moving differently from recent behavior.')}"</span>
+      </div>
+    </div>
+    ${table}`;
 }
 function hpaRenderRules(scan){
   const p=scan.prefs;
@@ -17854,6 +17945,7 @@ function hpaRenderRules(scan){
       <td style="color:${col};font-weight:700">${status}</td>
       <td class="tr">${st?hpaFmt(r.rule,st.latest):'--'}</td>
       <td class="tr">${st?st.z.toFixed(2):'--'}</td>
+      <td style="color:${st?hpaContextFor(st,p.range).color:'#5a6882'}">${st?hpaEsc(hpaContextFor(st,p.range).short):'--'}</td>
       <td style="font-size:8px;color:#5a6882">${hpaEsc(r.source)}</td>
       <td style="white-space:nowrap;text-align:right">${hpaRuleControls(r.rule,p)}</td>
     </tr>`;
@@ -17869,7 +17961,7 @@ function hpaRenderRules(scan){
         <span style="font-size:9px;color:#5a6882">For PRICE, B is ignored. Custom rules persist in ${HPA_NOTIF_KEY}.</span>
       </div>
     </div>
-    <div class="acard"><div style="overflow-x:auto"><table class="stbl"><thead><tr><th>Rule</th><th>Group</th><th>Status</th><th class="tr">Latest</th><th class="tr">Z</th><th>Source</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    <div class="acard"><div style="overflow-x:auto"><table class="stbl"><thead><tr><th>Rule</th><th>Group</th><th>Status</th><th class="tr">Latest</th><th class="tr">Z</th><th>Context</th><th>Source</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function hpaRenderMuted(scan){
   const muted=scan.rows.filter(r=>r.muted);
@@ -17882,12 +17974,12 @@ function hpaRenderSettings(scan){
   return`<div class="acard" style="padding:12px 14px">
     <div class="ctitle" style="margin-bottom:10px">SETTINGS<span style="flex:1;height:1px;background:#151e30;margin:0 8px;display:inline-block"></span><span style="font-size:8px;color:#5a6882">in-app only · localStorage</span></div>
     <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
-      <div><span class="cl">SCAN WINDOW</span><select onchange="hpaSetRange(this.value)">${['30D','60D','90D','1Y','ALL'].map(r=>`<option value="${r}"${scan.prefs.range===r?' selected':''}>${r}</option>`).join('')}</select></div>
+      <div><span class="cl">SCAN WINDOW</span><select onchange="hpaSetRange(this.value)">${['5D','20D','30D','60D','90D','1Y','ALL'].map(r=>`<option value="${r}"${scan.prefs.range===r?' selected':''}>${r}</option>`).join('')}</select></div>
       ${inp('z','Z-SCORE','0.1')}${inp('price','PRICE MOVE','0.01')}${inp('spread','SPREAD MOVE','0.01')}${inp('freight','FREIGHT MOVE','1000')}${inp('fob','FOB MOVE','0.01')}${inp('corr','CORR DELTA','0.01')}${inp('trendMinShare','TREND SHARE','0.05')}
       <button class="cr-pill" onclick="hpaResetPrefs()">RESET</button>
     </div>
     <div style="font-size:10px;color:#8a9bb5;line-height:1.7">
-      Alerts fire when a rule breaches either the daily move threshold or the distribution threshold. Spread monitors classify <b>closing</b> vs <b>widening</b> by the absolute spread. Correlation and regime monitors compare the latest rolling r against the selected-window baseline. Nothing is pushed externally yet; this is an in-app inbox.
+      Alerts fire when a rule breaches either the daily move threshold, the distribution threshold, or a persistent directional move. Spread monitors classify <b>closing</b> vs <b>widening</b> by the absolute spread. Context compares the latest value with the selected-window normal range. Nothing is pushed externally yet; this is an in-app inbox.
     </div>
   </div>`;
 }
@@ -17898,7 +17990,7 @@ function hpaRenderNotifications(){
   const last=(sDates&&sDates.length)?sDates[sDates.length-1]:'--';
   el.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #151e30">
-      <div><div style="font-size:12px;color:#c8cfe0;font-weight:600;letter-spacing:.04em">Historical Price Analysis · Notifications</div>
+      <div><div style="font-size:12px;color:#c8cfe0;font-weight:600;letter-spacing:.04em">Market Watch · Relationship Shifts</div>
       <div style="font-size:9px;color:#5a6882;margin-top:3px">Outrights · spread closing/widening · correlation changing · regime changing · freight / FOB snapshots</div></div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${nav}<span style="font-size:9px;color:#34d399;margin-left:6px">● EOD ${hpaEsc(last)}</span></div>
     </div>
@@ -17909,9 +18001,23 @@ window.hpaNotifTab=function(tab){const p=hpaLoadPrefs();p.tab=tab;hpaSavePrefs(p
 window.hpaToggleRule=function(id){const p=hpaLoadPrefs();p.activeRules[id]=!(p.activeRules[id]!==false);hpaSavePrefs(p);hpaRenderNotifications();};
 window.hpaMuteRule=function(id){const p=hpaLoadPrefs();p.muted[id]=new Date().toISOString();hpaSavePrefs(p);hpaRenderNotifications();};
 window.hpaUnmuteRule=function(id){const p=hpaLoadPrefs();delete p.muted[id];hpaSavePrefs(p);hpaRenderNotifications();};
+window.hpaSetFilter=function(f){const p=hpaLoadPrefs();p.filter=f||'all';hpaSavePrefs(p);hpaRenderNotifications();};
 window.hpaSetThreshold=function(k,v){const p=hpaLoadPrefs(),n=parseFloat(v);if(isFinite(n)){p.thresholds[k]=n;hpaSavePrefs(p);}hpaRenderNotifications();};
 window.hpaSetRange=function(r){const p=hpaLoadPrefs();p.range=r;hpaSavePrefs(p);hpaRenderNotifications();};
 window.hpaResetPrefs=function(){if(confirm('Reset notification rules and thresholds?')){localStorage.removeItem(HPA_NOTIF_KEY);hpaRenderNotifications();}};
+window.hpaOpenRule=function(id){
+  const p=hpaLoadPrefs(),rule=hpaAllRules(p).find(r=>r.id===id);if(!rule)return;
+  const spreadMap={'JKM-TTF':'SP_JT','JKM-HH':'SP_JH','TTF-HH':'SP_TH','TTF-NBP':'SP_TN','JKM-NBP':'SP_JN','HH-NBP':'SP_HN'};
+  if(rule.kind==='price'&&rule.inst&&typeof dash2GotoHistorical==='function'){
+    dash2GotoHistorical(rule.inst,rule.tenor||'r1');return;
+  }
+  if(rule.kind==='spread'){
+    const k=`${rule.a}-${rule.b}`;
+    const inst=spreadMap[k];
+    if(inst&&typeof dash2GotoHistorical==='function'){dash2GotoHistorical(inst,rule.tenor||'r1');return;}
+  }
+  hpaNotifTab('rules');
+};
 window.hpaAddCustomRule=function(){
   const kind=$id('hpa-custom-kind')?.value||'price',a=$id('hpa-custom-a')?.value||'JKM',b=$id('hpa-custom-b')?.value||'TTF';
   const p=hpaLoadPrefs();

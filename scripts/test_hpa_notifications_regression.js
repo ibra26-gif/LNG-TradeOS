@@ -52,12 +52,26 @@ assert(
 
 assert(
   js.includes('function hpaTrendAlert') &&
+    js.includes('function hpaPersistenceFor') &&
+    js.includes('function hpaContextFor') &&
+    js.includes('function hpaQuestionFor') &&
     js.includes('trendMinShare') &&
     js.includes('Spread widening') &&
     js.includes('Spread closing') &&
     js.includes('Outright increasing') &&
     js.includes('Outright decreasing'),
   'notifications must include directional trend alerts for widening/closing and increasing/decreasing'
+);
+
+assert(
+  js.includes('Market Watch · Relationship Shifts') &&
+    js.includes('NEW TODAY') &&
+    js.includes('Persistence') &&
+    js.includes('Context') &&
+    js.includes('Question') &&
+    js.includes('window.hpaSetFilter') &&
+    js.includes("'5D','20D','30D','60D','90D','1Y','ALL'"),
+  'notification inbox must expose persistence, range context, questions, and filters'
 );
 
 const start = js.indexOf('function hpaDefaultPrefs');
@@ -92,6 +106,9 @@ if (start >= 0 && end > start) {
   const alert = ctx.__hpaTest.hpaBuildAlert(rule, stats, prefs);
   assert(trend && trend.type === 'Spread widening', 'trend helper must classify persistent spread widening');
   assert(alert && alert.title.includes('Spread widening'), 'trend breach must produce a widening alert');
+  assert(alert && alert.persistence && alert.persistence.count >= 5, 'alert must report persistence across observations');
+  assert(alert && alert.context && alert.context.short, 'alert must include normal-range context');
+  assert(alert && /Asia premium/.test(alert.question), 'alert must include the implied market question');
 }
 
 if (!process.exitCode) console.log('HPA notifications regression checks passed');

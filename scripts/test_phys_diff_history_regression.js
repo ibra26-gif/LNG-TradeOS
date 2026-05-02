@@ -53,8 +53,7 @@ assert(
 );
 
 assert(
-  app.includes('20260502-phys-fob-history') &&
-    /name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app),
+  /name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app),
   'private platform script must be cache-busted for phys/FOB history work'
 );
 
