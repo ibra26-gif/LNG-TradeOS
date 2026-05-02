@@ -44,6 +44,8 @@ assert(
 assert(
   js.includes('Seasonal · KOGAS tariff · JKM · Brent 11-14% (3,0,1)') &&
     js.includes('kor-tariff-seasonal') &&
+    !js.includes('kor-prices-chart') &&
+    !js.includes('kor-tariff-history') &&
     js.includes('avgByMonth') &&
     js.includes("_korLive?.kogasTariff") &&
     js.includes('KOGAS direct power') &&
@@ -57,6 +59,7 @@ assert(
 assert(
   scraper.includes('KOGAS_POWER_TARIFF_URL') &&
     scraper.includes('def fetch_kogas_current_power_tariff') &&
+    !scraper.includes('age_h < 12') &&
     scraper.includes("out['kogasTariff'] = kt") &&
     scraper.includes('kogas_current_power_tariff.json'),
   'Korea scraper must fetch/cache the official KOGAS current power tariff'
@@ -67,6 +70,8 @@ assert(
     korea.kogasTariff.sourceUrl === 'https://www.kogas.or.kr/site/koGas/1040402000000' &&
     korea.kogasTariff.directPower &&
     korea.kogasTariff.generalPowerChp &&
+    korea.kogasTariff.generalPowerChp.supply_krw_gj === 2317.04 &&
+    korea.kogasTariff.generalPowerChp.total_krw_gj === 16641.05 &&
     korea.kogasTariff.unit === 'KRW/GJ',
   'korea.json must include the latest cached official KOGAS power tariff'
 );
