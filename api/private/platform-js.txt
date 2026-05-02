@@ -24237,20 +24237,15 @@ function renderBalance(){ renderIndBalance(document.getElementById('ind-tab-body
 window.renderBalance=renderBalance;
 
 // ════════════════════════════════════════════════════════════════════════════
-// KOREA MODULE — Gas balance & nuclear · Prices
+// KOREA MODULE — S&D · Nuclear · Tariffs
 // ════════════════════════════════════════════════════════════════════════════
 // Mirrors the India shell pattern (kor-container > tab buttons > kor-tab-body).
-// Tab 1 (balance): KHNP nuclear + DART quarterly sales + KOGAS imports.
-// Tab 2 (prices): KOGAS power tariff + JKM flat + Brent slope band 14–11% (3,0,1).
-//
-// SHIPPABLE TODAY:
-// - Tab structure + freshness pills + KPI strips
-// - JKM and Brent reuse aD (live EOD)
-// - Brent slope band engine (3-month rolling avg, 14%/11% bounds)
-// - All other values seeded from spec mock with "seed" badge — awaiting
-//   KHNP / DART / KOGAS Excel / ECB FX scrapers (queued as separate todos).
+// Tab 1 (S&D): official KESIS/KEEI monthly gas balance, plus KOGAS monthly
+// supply by use as the faster demand signal.
+// Tab 2 (Nuclear): KHNP live fleet + monthly historical utilization.
+// Tab 3 (Tariffs): KOGAS power tariff, JKM, and Brent 11-14% 3-0-1 range.
 
-let _korTab = 'balance';
+let _korTab = 'snd';
 let _korChartMain = null, _korChartNuclear = null, _korChartPrices = null;
 
 // Seed data (values from spec mock — replace with scrapers in follow-ups)
@@ -24395,10 +24390,7 @@ function _korDodSnapshot(){
 
 // ── Live data fetch (data/korea.json from GitHub Action) ──────────────────
 // Loaded once per page visit — daily-cadence data, no need to re-poll.
-// Overrides KOR_SEED for sources that have shipped scrapers (FX + KHNP).
-// KOGAS tariff/imports/DART stay seeded with amber badges until those
-// scrapers land (KR-only sources require either a Korean proxy or manual
-// entry — see scripts/fetch_korea.py for the rationale).
+// Overrides KOR_SEED for sources that have shipped scrapers.
 let _korLive = null, _korLivePromise = null;
 function korFetchLive(){
   if (_korLivePromise) return _korLivePromise;
@@ -24460,25 +24452,26 @@ window.korInit = korInit;
 function korBuildShell(){
   const tabBtn = (id, label, active) => `
     <div class="kor-tab-btn${active?' active':''}" onclick="korShowTab('${id}',this)" style="padding:9px 16px;font-size:10px;letter-spacing:1px;cursor:pointer;color:${active?'var(--b)':'#546e7a'};border-bottom:${active?'2px solid var(--b)':'2px solid transparent'}">${label}</div>`;
+  const activeTab = _korTab === 'balance' ? 'snd' : _korTab === 'prices' ? 'tariffs' : _korTab;
   return `
     <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">⬡ GAS &amp; LNG ANALYTICS · KOREA SIGNPOSTS</div>
     <div style="display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(77,158,245,0.13);margin-bottom:0">
-      ${tabBtn('balance', 'GAS BALANCE',           _korTab==='balance')}
-      ${tabBtn('nuclear', 'NUCLEAR',               _korTab==='nuclear')}
-      ${tabBtn('prices',  'PRICES',                _korTab==='prices')}
+      ${tabBtn('snd',     'S&amp;D',     activeTab==='snd')}
+      ${tabBtn('nuclear', 'NUCLEAR',   activeTab==='nuclear')}
+      ${tabBtn('tariffs', 'TARIFFS',   activeTab==='tariffs')}
     </div>
     <div id="kor-tab-body" style="margin-top:14px"></div>
   `;
 }
 
 function korShowTab(tab, btn){
-  _korTab = tab;
+  _korTab = tab === 'balance' ? 'snd' : tab === 'prices' ? 'tariffs' : tab;
   const c = document.getElementById('kor-container');
   if (c) c.innerHTML = korBuildShell();
   const body = document.getElementById('kor-tab-body'); if (!body) return;
-  if (tab === 'nuclear')      renderKorNuclear(body);
-  else if (tab === 'balance') renderKorBalance(body);
-  else                        renderKorPrices(body);
+  if (_korTab === 'nuclear')      renderKorNuclear(body);
+  else if (_korTab === 'tariffs') renderKorPrices(body);
+  else                            renderKorBalance(body);
 }
 window.korShowTab = korShowTab;
 
@@ -24627,7 +24620,7 @@ function renderKorNuclear(el){
     <!-- Seasonal monthly chart (Ember) - the YoY view -->
     <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · monthly nuclear utilization · 2019–latest</span>
+        <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · monthly historical nuclear utilization · 2019–latest</span>
         <span style="font-size:9px;color:#5a6882">Ember TWh ÷ fleet nameplate · ~6-week lag</span>
       </div>
       <div style="height:240px"><canvas id="kor-seasonal-monthly"></canvas></div>
@@ -24960,19 +24953,30 @@ function parseKesisBalance(wb, fileName){
 window.kesisHandleFile = kesisHandleFile;
 
 function renderKorBalance(el){
-  // ── Live DART data (KOGAS sectoral sales, contracted volumes, LNG origins) ──
+  // ── Official monthly balance first; KOGAS supply is a faster demand signal ──
   const dart = _korLive?.dart;
-  const annual = dart?.sectorVolumesByYear || [];   // [{year, cityGas_kt, power_kt, total_kt}, ...]
-  const contracted = dart?.contractedVolumes || []; // [{year, cityGas_kt, power_avg_tariff_kt, ...}, ...]
-  const origins = dart?.lngOrigins || [];
   const kesis = _kesisLoad();
-  const monthly = dart?.monthlySales?.series || []; // [{date, cityGas_kt, power_kt, total_kt}, ...]
-  const kcga = _korLive?.kcga?.series || [];        // [{date, residential_km3, industrial_km3, ...}, ...]
+  const kesisRows = kesis?.series || [];
+  const dataGoSupply = _korLive?.dataGoKr?.kogasSupply?.series || [];
+  const dartMonthly = dart?.monthlySales?.series || [];
+  const monthly = dataGoSupply.length
+    ? dataGoSupply.map(r => ({
+        date: r.date,
+        cityGas_kt: r.cityGas_t != null ? r.cityGas_t / 1000 : null,
+        power_kt: r.power_t != null ? r.power_t / 1000 : null,
+        total_kt: r.total_t != null ? r.total_t / 1000 : null,
+      }))
+    : dartMonthly; // DART fallback if public-data supply is missing
+  const monthlySource = dataGoSupply.length
+    ? `data.go.kr · KOGAS monthly supply · ${dataGoSupply.length} months`
+    : dartMonthly.length
+      ? `OpenDART · KOGAS monthly sales · ${dartMonthly.length} months`
+      : 'awaiting KOGAS monthly supply';
+  const kcga = [];                                  // kept out of the three-tab S&D surface
+  const annual = [];                                // old annual chart intentionally hidden here
   const inv = dart?.quarterlyInventory?.snapshots || []; // [{end_date, inventory_krw, implied_inventory_kt, quarter, ...}, ...]
 
-  // Latest year + YoY (annual context)
-  const latest = annual.length ? annual[annual.length - 1] : null;
-  const prev   = annual.length >= 2 ? annual[annual.length - 2] : null;
+  const latest = null;
 
   // Latest month + YoY (most actionable for trading)
   const latestMon = monthly.length ? monthly[monthly.length - 1] : null;
@@ -24996,33 +25000,47 @@ function renderKorBalance(el){
   const fmtPct = (p) => p != null ? ((p>=0?'▲ ':'▼ ') + Math.abs(p*100).toFixed(1) + '%') : '—';
   const pctColor = (p) => p == null ? '#9ca3af' : (p >= 0 ? '#34d399' : '#fca5a5');
 
-  const reportName = dart?.latestReportName || '— no data';
-  const reportDate = dart?.latestReportDate ? `${dart.latestReportDate.slice(0,4)}-${dart.latestReportDate.slice(4,6)}-${dart.latestReportDate.slice(6,8)}` : '';
-
-  // Forward contract sum (2025) — total commitment for current year
-  const fwdLatest = contracted.length ? contracted[0] : null;
+  const kesisLatest = kesisRows.length ? kesisRows[kesisRows.length - 1] : null;
+  const kesisRange = kesisRows.length ? `${kesisRows[0].period} → ${kesisRows[kesisRows.length - 1].period}` : 'no local official balance';
+  const flowFmt = (v) => v != null ? (+v).toLocaleString(undefined,{maximumFractionDigits:1}) : '—';
+  const flowVal = (key) => kesisLatest && kesisLatest[key] != null ? +kesisLatest[key] : null;
+  const kesisCard = (label, key, sub, color) => korKpiCard({
+    label,
+    value: flowFmt(flowVal(key)),
+    sub: kesisLatest ? sub : 'upload KESIS / KEEI file',
+    color: color || '#fff',
+  });
+  const kesisTableRows = [
+    ['Production', 'production'],
+    ['Imports', 'imports'],
+    ['Exports', 'exports'],
+    ['Stock changes', 'stockChanges'],
+    ['TPES', 'tpes'],
+    ['Final consumption', 'tfc'],
+    ['Transformation', 'transformation'],
+    ['Statistical diff.', 'statisticalDiff'],
+  ];
 
   el.innerHTML = `
     ${korFreshness([
-      { label:'DART · KOGAS', meta: dart ? `${reportName} · ${reportDate}` : 'awaiting key', color: dart ? '#34d399' : '#fbbf24' },
-      { label:'Ember power',  meta:'monthly · ~6w lag', color:'#34d399' },
-      { label:'KHNP nuclear', meta:'live · 3-min · → Nuclear tab', color:'#34d399' },
-      { label:'KESIS', meta: kesis ? `${kesis.series.length} periods · ${kesis.fileName?.slice(0,18)||'uploaded'}` : 'no data — drop file below', color: kesis ? '#34d399' : '#fbbf24' },
+      { label:'KESIS / KEEI official balance', meta: kesis ? `${kesisRows.length} periods · ${kesisRange}` : 'manual file needed', color: kesis ? '#34d399' : '#fbbf24' },
+      { label:'KOGAS monthly supply', meta: monthlySource, color: monthly.length ? '#34d399' : '#fbbf24' },
+      { label:'Coverage', meta:'Korea is LNG-only; production/export rows normally small or zero', color:'#93c5fd' },
     ])}
 
     <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
         <div>
-          <div style="font-size:11px;color:#fff;font-weight:500">KESIS energy balance · Natural Gas (Physical) — manual upload</div>
+          <div style="font-size:11px;color:#fff;font-weight:500">KESIS / KEEI official monthly gas balance · Natural Gas (Physical)</div>
           <div style="font-size:9px;color:#5a6882;margin-top:3px;line-height:1.5">
             Source: <a href="https://kesis.keei.re.kr/statHtml/statHtml.do?conn_path=I2&language=en&orgId=339&tblId=DT_BAL_SIMPLE_PHYSICAL" target="_blank" style="color:#93c5fd">KESIS DT_BAL_SIMPLE_PHYSICAL</a>
-            — bot-blocked, so download Excel/CSV manually and drop here. Parser extracts the Natural Gas row (Production / Imports / Exports / Stock changes / TPES / TFC).
+            — download Excel/CSV and drop here. Parser extracts Natural Gas across Production / Imports / Exports / Stock changes / TPES / Final consumption.
           </div>
         </div>
         <div>
           <input type="file" id="kesis-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="if(this.files[0]){kesisHandleFile(this.files[0]);this.value='';}">
-          <button class="fdfc-btn" style="border-color:#a78bfa;color:#a78bfa" onclick="document.getElementById('kesis-file').click()">📂 UPLOAD KESIS FILE</button>
-          ${kesis ? `<button class="fdfc-btn" style="border-color:#ef5350;color:#ef5350;margin-left:6px" onclick="if(confirm('Clear KESIS data?')){localStorage.removeItem('${KESIS_LSKEY}');korShowTab(_korTab);}">⚠ CLEAR</button>` : ''}
+          <button class="fdfc-btn" style="border-color:#a78bfa;color:#a78bfa" onclick="document.getElementById('kesis-file').click()">UPLOAD KESIS FILE</button>
+          ${kesis ? `<button class="fdfc-btn" style="border-color:#ef5350;color:#ef5350;margin-left:6px" onclick="if(confirm('Clear KESIS data?')){localStorage.removeItem('${KESIS_LSKEY}');korShowTab(_korTab);}">CLEAR</button>` : ''}
         </div>
       </div>
       ${kesis ? `
@@ -25032,71 +25050,57 @@ function renderKorBalance(el){
             flows: ${kesis.flows.join(', ')} · sheet: ${kesis.sheet} · uploaded ${new Date(kesis.uploadedAt).toLocaleString('en-GB')}
           </div>
         </div>
-        <div style="height:280px;margin-top:10px"><canvas id="kor-bal-kesis"></canvas></div>
       ` : `
         <div style="margin-top:10px;padding:10px;background:#0a1628;border:1px dashed #1e3a5f;border-radius:4px;text-align:center;color:#6b7280;font-size:10px">
-          No KESIS data yet. Click upload above (xlsx/xls/csv) — parser auto-detects layout.
+          No official KESIS balance loaded yet. The page will not invent missing balance rows.
         </div>
       `}
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      ${korKpiCard({
-        label: monthName ? `Total LNG sales · ${monthName}` : 'Total LNG sales',
-        value: fmtKtMon(latestMon?.total_kt),
-        sub: '<span style="color:'+pctColor(totalYoY)+'">'+fmtPct(totalYoY)+' YoY</span>',
-        color:'#fff',
-      })}
-      ${korKpiCard({
-        label: monthName ? `City-gas · ${monthName}` : 'City-gas',
-        value: fmtKtMon(latestMon?.cityGas_kt),
-        sub: '<span style="color:'+pctColor(cityYoY)+'">'+fmtPct(cityYoY)+' YoY</span> · '+(cityShare!=null?(cityShare*100).toFixed(0)+'% mix':''),
-        color:'#3b82f6',
-      })}
-      ${korKpiCard({
-        label: monthName ? `Power · ${monthName}` : 'Power',
-        value: fmtKtMon(latestMon?.power_kt),
-        sub: '<span style="color:'+pctColor(powerYoY)+'">'+fmtPct(powerYoY)+' YoY</span> · '+(powerShare!=null?(powerShare*100).toFixed(0)+'% mix':''),
-        color:'#f59e0b',
-      })}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+      ${kesisCard('Official imports', 'imports', 'KESIS / KEEI · physical units', '#3b82f6')}
+      ${kesisCard('Stock changes', 'stockChanges', 'positive/negative as reported by KESIS', '#a78bfa')}
+      ${kesisCard('TPES', 'tpes', 'total primary energy supply', '#22d3ee')}
+      ${kesisCard('Final consumption', 'tfc', 'official final demand', '#fbbf24')}
     </div>
+
+    ${kesis ? `
+    <div style="display:grid;grid-template-columns:1.3fr .7fr;gap:10px;margin-bottom:12px">
+      <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <span style="font-size:11px;color:#fff;font-weight:500">Official gas balance history · Natural Gas · KESIS / KEEI</span>
+          <span style="font-size:9px;color:#5a6882">${kesisRange}</span>
+        </div>
+        <div style="height:280px;margin-top:10px"><canvas id="kor-bal-kesis"></canvas></div>
+      </div>
+      <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937">
+        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:8px">Latest official period · ${kesisLatest?.period || '—'}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:10px;color:#c8cfe0">
+          <tbody>
+            ${kesisTableRows.map(([label,key]) => `
+              <tr style="border-bottom:1px solid #0f1824">
+                <td style="padding:6px 4px;color:#8ea0bf">${label}</td>
+                <td style="padding:6px 4px;text-align:right;color:#fff;font-variant-numeric:tabular-nums">${flowFmt(flowVal(key))}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>` : ''}
 
     <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS monthly sales by sector · ${monthly.length ? monthly[0].date.slice(0,7) + '–' + monthly[monthly.length-1].date.slice(0,7) : '—'} · kt LNG</span>
-        <span style="font-size:9px;color:#5a6882">DART · KOGAS monthly preliminary disclosures · ${monthly.length} months</span>
+        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS monthly supply signal · ${monthly.length ? monthly[0].date.slice(0,7) + '–' + monthly[monthly.length-1].date.slice(0,7) : '—'} · kt LNG</span>
+        <span style="font-size:9px;color:#5a6882">${monthlySource}</span>
       </div>
       <div style="height:260px"><canvas id="kor-bal-monthly"></canvas></div>
-    </div>
-
-    ${kcga.length ? `
-    <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">City-gas demand by sub-sector · ${kcga[0].date.slice(0,7)}–${kcga[kcga.length-1].date.slice(0,7)} · mcm</span>
-        <span style="font-size:9px;color:#5a6882">KCGA 도시가스사업통계월보 · ${kcga.length} months · 8 sub-sectors</span>
-      </div>
-      <div style="height:300px"><canvas id="kor-bal-kcga"></canvas></div>
-      <div style="margin-top:8px;font-size:9px;color:#6b7280;line-height:1.5">
-        Residential = cooking + heating · General = small commercial · Business = large commercial w/ HVAC ·
-        Industrial = factories · CHP = cogeneration · Transport = CNG vehicles ·
-        Heat-only / Fuel-cell = niche. National total across 34 city-gas distributors.
-      </div>
-    </div>
-    ` : ''}
-
-    <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS annual sales by sector · 2015–${latest?.year || '—'} · kt LNG</span>
-        <span style="font-size:9px;color:#5a6882">DART · KOGAS annual report</span>
-      </div>
-      <div style="height:200px"><canvas id="kor-bal-annual"></canvas></div>
     </div>
 
     ${monthly.length ? `
     <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · monthly LNG sales (City + Power) · ${monthly[0].date.slice(0,4)}–${monthly[monthly.length-1].date.slice(0,4)}</span>
-        <span style="font-size:9px;color:#5a6882">DART · y-o-y overlay</span>
+        <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · monthly KOGAS supply (City + Power) · ${monthly[0].date.slice(0,4)}–${monthly[monthly.length-1].date.slice(0,4)}</span>
+        <span style="font-size:9px;color:#5a6882">demand signal · y-o-y overlay</span>
       </div>
       <div style="height:260px"><canvas id="kor-bal-sales-seasonal"></canvas></div>
     </div>
@@ -25115,65 +25119,15 @@ function renderKorBalance(el){
     </div>
     ` : ''}
 
-    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:8px;margin-bottom:12px">
-
-      <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937">
-        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:8px">Forward contracted volumes · kt</div>
-        ${contracted.length ? `
-          <table style="width:100%;border-collapse:collapse;font-size:10px;color:#c8cfe0">
-            <thead>
-              <tr style="border-bottom:1px solid #1f2937;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">
-                <th style="text-align:left;padding:6px 4px">Year</th>
-                <th style="text-align:right;padding:6px 4px">Power · Avg tariff</th>
-                <th style="text-align:right;padding:6px 4px">Power · Indiv tariff</th>
-                <th style="text-align:right;padding:6px 4px">City-gas</th>
-                <th style="text-align:right;padding:6px 4px">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${contracted.map(r => `
-                <tr style="border-bottom:1px solid #0f1824">
-                  <td style="padding:6px 4px;color:#fff">${r.year}</td>
-                  <td style="text-align:right;padding:6px 4px">${r.power_avg_tariff_kt!=null?r.power_avg_tariff_kt.toLocaleString():'—'}</td>
-                  <td style="text-align:right;padding:6px 4px">${r.power_individual_tariff_kt!=null?r.power_individual_tariff_kt.toLocaleString():'—'}</td>
-                  <td style="text-align:right;padding:6px 4px">${r.cityGas_kt!=null?r.cityGas_kt.toLocaleString():'—'}</td>
-                  <td style="text-align:right;padding:6px 4px;color:#fff;font-weight:600">${r.total_kt!=null?r.total_kt.toLocaleString():'—'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          <div style="margin-top:6px;font-size:9px;color:#6b7280">From KOGAS '용도별 약정 물량' table · annual contracted commitments</div>
-        ` : `<div style="color:#fbbf24;font-size:10px">No contracted-volume data yet — awaiting first DART scrape.</div>`}
-      </div>
-
-      <div class="acard" style="padding:12px 16px;background:#0d1322;border:1px solid #1f2937">
-        <div style="font-size:11px;color:#fff;font-weight:500;margin-bottom:8px">LNG procurement origins</div>
-        ${origins.length ? `
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-            ${origins.map((o,i) => `
-              <div style="background:rgba(59,130,246,${0.15 - i*0.02});border:1px solid rgba(59,130,246,${0.4 - i*0.05});padding:6px 10px;border-radius:4px;font-size:11px;color:#dbeafe">
-                ${o}
-              </div>
-            `).join('')}
-          </div>
-          <div style="font-size:9px;color:#6b7280;line-height:1.5">
-            Latest period: ${reportName}. Origins shown in DART procurement disclosure order.
-            Korea is islanded — 100% of supply is LNG, no pipeline imports, ~zero domestic production.
-          </div>
-        ` : `<div style="color:#fbbf24;font-size:10px">No origin data yet.</div>`}
-      </div>
-
-    </div>
-
     <div style="font-size:10px;color:#5a6882;line-height:1.6;border-top:1px solid #1f2937;padding-top:10px">
       <div style="color:#9ca3af;margin-bottom:4px">Sources</div>
-      <a href="https://opendart.fss.or.kr" target="_blank" style="color:#93c5fd">DART · OpenDART API</a> · KOGAS quarterly + annual filings · refreshed when new period report is filed<br>
-      <a href="https://ember-energy.org/data/monthly-electricity-data/" target="_blank" style="color:#93c5fd">Ember Monthly Electricity Data</a> · gas-fired generation TWh (proxy for power-sector demand seasonality)<br>
-      <span style="color:#fca5a5"><b>Coverage gaps:</b> per-terminal tank stocks · daily LNG sendout · KOGAS spot purchase prices · monthly LNG import volumes (annual only via DART)</span>
+      <a href="https://kesis.keei.re.kr/statHtml/statHtml.do?conn_path=I2&language=en&orgId=339&tblId=DT_BAL_SIMPLE_PHYSICAL" target="_blank" style="color:#93c5fd">KESIS / KEEI · Simple energy balance (Physical)</a> · official monthly balance, usually lagged<br>
+      <a href="https://www.data.go.kr/data/15129906/fileData.do?recommendDataYn=Y" target="_blank" style="color:#93c5fd">data.go.kr · KOGAS monthly supply by use</a> · city-gas and power supply in tons LNG<br>
+      <span style="color:#fca5a5"><b>Coverage gaps:</b> no daily Korean sendout, no public daily inventory, KESIS is official but lagged.</span>
     </div>
   `;
 
-  // ── Monthly sector stacked bar chart (DART monthly disclosures) ────────
+  // ── Monthly sector stacked bar chart (KOGAS public supply, DART fallback) ─
   if (window._korChartMonthly) { window._korChartMonthly.destroy(); window._korChartMonthly = null; }
   const cMon = document.getElementById('kor-bal-monthly');
   if (cMon && monthly.length) {
@@ -25517,10 +25471,30 @@ function renderKorPrices(el){
     usdMmbtu_supply: r.gj_supply_krw != null ? +(r.gj_supply_krw * GJ_PER_MMBTU / FX_REF).toFixed(2) : null,
   }));
   const lastTariff = tariffHistory.length ? tariffHistory[tariffHistory.length - 1] : null;
+  const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const avgByMonth = (rows, dateFn, valFn) => {
+    const buckets = Array.from({length:12}, () => ({sum:0, n:0}));
+    for (const row of rows || []) {
+      const ds = dateFn(row);
+      const v = valFn(row);
+      const m = ds && /^(\d{4})-(\d{2})/.test(ds) ? parseInt(ds.slice(5,7), 10) - 1 : null;
+      if (m == null || m < 0 || m > 11 || v == null || !isFinite(v)) continue;
+      buckets[m].sum += +v;
+      buckets[m].n += 1;
+    }
+    return buckets.map(b => b.n ? +(b.sum / b.n).toFixed(2) : null);
+  };
+  const marketJkmMonthly = korJkmMonthly();
+  const marketBrentMonthly = korBrentMonthly();
+  const marketSlopeBand = korSlopeBand(marketBrentMonthly);
+  const tariffSeasonal = avgByMonth(tariffHistory, r => r.date, r => r.usdMmbtu_total);
+  const jkmSeasonal = avgByMonth(marketJkmMonthly, r => `${r.ym}-01`, r => r.jkm);
+  const brentLowSeasonal = avgByMonth(marketSlopeBand, r => `${r.ym}-01`, r => r.lower);
+  const brentHighSeasonal = avgByMonth(marketSlopeBand, r => `${r.ym}-01`, r => r.upper);
 
   el.innerHTML = `
     ${korFreshness([
-      { label:'KOGAS history', meta: lastTariff ? `data.go.kr · 2008–${lastTariff.date.slice(0,7)} · ${tariffHistory.length} mo` : 'no data', color: lastTariff ? '#34d399' : '#fbbf24' },
+      { label:'KOGAS tariff', meta: lastTariff ? `data.go.kr · 2008–${lastTariff.date.slice(0,7)} · ${tariffHistory.length} mo` : 'no data', color: lastTariff ? '#34d399' : '#fbbf24' },
       { label:'JKM',     meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
       { label:'Brent',   meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
       { label:'KRW/USD', meta:fxLive?`${krwUsd.toFixed(2)} · ECB ${fxAsOf}`:`${krwUsd} · fallback`, color: fxLive?'#34d399':'#fbbf24' },
@@ -25537,7 +25511,15 @@ function renderKorPrices(el){
 
     <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">JKM · Brent slope band 14%–11% (3,0,1) · $/MMBtu</span>
+        <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · KOGAS tariff · JKM · Brent 11-14% (3,0,1) · $/MMBtu</span>
+        <span style="font-size:9px;color:#5a6882">average by calendar month across available observations</span>
+      </div>
+      <div style="height:260px"><canvas id="kor-tariff-seasonal"></canvas></div>
+    </div>
+
+    <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-size:11px;color:#fff;font-weight:500">Latest monthly market curve · JKM vs Brent slope band 14%–11% (3,0,1)</span>
         <span style="font-size:9px;color:#5a6882">— JKM · ▮ 14–11% Brent band</span>
       </div>
       <div style="height:240px"><canvas id="kor-prices-chart"></canvas></div>
@@ -25576,7 +25558,7 @@ function renderKorPrices(el){
       <div style="margin-top:8px;font-size:9px;color:#6b7280;line-height:1.5">
         Raw-material cost (원료비) tracks LNG procurement; supply cost (공급비) is the regulated transmission/regas margin.
         Peak Dec-22 = ${tariffHistory.find(r=>r.date==='2022-12-01')?.krwGj_total?.toLocaleString() || '—'} KRW/GJ ≈ \$${tariffHistory.find(r=>r.date==='2022-12-01')?.usdMmbtu_total?.toFixed(2) || '—'}/MMBtu (energy crisis).
-        Dataset stops Dec-22 — KOGAS still publishes monthly via press releases; current-month KPI above remains seeded.
+        Dataset stops ${lastTariff.date.slice(0,7)} in the public historical file. For current tariff, use the official KOGAS tariff page/Excel when wired.
       </div>
     </div>
     ` : ''}
@@ -25584,9 +25566,42 @@ function renderKorPrices(el){
     <div style="font-size:9px;color:#5a6882;line-height:1.6;border-top:1px solid #1f2937;padding-top:10px;margin-top:12px">
       <div style="color:#9ca3af;margin-bottom:4px">Conversion · Won/GJ → $/MMBtu</div>
       <code style="color:#93c5fd">$/MMBtu = (Won/GJ) ÷ (KRW/USD) × 1.05506</code>
-      <div style="margin-top:6px;color:#9ca3af">All prices live: JKM &amp; Brent from EOD files · KRW/USD from ECB · KOGAS history from data.go.kr 15052058. Current-month KOGAS tariff card removed (no globally-accessible source — KOGAS press releases are Korean-IP-only).</div>
+      <div style="margin-top:6px;color:#9ca3af">JKM &amp; Brent from EOD files · KRW/USD from ECB · KOGAS tariff history from data.go.kr 15052058; current KOGAS tariff should be wired from the official KOGAS tariff page/Excel.</div>
     </div>
   `;
+
+  // ── Seasonal economics: KOGAS tariff vs JKM vs 11-14% Brent band ──────
+  if (window._korChartTariffSeasonal) { window._korChartTariffSeasonal.destroy(); window._korChartTariffSeasonal = null; }
+  const cSeason = document.getElementById('kor-tariff-seasonal');
+  if (cSeason) {
+    window._korChartTariffSeasonal = new Chart(cSeason.getContext('2d'), {
+      type:'line',
+      data: {
+        labels: monthLabels,
+        datasets: [
+          { label:'11% Brent 3-0-1', data:brentLowSeasonal, borderColor:'rgba(167,139,250,0.35)', borderWidth:1, borderDash:[4,3], pointRadius:0, tension:0.3, fill:false, spanGaps:true },
+          { label:'14% Brent 3-0-1', data:brentHighSeasonal, borderColor:'rgba(167,139,250,0.45)', borderWidth:1, borderDash:[4,3], pointRadius:0, tension:0.3, fill:'-1', backgroundColor:'rgba(167,139,250,0.10)', spanGaps:true },
+          { label:'KOGAS power tariff', data:tariffSeasonal, borderColor:'#fbbf24', backgroundColor:'transparent', borderWidth:2, pointRadius:3, tension:0.3, fill:false, spanGaps:true },
+          { label:'JKM', data:jkmSeasonal, borderColor:'#3b82f6', backgroundColor:'transparent', borderWidth:2, pointRadius:3, tension:0.3, fill:false, spanGaps:true },
+        ]
+      },
+      options: {
+        ...CD, animation:false,
+        interaction:{mode:'index',intersect:false},
+        plugins: {
+          ...CD.plugins,
+          legend: { display:true, position:'bottom', labels:{color:'#9ca3af',font:{size:9},boxWidth:8} },
+          tooltip: { ...CD.plugins.tooltip, callbacks: {
+            label: (ctx) => ctx.parsed.y == null ? '' : `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}/MMBtu`,
+          }},
+        },
+        scales: {
+          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
+          y: { ...CD.scales.y, title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}}, ticks:{color:'#3d5070',font:{size:9}}, grid:{color:'#0f1824'} },
+        },
+      }
+    });
+  }
 
   // Combined chart
   if (_korChartPrices) { _korChartPrices.destroy(); _korChartPrices = null; }
