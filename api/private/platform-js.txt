@@ -25452,6 +25452,14 @@ function renderKorPrices(el){
   const krwUsd = liveFx?.krwUsd ?? s.krwUsd;
   const fxAsOf = liveFx?.asOf;
   const fxLive = !!liveFx;
+  const currentTariff = _korLive?.kogasTariff || null;
+  const currentDirect = currentTariff?.directPower || null;
+  const currentGeneral = currentTariff?.generalPowerChp || null;
+  const currentEndDate = currentTariff?.effectiveEnd ? new Date(currentTariff.effectiveEnd + 'T23:59:59Z') : null;
+  const currentIsStale = !!(currentTariff?.stale || (currentEndDate && currentEndDate < new Date()));
+  const tariffWindow = currentTariff?.effectiveStart && currentTariff?.effectiveEnd
+    ? `${currentTariff.effectiveStart.slice(0,7)} · ${currentTariff.effectiveStart.slice(5)}–${currentTariff.effectiveEnd.slice(5)}`
+    : '—';
 
   // ── Historical KOGAS power-sector tariff from data.go.kr (15 yrs, 2008-2022) ──
   const tariffSeries = _korLive?.dataGoKr?.kogasTariff?.series || [];
@@ -25461,7 +25469,11 @@ function renderKorPrices(el){
   // window. Pre-2014 was ~1100, 2022 was ~1300, peak Sep 2022 was ~1400.
   const FX_REF = 1300;
   const GJ_PER_MMBTU = 1.05506;
-  const tariffHistory = tariffSeries.map(r => ({
+  const usdFromKrwGj = (krwGj, fx) => krwGj != null && fx ? +(krwGj * GJ_PER_MMBTU / fx).toFixed(2) : null;
+  const currentDirectUsd = usdFromKrwGj(currentDirect?.total_krw_gj, krwUsd);
+  const currentGeneralUsd = usdFromKrwGj(currentGeneral?.total_krw_gj, krwUsd);
+  const jkmVsKogas = (jkmM1 != null && currentDirectUsd != null) ? +(jkmM1 - currentDirectUsd).toFixed(2) : null;
+  let tariffHistory = tariffSeries.map(r => ({
     date: r.date,
     krwGj_total: r.gj_total_krw,
     krwGj_raw:   r.gj_raw_krw,
@@ -25470,6 +25482,23 @@ function renderKorPrices(el){
     usdMmbtu_raw:    r.gj_raw_krw    != null ? +(r.gj_raw_krw    * GJ_PER_MMBTU / FX_REF).toFixed(2) : null,
     usdMmbtu_supply: r.gj_supply_krw != null ? +(r.gj_supply_krw * GJ_PER_MMBTU / FX_REF).toFixed(2) : null,
   }));
+  const lastHistoricalTariff = tariffHistory.length ? tariffHistory[tariffHistory.length - 1] : null;
+  if (currentTariff?.effectiveStart && currentDirect?.total_krw_gj != null) {
+    const curRow = {
+      date: currentTariff.effectiveStart,
+      krwGj_total: currentDirect.total_krw_gj,
+      krwGj_raw: currentDirect.raw_krw_gj,
+      krwGj_supply: currentDirect.supply_krw_gj,
+      usdMmbtu_total: currentDirectUsd,
+      usdMmbtu_raw: usdFromKrwGj(currentDirect.raw_krw_gj, krwUsd),
+      usdMmbtu_supply: usdFromKrwGj(currentDirect.supply_krw_gj, krwUsd),
+      source: 'KOGAS official current',
+    };
+    const idx = tariffHistory.findIndex(r => r.date === curRow.date);
+    if (idx >= 0) tariffHistory[idx] = { ...tariffHistory[idx], ...curRow };
+    else tariffHistory.push(curRow);
+    tariffHistory.sort((a,b) => a.date.localeCompare(b.date));
+  }
   const lastTariff = tariffHistory.length ? tariffHistory[tariffHistory.length - 1] : null;
   const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const avgByMonth = (rows, dateFn, valFn) => {
@@ -25494,19 +25523,25 @@ function renderKorPrices(el){
 
   el.innerHTML = `
     ${korFreshness([
-      { label:'KOGAS tariff', meta: lastTariff ? `data.go.kr · 2008–${lastTariff.date.slice(0,7)} · ${tariffHistory.length} mo` : 'no data', color: lastTariff ? '#34d399' : '#fbbf24' },
+      { label:'KOGAS current', meta: currentTariff ? `official · ${tariffWindow}${currentIsStale?' · stale':''}` : 'official source missing', color: currentTariff ? (currentIsStale?'#fbbf24':'#34d399') : '#fca5a5' },
+      { label:'KOGAS history', meta: lastHistoricalTariff ? `data.go.kr · 2008–${lastHistoricalTariff.date.slice(0,7)} · ${tariffSeries.length} mo` : 'no data', color: lastHistoricalTariff ? '#34d399' : '#fbbf24' },
       { label:'JKM',     meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
       { label:'Brent',   meta:live?'live · ICE':'load EOD', color: live?'#34d399':'#fca5a5' },
       { label:'KRW/USD', meta:fxLive?`${krwUsd.toFixed(2)} · ECB ${fxAsOf}`:`${krwUsd} · fallback`, color: fxLive?'#34d399':'#fbbf24' },
     ])}
 
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">
+      ${korKpiCard({ label:'KOGAS direct power', value: currentDirectUsd!=null?currentDirectUsd.toFixed(2):'—',
+                     sub: currentDirect?.total_krw_gj!=null ? `${currentDirect.total_krw_gj.toLocaleString()} KRW/GJ · ${currentIsStale?'stale':'official'}` : 'official source missing',
+                     color: currentIsStale?'#fbbf24':'#fbbf24' })}
+      ${korKpiCard({ label:'KOGAS general / CHP', value: currentGeneralUsd!=null?currentGeneralUsd.toFixed(2):'—',
+                     sub: currentGeneral?.total_krw_gj!=null ? `${currentGeneral.total_krw_gj.toLocaleString()} KRW/GJ · ${tariffWindow}` : 'official source missing',
+                     color:'#f59e0b' })}
       ${korKpiCard({ label:'JKM M+1',     value: jkmM1!=null?jkmM1.toFixed(2):'—',         sub: live?'▲ live · ICE':'load EOD', color:'#3b82f6' })}
       ${korKpiCard({ label:'14% Brent',   value: brent14!=null?brent14.toFixed(2):'—',     sub: brent!=null?brent.toFixed(2)+' × 0.14':'—', color:'#a78bfa' })}
-      ${korKpiCard({ label:'11% Brent',   value: brent11!=null?brent11.toFixed(2):'—',     sub: brent!=null?brent.toFixed(2)+' × 0.11':'—', color:'#a78bfa' })}
-      ${korKpiCard({ label:'JKM vs band', value: jkmVsBand!=null?(jkmVsBand>=0?'+':'')+jkmVsBand.toFixed(2):'—',
-                     sub: jkmVsBand==null?'—':(jkmVsBand>=0?'spot above 14% slope':'spot below 14% slope'),
-                     color: jkmVsBand==null?'#9ca3af':(jkmVsBand>=0?'#34d399':'#fca5a5') })}
+      ${korKpiCard({ label:'JKM vs KOGAS direct', value: jkmVsKogas!=null?(jkmVsKogas>=0?'+':'')+jkmVsKogas.toFixed(2):'—',
+                     sub: jkmVsKogas==null?'—':(jkmVsKogas>=0?'JKM above tariff':'JKM below tariff'),
+                     color: jkmVsKogas==null?'#9ca3af':(jkmVsKogas>=0?'#34d399':'#fca5a5') })}
     </div>
 
     <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-bottom:10px">
@@ -25532,21 +25567,22 @@ function renderKorPrices(el){
     ${live ? `
     <div style="background:rgba(167,139,250,0.04);border-left:2px solid #a78bfa;padding:10px 12px;font-size:10px;color:#c8cfe0;line-height:1.55">
       <span style="color:#a78bfa;font-size:9px;letter-spacing:.06em">READ</span><br>
-      <b>JKM at $${jkmM1.toFixed(2)}</b> sits ${jkmVsBand>=0?'+':''}<b>$${jkmVsBand.toFixed(2)}</b> ${jkmVsBand>=0?'above':'below'} 14% Brent — Asian spot is ${jkmVsBand>=0?'above':'below'} where oil-linked term LNG would price (14% × Brent ${brent.toFixed(2)} = ${brent14.toFixed(2)}).
+      <b>JKM at $${jkmM1.toFixed(2)}</b> sits ${jkmVsBand>=0?'+':''}<b>$${jkmVsBand.toFixed(2)}</b> ${jkmVsBand>=0?'above':'below'} 14% Brent.
+      ${jkmVsKogas!=null ? ` Versus the official KOGAS direct-power tariff, JKM is ${jkmVsKogas>=0?'+':''}<b>$${jkmVsKogas.toFixed(2)}</b> ${jkmVsKogas>=0?'higher':'lower'}.` : ''}
     </div>
     ` : ''}
 
     ${tariffHistory.length ? `
     <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-top:12px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS power-sector tariff · historical · 2008–${lastTariff.date.slice(0,7)}</span>
-        <span style="font-size:9px;color:#5a6882">data.go.kr 15052058 · ${tariffHistory.length} months · raw + supply, KRW/GJ</span>
+        <span style="font-size:11px;color:#fff;font-weight:500">KOGAS power-sector tariff · history + official current · 2008–${lastTariff.date.slice(0,7)}</span>
+        <span style="font-size:9px;color:#5a6882">data.go.kr historical + KOGAS official current · KRW/GJ</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
         <div style="background:#0a1628;border-radius:4px;padding:8px 10px">
-          <div style="font-size:9px;color:#6b7280">Latest available (${lastTariff.date.slice(0,7)})</div>
+          <div style="font-size:9px;color:#6b7280">${lastTariff.source==='KOGAS official current'?'Official current':'Latest available'} (${lastTariff.date.slice(0,7)})</div>
           <div style="font-size:14px;color:#fff;font-weight:600">${lastTariff.krwGj_total?.toLocaleString() || '—'} KRW/GJ</div>
-          <div style="font-size:10px;color:#a78bfa">≈ \$${lastTariff.usdMmbtu_total?.toFixed(2) || '—'}/MMBtu  <span style="color:#3d5070">@ ref ${FX_REF} KRW/USD</span></div>
+          <div style="font-size:10px;color:#a78bfa">≈ \$${lastTariff.usdMmbtu_total?.toFixed(2) || '—'}/MMBtu  <span style="color:#3d5070">@ ${lastTariff.source==='KOGAS official current' ? (fxLive?'live':'fallback') : 'ref'} FX</span></div>
         </div>
         <div style="background:#0a1628;border-radius:4px;padding:8px 10px">
           <div style="font-size:9px;color:#6b7280">Composition (${lastTariff.date.slice(0,7)})</div>
@@ -25558,7 +25594,7 @@ function renderKorPrices(el){
       <div style="margin-top:8px;font-size:9px;color:#6b7280;line-height:1.5">
         Raw-material cost (원료비) tracks LNG procurement; supply cost (공급비) is the regulated transmission/regas margin.
         Peak Dec-22 = ${tariffHistory.find(r=>r.date==='2022-12-01')?.krwGj_total?.toLocaleString() || '—'} KRW/GJ ≈ \$${tariffHistory.find(r=>r.date==='2022-12-01')?.usdMmbtu_total?.toFixed(2) || '—'}/MMBtu (energy crisis).
-        Dataset stops ${lastTariff.date.slice(0,7)} in the public historical file. For current tariff, use the official KOGAS tariff page/Excel when wired.
+        Historical public file stops ${lastHistoricalTariff?.date?.slice(0,7) || '—'}; official KOGAS page supplies the current monthly tariff.
       </div>
     </div>
     ` : ''}
@@ -25566,7 +25602,7 @@ function renderKorPrices(el){
     <div style="font-size:9px;color:#5a6882;line-height:1.6;border-top:1px solid #1f2937;padding-top:10px;margin-top:12px">
       <div style="color:#9ca3af;margin-bottom:4px">Conversion · Won/GJ → $/MMBtu</div>
       <code style="color:#93c5fd">$/MMBtu = (Won/GJ) ÷ (KRW/USD) × 1.05506</code>
-      <div style="margin-top:6px;color:#9ca3af">JKM &amp; Brent from EOD files · KRW/USD from ECB · KOGAS tariff history from data.go.kr 15052058; current KOGAS tariff should be wired from the official KOGAS tariff page/Excel.</div>
+      <div style="margin-top:6px;color:#9ca3af">Current tariff from KOGAS official power-tariff page · historical tariff from data.go.kr 15052058 · JKM &amp; Brent from EOD files · KRW/USD from ECB.</div>
     </div>
   `;
 

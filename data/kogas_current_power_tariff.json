@@ -1,0 +1,21 @@
+{
+  "cachedAt": "2026-05-02T00:00:00+00:00",
+  "source": "KOGAS official · 발전용 천연가스 요금",
+  "sourceUrl": "https://www.kogas.or.kr/site/koGas/1040402000000",
+  "unit": "KRW/GJ",
+  "effectiveStart": "2026-04-01",
+  "effectiveEnd": "2026-04-30",
+  "directPower": {
+    "label": "KOGAS direct-supplied power producers (100MW+)",
+    "raw_krw_gj": 14389.88,
+    "supply_krw_gj": 2317.04,
+    "total_krw_gj": 16706.92
+  },
+  "generalPowerChp": {
+    "label": "General power producers / CHP",
+    "raw_krw_gj": 14324.01,
+    "supply_krw_gj": 2220.74,
+    "total_krw_gj": 16544.75
+  },
+  "stale": true
+}

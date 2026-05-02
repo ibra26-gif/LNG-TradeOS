@@ -4,6 +4,8 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const js = fs.readFileSync(path.join(root, 'api/private/platform-js.txt'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'api/private/platform-app.txt'), 'utf8');
+const scraper = fs.readFileSync(path.join(root, 'scripts/fetch_korea.py'), 'utf8');
+const korea = JSON.parse(fs.readFileSync(path.join(root, 'data/korea.json'), 'utf8'));
 
 function assert(cond, msg) {
   if (!cond) {
@@ -43,10 +45,30 @@ assert(
   js.includes('Seasonal · KOGAS tariff · JKM · Brent 11-14% (3,0,1)') &&
     js.includes('kor-tariff-seasonal') &&
     js.includes('avgByMonth') &&
+    js.includes("_korLive?.kogasTariff") &&
+    js.includes('KOGAS direct power') &&
+    js.includes('JKM vs KOGAS direct') &&
     js.includes('KOGAS power tariff') &&
     js.includes('11% Brent 3-0-1') &&
     js.includes('14% Brent 3-0-1'),
-  'Tariffs tab must compare KOGAS tariffs, JKM, and Brent slope range seasonally'
+  'Tariffs tab must compare official KOGAS tariffs, JKM, and Brent slope range'
+);
+
+assert(
+  scraper.includes('KOGAS_POWER_TARIFF_URL') &&
+    scraper.includes('def fetch_kogas_current_power_tariff') &&
+    scraper.includes("out['kogasTariff'] = kt") &&
+    scraper.includes('kogas_current_power_tariff.json'),
+  'Korea scraper must fetch/cache the official KOGAS current power tariff'
+);
+
+assert(
+  korea.kogasTariff &&
+    korea.kogasTariff.sourceUrl === 'https://www.kogas.or.kr/site/koGas/1040402000000' &&
+    korea.kogasTariff.directPower &&
+    korea.kogasTariff.generalPowerChp &&
+    korea.kogasTariff.unit === 'KRW/GJ',
+  'korea.json must include the latest cached official KOGAS power tariff'
 );
 
 assert(
