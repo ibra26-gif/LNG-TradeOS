@@ -23073,6 +23073,7 @@ async function renderRegasRegionalUtil(pane){
   }
   const token = ++_regasRegionLoadToken;
   const terms = regasAllRegionTerminals();
+  const excluded = REGAS_REGION_EXCLUDED_TERMINALS;
   const regionCounts = REGAS_REGION_DEFS.reduce((acc,r)=>{acc[r.id]=terms.filter(t=>t.region===r.id).length;return acc;},{});
 
   pane.innerHTML = `
@@ -23085,7 +23086,10 @@ async function renderRegasRegionalUtil(pane){
         <option value="d90"${period==='d90'?' selected':''}>Daily - Last 90 days</option>
       </select>
       <span style="font-size:8px;color:#546e7a;margin-left:8px">weighted utilisation = sum(sendOut) / sum(dtrs) by terminal region</span>
-      <span id="regas-region-progress" style="font-size:9px;color:#4fc3f7;margin-left:auto">Loading 0 / ${terms.length} terminals...</span>
+      <span id="regas-region-progress" style="font-size:9px;color:#4fc3f7;margin-left:auto">Loading 0 / ${terms.length} active terminals...</span>
+    </div>
+    <div style="font-size:8px;color:#546e7a;margin:-6px 0 12px;line-height:1.55">
+      Excluded from utilisation denominator: ${excluded.map(x=>`${x.name} (${x.reason})`).join(' · ')}.
     </div>
     <div id="regas-region-kpis" class="ga-g4" style="margin-bottom:12px">
       ${REGAS_REGION_DEFS.map(r=>`<div class="ga-kpi">
@@ -23109,7 +23113,7 @@ async function renderRegasRegionalUtil(pane){
     <div class="ga-card">
       <div class="ga-sec">TERMINAL DETAIL BY REGION <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
       <div id="regas-region-table" style="overflow:auto;max-height:520px"></div>
-      <div class="ga-source">No estimates. Blank cells mean the terminal row has no dtrs/sendOut for the selected period.</div>
+      <div class="ga-source">No estimates. Blank cells mean the active terminal row has no dtrs/sendOut for the selected period. Excluded inactive/no-data terminals are not part of the denominator.</div>
     </div>`;
 
   await regasLoadRegionTerminals(terms, dayStrs, token);
@@ -23144,7 +23148,7 @@ async function regasLoadRegionTerminals(terms, dayStrs, token){
     }
     done++;
     const p=document.getElementById('regas-region-progress');
-    if(p)p.textContent=done<terms.length?`Loading ${done} / ${terms.length} terminals...`:`Loaded ${terms.length} terminals`;
+    if(p)p.textContent=done<terms.length?`Loading ${done} / ${terms.length} active terminals...`:`Loaded ${terms.length} active terminals`;
     if(!haveAll) await new Promise(r=>setTimeout(r,250));
   }
 }
@@ -27811,11 +27815,21 @@ const ALSI_TERMINAL_DB = {
 // Spain + Portugal.
 const REGAS_REGION_PREF_KEY = 'regas_region_prefs_v1';
 const REGAS_REGION_DEFS = [
-  {id:'nwe',    label:'NWE',    color:'#4fc3f7', desc:'UK, BE, NL, North Sea DE, Atlantic FR'},
+  {id:'nwe',    label:'NWE',    color:'#4fc3f7', desc:'BE, NL, active North Sea DE, Atlantic FR; UK ALSI terminal rows excluded where no data'},
   {id:'med',    label:'Med',    color:'#ffb74d', desc:'French Med, Italy, Greece, Croatia'},
   {id:'baltic', label:'Baltic', color:'#81c784', desc:'PL, LT, FI, German Baltic FSRUs'},
   {id:'iberia', label:'Iberia', color:'#ce93d8', desc:'Spain and Portugal'},
 ];
+const REGAS_REGION_EXCLUDED_TERMINALS = [
+  {facility:'37W000000000106C', name:'Lubmin (Deutsche ReGas · FSRU Neptune)', reason:'decommissioning / no longer active in utilisation universe'},
+  {facility:'63W835858561887S', name:'Le Havre (TELSF · FSRU Cape Ann)', reason:'not used'},
+  {facility:'21W000000000099F', name:'Isle of Grain (National Grid)', reason:'ALSI terminal API does not return usable dtrs/sendOut'},
+  {facility:'21W0000000000419', name:'South Hook (QATARGAS UK)', reason:'ALSI terminal API does not return usable dtrs/sendOut'},
+  {facility:'37W000000000110L', name:'Stade (DET · FSRU Energos Force)', reason:'not operational yet; keep out until actual start-up'},
+];
+function regasRegionUtilExclusion(t){
+  return REGAS_REGION_EXCLUDED_TERMINALS.find(x=>x.facility===t.facility || (t.name||'').toLowerCase().includes(x.name.toLowerCase().split(' (')[0]));
+}
 function regasRegionPrefs(){
   try{return JSON.parse(localStorage.getItem(REGAS_REGION_PREF_KEY)||'{}')||{};}catch{return{};}
 }
@@ -27834,7 +27848,10 @@ function regasTerminalRegion(ctry, term){
 function regasAllRegionTerminals(){
   const terms=[];
   Object.entries(ALSI_TERMINAL_DB).forEach(([ctry,list])=>{
-    (list||[]).forEach(t=>terms.push({...t,ctry,region:regasTerminalRegion(ctry,t)}));
+    (list||[]).forEach(t=>{
+      if(regasRegionUtilExclusion(t)) return;
+      terms.push({...t,ctry,region:regasTerminalRegion(ctry,t)});
+    });
   });
   return terms;
 }
