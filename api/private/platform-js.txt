@@ -20873,6 +20873,7 @@ async function renderGaDashboard2(){
   const stor=storLat?.value;
   const netMcm=stor?.net!=null?stor.net*GWH_TO_MCM:null;
   const storState=netMcm==null?'—':netMcm>=0?'LONG / INJECTING':'SHORT / WITHDRAWING';
+  const storBalanceVal=netMcm==null?'—':`${fmtSigned(netMcm,0)}`;
   const storCol=netMcm==null?'#8a9bb5':netMcm>=0?'#34d399':'#f87171';
   const storagePct=stor?.pct!=null?+stor.pct:null;
   const lngLat=latest(GD.lngDaily);
@@ -20948,7 +20949,7 @@ async function renderGaDashboard2(){
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-bottom:12px">
-        ${kpi('EU+UK balance',storState,netMcm==null?'':'storage anchor',storLat?`${storLat.date} · storage change is the truth anchor`:'AGSI not loaded',storCol)}
+        ${kpi('EU+UK balance',storBalanceVal,netMcm==null?'':'mcm/d',storLat?`${storState} · AGSI ${storLat.date} · storage change is the truth anchor`:'AGSI not loaded',storCol)}
         ${kpi('Storage action',`${fmtSigned(netMcm,0)}`,'mcm/d',stor?.net!=null?`injection minus withdrawal · AGSI ${storLat.date}`:'AGSI daily net unavailable',storCol)}
         ${kpi('LNG sendout',fmt(lngMcm,0),'mcm/d',lngLat?`latest ALSI gas day ${lngLat.date} · 7d avg ${fmt(lng7,0)} mcm/d`:'ALSI daily sendout unavailable','#ffb74d')}
         ${kpi('Norway flows',fmt(norwayNow?.mcm,1),'mcm/d',norwayNow?`${norwayNow.src} · gas day ${norwayNow.date}`:'Gassco nominations unavailable','#60a5fa')}
