@@ -9966,6 +9966,13 @@ function initCargo(){
   CP.fobHistObsDate   = cpGet('cp_fob_hist_obs_date',   '');
   CP.fobHistOrigin    = cpGet('cp_fob_hist_origin',     'usgc');
   CP.fobHistView      = cpGet('cp_fob_hist_view',       'curve');
+  CP.fobHistWindow    = cpGet('cp_fob_hist_window',     'ALL');
+  // Physical differential history — same observation-date/tenor pattern as FOB and freight.
+  CP.physHistView     = cpGet('cp_phys_hist_view',      'curve');
+  CP.physHistDest     = cpGet('cp_phys_hist_dest',      'nwe');
+  CP.physHistObsDate  = cpGet('cp_phys_hist_obs_date',  '');
+  CP.physHistTenor    = cpGet('cp_phys_hist_tenor',     1);
+  CP.physHistWindow   = cpGet('cp_phys_hist_window',    'ALL');
   CP.fobOmanFixed=cpGet('cp_fob_oman_fixed',10.00);
   CP.tab=0;renderCargo();
 }
@@ -10002,7 +10009,7 @@ function renderCargoTab(){const b=document.getElementById('cp-body');if(!b)retur
   // Clamp selMonth to horizon cap so tabs never access out-of-range months after expiry roll
   const _vN=horizonIdx();if(CP.selMonth==null||CP.selMonth<0||CP.selMonth>=_vN)CP.selMonth=0;
   const d=cpDerived();
-  if(CP.tab===0)b.innerHTML=cpPhysDiff(d);
+  if(CP.tab===0){b.innerHTML=cpPhysDiff(d); setTimeout(()=>{ try{_physDiffRenderHistoryCharts(d);}catch(e){console.warn('[Phys diff hist]',e);} },50);}
   else if(CP.tab===1)b.innerHTML=cpDesPrices(d);
   else if(CP.tab===2)b.innerHTML=cpGlobalArb(d);
   else if(CP.tab===3)b.innerHTML=cpLngArb(d);
@@ -10070,38 +10077,7 @@ function cpPhysDiff(d){
   const ov=cpGet('cp_phys_ov',{});
   const vN=horizonIdx();
   const vMLx=vML();
-  // Color groups: NWE=blue, Med=amber, Baltic=teal, MEI=purple, JKTC=red, Thailand=orange
-  const GRP={nwe:'#4fc3f7',iberia:'#4fc3f7',uk:'#4fc3f7',
-    france:'#4fc3f7',germany:'#4fc3f7',belgium:'#4fc3f7',
-    italy:'#ffb74d',rev:'#ffb74d',krk:'#ffb74d',ain:'#ffb74d',ali:'#ffb74d',
-    swino:'#80cbc4',klaipeda:'#26c6da',inkoo:'#26c6da',
-    mei:'#ab47bc',jktc:'#ef9a9a',thailand:'#ff9800',
-    brazil:'#66bb6a',argentina:'#66bb6a'};
-  const rows=[
-    {k:'nwe',      label:'DES NWE',      hub:'TTF',data:CP.phys.nwe,       editable:true, physKey:'nwe',      grp:'NWE TERMINALS'},
-    {k:'iberia',   label:'Iberia (TVB)', hub:'TTF',data:CP.phys.iberia,    editable:true, physKey:'iberia'},
-    {k:'uk',       label:'UK Terminals', hub:'TTF',data:CP.phys.uk,        editable:true, physKey:'uk'},
-    {k:'france',   label:'France',       hub:'TTF',data:CP.phys.france,    editable:true, physKey:'france'},
-    {k:'germany',  label:'Germany',      hub:'TTF',data:CP.phys.germany,   editable:true, physKey:'germany'},
-    {k:'belgium',  label:'Belgium',      hub:'TTF',data:CP.phys.belgium,   editable:true, physKey:'belgium'},
-    {k:'italy',    label:'DES Italy',    hub:'TTF',data:d.phyItaly,        computed:true, ovKey:'italy',      grp:'MED TERMINALS'},
-    {k:'rev',      label:'Revithoussa',  hub:'TTF',data:d.phyRev,          computed:true, ovKey:'rev'},
-    {k:'krk',      label:'KRK',          hub:'TTF',data:d.phyKrk,          computed:true, ovKey:'krk'},
-    {k:'ain',      label:'Ain Sukhna',   hub:'TTF',data:d.phyAin,          computed:true, ovKey:'ain'},
-    {k:'egypt_prem',label:'Egypt Premium', hub:'TTF',
-      data:ML.map(()=>CP.egyptPremium??0.50),
-      editable:false,
-      isEgyptPrem:true},
-    {k:'ali',      label:'Aliaga',       hub:'TTF',data:d.phyAli,          computed:true, ovKey:'ali'},
-    {k:'swino',    label:'Swinoujscie',  hub:'TTF',data:d.phySwino,        computed:true, ovKey:'swino',      grp:'POLAND'},
-    {k:'klaipeda', label:'Klaipeda',     hub:'TTF',data:d.phyKlaipeda,     computed:true, ovKey:'klaipeda',   grp:'BALTIC TERMINALS'},
-    {k:'inkoo',    label:'Inkoo',        hub:'TTF',data:d.phyInkoo,        computed:true, ovKey:'inkoo'},
-    {k:'mei',      label:'DES MEI',      hub:'JKM',data:d.phyMei,          computed:true, ovKey:'mei',        grp:'ASIA'},
-    {k:'jktc',     label:'DES JKTC',     hub:'JKM',data:CP.phys.jktc,      editable:true, physKey:'jktc'},
-    {k:'thailand', label:'DES Thailand', hub:'JKM',data:d.phyThailand,     computed:true, ovKey:'thailand'},
-    {k:'brazil',   label:'DES Guanabara (Brazil)',   hub:'TTF',data:d.phyBrazil,    computed:true, ovKey:'brazil',    grp:'SOUTH AMERICA'},
-    {k:'argentina',label:'DES Escobar (Argentina)',  hub:'TTF',data:d.phyArgentina, computed:true, ovKey:'argentina'},
-  ];
+  const rows=_physDiffRows(d);
   const GRP_COL={'NWE TERMINALS':'#4fc3f7','MED TERMINALS':'#ffb74d','POLAND':'#80cbc4','BALTIC TERMINALS':'#26c6da','ASIA':'#ab47bc','SOUTH AMERICA':'#66bb6a'};
   let tbody='';let lastGrp='';
   rows.forEach(row=>{
@@ -10109,7 +10085,7 @@ function cpPhysDiff(d){
       tbody+=`<tr><td colspan="${vN+2}" style="padding:6px 8px 2px;font-size:9px;font-weight:700;letter-spacing:.1em;color:${GRP_COL[row.grp]||'#546e7a'}">${row.grp}</td></tr>`;
       lastGrp=row.grp;
     }
-    const col=GRP[row.k]||'#c8d6e5';
+    const col=PHYS_DIFF_COLORS[row.k]||'#c8d6e5';
     tbody+=`<tr><td style="color:${col};font-size:10px;white-space:nowrap;padding:3px 6px">${row.label}</td>
     <td style="color:#546e7a;font-size:10px;padding:3px 4px">${row.hub}</td>
     ${row.data.slice(0,vN).map((v,i)=>{
@@ -10131,7 +10107,122 @@ function cpPhysDiff(d){
   <div style="overflow-x:auto"><table class="f-tbl"><thead><tr>
     <th style="min-width:140px">TERMINAL</th><th style="min-width:50px">HUB</th>
     ${vMLx.map(m=>`<th class="tr" style="min-width:68px">${m}</th>`).join('')}
-  </tr></thead><tbody>${tbody}</tbody></table></div>`;
+  </tr></thead><tbody>${tbody}</tbody></table></div>
+  ${cpPhysDiffHistorySection(d)}`;
+}
+
+function _physDiffWindowKeep(dateStr, win){
+  if(win === 'ALL') return true;
+  const days = win === '30D' ? 30 : win === '60D' ? 60 : win === '90D' ? 90 : 365;
+  const cut = new Date();
+  cut.setDate(cut.getDate() - days);
+  return new Date(dateStr + 'T12:00:00') >= cut;
+}
+function cpPhysDiffHistorySection(d){
+  const TENORS=[1,2,3,6,12,24];
+  const WINDOWS=[['30D','30d'],['60D','60d'],['90D','90d'],['1Y','1y'],['ALL','All']];
+  const snaps=_physDiffLoadSnapshots().filter(s=>s&&s.curves&&Object.keys(s.curves).length);
+  const snapList=snaps.slice().sort((a,b)=>String(b.eod_date||b.date).localeCompare(String(a.eod_date||a.date)));
+  const latestLive=_physDiffBuildSnapshot(d,_physDiffObservationDate());
+  const selectedSnap=snapList.find(s=>(s.eod_date||s.date)===CP.physHistObsDate)||snapList[0]||null;
+  if(selectedSnap && CP.physHistObsDate!==(selectedSnap.eod_date||selectedSnap.date)){
+    CP.physHistObsDate=selectedSnap.eod_date||selectedSnap.date;
+    cpSet('cp_phys_hist_obs_date',CP.physHistObsDate);
+  }
+  const activeSnap=selectedSnap||latestLive;
+  const activeView=CP.physHistView==='historical'?'historical':'curve';
+  const tenor=TENORS.includes(+CP.physHistTenor)?+CP.physHistTenor:1;
+  const win=CP.physHistWindow||'ALL';
+  const curveKeys=Object.keys(activeSnap.curves||{});
+  const dest=curveKeys.includes(CP.physHistDest)?CP.physHistDest:(curveKeys[0]||'nwe');
+  if(dest!==CP.physHistDest){CP.physHistDest=dest;cpSet('cp_phys_hist_dest',dest);}
+  const destOptions=curveKeys.map(k=>{
+    const c=activeSnap.curves[k];
+    return `<option value="${k}"${dest===k?' selected':''}>${c.label}</option>`;
+  }).join('');
+  const viewBtns=[['curve','Forward curve'],['historical','Historical']].map(([k,l])=>
+    `<button class="f-btn sm${activeView===k?' on':''}" onclick="CP.physHistView='${k}';cpSet('cp_phys_hist_view','${k}');renderCargoTab()">${l}</button>`
+  ).join('');
+  const winBtns=WINDOWS.map(([k,l])=>`<button class="f-btn sm${win===k?' on':''}" onclick="CP.physHistWindow='${k}';cpSet('cp_phys_hist_window','${k}');renderCargoTab()">${l}</button>`).join('');
+  const obsSelect=activeView==='curve'&&snapList.length?`
+    <div><span class="f-lbl">OBSERVATION DATE</span>
+      <select class="f-sel" style="min-width:210px" onchange="CP.physHistObsDate=this.value;cpSet('cp_phys_hist_obs_date',this.value);renderCargoTab()">
+        ${snapList.map(s=>{const ds=s.eod_date||s.date;return `<option value="${ds}"${selectedSnap===s?' selected':''}>${ds} — saved ${s.ts?new Date(s.ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):'snapshot'}</option>`;}).join('')}
+      </select>
+    </div>`:'';
+  const tenorSelect=activeView==='historical'?`
+    <div><span class="f-lbl">TENOR</span>
+      <select class="f-sel" onchange="CP.physHistTenor=+this.value;cpSet('cp_phys_hist_tenor',+this.value);renderCargoTab()">
+        ${TENORS.map(t=>`<option value="${t}"${tenor===t?' selected':''}>M+${t}</option>`).join('')}
+      </select>
+    </div>`:'';
+  const windowControls=activeView==='historical'?`<div><span class="f-lbl">WINDOW</span><div style="display:flex;gap:4px;margin-top:4px">${winBtns}</div></div>`:'';
+  const snapNow=`<button class="f-btn sm" style="border-color:#a78bfa;color:#a78bfa" onclick="(()=>{const s=_physDiffCaptureSnapshot({replace:true});if(s){CP.physHistObsDate=s.eod_date;cpSet('cp_phys_hist_obs_date',s.eod_date);alert('Physical differential snapshot saved for '+s.eod_date+'.');renderCargoTab();}})()">SNAPSHOT NOW</button>`;
+  const sourceLine=snapList.length
+    ? `${snapList.length} observation date(s) · source: CP.phys + cpDerived`
+    : `No saved observation dates yet · live preview shown, click SNAPSHOT NOW to persist`;
+  const curve=(activeSnap.curves||{})[dest];
+  const curveRows=curve?`
+    <div style="overflow-x:auto;margin-top:8px">
+      <table class="f-tbl"><thead><tr><th style="text-align:left;min-width:170px">DESTINATION</th>${(activeSnap.months||ML).slice(0,24).map(m=>`<th class="tr" style="min-width:62px">${m}</th>`).join('')}</tr></thead>
+      <tbody><tr><td style="color:${curve.color};white-space:nowrap">${curve.label}</td>${curve.values.map(v=>`<td class="tr" style="font-weight:700;color:${v==null?'#3d5070':v>=0?'#4ade80':'#f87171'}">${v==null?'—':(v>=0?'+':'')+v.toFixed(3)}</td>`).join('')}</tr></tbody></table>
+    </div>`:'';
+  return `
+    <div class="f-sec" style="margin-top:18px">PHYSICAL DIFFERENTIAL HISTORY · forward curve / historical tenor</div>
+    <div style="margin:0 0 10px;background:#071a2b;border:1px solid #4fc3f7;padding:9px 12px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+      <div><span class="f-lbl">VIEW</span><div style="display:flex;gap:4px;margin-top:4px">${viewBtns}</div></div>
+      ${obsSelect}
+      <div><span class="f-lbl">DESTINATION</span>
+        <select class="f-sel" style="min-width:190px" onchange="CP.physHistDest=this.value;cpSet('cp_phys_hist_dest',this.value);renderCargoTab()">${destOptions}</select>
+      </div>
+      ${tenorSelect}
+      ${windowControls}
+      ${snapNow}
+      <span style="font-size:9px;color:#546e7a">${sourceLine}</span>
+    </div>
+    <div class="acard" style="padding:10px 12px;background:#0d1322;border:1px solid #1f2937;margin-bottom:10px">
+      <div style="font-size:11px;color:#fff;font-weight:600;margin-bottom:8px">
+        ${activeView==='curve'
+          ? `${curve?.label||dest} forward phys-diff curve · observation ${activeSnap.eod_date||'live'}`
+          : `${curve?.label||dest} phys-diff history · M+${tenor} · ${win}`}
+      </div>
+      <div style="height:260px"><canvas id="${activeView==='curve'?'phys-diff-hist-curve':'phys-diff-hist-series'}"></canvas></div>
+      ${activeView==='curve'?curveRows:''}
+    </div>
+    <div style="color:#546e7a;font-size:9px;line-height:1.5;margin-bottom:6px">
+      This is not ACER. It snapshots the physical differential forward curves from LNG Global Netback: editable CP.phys rows plus derived rows from cpDerived().
+    </div>`;
+}
+function _physDiffRenderHistoryCharts(d){
+  const activeView=CP.physHistView==='historical'?'historical':'curve';
+  const snaps=_physDiffLoadSnapshots().filter(s=>s&&s.curves&&Object.keys(s.curves).length);
+  const snapList=snaps.slice().sort((a,b)=>String(a.eod_date||a.date).localeCompare(String(b.eod_date||b.date)));
+  const selected=snapList.find(s=>(s.eod_date||s.date)===CP.physHistObsDate)||snapList[snapList.length-1]||_physDiffBuildSnapshot(d,_physDiffObservationDate());
+  const dest=(selected.curves&&selected.curves[CP.physHistDest])?CP.physHistDest:Object.keys(selected.curves||{})[0];
+  const curve=selected.curves?.[dest];
+  const color=curve?.color||'#4fc3f7';
+  const win=CP.physHistWindow||'ALL';
+  const tenor=(+CP.physHistTenor||1);
+  function drawEmpty(id,msg){
+    const c=document.getElementById(id); if(!c||!c.getContext)return;
+    if(window['_'+id]){window['_'+id].destroy();window['_'+id]=null;}
+    const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#546e7a';ctx.font='11px IBM Plex Mono';ctx.textAlign='center';ctx.fillText(msg,c.width/2,c.height/2);
+  }
+  function renderLine(id,labels,data,label){
+    const c=document.getElementById(id); if(!c)return;
+    if(!data.some(v=>v!=null&&!isNaN(v))){drawEmpty(id,'No saved physical differential values for this selection');return;}
+    if(window['_'+id])window['_'+id].destroy();
+    window['_'+id]=new Chart(c.getContext('2d'),{type:'line',data:{labels,datasets:[{label,data,borderColor:color,backgroundColor:color+'1A',borderWidth:1.8,pointRadius:activeView==='curve'?2:0,tension:.25,fill:true,spanGaps:true}]},options:{...CD,animation:false,plugins:{...CD.plugins,legend:{display:false},tooltip:{...CD.plugins.tooltip,callbacks:{label:ctx=>`${ctx.label}: ${ctx.parsed.y>=0?'+':''}${ctx.parsed.y?.toFixed(3)} $/MMBtu`}}},scales:{x:{...CD.scales.x,ticks:{color:'#3d5070',font:{size:9},maxTicksLimit:activeView==='curve'?12:10}},y:{...CD.scales.y,title:{display:true,text:'physical diff $/MMBtu',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9},callback:v=>(v>=0?'+':'')+(+v).toFixed(2)}}}}});
+  }
+  if(activeView==='curve'){
+    if(!curve){drawEmpty('phys-diff-hist-curve','No destination curve');return;}
+    renderLine('phys-diff-hist-curve',(selected.months||ML).slice(0,24),curve.values||[],curve.label);
+    return;
+  }
+  const filtered=snapList.filter(s=>_physDiffWindowKeep(s.eod_date||s.date,win));
+  const labels=filtered.map(s=>new Date((s.eod_date||s.date)+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+  const data=filtered.map(s=>s.curves?.[dest]?.values?.[tenor-1]??null);
+  renderLine('phys-diff-hist-series',labels,data,`${curve?.label||dest} M+${tenor}`);
 }
 
 // ── Tab 1: DES Absolute Prices ───────────────────────────────────────────────
@@ -11899,6 +11990,7 @@ function fobCaptureSnapshot(opts = {}){
   // Keep last 365 snapshots (1 yr daily) — guard against runaway growth
   while (snaps.length > 365) snaps.shift();
   _fobSaveSnapshots(snaps);
+  try { if (typeof _physDiffCaptureSnapshot === 'function') _physDiffCaptureSnapshot({ obsDate:eodIso, replace:true }); } catch(e) {}
 
   console.log('[FOB] snapshot captured for EOD', eodIso, '— total', snaps.length);
   return snap;
@@ -12024,6 +12116,102 @@ function _fobMarkFresh(kind){
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// Physical differential snapshots
+// Same data model as freight/FOB history:
+//   observation_date → destination → delivery_month → physical differential
+// Source is ONLY LNG Global Netback PHYS DIFFERENTIALS (CP.phys + cpDerived).
+// ════════════════════════════════════════════════════════════════════════════
+const PHYS_DIFF_SNAP_KEY = 'phys_diff_snapshots';
+const PHYS_DIFF_COLORS = {
+  nwe:'#4fc3f7', iberia:'#4fc3f7', uk:'#4fc3f7', france:'#4fc3f7', germany:'#4fc3f7', belgium:'#4fc3f7',
+  italy:'#ffb74d', rev:'#ffb74d', krk:'#ffb74d', ain:'#ffb74d', ali:'#ffb74d',
+  swino:'#80cbc4', klaipeda:'#26c6da', inkoo:'#26c6da',
+  mei:'#ab47bc', jktc:'#ef9a9a', thailand:'#ff9800',
+  brazil:'#66bb6a', argentina:'#66bb6a'
+};
+function _physDiffLoadSnapshots(){
+  try { return JSON.parse(localStorage.getItem(PHYS_DIFF_SNAP_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function _physDiffSaveSnapshots(arr){
+  try { localStorage.setItem(PHYS_DIFF_SNAP_KEY, JSON.stringify(arr)); }
+  catch(e) { console.warn('[PhysDiff] snapshot save failed', e.message); }
+}
+function _physDiffRows(d){
+  if(!d && typeof cpDerived === 'function') d = cpDerived();
+  if(!CP || !CP.phys || !d) return [];
+  return [
+    {k:'nwe',      label:'DES NWE',      hub:'TTF',data:CP.phys.nwe,       editable:true, physKey:'nwe',      grp:'NWE TERMINALS'},
+    {k:'iberia',   label:'Iberia (TVB)', hub:'TTF',data:CP.phys.iberia,    editable:true, physKey:'iberia'},
+    {k:'uk',       label:'UK Terminals', hub:'TTF',data:CP.phys.uk,        editable:true, physKey:'uk'},
+    {k:'france',   label:'France',       hub:'TTF',data:CP.phys.france,    editable:true, physKey:'france'},
+    {k:'germany',  label:'Germany',      hub:'TTF',data:CP.phys.germany,   editable:true, physKey:'germany'},
+    {k:'belgium',  label:'Belgium',      hub:'TTF',data:CP.phys.belgium,   editable:true, physKey:'belgium'},
+    {k:'italy',    label:'DES Italy',    hub:'TTF',data:d.phyItaly,        computed:true, ovKey:'italy',      grp:'MED TERMINALS'},
+    {k:'rev',      label:'Revithoussa',  hub:'TTF',data:d.phyRev,          computed:true, ovKey:'rev'},
+    {k:'krk',      label:'KRK',          hub:'TTF',data:d.phyKrk,          computed:true, ovKey:'krk'},
+    {k:'ain',      label:'Ain Sukhna',   hub:'TTF',data:d.phyAin,          computed:true, ovKey:'ain'},
+    {k:'egypt_prem',label:'Egypt Premium', hub:'TTF',
+      data:ML.map(()=>CP.egyptPremium??0.50),
+      editable:false,
+      isEgyptPrem:true},
+    {k:'ali',      label:'Aliaga',       hub:'TTF',data:d.phyAli,          computed:true, ovKey:'ali'},
+    {k:'swino',    label:'Swinoujscie',  hub:'TTF',data:d.phySwino,        computed:true, ovKey:'swino',      grp:'POLAND'},
+    {k:'klaipeda', label:'Klaipeda',     hub:'TTF',data:d.phyKlaipeda,     computed:true, ovKey:'klaipeda',   grp:'BALTIC TERMINALS'},
+    {k:'inkoo',    label:'Inkoo',        hub:'TTF',data:d.phyInkoo,        computed:true, ovKey:'inkoo'},
+    {k:'mei',      label:'DES MEI',      hub:'JKM',data:d.phyMei,          computed:true, ovKey:'mei',        grp:'ASIA'},
+    {k:'jktc',     label:'DES JKTC',     hub:'JKM',data:CP.phys.jktc,      editable:true, physKey:'jktc'},
+    {k:'thailand', label:'DES Thailand', hub:'JKM',data:d.phyThailand,     computed:true, ovKey:'thailand'},
+    {k:'brazil',   label:'DES Guanabara (Brazil)',   hub:'TTF',data:d.phyBrazil,    computed:true, ovKey:'brazil',    grp:'SOUTH AMERICA'},
+    {k:'argentina',label:'DES Escobar (Argentina)',  hub:'TTF',data:d.phyArgentina, computed:true, ovKey:'argentina'},
+  ];
+}
+function _physDiffObservationDate(){
+  try {
+    const eodDs = typeof _fobLatestEodDate === 'function' ? _fobLatestEodDate() : null;
+    const dt = eodDs && aD?.[eodDs]?.date;
+    if(dt && !isNaN(dt.getTime())) return dt.toISOString().slice(0,10);
+  } catch(e) {}
+  return new Date().toISOString().slice(0,10);
+}
+function _physDiffBuildSnapshot(d, obsDate){
+  const rows = _physDiffRows(d);
+  const curves = {};
+  rows.filter(r => !r.isEgyptPrem).forEach(r => {
+    const vals = (r.data || []).slice(0,24).map(v => v != null && !isNaN(v) ? +(+v).toFixed(3) : null);
+    if(vals.some(v => v != null)) curves[r.k] = {
+      label:r.label,
+      hub:r.hub,
+      group:r.grp || '',
+      color:PHYS_DIFF_COLORS[r.k] || '#c8d6e5',
+      values:vals,
+    };
+  });
+  return {
+    ts:new Date().toISOString(),
+    eod_date:obsDate || _physDiffObservationDate(),
+    months:ML.slice(0,24),
+    source:'LNG Global Netback PHYS DIFFERENTIALS · CP.phys + cpDerived',
+    curves,
+  };
+}
+function _physDiffCaptureSnapshot(opts = {}){
+  if(!CP || !CP.phys) return null;
+  const obsDate = opts.obsDate || _physDiffObservationDate();
+  const snap = _physDiffBuildSnapshot(opts.derived, obsDate);
+  if(!Object.keys(snap.curves || {}).length) return null;
+  const snaps = _physDiffLoadSnapshots().filter(s => s && (s.eod_date || s.date));
+  const idx = snaps.findIndex(s => (s.eod_date || s.date) === obsDate);
+  if(idx >= 0) snaps[idx] = snap;
+  else snaps.push(snap);
+  snaps.sort((a,b)=>String(a.eod_date||a.date).localeCompare(String(b.eod_date||b.date)));
+  while(snaps.length > 730) snaps.shift();
+  _physDiffSaveSnapshots(snaps);
+  return snap;
+}
+window._physDiffCaptureSnapshot = _physDiffCaptureSnapshot;
+
+// ════════════════════════════════════════════════════════════════════════════
 // FOB Historical · Design 2 · daily time-series at user-selected tenor+route
 //
 // For each EOD date in cache + a chosen (tenor, route, index), compute the
@@ -12106,6 +12294,7 @@ function _fobHistTimeSeries(originType, tenor, routeId, idxName){
 
 function cpFobHistoricalSection(d){
   const TENORS = [1, 2, 3, 6, 12, 24];
+  const WINDOWS = [['30D','30d'],['60D','60d'],['90D','90d'],['1Y','1y'],['ALL','All']];
   const us   = { tenor: CP.fobUsHistTenor   || 1, route: CP.fobUsHistRoute   || 'sabine_tokyo', idx: CP.fobUsHistIdx   || 'FIXED' };
   const oman = { tenor: CP.fobOmanHistTenor || 1, route: CP.fobOmanHistRoute || 'oman_tokyo',   idx: CP.fobOmanHistIdx || 'FIXED' };
 
@@ -12186,6 +12375,10 @@ function cpFobHistoricalSection(d){
           ${TENORS.map(t=>`<option value="${t}"${activeSel.tenor===t?' selected':''}>M+${t}</option>`).join('')}
         </select>
       </div>` : '';
+    const windowBtns = activeView === 'historical' ? `
+      <div><span class="f-lbl">WINDOW</span><div style="display:flex;gap:4px;margin-top:4px">
+        ${WINDOWS.map(([k,l])=>`<button class="f-btn sm${(CP.fobHistWindow||'ALL')===k?' on':''}" onclick="CP.fobHistWindow='${k}';cpSet('cp_fob_hist_window','${k}');renderCargoTab()">${l}</button>`).join('')}
+      </div></div>` : '';
     const controls = `
       <div class="f-sec" style="margin-top:14px">FOB HISTORY WORKBENCH · route / index / loading point</div>
       <div style="margin:0 14px 10px;background:#071a2b;border:1px solid #4fc3f7;padding:9px 12px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
@@ -12203,6 +12396,7 @@ function cpFobHistoricalSection(d){
           </select>
         </div>
         ${tenorSelect}
+        ${windowBtns}
         <span style="font-size:9px;color:#546e7a">${snapList.length} observation date(s) · selected snapshot saved ${savedAt}</span>
       </div>`;
 
@@ -12337,6 +12531,14 @@ function _fobRenderHistoricalCharts(d){
       }
     });
   }
+  function keepByWindow(row){
+    const win = CP.fobHistWindow || 'ALL';
+    if(win === 'ALL') return true;
+    const days = win === '30D' ? 30 : win === '60D' ? 60 : win === '90D' ? 90 : 365;
+    const cut = new Date();
+    cut.setDate(cut.getDate() - days);
+    return row.date >= cut;
+  }
 
   if (activeView === 'curve') {
     const selectedSnap = snapList.find(s => (s.eod_date || s.date) === CP.fobHistObsDate) || snapList[0] || null;
@@ -12347,7 +12549,7 @@ function _fobRenderHistoricalCharts(d){
     return;
   }
 
-  const series = route ? _fobSnapTimeSeries(sel.origin, sel.tenor, route.id, sel.idx) : [];
+  const series = route ? _fobSnapTimeSeries(sel.origin, sel.tenor, route.id, sel.idx).filter(keepByWindow) : [];
   const labels = series.map(r => r.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
   const data = series.map(r => r.value);
   renderLine('fob-hist-workbench-historical', labels, data, `${route?.label || 'Route'} M+${sel.tenor}`);
@@ -12869,17 +13071,18 @@ function cpForceReset(){
   ].forEach(k=>localStorage.removeItem(k));
   alert('Cache cleared — reinitialising...');initCargo();
 }
-function cpSetPhys(k,i,v){CP.phys[k][i]=+v;cpSet('cp_phys',CP.phys);renderCargoTab();}
-function cpSetOv(t,i,v){const ov=cpGet('cp_phys_ov',{});ov[t+'_'+i]=+v;cpSet('cp_phys_ov',ov);try{_fobMarkFresh('phys');}catch(e){}renderCargoTab();}
-function cpResetOv(t,i){const ov=cpGet('cp_phys_ov',{});delete ov[t+'_'+i];cpSet('cp_phys_ov',ov);try{_fobMarkFresh('phys');}catch(e){}renderCargoTab();}
-function cpResetAllOv(){cpSet('cp_phys_ov',{});try{_fobMarkFresh('phys');}catch(e){}renderCargoTab();}
+function cpPhysTouch(){try{_fobMarkFresh('phys');_physDiffCaptureSnapshot({replace:true});}catch(e){}}
+function cpSetPhys(k,i,v){CP.phys[k][i]=+v;cpSet('cp_phys',CP.phys);cpPhysTouch();renderCargoTab();}
+function cpSetOv(t,i,v){const ov=cpGet('cp_phys_ov',{});ov[t+'_'+i]=+v;cpSet('cp_phys_ov',ov);cpPhysTouch();renderCargoTab();}
+function cpResetOv(t,i){const ov=cpGet('cp_phys_ov',{});delete ov[t+'_'+i];cpSet('cp_phys_ov',ov);cpPhysTouch();renderCargoTab();}
+function cpResetAllOv(){cpSet('cp_phys_ov',{});cpPhysTouch();renderCargoTab();}
 function cpSetLiqFee(v){CP.liqFee=Array(24).fill(+v);cpSet('cp_liqfee',CP.liqFee);renderCargoTab();}
 function cpSaveHistSnap(){const d=cpDerived();const snap={date:CP.histSnapDate,frDiff:[...d.frDiff],spread:[...d.jkmTtf]};const updated=[snap,...CP.histSnaps.filter(s=>s.date!==CP.histSnapDate)].slice(0,90);CP.histSnaps=updated;cpSet('cp_hist_snaps',updated);renderCargoTab();}
 function cpUploadPhys(evt){
   const file=evt.target.files[0];if(!file)return;
   const ext=file.name.split('.').pop().toLowerCase();
-  if(ext==='csv'||ext==='txt'){const r=new FileReader();r.onload=e=>{const lines=e.target.result.split('\n');const hdr=lines[0].split(',').map(x=>x.trim());lines.slice(1).forEach(ln=>{const cols=ln.split(',');const mo=cols[0]?.trim();const idx=ML.indexOf(mo);if(idx<0)return;hdr.forEach((h,j)=>{const k={'NWE':'nwe','IBERIA':'iberia','UK':'uk','JKTC':'jktc'}[h?.toUpperCase()];if(k&&cols[j])CP.phys[k][idx]=+cols[j];});});cpSet('cp_phys',CP.phys);renderCargoTab();};r.readAsText(file);}
-  else{const r=new FileReader();r.onload=e=>{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1});const hdr=rows[0].map(x=>String(x).trim());rows.slice(1).forEach(row=>{const mo=String(row[0]||'').trim();const idx=ML.indexOf(mo);if(idx<0)return;hdr.forEach((h,j)=>{const k={'NWE':'nwe','IBERIA':'iberia','UK':'uk','JKTC':'jktc'}[h?.toUpperCase()];if(k&&row[j]!=null)CP.phys[k][idx]=+row[j];});});cpSet('cp_phys',CP.phys);renderCargoTab();};r.readAsArrayBuffer(file);}
+  if(ext==='csv'||ext==='txt'){const r=new FileReader();r.onload=e=>{const lines=e.target.result.split('\n');const hdr=lines[0].split(',').map(x=>x.trim());lines.slice(1).forEach(ln=>{const cols=ln.split(',');const mo=cols[0]?.trim();const idx=ML.indexOf(mo);if(idx<0)return;hdr.forEach((h,j)=>{const k={'NWE':'nwe','IBERIA':'iberia','UK':'uk','JKTC':'jktc'}[h?.toUpperCase()];if(k&&cols[j])CP.phys[k][idx]=+cols[j];});});cpSet('cp_phys',CP.phys);cpPhysTouch();renderCargoTab();};r.readAsText(file);}
+  else{const r=new FileReader();r.onload=e=>{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1});const hdr=rows[0].map(x=>String(x).trim());rows.slice(1).forEach(row=>{const mo=String(row[0]||'').trim();const idx=ML.indexOf(mo);if(idx<0)return;hdr.forEach((h,j)=>{const k={'NWE':'nwe','IBERIA':'iberia','UK':'uk','JKTC':'jktc'}[h?.toUpperCase()];if(k&&row[j]!=null)CP.phys[k][idx]=+row[j];});});cpSet('cp_phys',CP.phys);cpPhysTouch();renderCargoTab();};r.readAsArrayBuffer(file);}
 }
 
 
