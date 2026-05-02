@@ -27079,7 +27079,7 @@ function renderRegasSendoutNew(pane){
       <div class="ga-sec">LNG SENDOUT — SEASONAL <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
       <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">${selName} · ${termName}</div>
       <div class="ga-ch-wrap" style="height:240px"><canvas id="regas-send-seas"></canvas></div>
-      <div class="ga-source">GIE ALSI · sendOut (GWh/d) · Seasonal comparison</div>
+      <div class="ga-source">GIE ALSI · sendOut converted from GWh/d to mcm/d via /10.55 · Seasonal comparison</div>
     </div>
     <div class="ga-card">
       <div class="ga-sec">REGASIFICATION UTILISATION — SEASONAL <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
@@ -27087,6 +27087,12 @@ function renderRegasSendoutNew(pane){
       <div class="ga-ch-wrap" style="height:240px"><canvas id="regas-util-seas"></canvas></div>
       <div class="ga-source">GIE ALSI · sendOut ÷ dtrs × 100%</div>
     </div>
+  </div>
+  <div class="ga-card" style="margin-top:12px">
+    <div class="ga-sec">AVAILABLE REGAS CAPACITY — SEASONAL <span class="ga-tag ga-tag-live">GIE ALSI · DTRS</span></div>
+    <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">${selName} · ${termName} · denominator behind utilisation</div>
+    <div class="ga-ch-wrap" style="height:180px"><canvas id="regas-cap-seas"></canvas></div>
+    <div class="ga-source">GIE ALSI · dtrs converted from GWh/d to mcm/d via /10.55</div>
   </div>
   <div class="ga-card" style="margin-top:12px">
     <div class="ga-sec">LNG TERMINAL INVENTORY — SEASONAL <span class="ga-tag ga-tag-live">GIE ALSI</span></div>
@@ -27156,6 +27162,17 @@ function renderRegasSendoutNew(pane){
       borderDash:i>0?[5,3]:undefined, spanGaps:true,
     }));
 
+    // DTRS seasonal — same denominator used by the utilisation chart. Keeping
+    // it visible avoids false read-through when higher sendout coincides with
+    // lower utilisation because available capacity has expanded.
+    const capDs = seasYrs.map((yr,i)=>({
+      label:String(yr),
+      data:buildSeries(daily, yr, r => r.dtrsGWh ? r.dtrsGWh*GWH_MCM : null),
+      borderColor:GA_COLS[i], backgroundColor:'transparent',
+      borderWidth:i===0?2:1.2, pointRadius, pointHoverRadius:3,
+      tension:0.15, borderDash:i>0?[5,3]:undefined, spanGaps:false,
+    }));
+
     // Inventory seasonal — end-of-day stock in GWh → mcm via /10.55.
     const invDs = seasYrs.map((yr,i)=>({
       label:String(yr),
@@ -27173,6 +27190,10 @@ function renderRegasSendoutNew(pane){
     gaMakeChart('regas-util-seas','line',{labels:xLabels,datasets:utilDs},{
       plugins:{tooltip:tooltipCb},
       scales:{x:scX, y:{...GCD.scales.y, min:0, max:100, title:{display:true,text:'%',color:'#3d5070',font:{size:9}}}}
+    });
+    gaMakeChart('regas-cap-seas','line',{labels:xLabels,datasets:capDs},{
+      plugins:{tooltip:tooltipCb},
+      scales:{x:scX, y:{...GCD.scales.y, title:{display:true,text:'mcm/d capacity',color:'#3d5070',font:{size:9}}}}
     });
     gaMakeChart('regas-inv-seas','line',{labels:xLabels,datasets:invDs},{
       plugins:{tooltip:tooltipCb},

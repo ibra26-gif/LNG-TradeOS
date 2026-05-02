@@ -60,4 +60,14 @@ assert(
   'regional ALSI queries must use country+company+facility and cite sendOut/dtrs conversion'
 );
 
+assert(
+  js.includes('AVAILABLE REGAS CAPACITY — SEASONAL') &&
+    js.includes('regas-cap-seas') &&
+    js.includes('const capDs = seasYrs.map') &&
+    js.includes('r.dtrsGWh ? r.dtrsGWh*GWH_MCM : null') &&
+    js.includes('denominator behind utilisation') &&
+    js.includes('sendOut converted from GWh/d to mcm/d via /10.55'),
+  'regas seasonal view must show DTRS capacity denominator and correct sendout unit caption'
+);
+
 if (!process.exitCode) console.log('regas regional utilisation regression checks passed');
