@@ -17612,8 +17612,41 @@ const HPA_NOTIF_RULES=[
   {id:'regime-jkm-ttf',group:'Regime',kind:'regime',label:'JKM/TTF regime',a:'JKM',b:'TTF',tenor:'r1',window:30,unit:'r'},
 ];
 function hpaDefaultPrefs(){
-  const activeRules={};HPA_NOTIF_RULES.forEach(r=>activeRules[r.id]=true);
+  const activeRules={};hpaBuiltInRules().forEach(r=>activeRules[r.id]=true);
   return{tab:'inbox',range:'90D',filter:'all',activeRules,muted:{},customRules:[],thresholds:{z:2.0,price:0.25,spread:0.15,freight:5000,fob:0.15,corr:0.25,trendMinShare:0.70}};
+}
+function hpaBuiltInRules(){return[...HPA_NOTIF_RULES,...hpaCurveSpreadRules()];}
+function hpaQuarterRank(t,now){
+  const m=String(t?.v||t||'').match(/^q([1-4])-(\d{4})$/);if(!m)return 9999;
+  const cur=now.getFullYear()*4+(Math.floor(now.getMonth()/3)+1);
+  return(+m[2]*4+ +m[1])-cur;
+}
+function hpaSeasonRank(t,now){
+  const m=String(t?.v||t||'').match(/^(sum|win)-(\d{4})$/);if(!m)return 9999;
+  const y=+m[2],start=m[1]==='sum'?new Date(y,3,1):new Date(y,9,1),end=m[1]==='sum'?new Date(y,8,30):new Date(y+1,2,31);
+  const floor=new Date(now.getFullYear(),now.getMonth(),1);
+  return end<floor?-9999:Math.round((start-floor)/86400000);
+}
+function hpaCurveWatchTenors(){
+  const now=new Date(),y=now.getFullYear(),m=now.getMonth()+1,q=Math.floor((m-1)/3)+1,yy=n=>String(n).slice(2);
+  const q2=q===4?1:q+1,q2y=q===4?y+1:y;
+  const curSeason=m>=4&&m<=9?{v:`sum-${y}`,l:`Sum-${yy(y)}`}:{v:`win-${m<=3?y-1:y}`,l:`Win-${yy(m<=3?y-1:y)}`};
+  const nextSeason=curSeason.v.startsWith('sum-')?{v:`win-${y}`,l:`Win-${yy(y)}`}:{v:`sum-${m<=3?y:y+1}`,l:`Sum-${yy(m<=3?y:y+1)}`};
+  const fallback=[{v:'r2',l:'M+2'},{v:'r3',l:'M+3'},{v:`q${q}-${y}`,l:`Q${q}-${yy(y)}`},{v:`q${q2}-${q2y}`,l:`Q${q2}-${yy(q2y)}`},curSeason,nextSeason];
+  let sea=[];try{sea=typeof gSeaP==='function'?gSeaP():[];}catch(e){sea=[];}
+  const out=[],seen=new Set(),add=t=>{if(!t||!t.v||seen.has(t.v))return;seen.add(t.v);out.push({v:t.v,l:t.l||hpaTenorLabel(t.v)});};
+  fallback.slice(0,2).forEach(add);
+  sea.filter(t=>t&&t.type==='quarterly'&&hpaQuarterRank(t,now)>=0).sort((a,b)=>hpaQuarterRank(a,now)-hpaQuarterRank(b,now)).slice(0,2).forEach(add);
+  sea.filter(t=>t&&t.type==='seasonal'&&hpaSeasonRank(t,now)>-9999).sort((a,b)=>hpaSeasonRank(a,now)-hpaSeasonRank(b,now)).slice(0,2).forEach(add);
+  fallback.slice(2).forEach(add);
+  return out.slice(0,6);
+}
+function hpaCurveSpreadRules(){
+  const pairs=[
+    {a:'JKM',b:'TTF',th:0.15},{a:'TTF',b:'HH',th:0.20},{a:'JKM',b:'HH',th:0.20},{a:'NBP',b:'TTF',th:0.12},
+    {a:'PSV',b:'TTF',th:0.12},{a:'THE',b:'TTF',th:0.12},{a:'PEG',b:'TTF',th:0.12},{a:'PVB',b:'TTF',th:0.12}
+  ];
+  return pairs.flatMap(p=>hpaCurveWatchTenors().map(t=>({id:`curve-${p.a.toLowerCase()}-${p.b.toLowerCase()}-${String(t.v).replace(/[^a-z0-9]+/gi,'-').toLowerCase()}`,group:'Curve spreads',kind:'spread',label:`${p.a}-${p.b} ${t.l}`,a:p.a,b:p.b,tenor:t.v,unit:'$/MMBtu',changeThreshold:p.th,curveWatch:true})));
 }
 function hpaLoadPrefs(){
   try{
@@ -17626,8 +17659,13 @@ function hpaLoadPrefs(){
   }catch(e){return hpaDefaultPrefs();}
 }
 function hpaSavePrefs(p){try{localStorage.setItem(HPA_NOTIF_KEY,JSON.stringify(p));}catch(e){}}
-function hpaAllRules(p){return[...HPA_NOTIF_RULES,...((p&&Array.isArray(p.customRules))?p.customRules:[])];}
+function hpaAllRules(p){return[...hpaBuiltInRules(),...((p&&Array.isArray(p.customRules))?p.customRules:[])];}
 function hpaEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function hpaTenorLabel(t){
+  try{if(typeof tvL==='function')return tvL(t||'r1');}catch(e){}
+  t=String(t||'r1');if(t.startsWith('r'))return'M+'+t.slice(1);
+  const m=t.match(/^(q[1-4]|win|sum)-(\d{4})$/i);return m?`${m[1].toUpperCase()}-${String(m[2]).slice(2)}`:t;
+}
 function hpaDateKey(d){return d instanceof Date?toStr(d):String(d).slice(0,10);}
 function hpaRangeCut(range){
   const d=new Date();
@@ -17644,12 +17682,14 @@ function hpaAlignDiff(sa,sb){
   const mb=new Map((sb||[]).filter(x=>x&&x.value!=null).map(x=>[hpaDateKey(x.date),x.value]));
   return(sa||[]).map(x=>{const bv=mb.get(hpaDateKey(x.date));return bv!=null&&x.value!=null?{date:x.date,value:+(x.value-bv).toFixed(4)}:null;}).filter(Boolean);
 }
-function hpaHubTtfSpreadSeries(hub){
+function hpaHubTtfSpreadSeries(hub,tenor='r1'){
   if(!EEX_HUBS.includes(hub)||!eexDates.length)return[];
+  if(!String(tenor||'r1').startsWith('r'))return hpaAlignDiff(gS(hub,tenor||'r1'),gS('TTF',tenor||'r1'));
+  const roll=parseInt(String(tenor||'r1').slice(1))||1;
   const out=[];
   for(const ed of eexDates){
     const ent=eexD[ed];if(!ent)continue;
-    const pk=rollPkFromRows(ent.rows,ent.date,1,hub);
+    const pk=rollPkFromRows(ent.rows,ent.date,roll,hub);
     const hv=ent.rows.find(r=>r.pk===pk)?.[hub];
     if(hv==null)continue;
     const tv=typeof aDval==='function'?aDval('TTF',ed,pk):null;
@@ -17683,7 +17723,7 @@ function hpaCorrelationSeries(rule){
 function hpaRuleSeries(rule){
   if(rule.kind==='price')return(gS(rule.inst,rule.tenor||'r1')||[]).map(x=>({date:x.date,value:x.value}));
   if(rule.kind==='spread'){
-    if(EEX_HUBS.includes(rule.a)&&rule.b==='TTF')return hpaHubTtfSpreadSeries(rule.a);
+    if(EEX_HUBS.includes(rule.a)&&rule.b==='TTF')return hpaHubTtfSpreadSeries(rule.a,rule.tenor||'r1');
     return hpaAlignDiff(gS(rule.a,rule.tenor||'r1'),gS(rule.b,rule.tenor||'r1'));
   }
   if(rule.kind==='freight'||rule.kind==='freightSpread')return hpaFreightSeries(rule);
@@ -17839,8 +17879,9 @@ function hpaQuestionFor(rule,type,direction){
   return'This relationship is moving differently from recent behavior.';
 }
 function hpaSource(rule){
-  if(rule.kind==='price')return EEX_HUBS.includes(rule.inst)?'EEX Market Data Hub · rolling M+1':'Financial EOD cache · rolling M+1';
-  if(rule.kind==='spread')return EEX_HUBS.includes(rule.a)?'EEX hub settlement + Financial EOD TTF matched by contract':'Financial EOD cache · aligned daily M+1 spread';
+  const tenor=hpaTenorLabel(rule.tenor||'r1');
+  if(rule.kind==='price')return EEX_HUBS.includes(rule.inst)?`EEX Market Data Hub · ${tenor}`:`Financial EOD cache · ${tenor}`;
+  if(rule.kind==='spread')return EEX_HUBS.includes(rule.a)?`EEX hub settlement + Financial EOD TTF · ${tenor}`:`Financial EOD cache · aligned daily ${tenor} spread`;
   if(rule.kind==='freight'||rule.kind==='freightSpread')return'Foundation Freight Curves · saved BLNG observations';
   if(rule.kind==='fobSpread')return'FOB Snapshot database · saved gas + freight + physical inputs';
   return'Financial EOD cache · rolling log-return correlation';
@@ -17979,7 +18020,7 @@ function hpaRenderNotifications(){
   el.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #151e30">
       <div><div style="font-size:12px;color:#c8cfe0;font-weight:600;letter-spacing:.04em">Market Watch · Relationship Shifts</div>
-      <div style="font-size:9px;color:#5a6882;margin-top:3px">Outrights · spread closing/widening · correlation changing · regime changing · freight / FOB snapshots</div></div>
+      <div style="font-size:9px;color:#5a6882;margin-top:3px">Outrights · front/curve spread closing/widening · correlation changing · regime changing · freight / FOB snapshots</div></div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${nav}<span style="font-size:9px;color:#34d399;margin-left:6px">● EOD ${hpaEsc(last)}</span></div>
     </div>
     ${tab==='rules'?hpaRenderRules(scan):tab==='muted'?hpaRenderMuted(scan):tab==='settings'?hpaRenderSettings(scan):hpaRenderInbox(scan)}

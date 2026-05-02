@@ -43,6 +43,17 @@ assert(
 );
 
 assert(
+  js.includes('function hpaCurveSpreadRules') &&
+    js.includes('function hpaCurveWatchTenors') &&
+    js.includes("group:'Curve spreads'") &&
+    js.includes("label:`${p.a}-${p.b} ${t.l}`") &&
+    js.includes("hpaHubTtfSpreadSeries(rule.a,rule.tenor||'r1')") &&
+    js.includes("type==='quarterly'") &&
+    js.includes("type==='seasonal'"),
+  'relationship-shift monitors must include M+2/M+3 plus quarterly and seasonal curve spreads'
+);
+
+assert(
   js.includes("label:'Slope M+1'") &&
     js.includes("label:'USGC Asia-Europe FOB M+1'") &&
     js.includes("label:'Oman Asia-Europe FOB M+1'") &&
@@ -101,6 +112,12 @@ if (start >= 0 && end > start) {
     value: 0.5 + i * 0.04,
   }));
   const prefs = ctx.__hpaTest.hpaDefaultPrefs();
+  assert(
+    Object.keys(prefs.activeRules).some(k => k.includes('curve-jkm-ttf-r2')) &&
+      Object.keys(prefs.activeRules).some(k => k.includes('curve-jkm-ttf-q')) &&
+      Object.keys(prefs.activeRules).some(k => k.includes('curve-jkm-ttf-sum') || k.includes('curve-jkm-ttf-win')),
+    'curve-spread monitors must be active by default'
+  );
   const stats = ctx.__hpaTest.hpaStatsFor(rule, series, 'ALL');
   const trend = ctx.__hpaTest.hpaTrendAlert(rule, stats, prefs);
   const alert = ctx.__hpaTest.hpaBuildAlert(rule, stats, prefs);
