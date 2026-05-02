@@ -64,11 +64,12 @@ assert(
 );
 
 assert(
-  js.includes("F.histVbMode=fg('f_hist_vb_mode_v1','spread')") &&
-    js.includes('DUAL AXIS · FREIGHT SPREAD vs JKM−TTF BASIS') &&
-    js.includes('BLNG1 - BLNG2') &&
+  js.includes("F.histVbBlng=fg('f_hist_vb_blng',{BLNG1:true,BLNG2:true,BLNG3:true})") &&
+    js.includes('HISTORICAL FREIGHT · ${ML[tenor]}') &&
+    js.includes('JKM/TTF SPREAD · ${ML[tenor]}') &&
+    js.includes('Both use the same selected delivery month, not rolling M+1') &&
     js.includes('③ BASIS vs FREIGHT'),
-  'freight history must include default freight-spread vs basis analysis'
+  'basis vs freight must be two stacked historical charts for the selected contract month'
 );
 
 assert(
