@@ -23798,6 +23798,7 @@ function asiaShow(country,btn){
   });
   if(country==='china' && typeof csInit==='function') setTimeout(csInit,80);
   if(country==='korea' && typeof korInit==='function') setTimeout(korInit,80);
+  if(country==='thailand' && typeof thaiInit==='function') setTimeout(thaiInit,80);
 }
 window.asiaShow=asiaShow;
 
@@ -24235,6 +24236,248 @@ function renderIndPrices(el){
 function renderBalance(){ renderIndBalance(document.getElementById('ind-tab-body')||document.getElementById('ind-balance-body')); }
 
 window.renderBalance=renderBalance;
+
+// ════════════════════════════════════════════════════════════════════════════
+// THAILAND MODULE - monthly gas balance from EPPO
+// ════════════════════════════════════════════════════════════════════════════
+const THAI_PREF_KEY = 'thai_gb_prefs_v1';
+let _thaiData = null;
+let _thaiRange = '24M';
+let _thaiUnit = 'mmscfd';
+let _thaiComponent = 'total_supply_mmscfd';
+let _thaiYears = null;
+
+const THAI_COMPONENTS = [
+  {key:'domestic_production_mmscfd', label:'Domestic production', group:'Supply', src:'EPPO Table 3.1-1'},
+  {key:'pipeline_imports_mmscfd', label:'Pipeline gas imports', group:'Supply', src:'EPPO Table 3.1-1 - Yadana + Yetakun + Zawtika'},
+  {key:'lng_imports_mmscfd', label:'LNG imports', group:'Supply', src:'EPPO Table 3.1-1'},
+  {key:'total_supply_mmscfd', label:'Total supply', group:'Supply', src:'EPPO Table 3.1-1'},
+  {key:'electricity_mmscfd', label:'Electricity demand', group:'Demand', src:'EPPO Table 3.2-2'},
+  {key:'industry_mmscfd', label:'Industry demand', group:'Demand', src:'EPPO Table 3.2-2'},
+  {key:'gsp_mmscfd', label:'GSP demand', group:'Demand', src:'EPPO Table 3.2-2'},
+  {key:'ngv_mmscfd', label:'NGV demand', group:'Demand', src:'EPPO Table 3.2-2'},
+  {key:'total_sector_demand_mmscfd', label:'Total sectorial demand', group:'Demand', src:'EPPO Table 3.2-2'},
+  {key:'residual_mmscfd', label:'Residual: supply - demand', group:'Balance', src:'Computed from EPPO tables'},
+];
+
+function thaiLoadPrefs(){
+  try{
+    const p = JSON.parse(localStorage.getItem(THAI_PREF_KEY) || '{}');
+    if(p.range) _thaiRange = p.range;
+    if(p.unit) _thaiUnit = p.unit;
+    if(p.component) _thaiComponent = p.component;
+    if(Array.isArray(p.years)) _thaiYears = p.years;
+  }catch(e){}
+}
+function thaiSavePrefs(){
+  try{localStorage.setItem(THAI_PREF_KEY, JSON.stringify({range:_thaiRange, unit:_thaiUnit, component:_thaiComponent, years:_thaiYears}));}catch(e){}
+}
+function thaiInit(){
+  const container = document.getElementById('thai-container');
+  if(!container) return;
+  thaiLoadPrefs();
+  if(_thaiData){ thaiRender(); return; }
+  container.innerHTML = `<div style="padding:28px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">Loading Thailand EPPO gas balance...</div>`;
+  fetch('/data/thailand_gas_balance.json?v=' + Date.now(), {cache:'no-store'})
+    .then(r=>{if(!r.ok) throw new Error('HTTP '+r.status); return r.json();})
+    .then(j=>{_thaiData=j; thaiRender();})
+    .catch(err=>{
+      container.innerHTML = `<div style="padding:28px;text-align:center;color:#f87171;font-size:10px;border:1px solid rgba(248,113,113,.3)">Thailand gas balance data unavailable: ${err.message}</div>`;
+    });
+}
+window.thaiInit = thaiInit;
+
+function thaiSetRange(v){_thaiRange=v;thaiSavePrefs();thaiRender();}
+function thaiSetUnit(v){_thaiUnit=v;thaiSavePrefs();thaiRender();}
+function thaiSetComponent(v){_thaiComponent=v;thaiSavePrefs();thaiRender();}
+function thaiToggleYear(yr){
+  const years = thaiAvailableYears();
+  if(!_thaiYears) _thaiYears = years.slice(-5);
+  const idx = _thaiYears.indexOf(yr);
+  if(idx >= 0){
+    if(_thaiYears.length > 1) _thaiYears.splice(idx,1);
+  }else{
+    _thaiYears.push(yr);
+    _thaiYears.sort((a,b)=>a-b);
+  }
+  thaiSavePrefs();
+  thaiRender();
+}
+function thaiAddYear(yr){
+  if(!yr) return;
+  const years = thaiAvailableYears();
+  if(!_thaiYears) _thaiYears = years.slice(-5);
+  if(!_thaiYears.includes(yr)){
+    _thaiYears.push(yr);
+    _thaiYears.sort((a,b)=>a-b);
+    thaiSavePrefs();
+    thaiRender();
+  }
+}
+window.thaiSetRange = thaiSetRange;
+window.thaiSetUnit = thaiSetUnit;
+window.thaiSetComponent = thaiSetComponent;
+window.thaiToggleYear = thaiToggleYear;
+window.thaiAddYear = thaiAddYear;
+
+function thaiAvailableYears(){
+  if(!_thaiData?.rows) return [];
+  return [...new Set(_thaiData.rows.map(r=>+r.month.slice(0,4)))].filter(Boolean).sort((a,b)=>a-b);
+}
+function thaiDaysInMonth(ym){return new Date(+ym.slice(0,4), +ym.slice(5,7), 0).getDate();}
+function thaiUnitLabel(){
+  return _thaiUnit === 'mcm_d' ? 'mcm/d' : _thaiUnit === 'bcm_m' ? 'bcm/month' : 'MMSCFD';
+}
+function thaiConvert(v, ym){
+  if(v == null || isNaN(v)) return null;
+  if(_thaiUnit === 'mcm_d') return +(v * 0.028316846592).toFixed(1);
+  if(_thaiUnit === 'bcm_m') return +(v * 0.028316846592 * thaiDaysInMonth(ym) / 1000).toFixed(3);
+  return +(+v).toFixed(0);
+}
+function thaiFmt(v, ym){
+  const x = thaiConvert(v, ym);
+  if(x == null) return '--';
+  const digits = _thaiUnit === 'bcm_m' ? 2 : _thaiUnit === 'mcm_d' ? 1 : 0;
+  return x.toLocaleString('en-US', {minimumFractionDigits:digits, maximumFractionDigits:digits});
+}
+function thaiRawVal(row, key){
+  if(!row) return null;
+  if(key === 'residual_mmscfd') return row.residual_mmscfd;
+  return row.supply?.[key] ?? row.demand?.[key] ?? null;
+}
+function thaiComp(key=_thaiComponent){
+  return THAI_COMPONENTS.find(c=>c.key===key) || THAI_COMPONENTS[3];
+}
+function thaiLatestRows(){
+  const rows = (_thaiData?.rows || []).filter(r=>r?.month);
+  if(_thaiRange === 'ALL') return rows;
+  const n = _thaiRange === '12M' ? 12 : 24;
+  return rows.slice(-n);
+}
+function thaiRow(label, key, rows, cls='', title=''){
+  return `<tr class="${cls}">
+    <td title="${title || thaiComp(key).src}">${label}</td>
+    ${rows.map(r=>`<td class="num">${thaiFmt(thaiRawVal(r,key), r.month)}</td>`).join('')}
+  </tr>`;
+}
+
+function thaiRender(){
+  const container = document.getElementById('thai-container');
+  if(!container || !_thaiData?.rows?.length) return;
+  const rows = thaiLatestRows();
+  const allRows = _thaiData.rows;
+  const latest = allRows[allRows.length-1];
+  const years = thaiAvailableYears();
+  if(!_thaiYears || !_thaiYears.length) _thaiYears = years.slice(-5);
+  const yearButtons = [...new Set([...years.slice(-10), ..._thaiYears])].sort((a,b)=>b-a);
+  const unit = thaiUnitLabel();
+  const latestSupply = thaiRawVal(latest,'total_supply_mmscfd');
+  const latestDemand = thaiRawVal(latest,'total_sector_demand_mmscfd');
+  const latestResidual = latest.residual_mmscfd;
+  const latestLng = thaiRawVal(latest,'lng_imports_mmscfd');
+  const latestLngShare = latestSupply ? latestLng / latestSupply * 100 : null;
+  const comp = thaiComp();
+  const src = _thaiData.sources || {};
+
+  container.innerHTML = `
+    <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">GAS & LNG ANALYTICS · THAILAND MONTHLY BALANCE</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid rgba(77,158,245,.13);padding-bottom:10px;margin-bottom:12px">
+      <span style="font-size:9px;color:#546e7a">TABLE</span>
+      ${['12M','24M','ALL'].map(r=>`<button class="f-btn sm${_thaiRange===r?' on':''}" onclick="thaiSetRange('${r}')">${r}</button>`).join('')}
+      <span style="font-size:9px;color:#546e7a;margin-left:8px">UNIT</span>
+      ${[['mmscfd','MMSCFD'],['mcm_d','mcm/d'],['bcm_m','bcm/month']].map(([k,l])=>`<button class="f-btn sm${_thaiUnit===k?' on':''}" onclick="thaiSetUnit('${k}')">${l}</button>`).join('')}
+      <span style="font-size:9px;color:#3d5070;margin-left:auto">EPPO monthly average · latest ${latest.month} · ${allRows.length} months</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+      <div class="ga-kpi"><div class="ga-kpi-lbl">Total supply · ${latest.month}</div><div class="ga-kpi-val" style="color:#4fc3f7">${thaiFmt(latestSupply,latest.month)}<span class="ga-kpi-unit"> ${unit}</span></div><div class="ga-kpi-note">Domestic + pipeline + LNG</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">Sectorial demand · ${latest.month}</div><div class="ga-kpi-val" style="color:#ffb74d">${thaiFmt(latestDemand,latest.month)}<span class="ga-kpi-unit"> ${unit}</span></div><div class="ga-kpi-note">Electricity + industry + GSP + NGV</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">Residual</div><div class="ga-kpi-val" style="color:${latestResidual>=0?'#4ade80':'#f87171'}">${latestResidual>=0?'+':''}${thaiFmt(latestResidual,latest.month)}<span class="ga-kpi-unit"> ${unit}</span></div><div class="ga-kpi-note">Supply - sectorial demand</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">LNG share of supply</div><div class="ga-kpi-val" style="color:#1D9E75">${latestLngShare!=null?latestLngShare.toFixed(1)+'%':'--'}</div><div class="ga-kpi-note">EPPO LNG imports / supply</div></div>
+    </div>
+
+    <div class="ga-card" style="margin-bottom:12px;overflow:auto">
+      <div class="ga-sec">MONTHLY GAS BALANCE <span class="ga-tag">${unit}</span></div>
+      <table style="width:100%;border-collapse:collapse;font-size:10px;min-width:${Math.max(940, rows.length*82)}px">
+        <thead>
+          <tr>
+            <th style="text-align:left;color:#8a9bb5;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">Thailand gas balance</th>
+            ${rows.map(r=>`<th style="text-align:right;color:#8abfff;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">${GA_MO[+r.month.slice(5,7)-1]}<br>${r.month.slice(0,4)}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="${rows.length+1}" style="padding:8px;color:#8a9bb5;text-decoration:underline">Supply</td></tr>
+          ${thaiRow('Domestic production','domestic_production_mmscfd',rows,'','EPPO Table 3.1-1 domestic production total')}
+          ${thaiRow('Pipeline gas imports','pipeline_imports_mmscfd',rows,'','EPPO Table 3.1-1 Myanmar imports: Yadana + Yetakun + Zawtika')}
+          ${thaiRow('LNG imports','lng_imports_mmscfd',rows,'','EPPO Table 3.1-1 LNG imports')}
+          ${thaiRow('Total supply','total_supply_mmscfd',rows,'tot','Domestic production + pipeline gas imports + LNG imports')}
+          <tr><td colspan="${rows.length+1}" style="padding:8px;color:#8a9bb5;text-decoration:underline">Sectorial demand</td></tr>
+          ${thaiRow('Electricity','electricity_mmscfd',rows,'','EPPO Table 3.2-2: EGAT + IPP + SPP')}
+          ${thaiRow('Industry','industry_mmscfd',rows)}
+          ${thaiRow('GSP','gsp_mmscfd',rows,'','Gas separation plants')}
+          ${thaiRow('NGV','ngv_mmscfd',rows)}
+          ${thaiRow('Total sectorial demand','total_sector_demand_mmscfd',rows,'tot','EPPO Table 3.2-2 grand total by sector')}
+          ${thaiRow('Residual (supply - demand)','residual_mmscfd',rows,'res','Computed. NGL distribution table is intentionally ignored.')}
+        </tbody>
+      </table>
+      <div class="ga-source">Source: EPPO Natural Gas statistics - Table 3.1-1 Production and Import; Table 3.2-2 Consumption by sector. Unit in source: MMSCFD. Distribution of NGL is ignored.</div>
+    </div>
+
+    <div class="ga-card">
+      <div class="ga-sec">SEASONAL CHART <span class="ga-tag">${comp.group} · ${unit}</span></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-size:9px;color:#546e7a">COMPONENT</span>
+        <select onchange="thaiSetComponent(this.value)" style="background:#0d1320;color:#c8d6e5;border:1px solid #1e3a5f;padding:5px 8px;font-size:10px;font-family:inherit">
+          ${THAI_COMPONENTS.map(c=>`<option value="${c.key}" ${c.key===_thaiComponent?'selected':''}>${c.group} - ${c.label}</option>`).join('')}
+        </select>
+        <span style="font-size:9px;color:#546e7a;margin-left:8px">YEARS</span>
+        ${yearButtons.map(yr=>`<button class="f-btn sm${_thaiYears.includes(yr)?' on':''}" onclick="thaiToggleYear(${yr})">${yr}</button>`).join('')}
+        <select onchange="thaiAddYear(+this.value);this.value=''" style="background:#0d1320;color:#8a9bb5;border:1px solid #1e3a5f;padding:5px 8px;font-size:10px;font-family:inherit">
+          <option value="">Add older year</option>
+          ${years.slice().reverse().map(yr=>`<option value="${yr}">${yr}</option>`).join('')}
+        </select>
+      </div>
+      <div class="ga-ch-wrap" style="height:280px"><canvas id="thai-seasonal-chart"></canvas></div>
+      <div class="ga-source">${comp.src} · Monthly average daily flow converted to ${unit}. Missing source cells stay blank.</div>
+    </div>
+    <style>
+      #thai-container .ga-card table td{padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.08);color:#8a9bb5}
+      #thai-container .ga-card table td.num{text-align:right;font-family:'IBM Plex Mono',monospace;color:#c8d6e5;font-variant-numeric:tabular-nums}
+      #thai-container .ga-card table tr.tot td{background:rgba(77,158,245,.08);font-weight:600}
+      #thai-container .ga-card table tr.res td{background:rgba(255,183,77,.08);font-weight:600}
+    </style>`;
+
+  setTimeout(thaiRenderSeasonal, 60);
+}
+
+function thaiRenderSeasonal(){
+  const canvas = document.getElementById('thai-seasonal-chart');
+  if(!canvas || !_thaiData?.rows) return;
+  const rowByMonth = {};
+  _thaiData.rows.forEach(r=>{rowByMonth[r.month]=r;});
+  const selected = (_thaiYears && _thaiYears.length ? _thaiYears : thaiAvailableYears().slice(-5)).slice().sort((a,b)=>b-a);
+  const datasets = selected.map((yr,i)=>({
+    label:String(yr),
+    data:Array.from({length:12},(_,m)=>{
+      const ym = `${yr}-${String(m+1).padStart(2,'0')}`;
+      return thaiConvert(thaiRawVal(rowByMonth[ym], _thaiComponent), ym);
+    }),
+    borderColor:GA_COLS[i % GA_COLS.length],
+    backgroundColor:GA_COLS[i % GA_COLS.length] + (i===0 ? '22' : '00'),
+    borderWidth:i===0?2.4:1.6,
+    borderDash:i>0?[5,3]:undefined,
+    pointRadius:2,
+    tension:.25,
+    spanGaps:false,
+  }));
+  gaMakeChart('thai-seasonal-chart','line',{labels:GA_MO,datasets},{
+    scales:{
+      x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},
+      y:{...GCD.scales.y,title:{display:true,text:thaiUnitLabel(),color:'#3d5070',font:{size:9}}}
+    },
+    plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}
+  });
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // KOREA MODULE — S&D · Nuclear · Tariffs
