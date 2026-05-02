@@ -49,6 +49,11 @@ assert(
 );
 
 assert(
+  /const toProcess=valid\.filter\(f=>\{[\s\S]*?if\(!old\|\|!fBlngIsValid\(old\.blng\)\)return true;[\s\S]*?if\(seen\[f\.id\]&&seen\[f\.id\]===f\.modifiedTime\)return false;/.test(js),
+  'Drive sync must reload missing/cleaned dates even when the old file id was marked seen'
+);
+
+assert(
   /async function parseHistExcel\(el\)[\s\S]*?const m=fHistMergeCurves\(results\)/.test(js),
   'manual historical Excel upload must use validated merge semantics'
 );

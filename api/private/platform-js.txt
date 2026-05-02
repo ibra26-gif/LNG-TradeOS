@@ -8640,15 +8640,17 @@ async function syncFreightHistFromDrive(silent=false,refreshEditor=false){
     const seen=fg('f_hist_drive_seen_v1',{});
     const existing=new Map((F.histCurves||[]).map(c=>[c.date,c]));
     const toProcess=valid.filter(f=>{
+      const date=fHistDateFromName(f.name);
+      if(date){
+        const old=existing.get(date);
+        if(!old||!fBlngIsValid(old.blng))return true;
+      }
       if(seen[f.id]&&seen[f.id]===f.modifiedTime)return false;
       if(f.name.match(/\.json$/i))return true;
       if(f.mimeType&&f.mimeType.startsWith('image/')){
-        const date=fHistDateFromName(f.name);
-        const old=existing.get(date);
-        return date&&(!old||!fBlngIsValid(old.blng));
+        return !!date;
       }
-      const date=fHistDateFromName(f.name),old=existing.get(date);
-      if(!old||!fBlngIsValid(old.blng))return true;
+      const old=existing.get(date);
       return !!(f.modifiedTime&&(!old._driveModified||f.modifiedTime>old._driveModified));
     });
     const validCounts=valid.reduce((acc,f)=>{const k=sourceType(f);acc[k]=(acc[k]||0)+1;return acc;},{});
