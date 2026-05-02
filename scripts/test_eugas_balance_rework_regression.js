@@ -38,8 +38,19 @@ assert(
   js.includes('function eubDailyPipeTotal') &&
     js.includes('return eubStrictSum(routes.map(r=>eubDailyPipe(r,date)))') &&
     js.includes('return eubStrictSum([eubDailyPipeTotal(date), eubDailyLng(date), eubDailyDomTotal(date)])') &&
-    js.includes('latest complete gas day'),
+    js.includes('function eubDailyImpliedDemand') &&
+    js.includes('function eubLatestStorageDate') &&
+    js.includes('latest complete supply day'),
   'daily S&D chart must use complete gas days only'
+);
+
+assert(
+  js.includes('STORAGE CHANGE IS THE TRUTH ANCHOR') &&
+    js.includes('storage anchor latest') &&
+    js.includes('Surplus (Deficit)') &&
+    js.includes('AGSI EU') &&
+    js.includes('EU+UK Gas Market'),
+  'EU balance must frame storage change as the market tightness anchor'
 );
 
 assert(
