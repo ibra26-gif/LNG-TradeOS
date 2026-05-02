@@ -46,7 +46,39 @@ jobs:
             echo "$label: last update ${age_h}h ago (limit ${limit_h}h, dow=$dow)"
 
             if [ "$age_h" -gt "$limit_h" ]; then
-              echo "::error title=$label stale::$path is $age_h h old (limit $limit_h h). Check your laptop scraper (launchd com.lngtradeos.eexpush / acerfetch)."
+              echo "::error title=$label stale::$path was last committed $age_h h ago (limit $limit_h h). Check the owning scraper."
+              FAIL=1
+            fi
+          }
+
+          check_acer_csv() {
+            local path="$1" label="$2" weekday_limit_h="$3" monday_limit_h="$4"
+
+            if [ ! -f "$path" ]; then
+              echo "::error title=$label missing::$path not found in repo"
+              FAIL=1; return
+            fi
+
+            local latest_date latest_ts now_ts age_h dow limit_h commit_ts commit_age_h
+            latest_date=$(awk -F, 'NR>1 {gsub(/"/,"",$1); print $1; exit}' "$path")
+            if ! latest_ts=$(date -u -d "$latest_date 00:00:00" +%s 2>/dev/null); then
+              echo "::error title=$label unreadable::Could not parse latest ACER DATE from $path"
+              FAIL=1; return
+            fi
+
+            now_ts=$(date -u +%s)
+            age_h=$(( (now_ts - latest_ts) / 3600 ))
+            dow=$(date -u +%u)  # 1=Mon .. 7=Sun
+
+            limit_h="$weekday_limit_h"
+            [ "$dow" = "1" ] && limit_h="$monday_limit_h"  # Mon: tolerate Fri publication
+
+            commit_ts=$(git log -1 --format=%ct -- "$path")
+            commit_age_h=$(( (now_ts - commit_ts) / 3600 ))
+            echo "$label: latest trade date $latest_date (${age_h}h old, limit ${limit_h}h, dow=$dow; commit ${commit_age_h}h ago)"
+
+            if [ "$age_h" -gt "$limit_h" ]; then
+              echo "::error title=$label stale::$path latest DATE is $latest_date ($age_h h old, limit $limit_h h). Check launchd com.lngtradeos.acer / scripts/acer_fetch.py."
               FAIL=1
             fi
           }
@@ -54,7 +86,10 @@ jobs:
           # (weekday limit, Monday limit) — Monday is more lenient because the
           # scrapers don't run Sat/Sun, so Fri-evening push is the newest thing.
           check_file "data/EEX_Gas_Curves.xlsx"       "EEX curves"      36 80
-          check_file "data/acer_historical.csv"       "ACER curves"     36 80
+          # ACER can be market-current even when the CSV did not change enough
+          # to create a fresh commit, so validate the newest DATE inside the CSV
+          # instead of the git timestamp that touched the file.
+          check_acer_csv "data/acer_historical.csv"   "ACER curves"     48 110
           # China SHPGX scrapes Tue + Fri at 14:00 UTC. 8 days = catches both
           # missed runs (GitHub Actions silently drops scheduled runs under
           # load — confirmed 2026-04-20 + 2026-04-27 Mon-morning fails).

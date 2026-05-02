@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260501-pipeline-history">
-<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260501-hpa-notifications" defer></script>
+<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260502-acer-freshness" defer></script>
 </head>
 <body class="app-unlocked">
 <div id="public-site">
@@ -1073,7 +1073,7 @@
 <div id="acer-tpl" style="display:none">
 <div class="topbar">
   <div class="title">ACER Physical DES — NWE · SE · EU</div>
-  <span id="acer-lastUpdate" class="st">Mar 2023 → Apr 2026 · 730 sessions</span>
+  <span id="acer-lastUpdate" class="st">Loading live ACER CSV…</span>
 </div>
 
 <div class="sec">

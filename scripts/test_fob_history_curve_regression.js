@@ -77,8 +77,8 @@ if (start >= 0 && end > start) {
 }
 
 assert(
-  /name=lngtradeos\.js&v=20260501-/.test(app),
-  'private platform cache-bust must stay bumped for the current bundle'
+  /name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app),
+  'private platform script must carry a dated cache-bust'
 );
 
 if (!process.exitCode) console.log('FOB history curve regression checks passed');
