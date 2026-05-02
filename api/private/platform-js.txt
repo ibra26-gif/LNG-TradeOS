@@ -21407,24 +21407,24 @@ function renderBalanceTable(pane){
     <div class="ga-card" style="padding:0">
       <div style="padding:10px 14px 6px;border-bottom:1px solid rgba(77,158,245,.1)">
         <div style="font-size:10px;color:var(--b);letter-spacing:2px;font-weight:600">OECD EUROPE GAS MARKET BALANCE — ${eubUnitLabel(unit).toUpperCase()}</div>
-        <div style="font-size:9px;color:#3d5070;margin-top:2px">Historical monthly template · ENTSOG + GIE AGSI+ + GIE ALSI · demand is implied until sector sources are added${histLoad.loading?` · loading ENTSOG history ${histLoad.years.join(', ')}`:''}</div>
+        <div style="font-size:9px;color:#3d5070;margin-top:2px">Historical monthly S&amp;D · current month is MTD where available · ENTSOG + GIE AGSI+ + GIE ALSI · demand is implied${histLoad.loading?` · loading ENTSOG history${histLoad.years.length?' '+histLoad.years.join(', '):''}`:''}</div>
       </div>
       <div style="overflow-x:auto;overflow-y:auto;max-height:560px">
         <table class="ga-tbl" id="ga-bal-tbl" style="min-width:980px">
           ${buildBalTblHTML(months, unit)}
         </table>
       </div>
-      <div class="ga-source" style="padding:8px 14px">Sources: ENTSOG Transparency Platform physical flows + production proxy · GIE AGSI+ storage · GIE ALSI LNG sendout. Sector demand is not sourced yet, so consumption is shown as implied: supply - storage change.</div>
+      <div class="ga-source" style="padding:8px 14px">Sources: ENTSOG Transparency Platform physical flows + domestic production reporters · GIE AGSI+ storage · GIE ALSI LNG sendout. Aggregates require all mapped components; missing data stays blank. Sector demand is not sourced yet, so consumption is implied: supply - storage change.</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
       <div class="ga-card">
         <div class="ga-sec">DAILY SUPPLY VS IMPLIED DEMAND — LAST 60 GAS DAYS <span class="ga-tag ga-tag-live">ENTSOG · GIE</span></div>
-        <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">Supply = pipeline + LNG sendout + domestic production. Implied demand = supply - net storage injection.</div>
+        <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">Supply = pipeline + LNG sendout + domestic production. Implied demand = supply - net storage injection. Dates with incomplete components are blank.</div>
         <div class="ga-ch-wrap" style="height:300px"><canvas id="eub-daily-sd-chart"></canvas></div>
         <div class="ga-source" id="eub-daily-sd-src">Daily source: ENTSOG physical flows + GIE ALSI sendOut + GIE AGSI injection/withdrawal</div>
       </div>
       <div class="ga-card">
-        <div class="ga-sec">DAILY LONG / SHORT BALANCE <span class="ga-tag ga-tag-live">GIE AGSI+</span></div>
+        <div class="ga-sec">DAILY LONG / SHORT BALANCE — STORAGE INJECTION LESS WITHDRAWAL <span class="ga-tag ga-tag-live">GIE AGSI+</span></div>
         <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">Positive = Europe long / injecting. Negative = Europe short / withdrawing.</div>
         <div class="ga-ch-wrap" style="height:300px"><canvas id="eub-daily-bal-chart"></canvas></div>
         <div class="ga-source" id="eub-daily-bal-src">Daily balance = AGSI injection - withdrawal</div>
@@ -21457,25 +21457,36 @@ function eubLatestMonth(){
   const complete = all.filter(mo =>
     GD.storage?.[mo]?.twh != null &&
     GD.lngTotal?.[mo]?.sendGWh != null &&
-    EUB_PIPE_ROUTES.some(r => gdGetPipeMCM(r,mo)!=null)
+    eubDomTotal(mo) != null &&
+    EUB_PIPE_ROUTES.every(r => gdGetPipeMCM(r,mo)!=null)
   );
   return complete.length ? complete[complete.length-1] : (all.length ? all[all.length-1] : null);
 }
 const EUB_PIPE_ROUTES = ['norway','russia','tap','algeria_italy','libya','algeria_spain'];
 const _eubPipeInflight = {};
 let _eubHistCacheAsked = false;
+let _eubHistCacheLoading = false;
+let _eubHistCacheLoaded = false;
+let _eubHistCacheFailed = false;
 function eubHasPipeMonth(mo){
-  return EUB_PIPE_ROUTES.some(r => gdGetPipeMCM(r,mo)!=null);
+  return EUB_PIPE_ROUTES.every(r => gdGetPipeMCM(r,mo)!=null);
 }
 function eubEnsureBalancePipeline(months){
   if(!_eubHistCacheAsked){
     _eubHistCacheAsked = true;
-    gdLoadPipelineHistoryFromCache();
+    _eubHistCacheLoading = true;
+    gdLoadPipelineHistoryFromCache()
+      .then(ok => { _eubHistCacheLoaded = !!ok; _eubHistCacheFailed = !ok; })
+      .catch(e => { _eubHistCacheFailed = true; console.warn('EU balance pipeline history cache:', e.message); })
+      .finally(() => { _eubHistCacheLoading = false; gdRerenderActive(); });
+    return {loading:true, years:[]};
   }
+  if(_eubHistCacheLoading) return {loading:true, years:[]};
   const curY = new Date().getFullYear();
   const years = [...new Set(months
     .filter(mo => +mo.slice(0,4) <= curY && !eubHasPipeMonth(mo))
     .map(mo => +mo.slice(0,4)))];
+  if(!_eubHistCacheFailed && !_eubHistCacheLoaded && years.length) return {loading:true, years:[]};
   years.forEach(y => {
     if(_eubPipeInflight[y]) return;
     _eubPipeInflight[y] = gdLoadPipelineYear(y, EUB_PIPE_ROUTES)
@@ -21491,6 +21502,9 @@ function eubFmt(v, dp=2){
   if(v==null || isNaN(v)) return '--';
   const s=Math.abs(v).toFixed(dp);
   return v<0 ? `(${s})` : s;
+}
+function eubStrictSum(vals){
+  return vals.every(v=>v!=null && !isNaN(v)) ? vals.reduce((s,v)=>s+v,0) : null;
 }
 function eubDaysInMonth(mo){
   const [y,m]=mo.split('-').map(Number);
@@ -21515,6 +21529,11 @@ function eubDaysInPeriod(mo){
 }
 function eubUnitLabel(unit){
   return unit==='mtpm' ? 'mtpm' : unit==='mcmd' ? 'mcm/d' : 'bcm';
+}
+function eubIsCurrentMonth(mo){ return mo === new Date().toISOString().slice(0,7); }
+function eubMonthHead(mo){
+  const tag = eubIsCurrentMonth(mo) ? '<div style="color:#fbbf24;font-size:8px">MTD</div>' : '';
+  return `<th class="tr" style="min-width:72px" title="${eubIsCurrentMonth(mo)?'Current month-to-date where source data exists':'Full historical month'}"><div style="color:#93c5fd">${mo.slice(0,4)}</div><div>${eubMonthLabel(mo).split(' ')[0]}</div>${tag}</th>`;
 }
 function eubFlowValue(v, mo, unit){
   if(v==null || isNaN(v)) return null;
@@ -21558,19 +21577,23 @@ function eubCalcMonth(mo){
   const production=domTotal;
   const russian=eubPipe('russia',mo);
   const central=eubPipe('tap',mo);
-  const african=eubSum([eubPipe('algeria_italy',mo),eubPipe('libya',mo),eubPipe('algeria_spain',mo)]);
-  const pipeTotal=eubSum([norway,russian,central,african]);
+  const algeriaItaly=eubPipe('algeria_italy',mo);
+  const libya=eubPipe('libya',mo);
+  const algeriaSpain=eubPipe('algeria_spain',mo);
+  const african=eubStrictSum([algeriaItaly,libya,algeriaSpain]);
+  const pipeTotal=eubStrictSum([norway,russian,central,african]);
   const lng=GD.lngTotal[mo] ? eubBcmFromGwh(GD.lngTotal[mo].sendGWh) : null;
-  const supply=eubSum([production,pipeTotal,lng]);
+  const supply=eubStrictSum([production,pipeTotal,lng]);
   const end=eubStorageEnd(mo);
   const begin=eubStorageEnd(eubPrevMo(mo));
   const change=(end!=null&&begin!=null)?end-begin:null;
   const consumption=(supply!=null&&change!=null)?supply-change:null;
-  return {norway,domTotal,production,russian,central,african,pipeTotal,lng,supply,begin,end,change,consumption,surplus:change,fill:GD.storage[mo]?.pct??null};
+  const residual=null;
+  return {norway,domTotal,production,russian,central,algeriaItaly,libya,algeriaSpain,african,pipeTotal,lng,supply,begin,end,change,consumption,surplus:change,residual,fill:GD.storage[mo]?.pct??null};
 }
 function buildBalTblHTML(months, unit='bcm'){
   const hdrs='<thead><tr><th class="L" style="min-width:250px">OECD Europe Gas Market in '+eubUnitLabel(unit)+'</th><th class="L" style="min-width:110px">To</th>'
-    +months.map(m=>`<th class="tr" style="min-width:72px"><div style="color:#93c5fd">${m.slice(0,4)}</div><div>${eubMonthLabel(m).split(' ')[0]}</div></th>`).join('')+'</tr></thead>';
+    +months.map(m=>eubMonthHead(m)).join('')+'</tr></thead>';
   const row=(label,to,fn,opt={})=>{
     const bg=opt.bg?`background:${opt.bg};`:'';
     const fw=opt.bold?'font-weight:700;':'';
@@ -21578,8 +21601,18 @@ function buildBalTblHTML(months, unit='bcm'){
     const cells=months.map(m=>eubCell(fn(m), m, unit, opt.kind||'flow')).join('');
     return `<tr title="${opt.title||''}" style="${bg}${fw}"><td class="L" style="${u}">${label}</td><td class="L" style="color:#4b5a72;font-size:9px">${to}</td>${cells}</tr>`;
   };
+  const coverageCell=(m)=>{
+    const c=eubCalcMonth(m);
+    const hasAny=[c.production,c.norway,c.russian,c.central,c.african,c.lng,c.begin,c.end].some(v=>v!=null);
+    const complete=c.supply!=null && c.consumption!=null;
+    const txt=complete ? (eubIsCurrentMonth(m)?'MTD':'full') : hasAny ? 'partial' : '--';
+    const col=complete ? '#34d399' : hasAny ? '#fbbf24' : '#3d5070';
+    return `<td class="tr" style="color:${col};font-size:9px">${txt}</td>`;
+  };
+  const coverageRow=()=>`<tr title="Completeness of the mapped balance components. Partial months are not used for aggregate totals unless every mapped supply component is available."><td class="L" style="color:#6b7a99">Data coverage</td><td class="L" style="color:#4b5a72;font-size:9px">source check</td>${months.map(coverageCell).join('')}</tr>`;
   const sep=()=>`<tr><td colspan="${months.length+2}" style="height:10px;border:0;background:#070b14"></td></tr>`;
   const rows=[];
+  rows.push(coverageRow());
   rows.push(row('Production:','',()=>null,{u:true,title:'ENTSOG domestic production reporters only. Norway is shown under Pipeline Imports.'}));
   rows.push(row('United Kingdom','UK',m=>eubDom('uk',m),{title:'ENTSOG Aggregated production point - TP / TP ExtEU'}));
   rows.push(row('Netherlands','NL',m=>eubDom('netherlands',m),{title:'ENTSOG Aggregated production point - TP / TP ExtEU'}));
@@ -21590,13 +21623,14 @@ function buildBalTblHTML(months, unit='bcm'){
   rows.push(row('Norway','UK; GER; FR; BEL; DK',m=>eubCalcMonth(m).norway,{title:'ENTSOG physical flow entry points: Zeebrugge, Dornum, Emden, Easington, St Fergus, Nybro, Dunkerque'}));
   rows.push(row('Russian Pipeline Imp','EU',m=>eubCalcMonth(m).russian,{title:'ENTSOG Russia residual corridor points: TurkStream / Ukraine transit points currently mapped'}));
   rows.push(row('Central Asian Pipeline Imp','CEE/ITA',m=>eubCalcMonth(m).central,{title:'ENTSOG TAP / Azerbaijan mapped points'}));
-  rows.push(row('African Pipeline Imports','ITA & ESP',m=>eubCalcMonth(m).african,{title:'ENTSOG Algeria to Italy/Spain plus Libya Greenstream'}));
-  rows.push(row('Total Pipeline Imports','EU+UK external',m=>eubCalcMonth(m).pipeTotal,{bold:true,title:'External supply corridors only. Intra-European interconnectors are excluded to avoid double-counting EU+UK aggregate flows.'}));
+  rows.push(row('African Pipeline Imports','ITA & ESP',m=>eubCalcMonth(m).african,{title:'ENTSOG Algeria to Italy/Spain plus Libya Greenstream. Requires all three mapped legs; otherwise blank.'}));
+  rows.push(row('Total Pipeline Imports','EU+UK external',m=>eubCalcMonth(m).pipeTotal,{bold:true,title:'External supply corridors only. Requires Norway, Russia, TAP and African corridor data. Intra-European interconnectors are excluded to avoid double-counting EU+UK aggregate flows.'}));
   rows.push(sep());
   rows.push(row('LNG Imports (Regas: 13 countries)','EU/UK',m=>eubCalcMonth(m).lng,{bold:true,title:'GIE ALSI sendOut field converted from GWh/d to bcm/month'}));
   rows.push(row('Grandtotal Supply','EU-28',m=>eubCalcMonth(m).supply,{bold:true,bg:'rgba(147,197,253,.28)',title:'Production + mapped pipeline imports + LNG sendout'}));
   rows.push(sep());
   rows.push(row('Consumption (implied, 28 countries)','EU-28',m=>eubCalcMonth(m).consumption,{bold:true,bg:'rgba(187,247,208,.18)',title:'Implied as Grandtotal Supply - storage change. Sector demand split is not sourced yet.'}));
+  rows.push(row('Residual / unexplained','EU-28',m=>eubCalcMonth(m).residual,{title:'Not calculated until independent sector demand is sourced. With implied consumption the residual would be circular, so it stays blank.'}));
   rows.push(row('Surplus (Deficit)','EU-28',m=>eubCalcMonth(m).surplus,{bold:true,bg:'rgba(254,215,170,.22)',title:'Supply - implied consumption. This equals monthly storage change when both supply and storage are available.'}));
   rows.push(row('Storage: beginning of period','EU-28',m=>eubCalcMonth(m).begin,{kind:'stock',title:'GIE AGSI+ gasInStorage, previous month end. Stock values remain in bcm because mcm/d is a flow unit.'}));
   rows.push(row('Storage: end of period','EU-28',m=>eubCalcMonth(m).end,{kind:'stock',title:'GIE AGSI+ gasInStorage, month end. Stock values remain in bcm because mcm/d is a flow unit.'}));
@@ -21624,10 +21658,12 @@ function eubDailyStorageNet(date){
   const net=r.net!=null ? r.net : (r.inj||0)-(r.wdr||0);
   return net/10.55;
 }
-function eubDailySupply(date){
+function eubDailyPipeTotal(date){
   const routes=['norway','russia','tap','algeria_italy','libya','algeria_spain'];
-  const vals=[...routes.map(r=>eubDailyPipe(r,date)), eubDailyLng(date), eubDailyDomTotal(date)];
-  return eubSum(vals);
+  return eubStrictSum(routes.map(r=>eubDailyPipe(r,date)));
+}
+function eubDailySupply(date){
+  return eubStrictSum([eubDailyPipeTotal(date), eubDailyLng(date), eubDailyDomTotal(date)]);
 }
 function eubDailyUnitLabel(unit){
   if(unit==='bcm') return 'bcm/d';
@@ -21691,7 +21727,7 @@ function drawBalanceDailyCharts(unit='bcm'){
   });
   const sd=document.getElementById('eub-daily-sd-src');
   const bal=document.getElementById('eub-daily-bal-src');
-  if(sd) sd.textContent=`Daily source: ENTSOG physical flows + GIE ALSI sendOut + GIE AGSI injection/withdrawal · latest ${latest} · ${yTitle}`;
+  if(sd) sd.textContent=`Daily source: ENTSOG physical flows + GIE ALSI sendOut + GIE AGSI injection/withdrawal · latest complete gas day ${latest} · ${yTitle}`;
   if(bal) bal.textContent=`Daily balance = AGSI injection - withdrawal · latest ${latest} · ${yTitle}`;
 }
 
