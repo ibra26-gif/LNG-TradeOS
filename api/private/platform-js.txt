@@ -21677,6 +21677,11 @@ function renderBalanceTable(pane){
   const unit = pane.querySelector('#bal-unit-sel')?.value || prefs.unit || 'bcm';
   const months = eubMonthRange(endMo, 13);
   const histLoad = eubEnsureBalancePipeline(months);
+  const latestGasDay = eubLatestStorageDate();
+  const latestCompleteGasDay = eubLatestCompleteDailyDate();
+  const latestNet = latestGasDay ? eubDailyStorageNet(latestGasDay) : null;
+  const latestSupply = latestCompleteGasDay ? eubDailySupply(latestCompleteGasDay) : null;
+  const latestDemand = latestCompleteGasDay ? eubDailyImpliedDemand(latestCompleteGasDay) : null;
   prefs.endMo = endMo;
   prefs.unit = unit;
   try{ localStorage.setItem('eub_prefs_v1', JSON.stringify(prefs)); }catch{}
@@ -21702,10 +21707,22 @@ function renderBalanceTable(pane){
       </select>
       <span class="ctrl-lbl">VIEW</span>
       <select class="gsel" disabled title="Country drill-down will be enabled only where every component has a real source">
-        <option>EU-28 Aggregate</option>
+        <option>EU+UK Aggregate</option>
       </select>
       <div id="ga-bal-sources" style="display:flex;gap:8px;font-size:9px;flex-wrap:wrap;margin-left:8px"></div>
       <span style="font-size:9px;color:#3d5070;margin-left:auto">${new Date().toLocaleDateString('en-GB')}</span>
+    </div>
+    <div class="ga-card" style="margin-bottom:10px;padding:11px 13px;background:#071a2b;border-color:#1e3a5f">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="min-width:230px">
+          <div style="font-size:10px;color:#34d399;letter-spacing:.12em;font-weight:700">STORAGE CHANGE IS THE TRUTH ANCHOR</div>
+          <div style="font-size:9px;color:#8a9bb5;margin-top:3px">EU+UK market tightness is inferred from what the system had to inject into, or withdraw from, storage.</div>
+        </div>
+        ${kpiCell('LATEST GAS DAY', latestGasDay||'--', 'GIE AGSI+ storage anchor', '#93c5fd')}
+        ${kpiCell('LONG / SHORT', eubDailyFmt(eubDailyValue(latestNet, latestGasDay||new Date().toISOString().slice(0,10), unit), unit), latestNet==null?'storage net missing':(latestNet>=0?'net injection / long':'net withdrawal / short'), latestNet!=null&&latestNet<0?'#fca5a5':'#bbf7d0')}
+        ${kpiCell('SUPPLY EX-STORAGE', eubDailyFmt(eubDailyValue(latestSupply, latestCompleteGasDay||latestGasDay||new Date().toISOString().slice(0,10), unit), unit), latestCompleteGasDay?`complete day ${latestCompleteGasDay}`:'waiting for all supply legs', '#bfdbfe')}
+        ${kpiCell('IMPLIED DEMAND', eubDailyFmt(eubDailyValue(latestDemand, latestCompleteGasDay||latestGasDay||new Date().toISOString().slice(0,10), unit), unit), 'supply - net storage injection', '#bbf7d0')}
+      </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       ${kpiCell('GRANDTOTAL SUPPLY', eubFmtFlow(kpi.supply,endMo,unit), eubUnitLabel(unit), '#bfdbfe')}
@@ -21715,26 +21732,26 @@ function renderBalanceTable(pane){
     </div>
     <div class="ga-card" style="padding:0">
       <div style="padding:10px 14px 6px;border-bottom:1px solid rgba(77,158,245,.1)">
-        <div style="font-size:10px;color:var(--b);letter-spacing:2px;font-weight:600">OECD EUROPE GAS MARKET BALANCE — ${eubUnitLabel(unit).toUpperCase()}</div>
-        <div style="font-size:9px;color:#3d5070;margin-top:2px">Historical monthly S&amp;D · current month is MTD where available · ENTSOG + GIE AGSI+ + GIE ALSI · demand is implied${histLoad.loading?` · loading ENTSOG history${histLoad.years.length?' '+histLoad.years.join(', '):''}`:''}</div>
+        <div style="font-size:10px;color:var(--b);letter-spacing:2px;font-weight:600">EU+UK GAS MARKET BALANCE — ${eubUnitLabel(unit).toUpperCase()}</div>
+        <div style="font-size:9px;color:#3d5070;margin-top:2px">Historical monthly S&amp;D · current month is MTD where available · ENTSOG + GIE AGSI+ + GIE ALSI · implied demand is anchored to storage change${histLoad.loading?` · loading ENTSOG history${histLoad.years.length?' '+histLoad.years.join(', '):''}`:''}</div>
       </div>
       <div style="overflow-x:auto;overflow-y:auto;max-height:560px">
         <table class="ga-tbl" id="ga-bal-tbl" style="min-width:980px">
           ${buildBalTblHTML(months, unit)}
         </table>
       </div>
-      <div class="ga-source" style="padding:8px 14px">Sources: ENTSOG Transparency Platform physical flows + domestic production reporters · GIE AGSI+ storage · GIE ALSI LNG sendout. Aggregates require all mapped components; missing data stays blank. Sector demand is not sourced yet, so consumption is implied: supply - storage change.</div>
+      <div class="ga-source" style="padding:8px 14px">Sources: ENTSOG Transparency Platform physical flows + domestic production reporters · GIE AGSI+ storage · GIE ALSI LNG sendout. Aggregates require all mapped components; missing data stays blank. Sector demand is not sourced yet: implied consumption = supply - storage change, and surplus/deficit = storage change.</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
       <div class="ga-card">
         <div class="ga-sec">DAILY SUPPLY VS IMPLIED DEMAND — LAST 60 GAS DAYS <span class="ga-tag ga-tag-live">ENTSOG · GIE</span></div>
-        <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">Supply = pipeline + LNG sendout + domestic production. Implied demand = supply - net storage injection. Dates with incomplete components are blank.</div>
+        <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">Supply = pipeline + LNG sendout + domestic production. Implied demand = supply - net storage injection. Supply/demand lines only plot where every mapped supply leg is present.</div>
         <div class="ga-ch-wrap" style="height:300px"><canvas id="eub-daily-sd-chart"></canvas></div>
         <div class="ga-source" id="eub-daily-sd-src">Daily source: ENTSOG physical flows + GIE ALSI sendOut + GIE AGSI injection/withdrawal</div>
       </div>
       <div class="ga-card">
         <div class="ga-sec">DAILY LONG / SHORT BALANCE — STORAGE INJECTION LESS WITHDRAWAL <span class="ga-tag ga-tag-live">GIE AGSI+</span></div>
-        <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">Positive = Europe long / injecting. Negative = Europe short / withdrawing.</div>
+        <div style="font-size:8.5px;color:#546e7a;margin-bottom:6px">Positive = EU+UK system long / injecting. Negative = EU+UK system short / withdrawing. This chart is storage-led and can update even when supply legs lag.</div>
         <div class="ga-ch-wrap" style="height:300px"><canvas id="eub-daily-bal-chart"></canvas></div>
         <div class="ga-source" id="eub-daily-bal-src">Daily balance = AGSI injection - withdrawal</div>
       </div>
@@ -21901,7 +21918,7 @@ function eubCalcMonth(mo){
   return {norway,domTotal,production,russian,central,algeriaItaly,libya,algeriaSpain,african,pipeTotal,lng,supply,begin,end,change,consumption,surplus:change,residual,fill:GD.storage[mo]?.pct??null};
 }
 function buildBalTblHTML(months, unit='bcm'){
-  const hdrs='<thead><tr><th class="L" style="min-width:250px">OECD Europe Gas Market in '+eubUnitLabel(unit)+'</th><th class="L" style="min-width:110px">To</th>'
+  const hdrs='<thead><tr><th class="L" style="min-width:250px">EU+UK Gas Market in '+eubUnitLabel(unit)+'</th><th class="L" style="min-width:110px">To</th>'
     +months.map(m=>eubMonthHead(m)).join('')+'</tr></thead>';
   const row=(label,to,fn,opt={})=>{
     const bg=opt.bg?`background:${opt.bg};`:'';
@@ -21936,15 +21953,15 @@ function buildBalTblHTML(months, unit='bcm'){
   rows.push(row('Total Pipeline Imports','EU+UK external',m=>eubCalcMonth(m).pipeTotal,{bold:true,title:'External supply corridors only. Requires Norway, Russia, TAP and African corridor data. Intra-European interconnectors are excluded to avoid double-counting EU+UK aggregate flows.'}));
   rows.push(sep());
   rows.push(row('LNG Imports (Regas: 13 countries)','EU/UK',m=>eubCalcMonth(m).lng,{bold:true,title:'GIE ALSI sendOut field converted from GWh/d to bcm/month'}));
-  rows.push(row('Grandtotal Supply','EU-28',m=>eubCalcMonth(m).supply,{bold:true,bg:'rgba(147,197,253,.28)',title:'Production + mapped pipeline imports + LNG sendout'}));
+  rows.push(row('Grandtotal Supply','EU+UK',m=>eubCalcMonth(m).supply,{bold:true,bg:'rgba(147,197,253,.28)',title:'Production + mapped pipeline imports + LNG sendout'}));
   rows.push(sep());
-  rows.push(row('Consumption (implied, 28 countries)','EU-28',m=>eubCalcMonth(m).consumption,{bold:true,bg:'rgba(187,247,208,.18)',title:'Implied as Grandtotal Supply - storage change. Sector demand split is not sourced yet.'}));
-  rows.push(row('Residual / unexplained','EU-28',m=>eubCalcMonth(m).residual,{title:'Not calculated until independent sector demand is sourced. With implied consumption the residual would be circular, so it stays blank.'}));
-  rows.push(row('Surplus (Deficit)','EU-28',m=>eubCalcMonth(m).surplus,{bold:true,bg:'rgba(254,215,170,.22)',title:'Supply - implied consumption. This equals monthly storage change when both supply and storage are available.'}));
-  rows.push(row('Storage: beginning of period','EU-28',m=>eubCalcMonth(m).begin,{kind:'stock',title:'GIE AGSI+ gasInStorage, previous month end. Stock values remain in bcm because mcm/d is a flow unit.'}));
-  rows.push(row('Storage: end of period','EU-28',m=>eubCalcMonth(m).end,{kind:'stock',title:'GIE AGSI+ gasInStorage, month end. Stock values remain in bcm because mcm/d is a flow unit.'}));
-  rows.push(row('Change','EU-28',m=>eubCalcMonth(m).change,{bold:true,title:'End storage - beginning storage. Positive = injection / filling; negative = withdrawal / draw.'}));
-  rows.push(`<tr style="background:#ef4444;color:#07101e;font-weight:700" title="GIE AGSI+ full percentage"><td class="L">Storage Filled</td><td class="L">EU-28</td>${months.map(m=>{const v=eubCalcMonth(m).fill;return `<td class="tr">${v!=null?v.toFixed(1)+'%':'--'}</td>`;}).join('')}</tr>`);
+  rows.push(row('Consumption (implied)','EU+UK',m=>eubCalcMonth(m).consumption,{bold:true,bg:'rgba(187,247,208,.18)',title:'Implied as Grandtotal Supply - storage change. Sector demand split is not sourced yet.'}));
+  rows.push(row('Residual / unexplained','EU+UK',m=>eubCalcMonth(m).residual,{title:'Not calculated until independent sector demand is sourced. With implied consumption the residual would be circular, so it stays blank.'}));
+  rows.push(row('Surplus (Deficit)','EU+UK',m=>eubCalcMonth(m).surplus,{bold:true,bg:'rgba(254,215,170,.22)',title:'Supply - implied consumption. This equals monthly storage change when both supply and storage are available.'}));
+  rows.push(row('Storage: beginning of period','AGSI EU',m=>eubCalcMonth(m).begin,{kind:'stock',title:'GIE AGSI+ gasInStorage, previous month end. Stock values remain in bcm because mcm/d is a flow unit.'}));
+  rows.push(row('Storage: end of period','AGSI EU',m=>eubCalcMonth(m).end,{kind:'stock',title:'GIE AGSI+ gasInStorage, month end. Stock values remain in bcm because mcm/d is a flow unit.'}));
+  rows.push(row('Change','AGSI EU',m=>eubCalcMonth(m).change,{bold:true,title:'End storage - beginning storage. Positive = injection / filling; negative = withdrawal / draw.'}));
+  rows.push(`<tr style="background:#ef4444;color:#07101e;font-weight:700" title="GIE AGSI+ full percentage"><td class="L">Storage Filled</td><td class="L">AGSI EU</td>${months.map(m=>{const v=eubCalcMonth(m).fill;return `<td class="tr">${v!=null?v.toFixed(1)+'%':'--'}</td>`;}).join('')}</tr>`);
   return hdrs+'<tbody>'+rows.join('')+'</tbody>';
 }
 
@@ -21974,9 +21991,13 @@ function eubDailyPipeTotal(date){
 function eubDailySupply(date){
   return eubStrictSum([eubDailyPipeTotal(date), eubDailyLng(date), eubDailyDomTotal(date)]);
 }
+function eubDailyImpliedDemand(date){
+  const s=eubDailySupply(date), n=eubDailyStorageNet(date);
+  return s!=null && n!=null ? s-n : null;
+}
 function eubDailyUnitLabel(unit){
   if(unit==='bcm') return 'bcm/d';
-  if(unit==='mtpm') return 'mtpm equivalent';
+  if(unit==='mtpm') return 'mtpm-equivalent run-rate';
   return 'mcm/d';
 }
 function eubDailyValue(mcmd,date,unit){
@@ -21989,18 +22010,22 @@ function eubDailyFmt(v,unit){
   if(v==null || isNaN(v)) return '—';
   return v.toFixed(unit==='mcmd'?1:2);
 }
-function eubDailyDates(){
-  const candidates=[
+function eubLatestStorageDate(){
+  const dates=Object.keys(GD.storDaily||{}).filter(Boolean).sort();
+  return dates.length ? dates[dates.length-1] : null;
+}
+function eubLatestCompleteDailyDate(){
+  const dates=[
     ...Object.values(GD.pipeDaily||{}).flatMap(o=>Object.keys(o||{})),
     ...Object.keys(GD.lngDaily||{}),
     ...Object.keys(GD.storDaily||{}),
     ...Object.values((GA_LIVE&&GA_LIVE.domesticDaily)||{}).flatMap(o=>Object.keys(o||{})),
   ].filter(Boolean);
-  const dates=[...new Set(candidates)].filter(d=>{
-    const s=eubDailySupply(d), n=eubDailyStorageNet(d);
-    return s!=null && n!=null;
-  }).sort();
-  const latest=dates.length ? dates[dates.length-1] : new Date().toISOString().slice(0,10);
+  const complete=[...new Set(dates)].filter(d=>eubDailySupply(d)!=null&&eubDailyStorageNet(d)!=null).sort();
+  return complete.length ? complete[complete.length-1] : null;
+}
+function eubDailyDates(){
+  const latest=eubLatestStorageDate() || eubLatestCompleteDailyDate() || new Date().toISOString().slice(0,10);
   const end=new Date(latest+'T12:00:00');
   return Array.from({length:60},(_,i)=>{const d=new Date(end);d.setDate(d.getDate()-59+i);return d.toISOString().slice(0,10);});
 }
@@ -22009,10 +22034,11 @@ function drawBalanceDailyCharts(unit='bcm'){
   const labels=days.map(d=>d.slice(5));
   const supply=days.map(d=>eubDailySupply(d));
   const net=days.map(d=>eubDailyStorageNet(d));
-  const implied=days.map((d,i)=>supply[i]!=null&&net[i]!=null?supply[i]-net[i]:null);
+  const implied=days.map(d=>eubDailyImpliedDemand(d));
   const conv=arr=>arr.map((v,i)=>eubDailyValue(v,days[i],unit));
   const yTitle=eubDailyUnitLabel(unit);
-  const latest=days[days.length-1];
+  const latestStorage=eubLatestStorageDate() || days[days.length-1];
+  const latestComplete=eubLatestCompleteDailyDate();
   gaMakeChart('eub-daily-sd-chart','line',{
     labels,
     datasets:[
@@ -22036,8 +22062,8 @@ function drawBalanceDailyCharts(unit='bcm'){
   });
   const sd=document.getElementById('eub-daily-sd-src');
   const bal=document.getElementById('eub-daily-bal-src');
-  if(sd) sd.textContent=`Daily source: ENTSOG physical flows + GIE ALSI sendOut + GIE AGSI injection/withdrawal · latest complete gas day ${latest} · ${yTitle}`;
-  if(bal) bal.textContent=`Daily balance = AGSI injection - withdrawal · latest ${latest} · ${yTitle}`;
+  if(sd) sd.textContent=`Daily source: ENTSOG physical flows + GIE ALSI sendOut + GIE AGSI injection/withdrawal · latest complete supply day ${latestComplete||'--'} · ${yTitle}`;
+  if(bal) bal.textContent=`Daily balance = AGSI injection - withdrawal · storage anchor latest ${latestStorage||'--'} · ${yTitle}`;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
