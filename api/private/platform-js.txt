@@ -8465,7 +8465,7 @@ function fHistParseWorkbook(buf,fileName,meta={}){
   for(const shName of sheetOrder){
     const ws=wb.Sheets[shName];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
-    let hdrRow=-1,c1=-1,c2=-1,c3=-1,cMidx=-1;
+    let hdrRow=-1,c1=-1,c2=-1,c3=-1,cMidx=-1,cPeriod=-1;
     for(let r=0;r<Math.min(rows.length,20);r++){
       const h=(rows[r]||[]).map(x=>String(x??'').trim().toUpperCase());
       const i1=h.indexOf('BLNG1'),i2=h.indexOf('BLNG2'),i3=h.indexOf('BLNG3');
@@ -8476,6 +8476,7 @@ function fHistParseWorkbook(buf,fileName,meta={}){
         cMidx=h.indexOf('M IDX');if(cMidx<0)cMidx=h.indexOf('M');
         if(cMidx<0)cMidx=n.indexOf('M IDX');
         if(cMidx<0)cMidx=n.indexOf('M');
+        cPeriod=h.indexOf('PERIOD');if(cPeriod<0)cPeriod=n.indexOf('PERIOD');
         break;
       }
       // OB FFA Rates exports sometimes use grouped headers:
@@ -8490,6 +8491,7 @@ function fHistParseWorkbook(buf,fileName,meta={}){
         cMidx=h.indexOf('M IDX');if(cMidx<0)cMidx=h.indexOf('M');
         if(cMidx<0)cMidx=n.indexOf('M IDX');
         if(cMidx<0)cMidx=n.indexOf('M');
+        cPeriod=h.indexOf('PERIOD');if(cPeriod<0)cPeriod=n.indexOf('PERIOD');
         break;
       }
     }
@@ -8505,6 +8507,10 @@ function fHistParseWorkbook(buf,fileName,meta={}){
     if(cMidx>=0){
       b1=Array(24).fill(null);b2=Array(24).fill(null);b3=Array(24).fill(null);
       for(const row of data){
+        const label=cPeriod>=0?String(row[cPeriod]??'').trim().toUpperCase():'';
+        // Only load monthly rows (174+1_M ... 174+24_M). OB files also carry
+        // quarterly/calendar strips with M=1; those must not overwrite M+1.
+        if(label&&(!/\+\d+_?M\b/.test(label)||label.includes('CURMON')||label.includes('CURQ')||label.includes('CAL')))continue;
         const mi=parseInt(row[cMidx]);
         if(!isFinite(mi))continue;
         const out=mi-1;
@@ -8726,17 +8732,12 @@ async function parseHistExcel(el){
     F.histProgress.done++;
   }
 
-  const byDate=new Map((F.histCurves||[]).map(e=>[e.date,e]));
-  results.forEach(r=>{ if(r&&r.date) byDate.set(r.date,r); });
-  const merged=[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
-  F.histCurves=merged;
-  fs('f_hist_curves',merged);
-  if(merged.length)F.histSelDate=merged.length-1;
+  const m=fHistMergeCurves(results);
   F.histProgress.current='';
 
   const errMsg=F.histProgress.errors.length
     ?`\n⚠ ${F.histProgress.errors.length} skipped:\n${F.histProgress.errors.slice(0,8).join('\n')}`:'';
-  alert(`✓ Loaded ${results.length} curve(s) from ${files.length} Excel file(s).${errMsg}`);
+  alert(`✓ Loaded ${m.added+m.updated} curve(s) from ${files.length} Excel file(s). Total in database: ${m.merged.length}.${errMsg}`);
   F.histLoading=false;
   _fHistRefresh();
 }

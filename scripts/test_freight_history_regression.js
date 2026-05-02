@@ -36,8 +36,21 @@ assert(
 );
 
 assert(
+  js.includes('cPeriod') &&
+    js.includes('quarterly/calendar strips with M=1') &&
+    js.includes('/\\+\\d+_?M\\b/.test(label)') &&
+    js.includes("label.includes('CAL')"),
+  'shared freight parser must exclude quarterly/calendar rows before applying M index'
+);
+
+assert(
   /function fHistMergeCurves\(results\)[\s\S]*?localUpload[\s\S]*?oldBad[\s\S]*?newerDrive/.test(js),
   'historical freight merge must replace same-date corrupt or locally re-uploaded curves'
+);
+
+assert(
+  /async function parseHistExcel\(el\)[\s\S]*?const m=fHistMergeCurves\(results\)/.test(js),
+  'manual historical Excel upload must use validated merge semantics'
 );
 
 assert(
