@@ -6192,6 +6192,18 @@ let F={blng:null,params:null,snaps:null,matrix:null,matrixTs:null,blngTs:null,ex
 function fg(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
 function fs(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 function fSaveBlng(b){F.blng=b;const ts=new Date().toISOString();fs('f_blng',b);localStorage.setItem('f_blng_ts',ts);F.blngTs=ts;try{if(typeof _fobMarkFresh==='function')_fobMarkFresh('freight');}catch(e){}}
+function fCloneBlng(b){return JSON.parse(JSON.stringify(b||IB));}
+function fBlngHasAnyValues(blng){
+  return ['BLNG1','BLNG2','BLNG3'].some(k=>(blng?.[k]||[]).some(v=>v!=null&&v!==''&&isFinite(+v)));
+}
+function fBlngHasBadValues(blng){
+  return ['BLNG1','BLNG2','BLNG3'].some(k=>(blng?.[k]||[]).some(v=>{
+    if(v==null||v==='')return false;
+    const n=+v;
+    return !isFinite(n)||n<5000||n>500000;
+  }));
+}
+function fBlngIsValid(blng){return fBlngHasAnyValues(blng)&&!fBlngHasBadValues(blng);}
 function fSaveParams(p){F.params=p;fs('f_params',p);}
 function fSaveMatParams(){fs('f_mat_params',F.matParams);}
 function fSavePR(){fs('f_posArr',F.posArr);fs('f_repoArr',F.repoArr);}
@@ -6239,6 +6251,8 @@ function initFreight(){
   // Ensure euaDec object exists on each
   ['BLNG1','BLNG2','BLNG3'].forEach(c=>{if(!F.matParams[c].euaDec)F.matParams[c].euaDec={...DEF_BASIN_P[c].euaDec};});
   F.snaps=fg('f_snaps',[{date:'2026-04-02',label:'OB FFA 02/04/2026',blng:JSON.parse(JSON.stringify(IB))}]);
+  const cleanSnaps=(F.snaps||[]).filter(s=>s&&s.date&&fBlngIsValid(s.blng));
+  if(cleanSnaps.length!==F.snaps.length){F.snaps=cleanSnaps;fs('f_snaps',F.snaps);console.warn('[Freight] Removed corrupt saved snapshot(s).');}
   F.matrix=fg('f_matrix',null);
   F.matrixTs=localStorage.getItem('f_matrix_ts')||null;
   F.blngTs=localStorage.getItem('f_blng_ts')||null;
@@ -6284,32 +6298,27 @@ function initFreight(){
   F.validatedAudit=fg('f_validated_audit',null);  // [origId][dischId][mi]=$/MMBtu
   // Historical Freight Curves (Google Drive loaded)
   F.histCurves=fg('f_hist_curves',[]);
-  // One-shot purge: prior parser bug stored garbage values like -26/-27/-28
-  // (Date column slipped into BLNG cells). Detect by sampling: if any BLNG
-  // value across snapshots is below the realistic $/day floor (5,000), wipe.
+  // Prior parser bug stored garbage values like -26/-27/-28 when the Date
+  // subcolumn slipped into BLNG cells. Clean those every boot; never keep
+  // impossible $/day values in the active historical database.
   (function purgeCorruptHistCurves(){
     try {
-      const TAG = 'f_hist_curves_purged_v1';
-      if(localStorage.getItem(TAG) === '1') return;
-      let bad = false;
-      for(const s of F.histCurves){
-        if(!s || !s.blng) continue;
-        for(const k of ['BLNG1','BLNG2','BLNG3']){
-          const arr = s.blng[k] || [];
-          for(const v of arr){
-            if(v != null && Math.abs(v) < 1000){ bad = true; break; }
-          }
-          if(bad) break;
-        }
-        if(bad) break;
+      const before=F.histCurves.length;
+      F.histCurves=(F.histCurves||[]).filter(s=>s&&s.date&&fBlngIsValid(s.blng));
+      if(F.histCurves.length!==before){
+        fs('f_hist_curves',F.histCurves);
+        console.warn('[Freight] Removed corrupt historical freight curve(s); re-sync Drive to reload clean files.');
       }
-      if(bad){
-        F.histCurves = [];
-        fs('f_hist_curves', []);
-        console.log('[Hist] Wiped corrupt freight cache (values < 1000 detected); please re-upload via UPLOAD EXCEL.');
-      }
-      localStorage.setItem(TAG, '1');
     } catch(e) { /* best-effort */ }
+  })();
+  (function repairActiveBlng(){
+    try{
+      if(fBlngIsValid(F.blng))return;
+      const latest=[...(F.histCurves||[])].filter(s=>fBlngIsValid(s.blng)).sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];
+      const fixed=fCloneBlng(latest?.blng||IB);
+      fSaveBlng(fixed);
+      console.warn(`[Freight] Repaired active BLNG curve from ${latest?.date||'built-in fallback'} because cached values were invalid.`);
+    }catch(e){F.blng=fCloneBlng(IB);fs('f_blng',F.blng);}
   })();
   F.histView=fg('f_hist_view_v1','historical');
   F.histWindow=fg('f_hist_window_v1','ALL'); // 30D | 60D | 90D | 1Y | ALL
@@ -8440,8 +8449,9 @@ function fHistAlignToML(blngArrays,isoDate){
 }
 
 function fHistParseWorkbook(buf,fileName,meta={}){
-  const isoDate=fHistDateFromName(fileName);
+  const isoDate=meta.isoDate||meta.date||fHistDateFromName(fileName);
   if(!isoDate)throw new Error('cannot parse date from filename (need DD.MM.YYYY)');
+  const outMeta={...meta};delete outMeta.isoDate;delete outMeta.date;delete outMeta.label;delete outMeta.blng;
   if(typeof XLSX==='undefined')throw new Error('XLSX library not loaded');
   const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
   let b1=[], b2=[], b3=[], found=false;
@@ -8514,7 +8524,7 @@ function fHistParseWorkbook(buf,fileName,meta={}){
   }
   if(!found)throw new Error('no BLNG data found in any sheet');
   while(b1.length<24)b1.push(null);while(b2.length<24)b2.push(null);while(b3.length<24)b3.push(null);
-  return{date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:fHistAlignToML({BLNG1:b1,BLNG2:b2,BLNG3:b3},isoDate),...meta};
+  return{...outMeta,date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:fHistAlignToML({BLNG1:b1,BLNG2:b2,BLNG3:b3},isoDate)};
 }
 
 function fHistBufToBase64(buf){
@@ -8564,9 +8574,13 @@ function fHistMergeCurves(results){
   let added=0,updated=0;
   for(const r of results){
     if(!r||!r.date)continue;
+    if(!fBlngIsValid(r.blng))continue;
     const old=byDate.get(r.date);
     if(!old){byDate.set(r.date,r);added++;continue;}
-    if(r._driveModified&&old._driveModified&&r._driveModified>old._driveModified){byDate.set(r.date,r);updated++;}
+    const localUpload=String(r._source||'').includes('Local');
+    const oldBad=!fBlngIsValid(old.blng);
+    const newerDrive=r._driveModified&&(!old._driveModified||r._driveModified>old._driveModified);
+    if(localUpload||oldBad||newerDrive){byDate.set(r.date,r);updated++;}
   }
   const merged=[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
   F.histCurves=merged;fs('f_hist_curves',merged);
@@ -8624,10 +8638,12 @@ async function syncFreightHistFromDrive(silent=false,refreshEditor=false){
       if(f.name.match(/\.json$/i))return true;
       if(f.mimeType&&f.mimeType.startsWith('image/')){
         const date=fHistDateFromName(f.name);
-        return date&&!existing.has(date);
+        const old=existing.get(date);
+        return date&&(!old||!fBlngIsValid(old.blng));
       }
       const date=fHistDateFromName(f.name),old=existing.get(date);
-      return !old||(f.modifiedTime&&old._driveModified&&f.modifiedTime>old._driveModified);
+      if(!old||!fBlngIsValid(old.blng))return true;
+      return !!(f.modifiedTime&&(!old._driveModified||f.modifiedTime>old._driveModified));
     });
     const validCounts=valid.reduce((acc,f)=>{const k=sourceType(f);acc[k]=(acc[k]||0)+1;return acc;},{});
     const validSummary=Object.entries(validCounts).map(([k,v])=>`${v} ${k}`).join(', ')||'0 files';
@@ -9075,14 +9091,15 @@ function parseSnapFile(el){
   };
   r.readAsText(f);el.value='';
 }
-function saveSnap(){const d=F.snapDate,s=[{date:d,label:`OB FFA ${d}`,blng:JSON.parse(JSON.stringify(F.blng))},...F.snaps.filter(x=>x.date!==d)];F.snaps=s;fs('f_snaps',s);alert('Snapshot saved: '+d);}
-function loadSnapBtn(el){const date=el.dataset.snapdate;const s=F.snaps.find(x=>x.date===date);if(s){fSaveBlng(JSON.parse(JSON.stringify(s.blng)));fMatTab(0);}}
+function saveSnap(){if(!fBlngIsValid(F.blng)){alert('Cannot save snapshot: BLNG curve has invalid $/day values. Re-upload the Excel curve first.');return;}const d=F.snapDate,s=[{date:d,label:`OB FFA ${d}`,blng:JSON.parse(JSON.stringify(F.blng))},...F.snaps.filter(x=>x.date!==d)];F.snaps=s;fs('f_snaps',s);alert('Snapshot saved: '+d);}
+function loadSnapBtn(el){const date=el.dataset.snapdate;const s=F.snaps.find(x=>x.date===date);if(s){if(!fBlngIsValid(s.blng)){alert('Saved snapshot is invalid; re-upload or sync the clean Excel curve.');return;}fSaveBlng(JSON.parse(JSON.stringify(s.blng)));fMatTab(0);}}
 function loadHistCurveIntoActive(){
   const sel=document.getElementById('hist-curve-sel');
   if(!sel)return;
   const sorted=[...F.histCurves].sort((a,b)=>b.date.localeCompare(a.date));
   const snap=sorted[+sel.value];
   if(!snap){alert('No curve selected.');return;}
+  if(!fBlngIsValid(snap.blng)){alert('Selected historical curve is invalid; sync Drive or re-upload the source Excel.');return;}
   fSaveBlng(JSON.parse(JSON.stringify(snap.blng)));
   // Save as snapshot too so it appears in historical snapshots list
   const s=[{date:snap.date,label:snap.label,blng:snap.blng},...F.snaps.filter(x=>x.date!==snap.date)];
@@ -9096,48 +9113,15 @@ function parseBLNGxls(el){
   const r=new FileReader();
   r.onload=e=>{
     try{
-      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-      // Prefer the "Monthly" sheet if present (OB format); else first sheet.
-      const sheetName=wb.SheetNames.find(n=>/monthly/i.test(n))||wb.SheetNames[0];
-      const ws=wb.Sheets[sheetName];
-      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      // Scan first 15 rows for a header row containing BLNG1/2/3.
-      let hdrIdx=-1,b1=-1,b2=-1,b3=-1,mIdxCol=-1,dateCol=-1;
-      for(let ri=0;ri<Math.min(rows.length,15);ri++){
-        const h=(rows[ri]||[]).map(x=>String(x).trim().toUpperCase());
-        const x1=h.findIndex(c=>c.includes('BLNG1'));
-        const x2=h.findIndex(c=>c.includes('BLNG2'));
-        const x3=h.findIndex(c=>c.includes('BLNG3'));
-        if(x1>=0&&x2>=0&&x3>=0){
-          hdrIdx=ri;b1=x1;b2=x2;b3=x3;
-          mIdxCol=h.findIndex(c=>c==='M IDX'||c==='M');
-          dateCol=h.findIndex(c=>c==='DATE'||c==='MONTH');
-          break;
-        }
-      }
-      if(hdrIdx<0)throw new Error('Could not find BLNG1/2/3 header row.');
-      const nb={BLNG1:Array(24).fill(null),BLNG2:Array(24).fill(null),BLNG3:Array(24).fill(null)};
-      const pv=row=>ci=>{const v=parseFloat(String(row[ci]??'').replace(/[^0-9.-]/g,''));return isNaN(v)?null:v;};
-      // If M idx column exists, use it to align explicitly (OB M+0 = assessment
-      // month = one month before ML[0]; skip it so ML[0] ← M+1).
-      // Else fall back to positional ordering starting from ML[0].
-      const data=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!==''&&c!=null));
-      if(mIdxCol>=0){
-        data.forEach(row=>{
-          const mi=parseInt(row[mIdxCol]);
-          if(!isFinite(mi))return;
-          const outIdx=mi-1; // shift so M+1 → index 0 (ML[0])
-          if(outIdx<0||outIdx>=24)return;
-          const g=pv(row);
-          nb.BLNG1[outIdx]=g(b1);nb.BLNG2[outIdx]=g(b2);nb.BLNG3[outIdx]=g(b3);
-        });
-      } else {
-        data.slice(0,24).forEach((row,ri)=>{
-          const g=pv(row);
-          nb.BLNG1[ri]=g(b1);nb.BLNG2[ri]=g(b2);nb.BLNG3[ri]=g(b3);
-        });
-      }
+      const meta={_source:'Local active Excel upload'};
+      if(!fHistDateFromName(f.name)&&F.snapDate)meta.isoDate=F.snapDate;
+      const snap=fHistParseWorkbook(e.target.result,f.name,meta);
+      if(!fBlngIsValid(snap.blng))throw new Error('parsed BLNG values are outside realistic $/day bounds');
+      const nb=fCloneBlng(snap.blng);
       fSaveBlng(nb);
+      F.snaps=[{date:snap.date,label:snap.label,blng:fCloneBlng(nb)},...F.snaps.filter(x=>x.date!==snap.date)];
+      fs('f_snaps',F.snaps);
+      fHistMergeCurves([{...snap,_source:'Local Excel upload'}]);
       // Industry standard after any fresh FFA upload: repositioning = 100% for every month.
       const h100=()=>Array(24).fill(100);
       F.repoArr={BLNG1:h100(),BLNG2:h100(),BLNG3:h100()};
@@ -9147,7 +9131,7 @@ function parseBLNGxls(el){
       if(document.getElementById('f-mat-body')) try{ fMatTab(0); }catch{}
       const fdHost=document.getElementById('fd-fr-body');
       if(fdHost) try{ _fdFrRenderBody(fdHost); }catch{}
-      alert(`Curves loaded from "${sheetName}". Repositioning reset to 100% for all months.`);
+      alert(`Curves loaded from ${snap.label}. Repositioning reset to 100% for all months.`);
     }catch(err){alert('Error reading Excel file: '+err.message);}
   };
   r.readAsArrayBuffer(f);el.value='';

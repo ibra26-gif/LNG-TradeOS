@@ -23,6 +23,24 @@ assert(
 );
 
 assert(
+  /function parseBLNGxls\(el\)[\s\S]*?fHistParseWorkbook\(e\.target\.result,f\.name/.test(js),
+  'active Freight Excel upload must use the shared robust freight parser'
+);
+
+assert(
+  js.includes('function fBlngHasBadValues') &&
+    js.includes('n<5000||n>500000') &&
+    js.includes('repairActiveBlng') &&
+    js.includes('Cannot save snapshot: BLNG curve has invalid $/day values'),
+  'freight curves must reject cached Date-column garbage before saving or loading'
+);
+
+assert(
+  /function fHistMergeCurves\(results\)[\s\S]*?localUpload[\s\S]*?oldBad[\s\S]*?newerDrive/.test(js),
+  'historical freight merge must replace same-date corrupt or locally re-uploaded curves'
+);
+
+assert(
   js.includes('if(refreshEditor&&typeof _fRefreshFreightCurveEditor') && !js.includes('if(refreshEditor&&typeof fMatTab===\'function\')fMatTab(0)'),
   'Drive sync refresh must not jump to hidden tab index 0'
 );
