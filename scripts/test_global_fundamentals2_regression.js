@@ -60,6 +60,13 @@ assert(
 );
 
 assert(
+  js.includes('storBalanceVal') &&
+    js.includes("${fmtSigned(netMcm,0)}") &&
+    js.includes("${storState} · AGSI ${storLat.date} · storage change is the truth anchor"),
+  'EU+UK balance KPI must show the actual storage-anchor mcm/d value, not only LONG/SHORT text'
+);
+
+assert(
   js.includes("_loadFrNuclear('gf2-fr-nuclear')") &&
     js.includes("_loadBrzHydroCard('gf2')") &&
     js.includes('_loadGf2ChinaTruckCard()') &&
