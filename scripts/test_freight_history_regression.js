@@ -73,6 +73,11 @@ assert(
 );
 
 assert(
+  /function histSpreadView\(\)[\s\S]*?function mkChart\(series[\s\S]*?const chart = mkChart\(lineData/.test(js),
+  'freight spread history view must own its chart renderer instead of calling a helper scoped to another view'
+);
+
+assert(
   /name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app),
   'private platform script must carry a dated cache-bust'
 );
