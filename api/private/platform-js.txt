@@ -21356,6 +21356,30 @@ function erParseGenerationXml(xml){
   });
   return out;
 }
+function erParseCapacityXml(xml){
+  const doc=new DOMParser().parseFromString(xml,'application/xml');
+  if(erEls(doc,'parsererror').length) throw new Error('ENTSO-E XML parse error');
+  const series=erEls(doc,'TimeSeries');
+  if(!series.length){
+    const reason=erText(doc,'text')||erText(doc,'reasonText');
+    if(reason) throw new Error(reason);
+  }
+  const out={psr:{},_meta:{points:0,parsedAt:new Date().toISOString()}};
+  series.forEach(ts=>{
+    const psr=erText(ts,'psrType');
+    if(!psr) return;
+    const vals=[];
+    erEls(ts,'Point').forEach(point=>{
+      const qty=+(erText(point,'quantity')||NaN);
+      if(isFinite(qty)) vals.push(qty);
+    });
+    if(vals.length){
+      out.psr[psr]=(out.psr[psr]||0)+vals[vals.length-1]; // MW installed capacity
+      out._meta.points+=vals.length;
+    }
+  });
+  return out;
+}
 async function erFetchCountryYear(countryId,year){
   const c=ER_COUNTRIES.find(x=>x.id===countryId)||ER_COUNTRIES[0];
   const key=`euren_${countryId}_${year}`;
@@ -21383,6 +21407,30 @@ async function erFetchCountryYear(countryId,year){
   gdCacheSet(key,data,year===now.getUTCFullYear()?6:0);
   return data;
 }
+async function erFetchCapacityCountryYear(countryId,year){
+  const c=ER_COUNTRIES.find(x=>x.id===countryId)||ER_COUNTRIES[0];
+  const key=`euren_cap_${countryId}_${year}`;
+  const cached=gdCacheGet(key);
+  if(cached) return cached;
+  if(location.protocol==='file:') throw new Error('ENTSO-E proxy is available on deployed / localhost app, not file preview');
+  const start=new Date(Date.UTC(year,0,1,0,0));
+  const end=new Date(Date.UTC(year+1,0,1,0,0));
+  const params=new URLSearchParams({documentType:'A68',processType:'A33',in_Domain:c.domain,periodStart:erEntsoeDate(start),periodEnd:erEntsoeDate(end)});
+  const r=await fetch(`/api/entsoe?${params.toString()}`,{cache:'no-store'});
+  const txt=await r.text();
+  if(!r.ok) throw new Error(txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180)||`HTTP ${r.status}`);
+  if(txt.trim().startsWith('{')){
+    let msg='ENTSO-E proxy error';
+    try{ msg=JSON.parse(txt).error||msg; }catch{}
+    throw new Error(msg);
+  }
+  const data=erParseCapacityXml(txt);
+  data._meta.country=c.name;
+  data._meta.domain=c.domain;
+  data._meta.year=year;
+  gdCacheSet(key,data,year===new Date().getUTCFullYear()?24:0);
+  return data;
+}
 function erMonthlyTWh(data,tech,year){
   const cfg=ER_TECH[tech]||ER_TECH.hydro;
   return GA_MO.map((_,i)=>{
@@ -21394,6 +21442,15 @@ function erMonthlyTWh(data,tech,year){
     });
     return found?+(sum/1000).toFixed(3):null; // GWh -> TWh
   });
+}
+function erCapacityGW(data,tech){
+  const cfg=ER_TECH[tech]||ER_TECH.hydro;
+  let sum=0,found=false;
+  cfg.psr.forEach(psr=>{
+    const v=data?.psr?.[psr];
+    if(v!=null&&isFinite(v)){ sum+=+v; found=true; }
+  });
+  return found?+(sum/1000).toFixed(3):null; // MW -> GW
 }
 function erFmt(v,d=2){ return v!=null&&isFinite(v)?Number(v).toFixed(d):'--'; }
 function renderEuroRenewables(){
@@ -21413,14 +21470,16 @@ function renderEuroRenewables(){
         <div><div class="ga-lbl">COUNTRY</div><select class="gsel" onchange="erSetCountry(this.value)">${cOpts}</select></div>
         <div><div class="ga-lbl">YEARS</div><div style="display:flex;gap:4px;flex-wrap:wrap">${yrBtns}</div></div>
         <div style="margin-left:auto;font-size:9px;color:#6b7a99;line-height:1.6;max-width:520px">
-          Source: ENTSO-E Transparency Platform, Actual Generation per Type (A75 / A16). ${cfg.note}. Missing API/key/data stays blank.
+          Source: ENTSO-E Transparency Platform, Actual Generation per Type (A75 / A16) + Installed Capacity (A68 / A33). ${cfg.note}. Missing API/key/data stays blank.
         </div>
       </div>
     </div>
-    <div class="ga-g4" id="er-kpis" style="margin-bottom:12px">
+    <div id="er-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px">
       <div class="ga-kpi"><div class="ga-kpi-lbl">LATEST MONTH</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">loading</div></div>
       <div class="ga-kpi"><div class="ga-kpi-lbl">YTD GENERATION</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">${cfg.unit}</div></div>
-      <div class="ga-kpi"><div class="ga-kpi-lbl">YOY</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">same month</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">GENERATION YoY</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">same month</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">INSTALLED CAPACITY</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">GW</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">CAPACITY YoY</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">GW added</div></div>
       <div class="ga-kpi"><div class="ga-kpi-lbl">STATUS</div><div class="ga-kpi-val" style="font-size:13px">LOADING</div><div class="ga-kpi-note">ENTSO-E</div></div>
     </div>
     <div class="ga-card">
@@ -21429,7 +21488,12 @@ function renderEuroRenewables(){
       <div class="ga-source" id="er-source">Loading ENTSO-E data...</div>
     </div>
     <div class="ga-card" style="margin-top:12px">
-      <div class="ga-sec">MONTHLY TABLE — ${cfg.label.toUpperCase()} <span class="ga-tag">TWh</span></div>
+      <div class="ga-sec">${cfg.label.toUpperCase()} INSTALLED CAPACITY <span class="ga-tag">ENTSO-E A68</span></div>
+      <div class="ga-ch-wrap" style="height:260px"><canvas id="er-capacity-chart"></canvas></div>
+      <div class="ga-source" id="er-cap-source">Annual installed capacity in GW; bars show YoY capacity additions.</div>
+    </div>
+    <div class="ga-card" style="margin-top:12px">
+      <div class="ga-sec">MONTHLY TABLE — ${cfg.label.toUpperCase()} <span class="ga-tag">TWh + GW</span></div>
       <div id="er-table" style="overflow-x:auto"></div>
     </div>`;
   erLoadAndDraw();
@@ -21442,10 +21506,15 @@ async function erLoadAndDraw(){
   const years=p.years.slice().sort((a,b)=>b-a);
   const src=document.getElementById('er-source');
   if(src) src.textContent=`Loading ${country.name} ${cfg.label.toLowerCase()} generation from ENTSO-E...`;
-  const results=await Promise.all(years.map(y=>erFetchCountryYear(p.country,y).then(data=>({year:y,data})).catch(error=>({year:y,error}))));
+  const [results,capResults]=await Promise.all([
+    Promise.all(years.map(y=>erFetchCountryYear(p.country,y).then(data=>({year:y,data})).catch(error=>({year:y,error})))),
+    Promise.all(years.map(y=>erFetchCapacityCountryYear(p.country,y).then(data=>({year:y,data})).catch(error=>({year:y,error})))),
+  ]);
   if(token!==ER_TOKEN) return;
   const ok=results.filter(r=>r.data);
   const errs=results.filter(r=>r.error);
+  const capOk=capResults.filter(r=>r.data);
+  const capErrs=capResults.filter(r=>r.error);
   const datasets=years.map((y,i)=>{
     const r=ok.find(x=>x.year===y);
     return {label:String(y),data:r?erMonthlyTWh(r.data,p.tech,y):Array(12).fill(null),borderColor:GA_COLS[i%GA_COLS.length],backgroundColor:'transparent',borderWidth:i===0?2.4:1.6,borderDash:i===0?[]:[5,4],tension:.25,pointRadius:2};
@@ -21453,14 +21522,38 @@ async function erLoadAndDraw(){
   gaMakeChart('er-seasonal-chart','line',{labels:GA_MO,datasets},{
     scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'TWh/month',color:'#3d5070',font:{size:9}}}}
   });
-  erRenderKpis(ok,errs,p.tech,country,cfg);
-  erRenderTable(years,ok,p.tech);
+  erRenderCapacityChart(years,capOk,p.tech);
+  erRenderKpis(ok,errs,capOk,capErrs,p.tech,country,cfg);
+  erRenderTable(years,ok,capOk,p.tech);
   if(src){
     const errTxt=errs.length?` · ${errs.length} year(s) missing: ${errs.map(e=>`${e.year} ${e.error.message}`).join(' | ')}`:'';
     src.textContent=`Source: ENTSO-E Transparency Platform Actual Generation per Type · ${country.name} (${country.domain}) · ${cfg.note}${errTxt}`;
   }
+  const capSrc=document.getElementById('er-cap-source');
+  if(capSrc){
+    const errTxt=capErrs.length?` · ${capErrs.length} capacity year(s) missing: ${capErrs.map(e=>`${e.year} ${e.error.message}`).join(' | ')}`:'';
+    capSrc.textContent=`Source: ENTSO-E Installed Generation Capacity Aggregated (A68/A33) · ${country.name} (${country.domain}) · annual GW capacity and YoY additions${errTxt}`;
+  }
 }
-function erRenderKpis(ok,errs,tech,country,cfg){
+function erRenderCapacityChart(years,capOk,tech){
+  const asc=years.slice().sort((a,b)=>a-b);
+  const cap=asc.map(y=>{
+    const r=capOk.find(x=>x.year===y);
+    return r?erCapacityGW(r.data,tech):null;
+  });
+  const adds=cap.map((v,i)=>v!=null&&i>0&&cap[i-1]!=null?+(v-cap[i-1]).toFixed(3):null);
+  gaMakeChart('er-capacity-chart','bar',{labels:asc.map(String),datasets:[
+    {type:'bar',label:'YoY capacity add',data:adds,backgroundColor:'rgba(251,191,36,.45)',borderColor:'#fbbf24',borderWidth:1,yAxisID:'y'},
+    {type:'line',label:'Installed capacity',data:cap,borderColor:'#4fc3f7',backgroundColor:'transparent',borderWidth:2.2,pointRadius:3,tension:.2,yAxisID:'y1'},
+  ]},{
+    scales:{
+      x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false}},
+      y:{...GCD.scales.y,title:{display:true,text:'GW added YoY',color:'#3d5070',font:{size:9}}},
+      y1:{position:'right',grid:{drawOnChartArea:false,color:'#0d1a2e'},ticks:{color:'#546e7a',font:{size:9,family:'IBM Plex Mono'}},title:{display:true,text:'Installed GW',color:'#3d5070',font:{size:9}}},
+    }
+  });
+}
+function erRenderKpis(ok,errs,capOk,capErrs,tech,country,cfg){
   const box=document.getElementById('er-kpis'); if(!box)return;
   const sorted=ok.slice().sort((a,b)=>b.year-a.year);
   let latest=null;
@@ -21478,26 +21571,37 @@ function erRenderKpis(ok,errs,tech,country,cfg){
       if(prevVal!=null&&prevVal!==0) yoy=(latest.value/prevVal-1)*100;
     }
   }
-  const live=ok.length>0&&errs.length===0;
-  const partial=ok.length>0&&errs.length>0;
+  const capSorted=capOk.slice().sort((a,b)=>b.year-a.year);
+  const latestCapYear=capSorted.find(r=>erCapacityGW(r.data,tech)!=null)?.year;
+  const latestCap=latestCapYear?erCapacityGW(capOk.find(r=>r.year===latestCapYear)?.data,tech):null;
+  const prevCap=latestCapYear?erCapacityGW(capOk.find(r=>r.year===latestCapYear-1)?.data,tech):null;
+  const capAdd=latestCap!=null&&prevCap!=null?latestCap-prevCap:null;
+  const capPct=capAdd!=null&&prevCap!==0?capAdd/prevCap*100:null;
+  const live=ok.length>0&&errs.length===0&&capOk.length>0&&capErrs.length===0;
+  const partial=(ok.length>0||capOk.length>0)&&!live;
   const stat=live?'LIVE':partial?'PARTIAL':'MISSING';
   const statCol=live?'#34d399':partial?'#fbbf24':'#f87171';
   box.innerHTML=`
     <div class="ga-kpi"><div class="ga-kpi-lbl">LATEST MONTH</div><div class="ga-kpi-val">${latest?erFmt(latest.value):'--'}</div><div class="ga-kpi-note">${latest?`${GA_MO[latest.month]} ${latest.year} · TWh`:'no data'}</div></div>
     <div class="ga-kpi"><div class="ga-kpi-lbl">YTD GENERATION</div><div class="ga-kpi-val">${ytd!=null?erFmt(ytd):'--'}</div><div class="ga-kpi-note">${latest?`${country.name} · through ${GA_MO[latest.month]}`:cfg.unit}</div></div>
-    <div class="ga-kpi"><div class="ga-kpi-lbl">YOY</div><div class="ga-kpi-val" style="color:${yoy==null?'#c8d6e5':yoy>=0?'#34d399':'#f87171'}">${yoy==null?'--':`${yoy>=0?'+':''}${yoy.toFixed(1)}%`}</div><div class="ga-kpi-note">same month vs prior year</div></div>
+    <div class="ga-kpi"><div class="ga-kpi-lbl">GENERATION YoY</div><div class="ga-kpi-val" style="color:${yoy==null?'#c8d6e5':yoy>=0?'#34d399':'#f87171'}">${yoy==null?'--':`${yoy>=0?'+':''}${yoy.toFixed(1)}%`}</div><div class="ga-kpi-note">same month vs prior year</div></div>
+    <div class="ga-kpi"><div class="ga-kpi-lbl">INSTALLED CAPACITY</div><div class="ga-kpi-val">${latestCap!=null?erFmt(latestCap):'--'}</div><div class="ga-kpi-note">${latestCapYear||'--'} · GW</div></div>
+    <div class="ga-kpi"><div class="ga-kpi-lbl">CAPACITY YoY</div><div class="ga-kpi-val" style="color:${capAdd==null?'#c8d6e5':capAdd>=0?'#34d399':'#f87171'}">${capAdd==null?'--':`${capAdd>=0?'+':''}${capAdd.toFixed(2)}`}</div><div class="ga-kpi-note">${capPct==null?'GW added':`${capPct>=0?'+':''}${capPct.toFixed(1)}% · vs ${latestCapYear-1}`}</div></div>
     <div class="ga-kpi"><div class="ga-kpi-lbl">STATUS</div><div class="ga-kpi-val" style="font-size:13px;color:${statCol}">${stat}</div><div class="ga-kpi-note">ENTSO-E proxy / API key</div></div>`;
 }
-function erRenderTable(years,ok,tech){
+function erRenderTable(years,ok,capOk,tech){
   const el=document.getElementById('er-table'); if(!el)return;
   const rows=years.map(y=>{
     const r=ok.find(x=>x.year===y);
     const arr=r?erMonthlyTWh(r.data,tech,y):Array(12).fill(null);
     const total=arr.reduce((a,v)=>a+(v||0),0);
-    return `<tr><td style="color:#c8d6e5;font-weight:600">${y}</td>${arr.map(v=>`<td style="text-align:right">${v==null?'--':erFmt(v)}</td>`).join('')}<td style="text-align:right;color:#c8d6e5;font-weight:600">${total?erFmt(total):'--'}</td></tr>`;
+    const cap=erCapacityGW(capOk.find(x=>x.year===y)?.data,tech);
+    const prevCap=erCapacityGW(capOk.find(x=>x.year===y-1)?.data,tech);
+    const add=cap!=null&&prevCap!=null?cap-prevCap:null;
+    return `<tr><td style="color:#c8d6e5;font-weight:600">${y}</td>${arr.map(v=>`<td style="text-align:right">${v==null?'--':erFmt(v)}</td>`).join('')}<td style="text-align:right;color:#c8d6e5;font-weight:600">${total?erFmt(total):'--'}</td><td style="text-align:right;color:#93c5fd;font-weight:600">${cap==null?'--':erFmt(cap)}</td><td style="text-align:right;color:${add==null?'#8a9bb5':add>=0?'#34d399':'#f87171'}">${add==null?'--':`${add>=0?'+':''}${add.toFixed(2)}`}</td></tr>`;
   }).join('');
   el.innerHTML=`<table class="ga-tbl" style="width:100%;font-size:10px">
-    <thead><tr><th style="text-align:left">Year</th>${GA_MO.map(m=>`<th style="text-align:right">${m}</th>`).join('')}<th style="text-align:right">YTD / Total</th></tr></thead>
+    <thead><tr><th style="text-align:left">Year</th>${GA_MO.map(m=>`<th style="text-align:right">${m}</th>`).join('')}<th style="text-align:right">YTD / Total</th><th style="text-align:right">Capacity GW</th><th style="text-align:right">YoY add GW</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
