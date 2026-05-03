@@ -18301,10 +18301,11 @@ function rgDiff(){
   const secBSubHdrs=ROLL8.map(()=>`<th class="tr" style="color:#546e7a;font-size:8px">DIFF</th><th class="tr" style="color:#26c6da;font-size:8px">DES $</th>`).join('');
   const secBRows=RG_T_DEF.map(t=>{
     const cells=ROLL8.map(i=>{
-      const isNA=t.id==='stade'&&i<2;
+      const isNA=t.id==='stade' && typeof _stadeValid==='function' && !_stadeValid(i);
       const d=isNA?null:((RG.diffs[t.id]||[])[i]||0);
       const des=isNA?null:rgDES(t.id,i);
-      return`<td class="tr" style="color:${isNA?'#3d5070':d<0?'#f44336':'#4caf50'};font-size:9px">${isNA?'N/A':(+d).toFixed(3)}</td><td class="tr" style="color:#26c6da;font-size:9px">${isNA?'N/A':des.toFixed(3)}</td>`;
+      const noVal=isNA||des==null;
+      return`<td class="tr" style="color:${noVal?'#3d5070':d<0?'#f44336':'#4caf50'};font-size:9px">${noVal?'N/A':(+d).toFixed(3)}</td><td class="tr" style="color:#26c6da;font-size:9px">${noVal?'N/A':des.toFixed(3)}</td>`;
     }).join('');
     return`<tr><td style="color:${t.hub==='THE'?'#80cbc4':'var(--th)'};font-size:10px;padding:4px 8px">${t.name}</td><td style="color:#546e7a;font-size:9px;padding:4px 6px">${t.country}</td><td style="color:#4fc3f7;font-size:9px;padding:4px 6px">${t.hub}</td>${cells}</tr>`;
   }).join('');
