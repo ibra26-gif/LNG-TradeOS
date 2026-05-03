@@ -59,6 +59,14 @@ assert(
 );
 
 assert(
+  js.includes('psrType:psr') &&
+    js.includes('euren_${countryId}_${tech}_${year}') &&
+    js.includes('euren_cap_${countryId}_${tech}_${year}') &&
+    js.includes('erMergeEntsoeBundle'),
+  'European Renewable ENTSO-E calls must fetch selected PSR codes and merge them, not request whole-country all-tech years'
+);
+
+assert(
   proxy.includes('process.env.ENTSOE_API_KEY || process.env.ENTSOE_SECURITY_TOKEN') &&
     proxy.includes("params.delete('securityToken')") &&
     proxy.includes("params.set('securityToken', apiKey)"),

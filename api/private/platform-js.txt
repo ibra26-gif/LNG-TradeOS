@@ -21508,9 +21508,28 @@ function erParseCapacityXml(xml){
   });
   return out;
 }
-async function erFetchCountryYear(countryId,year){
+function erBlankEntsoeBundle(country,year){
+  return {psr:{},_meta:{points:0,parsedAt:new Date().toISOString(),createdDateTime:null,country:country.name,domain:country.domain,year}};
+}
+function erMergeEntsoeBundle(base,next){
+  if(!next) return base;
+  Object.entries(next.psr||{}).forEach(([psr,val])=>{
+    if(val&&typeof val==='object'&&!Array.isArray(val)){
+      if(!base.psr[psr]) base.psr[psr]={};
+      Object.entries(val).forEach(([k,v])=>{ base.psr[psr][k]=(base.psr[psr][k]||0)+v; });
+    } else if(val!=null&&isFinite(val)){
+      base.psr[psr]=(base.psr[psr]||0)+val;
+    }
+  });
+  base._meta.points+=(next._meta?.points||0);
+  const upd=next._meta?.createdDateTime;
+  if(upd&&(!base._meta.createdDateTime||Date.parse(upd)>Date.parse(base._meta.createdDateTime))) base._meta.createdDateTime=upd;
+  return base;
+}
+async function erFetchCountryYear(countryId,year,tech){
   const c=ER_COUNTRIES.find(x=>x.id===countryId)||ER_COUNTRIES[0];
-  const key=`euren_${countryId}_${year}`;
+  const cfg=ER_TECH[tech]||ER_TECH.hydro;
+  const key=`euren_${countryId}_${tech}_${year}`;
   const cached=gdCacheGet(key);
   if(cached) return cached;
   if(location.protocol==='file:') throw new Error('ENTSO-E proxy is available on deployed / localhost app, not file preview');
@@ -21519,43 +21538,44 @@ async function erFetchCountryYear(countryId,year){
   const end=year===now.getUTCFullYear()
     ? new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,0,0))
     : new Date(Date.UTC(year+1,0,1,0,0));
-  const params=new URLSearchParams({documentType:'A75',processType:'A16',in_Domain:c.domain,periodStart:erEntsoeDate(start),periodEnd:erEntsoeDate(end)});
-  const r=await fetch(`/api/entsoe?${params.toString()}`,{cache:'no-store'});
-  const txt=await r.text();
-  if(!r.ok) throw new Error(txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180)||`HTTP ${r.status}`);
-  if(txt.trim().startsWith('{')){
-    let msg='ENTSO-E proxy error';
-    try{ msg=JSON.parse(txt).error||msg; }catch{}
-    throw new Error(msg);
-  }
-  const data=erParseGenerationXml(txt);
-  data._meta.country=c.name;
-  data._meta.domain=c.domain;
-  data._meta.year=year;
+  const data=erBlankEntsoeBundle(c,year);
+  await Promise.all(cfg.psr.map(async psr=>{
+    const params=new URLSearchParams({documentType:'A75',processType:'A16',in_Domain:c.domain,psrType:psr,periodStart:erEntsoeDate(start),periodEnd:erEntsoeDate(end)});
+    const r=await fetch(`/api/entsoe?${params.toString()}`,{cache:'no-store'});
+    const txt=await r.text();
+    if(!r.ok) throw new Error(`${psr}: ${txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180)||`HTTP ${r.status}`}`);
+    if(txt.trim().startsWith('{')){
+      let msg='ENTSO-E proxy error';
+      try{ msg=JSON.parse(txt).error||msg; }catch{}
+      throw new Error(`${psr}: ${msg}`);
+    }
+    erMergeEntsoeBundle(data,erParseGenerationXml(txt));
+  }));
   gdCacheSet(key,data,year===now.getUTCFullYear()?6:0);
   return data;
 }
-async function erFetchCapacityCountryYear(countryId,year){
+async function erFetchCapacityCountryYear(countryId,year,tech){
   const c=ER_COUNTRIES.find(x=>x.id===countryId)||ER_COUNTRIES[0];
-  const key=`euren_cap_${countryId}_${year}`;
+  const cfg=ER_TECH[tech]||ER_TECH.hydro;
+  const key=`euren_cap_${countryId}_${tech}_${year}`;
   const cached=gdCacheGet(key);
   if(cached) return cached;
   if(location.protocol==='file:') throw new Error('ENTSO-E proxy is available on deployed / localhost app, not file preview');
   const start=new Date(Date.UTC(year,0,1,0,0));
   const end=new Date(Date.UTC(year+1,0,1,0,0));
-  const params=new URLSearchParams({documentType:'A68',processType:'A33',in_Domain:c.domain,periodStart:erEntsoeDate(start),periodEnd:erEntsoeDate(end)});
-  const r=await fetch(`/api/entsoe?${params.toString()}`,{cache:'no-store'});
-  const txt=await r.text();
-  if(!r.ok) throw new Error(txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180)||`HTTP ${r.status}`);
-  if(txt.trim().startsWith('{')){
-    let msg='ENTSO-E proxy error';
-    try{ msg=JSON.parse(txt).error||msg; }catch{}
-    throw new Error(msg);
-  }
-  const data=erParseCapacityXml(txt);
-  data._meta.country=c.name;
-  data._meta.domain=c.domain;
-  data._meta.year=year;
+  const data=erBlankEntsoeBundle(c,year);
+  await Promise.all(cfg.psr.map(async psr=>{
+    const params=new URLSearchParams({documentType:'A68',processType:'A33',in_Domain:c.domain,psrType:psr,periodStart:erEntsoeDate(start),periodEnd:erEntsoeDate(end)});
+    const r=await fetch(`/api/entsoe?${params.toString()}`,{cache:'no-store'});
+    const txt=await r.text();
+    if(!r.ok) throw new Error(`${psr}: ${txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180)||`HTTP ${r.status}`}`);
+    if(txt.trim().startsWith('{')){
+      let msg='ENTSO-E proxy error';
+      try{ msg=JSON.parse(txt).error||msg; }catch{}
+      throw new Error(`${psr}: ${msg}`);
+    }
+    erMergeEntsoeBundle(data,erParseCapacityXml(txt));
+  }));
   gdCacheSet(key,data,year===new Date().getUTCFullYear()?24:0);
   return data;
 }
@@ -21635,8 +21655,8 @@ async function erLoadAndDraw(){
   const src=document.getElementById('er-source');
   if(src) src.textContent=`Loading ${country.name} ${cfg.label.toLowerCase()} generation from ENTSO-E...`;
   const [results,capResults]=await Promise.all([
-    Promise.all(years.map(y=>erFetchCountryYear(p.country,y).then(data=>({year:y,data})).catch(error=>({year:y,error})))),
-    Promise.all(years.map(y=>erFetchCapacityCountryYear(p.country,y).then(data=>({year:y,data})).catch(error=>({year:y,error})))),
+    Promise.all(years.map(y=>erFetchCountryYear(p.country,y,p.tech).then(data=>({year:y,data})).catch(error=>({year:y,error})))),
+    Promise.all(years.map(y=>erFetchCapacityCountryYear(p.country,y,p.tech).then(data=>({year:y,data})).catch(error=>({year:y,error})))),
   ]);
   if(token!==ER_TOKEN) return;
   const ok=results.filter(r=>r.data);
