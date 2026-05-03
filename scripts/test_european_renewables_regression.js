@@ -50,9 +50,11 @@ assert(
 );
 
 assert(
-  js.includes('function erFetchCapacityCountryYear') &&
+    js.includes('function erFetchCapacityCountryYear') &&
     js.includes('function erParseCapacityXml') &&
     js.includes('function erCapacityGW') &&
+    js.includes('function erFormatEntsoeUpdate') &&
+    js.includes('Last ENTSO-E update:') &&
     js.includes('INSTALLED CAPACITY') &&
     js.includes('CAPACITY YoY') &&
     js.includes('er-capacity-chart') &&

@@ -21324,6 +21324,14 @@ function erResolutionHours(res){
 }
 function erEls(root,name){ return Array.from(root.getElementsByTagName('*')).filter(n=>n.localName===name); }
 function erText(root,name){ const el=erEls(root,name)[0]; return el?(el.textContent||'').trim():''; }
+function erFormatEntsoeUpdate(ts){
+  if(!ts) return null;
+  const d=new Date(ts);
+  if(!isFinite(d)) return null;
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Paris',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(d);
+  const get=t=>parts.find(p=>p.type===t)?.value||'';
+  return `${get('day')} ${get('month')} ${get('year')} ${get('hour')}:${get('minute')}`;
+}
 function erParseGenerationXml(xml){
   const doc=new DOMParser().parseFromString(xml,'application/xml');
   if(erEls(doc,'parsererror').length) throw new Error('ENTSO-E XML parse error');
@@ -21332,7 +21340,7 @@ function erParseGenerationXml(xml){
     const reason=erText(doc,'text')||erText(doc,'reasonText');
     if(reason) throw new Error(reason);
   }
-  const out={psr:{},_meta:{points:0,parsedAt:new Date().toISOString()}};
+  const out={psr:{},_meta:{points:0,parsedAt:new Date().toISOString(),createdDateTime:erText(doc,'createdDateTime')}};
   series.forEach(ts=>{
     const psr=erText(ts,'psrType');
     if(!psr) return;
@@ -21364,7 +21372,7 @@ function erParseCapacityXml(xml){
     const reason=erText(doc,'text')||erText(doc,'reasonText');
     if(reason) throw new Error(reason);
   }
-  const out={psr:{},_meta:{points:0,parsedAt:new Date().toISOString()}};
+  const out={psr:{},_meta:{points:0,parsedAt:new Date().toISOString(),createdDateTime:erText(doc,'createdDateTime')}};
   series.forEach(ts=>{
     const psr=erText(ts,'psrType');
     if(!psr) return;
@@ -21527,12 +21535,14 @@ async function erLoadAndDraw(){
   erRenderTable(years,ok,capOk,p.tech);
   if(src){
     const errTxt=errs.length?` · ${errs.length} year(s) missing: ${errs.map(e=>`${e.year} ${e.error.message}`).join(' | ')}`:'';
-    src.textContent=`Source: ENTSO-E Transparency Platform Actual Generation per Type · ${country.name} (${country.domain}) · ${cfg.note}${errTxt}`;
+    const upd=erFormatEntsoeUpdate(ok.find(r=>r.data?._meta?.createdDateTime)?.data._meta.createdDateTime);
+    src.textContent=`Source: ENTSO-E Transparency Platform Actual Generation per Type · ${country.name} (${country.domain})${upd?` · Last ENTSO-E update: ${upd}`:''} · ${cfg.note}${errTxt}`;
   }
   const capSrc=document.getElementById('er-cap-source');
   if(capSrc){
     const errTxt=capErrs.length?` · ${capErrs.length} capacity year(s) missing: ${capErrs.map(e=>`${e.year} ${e.error.message}`).join(' | ')}`:'';
-    capSrc.textContent=`Source: ENTSO-E Installed Generation Capacity Aggregated (A68/A33) · ${country.name} (${country.domain}) · annual GW capacity and YoY additions${errTxt}`;
+    const upd=erFormatEntsoeUpdate(capOk.find(r=>r.data?._meta?.createdDateTime)?.data._meta.createdDateTime);
+    capSrc.textContent=`Source: ENTSO-E Installed Generation Capacity Aggregated (A68/A33) · ${country.name} (${country.domain})${upd?` · Last ENTSO-E update: ${upd}`:''} · annual GW capacity and YoY additions${errTxt}`;
   }
 }
 function erRenderCapacityChart(years,capOk,tech){
