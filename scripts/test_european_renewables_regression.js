@@ -33,7 +33,9 @@ assert(
   js.includes("if(id==='euren'){renderEuroRenewables();return;}") &&
     js.includes("id==='ga-tab-euren'") &&
     js.includes('function renderEuroRenewables()') &&
-    js.includes('euren_prefs_v1'),
+    js.includes('euren_prefs_v1') &&
+    js.includes('function erCountriesForTech') &&
+    js.includes('function erDefaultCountryForTech'),
   'European Renewable tab must be routed, renderable, and persist preferences'
 );
 
@@ -90,8 +92,10 @@ assert(
 assert(
   js.includes('Missing API/key/data stays blank') &&
     js.includes('ENTSO-E proxy is available on deployed / localhost app, not file preview') &&
+    js.includes("techs:['wind','solar']") &&
+    js.includes('Country selector is filtered to mapped ${cfg.label.toLowerCase()} markets') &&
     !js.slice(js.indexOf('const ER_PREF_KEY'), js.indexOf('// ══════════════════════════════════════════════════════════════════════════\n// LNG VALUE CHAIN')).includes('Math.random()'),
-  'European Renewable must not fabricate fallback renewable data'
+  'European Renewable must filter countries by mapped technology and not fabricate fallback renewable data'
 );
 
 if (!process.exitCode) console.log('European Renewable regression checks passed');

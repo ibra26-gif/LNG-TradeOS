@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260501-pipeline-history">
-<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260503-usgc-indicators" defer></script>
+<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260503-cleanup-audit" defer></script>
 </head>
 <body class="app-unlocked">
 <div id="public-site">
@@ -356,7 +356,10 @@
         <!-- 7. KEPT: Global Gas Snapshot LEFT, EU Hub RIGHT -->
         <div id="dash2-charts" class="two-col" style="margin-bottom:12px">
           <div class="acard">
-            <div class="ctitle">GLOBAL GAS SNAPSHOT — M+1 · $/MMBTU · FROM JAN 2026<span style="flex:1;height:1px;background:#151e30;margin-left:8px;display:inline-block"></span></div>
+            <div class="ctitle" style="display:flex;align-items:center;gap:8px">
+              <span>GLOBAL GAS SNAPSHOT — M+1 · $/MMBTU · FROM JAN 2026</span>
+              <span id="gas-snapshot-status" style="margin-left:auto;color:#3d5070;font-size:8px"></span>
+            </div>
             <div class="cw" style="height:280px"><canvas id="gas-snapshot-chart"></canvas></div>
           </div>
           <div class="acard">

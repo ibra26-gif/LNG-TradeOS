@@ -14,10 +14,12 @@ function assert(cond, msg) {
 }
 
 assert(
-  js.includes("const m1Cogh = arbData.today?.arbCogh?.[0]") &&
-    js.includes("COGH ARB · ${m1Label} LOAD · JKM ${coghDesLabel}") &&
-    js.includes("COGH uses next JKM"),
-  'USGC COGH arb must expose the next-JKM route timing'
+  js.includes("COGH uses next JKM") &&
+    js.includes("Panama uses JKM ${m1Label}") &&
+    js.includes('Dropdown = selected') &&
+    !js.includes('COGH ROUTE DIRECTION') &&
+    !js.includes('const m1Cogh = arbData.today?.arbCogh?.[0]'),
+  'USGC COGH arb must expose the next-JKM route timing without the removed KPI boxes'
 );
 
 assert(
@@ -35,8 +37,12 @@ assert(
     js.includes('Profit to Asia PC ($/MMBtu)') &&
     js.includes('Profit to Asia COGH ($/MMBtu)') &&
     js.includes('JKM/TTF Spread COGH') &&
+    js.includes("physCurve('nwe')") &&
+    js.includes("physCurve('jktc')") &&
+    js.includes('Curve EOD: ${eod} · Phys Diff: PHYS DIFFERENTIALS tab') &&
+    js.includes('Refreshes when you use SYNC PRICES, SYNC FREIGHT, or edit PHYS DIFFERENTIALS') &&
     js.includes('${_usgcIndicatorsTable(d)}'),
-  'USGC Arb tab must show the requested indicator table before the existing charts'
+  'USGC Arb tab must show the requested indicator table, sourced from the Physical Differentials tab, before the existing charts'
 );
 
 assert(

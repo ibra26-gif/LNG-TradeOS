@@ -30,17 +30,19 @@ assert(
   'Japan Gas Balance must surface source gaps rather than invented storage or gas-for-power data'
 );
 assert(
-  js.includes('JAPAN NUCLEAR GENERATION') &&
+  js.includes('JAPAN NUCLEAR UTILIZATION') &&
     js.includes('Ember Monthly Electricity Data') &&
     js.includes('jpn-nuclear-seasonal') &&
+    js.includes('text:\'% utilization\'') &&
     js.includes('jpnUpdateGlobalFundamentalsCard'),
-  'Japan Power must chart real monthly nuclear generation from Ember'
+  'Japan Power must chart sourced monthly nuclear utilization derived from Ember generation'
 );
 assert(
   js.includes('gf2-jpn-nuclear-val') &&
     js.includes('gf2-jpn-nuclear-share') &&
+    js.includes('jpnNuclearUtilPct') &&
     js.includes('EMBER'),
-  'Global Fundamentals 2.0 must show the Japan nuclear level from Japan analytics data'
+  'Global Fundamentals 2.0 must show the Japan nuclear level/utilization from Japan analytics data'
 );
 assert(
   js.includes('JMA long-range forecast') &&
@@ -54,11 +56,13 @@ assert(data.gasBalance.weeklyLngStorage === null, 'Japan weekly LNG storage must
 assert(Array.isArray(data.nuclear?.series) && data.nuclear.series.length > 60, 'Japan nuclear series should include multi-year monthly rows');
 assert(data.nuclear.series.at(-1).twh != null, 'Japan latest nuclear row needs TWh');
 assert(data.nuclear.source === 'Ember Monthly Electricity Data', 'Japan nuclear source must be Ember');
+assert(data.nuclear.capacityReference?.operableGw > 0, 'Japan nuclear utilization needs a sourced operable capacity reference');
 assert(Array.isArray(data.weather?.national) && data.weather.national.length >= 7, 'Japan weather needs at least seven forecast days');
 assert(data.weather.officialJmaLongRangeUrl?.includes('jma.go.jp'), 'Japan weather must preserve the official JMA long-range source link');
 assert(
   scraper.includes('Area") != "Japan"') &&
     scraper.includes('Variable") != "Nuclear"') &&
+    scraper.includes('capacityReference') &&
     scraper.includes('OPEN_METEO_URL') &&
     scraper.includes('"weeklyLngStorage": None'),
   'Japan scraper must fetch real nuclear/weather data and keep gas storage as an explicit gap'

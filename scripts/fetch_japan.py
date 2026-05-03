@@ -81,6 +81,12 @@ def load_ember_japan_nuclear() -> dict:
     return {
         "source": "Ember Monthly Electricity Data",
         "sourceUrl": EMBER_URL,
+        "capacityReference": {
+            "operableGw": 31.679,
+            "source": "World Nuclear Association",
+            "sourceUrl": "https://world-nuclear.org/information-library/country-profiles/countries-g-n/japan-nuclear-power",
+            "note": "Used only to convert monthly Ember TWh into an operable-fleet utilization proxy. It is not a live reactor availability feed.",
+        },
         "series": series,
     }
 

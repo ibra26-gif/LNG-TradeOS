@@ -24,6 +24,12 @@
   "nuclear": {
     "source": "Ember Monthly Electricity Data",
     "sourceUrl": "https://files.ember-energy.org/public-downloads/monthly_full_release_long_format.csv",
+    "capacityReference": {
+      "operableGw": 31.679,
+      "source": "World Nuclear Association",
+      "sourceUrl": "https://world-nuclear.org/information-library/country-profiles/countries-g-n/japan-nuclear-power",
+      "note": "Used only to convert monthly Ember TWh into an operable-fleet utilization proxy. It is not a live reactor availability feed."
+    },
     "series": [
       {
         "date": "2018-04-01",

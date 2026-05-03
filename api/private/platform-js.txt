@@ -4829,6 +4829,9 @@ function renderFoundationPhysical(c){
 function renderFoundationFinancial(c){
   const hasData = (typeof sDates !== 'undefined') && Array.isArray(sDates) && sDates.length>0;
   const latest = hasData ? sDates[sDates.length-1] : null;
+  const hasEex = (typeof eexDates !== 'undefined') && Array.isArray(eexDates) && eexDates.length>0;
+  const eexLatest = hasEex ? eexDates[eexDates.length-1] : null;
+  const eexGap = hasData && hasEex && eexLatest < latest;
   const fmt = (typeof fmtD === 'function') ? fmtD : (d=>d);
   c.innerHTML = `
     <style>
@@ -4855,6 +4858,15 @@ function renderFoundationFinancial(c){
           ${hasData ? `
             <div style="color:#4caf50;font-size:12px;font-weight:600;margin-bottom:4px">● ${sDates.length} EOD DATES CACHED</div>
             <div style="color:#c8d6e5;font-size:11px">Latest: <b>${fmt(latest)}</b></div>
+            ${hasEex ? `
+              <div style="color:${eexGap?'#fbbf24':'#8fb3d9'};font-size:10px;margin-top:6px;line-height:1.45">
+                EEX hub rows latest: <b>${fmt(eexLatest)}</b>${eexGap?` · gap vs LNG EOD ${fmt(latest)}`:''}
+              </div>
+            ` : `
+              <div style="color:#fbbf24;font-size:10px;margin-top:6px;line-height:1.45">
+                EEX hub rows: not loaded
+              </div>
+            `}
             ${(window._eexD1Missing && window._eexD1Missing.hubs && window._eexD1Missing.hubs.length) ? `
               <div style="background:rgba(251,191,36,0.10);border:1px solid rgba(251,191,36,0.45);color:#fbbf24;font-size:10px;padding:6px 8px;border-radius:4px;margin-top:8px;line-height:1.4">
                 ⚠ EEX D-1 incomplete — <b>${window._eexD1Missing.hubs.join(', ')}</b> missing/short for ${window._eexD1Missing.date}.
@@ -10051,6 +10063,7 @@ function initCargo(){
   CP.fobHistOrigin    = cpGet('cp_fob_hist_origin',     'usgc');
   CP.fobHistView      = cpGet('cp_fob_hist_view',       'curve');
   CP.fobHistWindow    = cpGet('cp_fob_hist_window',     'ALL');
+  CP.usgcArbObsDate   = cpGet('cp_usgc_arb_obs_date',   'latest');
   // Physical differential history — same observation-date/tenor pattern as FOB and freight.
   CP.physHistView     = cpGet('cp_phys_hist_view',      'curve');
   CP.physHistDest     = cpGet('cp_phys_hist_dest',      'nwe');
@@ -12645,7 +12658,7 @@ function _fobRenderHistoricalCharts(d){
 // Two graphs, one per route (COGH vs Panama Canal):
 //   X = forward delivery months (M+1 → M+24)
 //   Y = NE-Asia FOB-netback minus NW-Europe FOB-netback ($/MMBtu)
-//   Lines = each FOB Snapshot + today's live curve
+//   Dropdown = selected FOB Snapshot or today's live curve
 // Above 0 → arb pointing to Asia · Below 0 → arb pointing to Europe.
 // ════════════════════════════════════════════════════════════════════════════
 const PC_NM_RATIO = 9264 / 15379;  // matches cpDerived sabine_tokyo_pc derivation
@@ -12721,6 +12734,36 @@ function _usgcArbCurves(){
   return out;
 }
 
+function _usgcArbSelectedCurve(data){
+  const curves = [
+    ...(data.today ? [{...data.today, obsKey:'latest'}] : []),
+    ...data.snapshotCurves.slice().reverse().map(s => ({...s, obsKey:s.eod_date || s.ts || ''})),
+  ].filter(c => c && (c.arbCogh || c.arbPc));
+  const latestKey = curves[0]?.obsKey || 'latest';
+  if (!CP.usgcArbObsDate || !curves.some(c => c.obsKey === CP.usgcArbObsDate)) {
+    CP.usgcArbObsDate = latestKey;
+    try { cpSet('cp_usgc_arb_obs_date', CP.usgcArbObsDate); } catch(e) {}
+  }
+  return curves.find(c => c.obsKey === CP.usgcArbObsDate) || curves[0] || null;
+}
+
+function _usgcArbObsSelector(data){
+  const options = [
+    ...(data.today ? [{key:'latest', label:data.today.label || `Latest (${data.today.eod_date || 'live'})`}] : []),
+    ...data.snapshotCurves.slice().reverse().map(s => ({key:s.eod_date || s.ts || '', label:s.eod_date ? `Snapshot (${s.eod_date})` : 'Snapshot'})),
+  ].filter(o => o.key);
+  if (!options.length) return '';
+  const selected = options.some(o => o.key === CP.usgcArbObsDate) ? CP.usgcArbObsDate : options[0].key;
+  return `
+    <div style="padding:0 14px 10px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="color:#8aa0bd;font-size:9px;letter-spacing:.08em">OBSERVATION DATE</div>
+      <select class="f-sel" style="min-width:230px" onchange="CP.usgcArbObsDate=this.value;cpSet('cp_usgc_arb_obs_date',CP.usgcArbObsDate);_usgcArbRenderCharts()">
+        ${options.map(o=>`<option value="${o.key}" ${o.key===selected?'selected':''}>${o.label}</option>`).join('')}
+      </select>
+    </div>
+  `;
+}
+
 function _usgcIndicatorsTable(d){
   const n = Math.min(12, ML.length || 12);
   const months = ML.slice(0, n);
@@ -12741,6 +12784,8 @@ function _usgcIndicatorsTable(d){
     if (Math.abs(x) < 0.005) return 'Flat';
     return x > 0 ? 'Asia' : 'Europe';
   };
+  const physRows = typeof _physDiffRows === 'function' ? _physDiffRows(d) : [];
+  const physCurve = key => physRows.find(r => r.k === key)?.data || CP.phys?.[key] || [];
 
   const hh = months.map((_,i)=>val(CP.fp?.HH, i));
   const slHh = months.map((_,i)=>hh[i] != null ? sl * hh[i] : null);
@@ -12748,19 +12793,20 @@ function _usgcIndicatorsTable(d){
   const fob = months.map((_,i)=>add(slHh[i], liq[i]));
   const frGate = months.map((_,i)=>val(d.freight?.sabine_rotterdam, i));
   const ttf = months.map((_,i)=>val(CP.fp?.TTF, i));
-  const nweDiff = months.map((_,i)=>val(CP.phys?.nwe, i));
+  const nweDiff = months.map((_,i)=>val(physCurve('nwe'), i));
   const desNwe = months.map((_,i)=>val(d.des?.nwe, i) ?? add(ttf[i], nweDiff[i]));
   const profEurope = months.map((_,i)=>sub(desNwe[i], frGate[i], fob[i]));
 
   const frPc = months.map((_,i)=>val(d.sabine_tokyo_pc, i));
   const jkmPc = months.map((_,i)=>val(CP.fp?.JKM, i));
-  const jktcDiffPc = months.map((_,i)=>val(CP.phys?.jktc, i));
+  const jktcCurve = physCurve('jktc');
+  const jktcDiffPc = months.map((_,i)=>val(jktcCurve, i));
   const desPc = months.map((_,i)=>val(d.usgcJktcPcDes, i) ?? add(jkmPc[i], jktcDiffPc[i]));
   const profPc = months.map((_,i)=>sub(desPc[i], frPc[i], fob[i]));
 
   const frCogh = months.map((_,i)=>val(d.freight?.sabine_tokyo, i));
   const jkmCogh = months.map((_,i)=>val(CP.fp?.JKM, i + 1));
-  const jktcDiffCogh = months.map((_,i)=>val(CP.phys?.jktc, i + 1));
+  const jktcDiffCogh = months.map((_,i)=>val(jktcCurve, i + 1));
   const desCogh = months.map((_,i)=>val(d.usgcJktcCoghDes, i) ?? add(jkmCogh[i], jktcDiffCogh[i]));
   const profCogh = months.map((_,i)=>sub(desCogh[i], frCogh[i], fob[i]));
 
@@ -12771,6 +12817,11 @@ function _usgcIndicatorsTable(d){
   const eod = (typeof sDates !== 'undefined' && sDates.length && typeof aD !== 'undefined' && aD?.[sDates[sDates.length - 1]]?.date)
     ? aD[sDates[sDates.length - 1]].date.toISOString().slice(0,10)
     : '—';
+  let physTs = '—';
+  try {
+    const rawTs = localStorage.getItem('phys_last_ts');
+    physTs = rawTs ? new Date(rawTs).toLocaleString('en-GB', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+  } catch(e) {}
 
   const row = (label, arr, cls='', signed=false) => `<tr class="${cls}">
     <td class="usgc-ind-label">${label}</td>
@@ -12804,7 +12855,7 @@ function _usgcIndicatorsTable(d){
       </style>
       <div class="usgc-ind-head">
         <div class="usgc-ind-title">USGC ARBITRAGE INDICATORS — Sabine Pass</div>
-        <div class="usgc-ind-date">Assessment Date: ${eod}</div>
+        <div class="usgc-ind-date">Curve EOD: ${eod} · Phys Diff: PHYS DIFFERENTIALS tab${physTs !== '—' ? ' · Updated '+physTs : ''}</div>
       </div>
       <div class="usgc-ind-wrap">
         <table class="usgc-ind">
@@ -12839,9 +12890,12 @@ function _usgcIndicatorsTable(d){
 
             ${section('ARB DIRECTION & FOB BIDS DIFFERENTIALS')}
             ${row('Freight Differential Gate/Tokyo PC', months.map((_,i)=>sub(frGate[i], frPc[i])), '', true)}
-            ${row('Freight Differential Gate/Tokyo COGH', months.map((_,i)=>sub(frGate[i], frCogh[i])), '', true)}
             ${row('JKM/TTF Spread PC', spreadPc, 'usgc-ind-spread', true)}
+            ${row('Freight Differential Gate/Tokyo COGH', months.map((_,i)=>sub(frGate[i], frCogh[i])), '', true)}
             ${row('JKM/TTF Spread COGH', spreadCogh, 'usgc-ind-spread', true)}
+            ${row('Profit to Europe ($/MMBtu)', profEurope, 'usgc-ind-profit', true)}
+            ${row('Profit to Asia PC ($/MMBtu)', profPc, 'usgc-ind-profit', true)}
+            ${row('Profit to Asia COGH ($/MMBtu)', profCogh, 'usgc-ind-profit', true)}
             ${row('Profit Differential PC - Europe', diffPc, '', true)}
             ${row('Profit Differential COGH - Europe', diffCogh, '', true)}
             ${textRow('Arb Pointing PC', diffPc.map(dir), 'usgc-ind-direction')}
@@ -12849,7 +12903,7 @@ function _usgcIndicatorsTable(d){
           </tbody>
         </table>
       </div>
-      <div class="usgc-ind-note">Uses the same financial curves, physical differentials, liquefaction fee, and freight arrays as the USGC Arb charts below. Missing source inputs stay blank as —.</div>
+      <div class="usgc-ind-note">Refreshes when you use SYNC PRICES, SYNC FREIGHT, or edit PHYS DIFFERENTIALS. Uses financial curves, model freight, liquefaction fee, and the PHYS DIFFERENTIALS tab. Missing source inputs stay blank as —.</div>
     </div>
   `;
 }
@@ -12858,11 +12912,6 @@ function cpUsgcArbViz(d){
   const arbData = _usgcArbCurves();
   const m1Label = ML[0] || 'M+1';
   const coghDesLabel = ML[1] || 'next JKM';
-  const m1Cogh = arbData.today?.arbCogh?.[0] ?? null;
-  const m1Pc = arbData.today?.arbPc?.[0] ?? null;
-  const m1Direction = m1Cogh == null ? '—' : m1Cogh > 0 ? 'Asia' : m1Cogh < 0 ? 'Europe' : 'Flat';
-  const m1Color = m1Cogh == null ? '#94a3b8' : m1Cogh > 0 ? '#34d399' : m1Cogh < 0 ? '#fca5a5' : '#c8d6e5';
-  const fmtM1 = v => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(3)}`;
   return `
     <div class="f-sec">USGC ARB · NE-Asia FOB-netback minus NW-Europe FOB-netback · Sabine Pass loading</div>
 
@@ -12872,28 +12921,12 @@ function cpUsgcArbViz(d){
       Full curve below remains M+1 → M+24 for context.<br/>
       <span style="color:#34d399">Above 0</span> → arb pointing to Asia (Sabine cargoes net higher to Tokyo).
       <span style="color:#fca5a5">Below 0</span> → arb pointing to Europe.<br/>
-      Lines = each <a onclick="CP.tab=8;cpTab(8)" style="color:#a78bfa;cursor:pointer;text-decoration:underline">FOB Snapshot</a> you've captured + today's live curve.
+      Dropdown = selected <a onclick="CP.tab=8;cpTab(8)" style="color:#a78bfa;cursor:pointer;text-decoration:underline">FOB Snapshot</a> or today's live curve; charts show one observation date at a time.
     </div>
 
     ${_usgcIndicatorsTable(d)}
 
-    <div style="padding:0 14px 12px;display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:10px">
-      <div class="acard" style="padding:10px 12px;background:#071a2b;border:1px solid #1e3a5f">
-        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">COGH ARB · ${m1Label} LOAD · JKM ${coghDesLabel}</div>
-        <div style="color:${m1Color};font-size:20px;font-weight:700;margin-top:4px">${fmtM1(m1Cogh)}</div>
-        <div style="color:#546e7a;font-size:8px;margin-top:2px">$/MMBtu · Asia minus Europe</div>
-      </div>
-      <div class="acard" style="padding:10px 12px;background:#071a2b;border:1px solid #1e3a5f">
-        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">PANAMA ARB · JKM ${m1Label}</div>
-        <div style="color:${m1Pc == null ? '#94a3b8' : m1Pc > 0 ? '#34d399' : m1Pc < 0 ? '#fca5a5' : '#c8d6e5'};font-size:20px;font-weight:700;margin-top:4px">${fmtM1(m1Pc)}</div>
-        <div style="color:#546e7a;font-size:8px;margin-top:2px">$/MMBtu · reference route</div>
-      </div>
-      <div class="acard" style="padding:10px 12px;background:#071a2b;border:1px solid #1e3a5f">
-        <div style="color:#546e7a;font-size:8px;letter-spacing:1.5px">COGH ROUTE DIRECTION</div>
-        <div style="color:${m1Color};font-size:20px;font-weight:700;margin-top:4px">${m1Direction}</div>
-        <div style="color:#546e7a;font-size:8px;margin-top:2px">${arbData.today?.eod_date ? 'Latest EOD '+arbData.today.eod_date : 'Load EOD curves'}</div>
-      </div>
-    </div>
+    ${_usgcArbObsSelector(arbData)}
 
     <div style="padding:0 14px 14px;display:flex;flex-direction:column;gap:10px">
 
@@ -12917,47 +12950,13 @@ function cpUsgcArbViz(d){
 
 function _usgcArbRenderCharts(){
   const data = _usgcArbCurves();
-  const palette = ['#9ca3af','#fbbf24','#a78bfa','#fca5a5','#34d399','#f59e0b','#ec4899'];
-
-  function buildDatasets(key){
-    const out = [];
-    if (data.today) {
-      out.push({
-        label: data.today.label,
-        data: data.today[key],
-        borderColor: '#4fc3f7',
-        backgroundColor: 'transparent',
-        borderWidth: 2.6,
-        pointRadius: 3,
-        tension: 0.25,
-        fill: false,
-        spanGaps: true,
-      });
-    }
-    // Show up to 6 snapshots (most recent first), older ones thinner
-    const recent = data.snapshotCurves.slice(-6).reverse();
-    recent.forEach((s, i) => {
-      out.push({
-        label: s.label,
-        data: s[key],
-        borderColor: palette[i % palette.length],
-        backgroundColor: 'transparent',
-        borderWidth: 1.3,
-        borderDash: [5, 3],
-        pointRadius: 2,
-        tension: 0.25,
-        fill: false,
-        spanGaps: true,
-      });
-    });
-    return out;
-  }
+  const selected = _usgcArbSelectedCurve(data);
 
   function renderChart(canvasId, key){
     const c = document.getElementById(canvasId); if (!c) return;
     if (window['_'+canvasId]) window['_'+canvasId].destroy();
-    const datasets = buildDatasets(key);
-    if (!datasets.length) {
+    const curve = selected?.[key] || [];
+    if (!curve.some(v => v != null)) {
       const ctx = c.getContext('2d');
       ctx.clearRect(0,0,c.width,c.height);
       ctx.fillStyle = '#546e7a';
@@ -12966,30 +12965,69 @@ function _usgcArbRenderCharts(){
       ctx.fillText('No data — load EOD curves first.', c.width/2, c.height/2);
       return;
     }
+    const isCogh = key === 'arbCogh';
+    const labels = isCogh ? ML.slice(0, 24).map((m,i)=>`${m} -> ${ML[i+1]||'—'}`) : ML.slice(0, 24);
+    const pos = curve.filter(v => v != null && v >= 0).length;
+    const neg = curve.filter(v => v != null && v < 0).length;
+    const lineColor = pos >= neg ? '#34d399' : '#f87171';
+    const pointBg = curve.map(v => v == null ? '#64748b' : v >= 0 ? '#34d399' : '#f87171');
     window['_'+canvasId] = new Chart(c.getContext('2d'), {
       type: 'line',
-      data: { labels: key === 'arbCogh' ? ML.slice(0, 24).map((m,i)=>`${m}→${ML[i+1]||'—'}`) : ML.slice(0, 24), datasets },
+      data: {
+        labels,
+        datasets: [{
+          label: selected?.label || 'Selected observation',
+          data: curve,
+          borderColor: lineColor,
+          backgroundColor: (ctx) => {
+            const chart = ctx.chart;
+            const area = chart.chartArea;
+            if (!area) return 'rgba(52,211,153,.10)';
+            const g = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+            g.addColorStop(0, 'rgba(52,211,153,.22)');
+            g.addColorStop(.52, 'rgba(77,158,245,.05)');
+            g.addColorStop(1, 'rgba(248,113,113,.18)');
+            return g;
+          },
+          borderWidth: 2.4,
+          pointRadius: 3.2,
+          pointHoverRadius: 5,
+          pointBackgroundColor: pointBg,
+          pointBorderColor: '#07101e',
+          pointBorderWidth: 1,
+          tension: 0.32,
+          fill: true,
+          spanGaps: true,
+        }]
+      },
       options: {
-        ...CD, animation: false,
+        ...CD,
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           ...CD.plugins,
-          legend: { display:true, position:'bottom',
-                    labels:{color:'#9ca3af',font:{size:9},boxWidth:8,padding:6} },
+          legend: { display:false },
           tooltip: { ...CD.plugins.tooltip, callbacks: {
+            title: (items) => items?.[0]?.label || '',
             label: (ctx) => {
               const v = ctx.parsed.y; if (v == null) return '';
-              return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(3)} $/MMBtu`;
+              const side = v >= 0 ? 'Asia' : 'Europe';
+              return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(3)} $/MMBtu · ${side}`;
             },
           }},
         },
+        interaction: { mode:'index', intersect:false },
         scales: {
-          x: { ...CD.scales.x, ticks:{color:'#3d5070',font:{size:9},maxTicksLimit:13} },
+          x: { ...CD.scales.x,
+                ticks:{color:'#6f86a5',font:{size:9},maxTicksLimit:12},
+                grid:{display:false} },
           y: { ...CD.scales.y,
-                title:{display:true,text:'$/MMBtu  (above 0 = arb to Asia · below 0 = arb to Europe)',color:'#3d5070',font:{size:9}},
-                ticks:{color:'#3d5070',font:{size:9},
+                title:{display:true,text:'$/MMBtu  (above 0 = Asia · below 0 = Europe)',color:'#8aa0bd',font:{size:9}},
+                ticks:{color:'#8aa0bd',font:{size:9},
                        callback: (v) => (v >= 0 ? '+' : '') + v.toFixed(2)},
-                grid: { color:(ctx) => ctx.tick.value === 0 ? '#1e3a5f' : '#0f1824',
-                        lineWidth: (ctx) => ctx.tick.value === 0 ? 1.2 : 0.5 } },
+                grid: { color:(ctx) => ctx.tick.value === 0 ? '#93c5fd' : 'rgba(77,158,245,.10)',
+                        lineWidth: (ctx) => ctx.tick.value === 0 ? 1.4 : 0.6 } },
         },
       },
     });
@@ -14652,6 +14690,14 @@ function buildGasSnapshot(){
   const filtDates=sDates.filter(ds=>aD[ds].date>=cutoff);
   const src=filtDates.length>0?filtDates:sDates;
   const lbls=src.map(ds=>aD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
+  const latestLoaded=sDates[sDates.length-1];
+  const latestPlotted=src[src.length-1];
+  const gasStatus=$id('gas-snapshot-status');
+  if(gasStatus){
+    gasStatus.textContent=`LNG EOD ${src.length} dates · last ${fmtD(latestPlotted)}${latestLoaded!==latestPlotted?` · cache ${fmtD(latestLoaded)}`:''}`;
+    gasStatus.style.color='#6f86ad';
+    gasStatus.title='Source: LNG EOD curve cache. Last point is marked on the chart because dense ticks may skip the final date label.';
+  }
 
   // Build diagonal hatch pattern for oil range band
   function oilHatch(){
@@ -14680,7 +14726,13 @@ function buildGasSnapshot(){
     borderColor:s.color,
     backgroundColor:s.fill?undefined:'transparent',
     fill:s.fill||false,
-    borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true
+    borderWidth:1.8,
+    pointRadius:ctx=>ctx.dataIndex===src.length-1?2.4:0,
+    pointHoverRadius:4,
+    pointBackgroundColor:s.color,
+    pointBorderColor:'#0b1220',
+    pointBorderWidth:1,
+    tension:.3,spanGaps:true
   }));
   if(gasChart)gasChart.destroy();
   gasChart=new Chart(canvas,{type:'line',data:{labels:lbls,datasets},options:{...CD,scales:{
@@ -14691,7 +14743,9 @@ function buildGasSnapshot(){
 
 function buildEuHubChart(){
   const canvas=$id('eu-hub-chart'); if(!canvas) return;
+  const st=$id('eex-status');
   if(!eexDates.length){
+    if(st){st.textContent='EEX not loaded';st.style.color='#fbbf24';st.title='Source gap: no EEX_Gas_Curves.xlsx rows are cached.';}
     if(eexChart){eexChart.destroy();eexChart=null;}
     const ctx=canvas.getContext('2d');
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -14705,6 +14759,18 @@ function buildEuHubChart(){
   const cutoff=new Date(2026,0,1);
   const src=eexDates.filter(ds=>eexD[ds].date>=cutoff);
   if(!src.length) return;
+  const latestEex=eexDates[eexDates.length-1];
+  const latestLng=(typeof sDates!=='undefined'&&sDates.length)?sDates[sDates.length-1]:null;
+  const eexLag=latestLng&&latestEex&&latestEex<latestLng;
+  if(st){
+    st.textContent=eexLag
+      ? `EEX gap: last ${fmtD(latestEex)} · LNG EOD ${fmtD(latestLng)}`
+      : `EEX ${src.length} dates · last ${fmtD(latestEex)}`;
+    st.style.color=eexLag?'#fbbf24':'#6f86ad';
+    st.title=eexLag
+      ? 'The LNG EOD cache has a newer date than the EEX hub workbook rows. The chart is showing the latest real EEX trade date, not filling a missing day.'
+      : 'Source: EEX Market Data Hub workbook rows converted from EUR/MWh to $/MMBtu.';
+  }
   const lbls=src.map(ds=>eexD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
   const hubColors={THE:'#4fc3f7',PEG:'#ffb74d',PVB:'#81c784',PSV:'#f48fb1'};
 
@@ -14722,7 +14788,13 @@ function buildEuHubChart(){
       label:INST[hub].label,
       data:src.map(ds=>{const{date,rows}=eexD[ds];const m1=rollPkFromRows(rows,date,1,hub);const row=rows.find(r=>r.pk===m1);return row?.[hub]??null;}),
       borderColor:hubColors[hub],backgroundColor:'transparent',
-      borderWidth:1.8,pointRadius:0,tension:.3,spanGaps:true
+      borderWidth:1.8,
+      pointRadius:ctx=>ctx.dataIndex===src.length-1?2.4:0,
+      pointHoverRadius:4,
+      pointBackgroundColor:hubColors[hub],
+      pointBorderColor:'#0b1220',
+      pointBorderWidth:1,
+      tension:.3,spanGaps:true
     }))
   ];
   if(eexChart)eexChart.destroy();
@@ -21553,21 +21625,21 @@ async function _loadFrNuclear(targetId='db-fr-nuclear'){
 // ═══════════════════════════════════════════════════════════════════════
 const ER_PREF_KEY = 'euren_prefs_v1';
 const ER_COUNTRIES = [
-  {id:'fr', name:'France', domain:'10YFR-RTE------C'},
-  {id:'de', name:'Germany / Luxembourg', domain:'10Y1001A1001A82H'},
-  {id:'es', name:'Spain', domain:'10YES-REE------0'},
-  {id:'it', name:'Italy', domain:'10YIT-GRTN-----B'},
-  {id:'nl', name:'Netherlands', domain:'10YNL----------L'},
-  {id:'be', name:'Belgium', domain:'10YBE----------2'},
-  {id:'gb', name:'United Kingdom', domain:'10YGB----------A'},
-  {id:'pt', name:'Portugal', domain:'10YPT-REN------W'},
-  {id:'at', name:'Austria', domain:'10YAT-APG------L'},
-  {id:'pl', name:'Poland', domain:'10YPL-AREA-----S'},
-  {id:'cz', name:'Czechia', domain:'10YCZ-CEPS-----N'},
-  {id:'hu', name:'Hungary', domain:'10YHU-MAVIR----U'},
-  {id:'ro', name:'Romania', domain:'10YRO-TEL------P'},
-  {id:'bg', name:'Bulgaria', domain:'10YCA-BULGARIA-R'},
-  {id:'gr', name:'Greece', domain:'10YGR-HTSO-----Y'},
+  {id:'fr', name:'France', domain:'10YFR-RTE------C', techs:['hydro','wind','solar']},
+  {id:'de', name:'Germany / Luxembourg', domain:'10Y1001A1001A82H', techs:['hydro','wind','solar']},
+  {id:'es', name:'Spain', domain:'10YES-REE------0', techs:['hydro','wind','solar']},
+  {id:'it', name:'Italy', domain:'10YIT-GRTN-----B', techs:['hydro','wind','solar']},
+  {id:'nl', name:'Netherlands', domain:'10YNL----------L', techs:['wind','solar']},
+  {id:'be', name:'Belgium', domain:'10YBE----------2', techs:['wind','solar']},
+  {id:'gb', name:'United Kingdom', domain:'10YGB----------A', techs:['hydro','wind','solar']},
+  {id:'pt', name:'Portugal', domain:'10YPT-REN------W', techs:['hydro','wind','solar']},
+  {id:'at', name:'Austria', domain:'10YAT-APG------L', techs:['hydro','wind','solar']},
+  {id:'pl', name:'Poland', domain:'10YPL-AREA-----S', techs:['hydro','wind','solar']},
+  {id:'cz', name:'Czechia', domain:'10YCZ-CEPS-----N', techs:['hydro','wind','solar']},
+  {id:'hu', name:'Hungary', domain:'10YHU-MAVIR----U', techs:['hydro','wind','solar']},
+  {id:'ro', name:'Romania', domain:'10YRO-TEL------P', techs:['hydro','wind','solar']},
+  {id:'bg', name:'Bulgaria', domain:'10YCA-BULGARIA-R', techs:['hydro','wind','solar']},
+  {id:'gr', name:'Greece', domain:'10YGR-HTSO-----Y', techs:['hydro','wind','solar']},
 ];
 const ER_TECH = {
   hydro: {label:'Hydro', unit:'TWh/month', psr:['B10','B11','B12'], note:'B10 pumped storage + B11 run-of-river + B12 reservoir where reported'},
@@ -21580,12 +21652,21 @@ function erDefaultYears(){
   const y = new Date().getFullYear();
   return [y, y-1, y-2];
 }
+function erCountriesForTech(tech){
+  const key=ER_TECH[tech]?tech:'hydro';
+  return ER_COUNTRIES.filter(c=>(c.techs||[]).includes(key));
+}
+function erDefaultCountryForTech(tech){
+  return erCountriesForTech(tech)[0]?.id || ER_COUNTRIES[0].id;
+}
 function erPrefs(){
   try{
     const p = JSON.parse(localStorage.getItem(ER_PREF_KEY) || '{}');
+    const tech = ER_TECH[p.tech] ? p.tech : 'hydro';
+    const countries = erCountriesForTech(tech);
     return {
-      tech: ER_TECH[p.tech] ? p.tech : 'hydro',
-      country: ER_COUNTRIES.some(c=>c.id===p.country) ? p.country : 'fr',
+      tech,
+      country: countries.some(c=>c.id===p.country) ? p.country : erDefaultCountryForTech(tech),
       years: Array.isArray(p.years) && p.years.length ? p.years.map(Number).filter(Boolean) : erDefaultYears(),
     };
   }catch{
@@ -21593,8 +21674,19 @@ function erPrefs(){
   }
 }
 function erSavePrefs(p){ try{ localStorage.setItem(ER_PREF_KEY, JSON.stringify(p)); }catch{} }
-function erSetTech(tech){ const p=erPrefs(); p.tech=ER_TECH[tech]?tech:'hydro'; erSavePrefs(p); renderEuroRenewables(); }
-function erSetCountry(country){ const p=erPrefs(); p.country=ER_COUNTRIES.some(c=>c.id===country)?country:'fr'; erSavePrefs(p); renderEuroRenewables(); }
+function erSetTech(tech){
+  const p=erPrefs();
+  p.tech=ER_TECH[tech]?tech:'hydro';
+  if(!erCountriesForTech(p.tech).some(c=>c.id===p.country)) p.country=erDefaultCountryForTech(p.tech);
+  erSavePrefs(p);
+  renderEuroRenewables();
+}
+function erSetCountry(country){
+  const p=erPrefs();
+  p.country=erCountriesForTech(p.tech).some(c=>c.id===country)?country:erDefaultCountryForTech(p.tech);
+  erSavePrefs(p);
+  renderEuroRenewables();
+}
 function erToggleYear(year){
   const p=erPrefs(), y=+year, idx=p.years.indexOf(y);
   if(idx>=0){ if(p.years.length>1) p.years.splice(idx,1); }
@@ -21778,7 +21870,8 @@ function renderEuroRenewables(){
   const cfg=ER_TECH[p.tech]||ER_TECH.hydro;
   const curY=new Date().getFullYear();
   const years=Array.from(new Set([curY,curY-1,curY-2,curY-3,curY-4]));
-  const cOpts=ER_COUNTRIES.map(c=>`<option value="${c.id}" ${c.id===p.country?'selected':''}>${c.name}</option>`).join('');
+  const countries=erCountriesForTech(p.tech);
+  const cOpts=countries.map(c=>`<option value="${c.id}" ${c.id===p.country?'selected':''}>${c.name}</option>`).join('');
   const yrBtns=years.map(y=>`<button class="f-btn sm${p.years.includes(y)?' on':''}" style="padding:2px 8px;font-size:9px" onclick="erToggleYear(${y})">${y}</button>`).join('');
   pane.innerHTML=`
     <div class="ga-subtabs" id="ga-euren-subtabs">
@@ -21789,7 +21882,7 @@ function renderEuroRenewables(){
         <div><div class="ga-lbl">COUNTRY</div><select class="gsel" onchange="erSetCountry(this.value)">${cOpts}</select></div>
         <div><div class="ga-lbl">YEARS</div><div style="display:flex;gap:4px;flex-wrap:wrap">${yrBtns}</div></div>
         <div style="margin-left:auto;font-size:9px;color:#6b7a99;line-height:1.6;max-width:520px">
-          Source: ENTSO-E Transparency Platform, Actual Generation per Type (A75 / A16) + Installed Capacity (A68 / A33). ${cfg.note}. Missing API/key/data stays blank.
+          Source: ENTSO-E Transparency Platform, Actual Generation per Type (A75 / A16) + Installed Capacity (A68 / A33). ${cfg.note}. Country selector is filtered to mapped ${cfg.label.toLowerCase()} markets; Missing API/key/data stays blank.
         </div>
       </div>
     </div>
@@ -25022,6 +25115,17 @@ function jpnLatestNuclear(){
   return s.length ? s[s.length-1] : null;
 }
 function jpnFmt(v,d=1){ return v==null||!isFinite(v) ? '--' : Number(v).toFixed(d); }
+function jpnDaysInMonth(dateStr){
+  if(!dateStr) return null;
+  const y = +dateStr.slice(0,4), m = +dateStr.slice(5,7);
+  if(!y || !m) return null;
+  return new Date(y, m, 0).getDate();
+}
+function jpnNuclearUtilPct(row){
+  const capGw = _jpnData?.nuclear?.capacityReference?.operableGw;
+  const days = jpnDaysInMonth(row?.date);
+  return row?.twh != null && capGw && days ? row.twh * 1000 / (capGw * 24 * days) * 100 : null;
+}
 function jpnUpdateGlobalFundamentalsCard(){
   const latest = jpnLatestNuclear();
   const valEl = document.getElementById('gf2-jpn-nuclear-val');
@@ -25031,14 +25135,15 @@ function jpnUpdateGlobalFundamentalsCard(){
   if(!latest || !valEl) return;
   const prev = jpnSeries().find(r=>r.date === `${+latest.date.slice(0,4)-1}-${latest.date.slice(5,7)}-01`);
   const yoy = latest.twh != null && prev?.twh ? (latest.twh / prev.twh - 1) * 100 : null;
-  valEl.textContent = jpnFmt(latest.twh,2);
-  valEl.style.color = '#a78bfa';
+  const util = jpnNuclearUtilPct(latest);
+  valEl.textContent = util != null ? `${jpnFmt(util,1)}%` : '--';
+  valEl.style.color = '#34d399';
   if(badgeEl){
     badgeEl.textContent = 'EMBER';
     badgeEl.style.color = '#34d399';
     badgeEl.style.background = 'rgba(52,211,153,.10)';
   }
-  if(shareEl) shareEl.textContent = `Share · ${jpnFmt(latest.sharePct,1)}% · ${latest.date.slice(0,7)}`;
+  if(shareEl) shareEl.textContent = `Generation ${jpnFmt(latest.twh,2)} TWh · Share ${jpnFmt(latest.sharePct,1)}% · ${latest.date.slice(0,7)}`;
   if(yoyEl){
     yoyEl.textContent = yoy == null ? 'YoY unavailable · Ember monthly electricity' : `YoY · ${yoy>=0?'+':''}${jpnFmt(yoy,1)}% vs ${+latest.date.slice(0,4)-1}`;
     yoyEl.style.color = yoy == null ? '#3d5070' : yoy >= 0 ? '#34d399' : '#f87171';
@@ -25112,27 +25217,29 @@ function jpnRenderPower(el){
   const yearBtns = years.slice(-10).reverse().map(yr=>`<button class="f-btn sm${_jpnYears.includes(yr)?' on':''}" onclick="jpnToggleYear(${yr})">${yr}</button>`).join('');
   const prevYear = latest ? series.find(r=>r.date === `${+latest.date.slice(0,4)-1}-${latest.date.slice(5,7)}-01`) : null;
   const yoy = latest?.twh != null && prevYear?.twh ? (latest.twh/prevYear.twh-1)*100 : null;
+  const util = jpnNuclearUtilPct(latest);
+  const capRef = _jpnData?.nuclear?.capacityReference || {};
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-      ${jpnStatusCard({label:`Nuclear generation · ${latest?latest.date.slice(0,7):'--'}`,value:latest?jpnFmt(latest.twh,2):'--',note:'TWh/month · Ember',color:'#a78bfa'})}
+      ${jpnStatusCard({label:`Nuclear utilization · ${latest?latest.date.slice(0,7):'--'}`,value:util!=null?jpnFmt(util,1)+'%':'--',note:capRef.operableGw?`Ember TWh ÷ ${jpnFmt(capRef.operableGw,3)} GW operable`:'capacity reference missing',color:'#34d399'})}
+      ${jpnStatusCard({label:'Nuclear generation',value:latest?jpnFmt(latest.twh,2):'--',note:'TWh/month · Ember',color:'#a78bfa'})}
       ${jpnStatusCard({label:'Nuclear share',value:latest?.sharePct!=null?jpnFmt(latest.sharePct,1)+'%':'--',note:'share of Japan generation',color:'#93c5fd'})}
       ${jpnStatusCard({label:'Generation YoY',value:yoy!=null?(yoy>=0?'+':'')+jpnFmt(yoy,1)+'%':'--',note:'same month vs prior year',color:yoy==null?'#8a9bb5':yoy>=0?'#34d399':'#f87171'})}
-      ${jpnStatusCard({label:'Power data status',value:series.length?'LIVE FILE':'--',note:`${series.length} monthly rows`,color:series.length?'#34d399':'#f87171'})}
     </div>
     <div class="ga-card" style="margin-bottom:12px">
-      <div class="ga-sec">JAPAN NUCLEAR GENERATION <span class="ga-tag">EMBER · TWh</span></div>
+      <div class="ga-sec">JAPAN NUCLEAR UTILIZATION <span class="ga-tag">EMBER + CAPACITY REF · %</span></div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
         <span style="font-size:9px;color:#546e7a">YEARS</span>${yearBtns}
       </div>
       <div class="ga-ch-wrap" style="height:300px"><canvas id="jpn-nuclear-seasonal"></canvas></div>
-      <div class="ga-source">Source: Ember Monthly Electricity Data · Japan · Nuclear fuel · monthly TWh and generation share. Latest public monthly data may lag by several weeks.</div>
+      <div class="ga-source">Source: Ember Monthly Electricity Data · Japan · Nuclear fuel · monthly TWh and generation share. Utilization is a derived proxy using ${capRef.source || 'capacity reference'}${capRef.sourceUrl?` (<a href="${capRef.sourceUrl}" target="_blank" style="color:#93c5fd">source</a>)`:''}. Latest public monthly data may lag by several weeks.</div>
     </div>
     <div class="ga-card">
       <div class="ga-sec">LATEST MONTHLY ROWS <span class="ga-tag">NO DAILY CLAIM</span></div>
       <div style="overflow:auto">
         <table class="ga-tbl" style="width:100%;font-size:10px">
-          <thead><tr><th style="text-align:left">Month</th><th style="text-align:right">Nuclear TWh</th><th style="text-align:right">Share %</th></tr></thead>
-          <tbody>${series.slice(-12).reverse().map(r=>`<tr><td>${r.date.slice(0,7)}</td><td style="text-align:right;color:#c8d6e5">${jpnFmt(r.twh,2)}</td><td style="text-align:right;color:#93c5fd">${jpnFmt(r.sharePct,1)}%</td></tr>`).join('')}</tbody>
+          <thead><tr><th style="text-align:left">Month</th><th style="text-align:right">Nuclear TWh</th><th style="text-align:right">Utilization %</th><th style="text-align:right">Share %</th></tr></thead>
+          <tbody>${series.slice(-12).reverse().map(r=>`<tr><td>${r.date.slice(0,7)}</td><td style="text-align:right;color:#c8d6e5">${jpnFmt(r.twh,2)}</td><td style="text-align:right;color:#34d399">${jpnFmt(jpnNuclearUtilPct(r),1)}%</td><td style="text-align:right;color:#93c5fd">${jpnFmt(r.sharePct,1)}%</td></tr>`).join('')}</tbody>
         </table>
       </div>
     </div>`;
@@ -25146,7 +25253,7 @@ function jpnDrawNuclear(){
   const selected = (_jpnYears && _jpnYears.length ? _jpnYears : jpnAvailableYears().slice(-5)).slice().sort((a,b)=>b-a);
   const datasets = selected.map((yr,i)=>({
     label:String(yr),
-    data:Array.from({length:12},(_,m)=>byMonth[`${yr}-${String(m+1).padStart(2,'0')}`]?.twh ?? null),
+    data:Array.from({length:12},(_,m)=>jpnNuclearUtilPct(byMonth[`${yr}-${String(m+1).padStart(2,'0')}`])),
     borderColor:GA_COLS[i % GA_COLS.length],
     backgroundColor:GA_COLS[i % GA_COLS.length] + (i===0?'22':'00'),
     borderWidth:i===0?2.4:1.5,
@@ -25156,7 +25263,7 @@ function jpnDrawNuclear(){
     spanGaps:false,
   }));
   gaMakeChart('jpn-nuclear-seasonal','line',{labels:GA_MO,datasets},{
-    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'TWh/month',color:'#3d5070',font:{size:9}}}}
+    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'% utilization',color:'#3d5070',font:{size:9}},ticks:{...GCD.scales.y.ticks,callback:v=>`${v}%`}}}
   });
 }
 
@@ -28386,7 +28493,12 @@ async function acer_loadLive(){
     }
   }catch(e){
     const el=document.getElementById('acer-lastUpdate');
-    if(el){el.textContent='Live ACER CSV failed · using embedded fallback';el.className='st err';}
+    if(el){
+      const fallbackLatest=ACER_D?.[ACER_D.length-1]?.d||'unknown';
+      el.textContent=`Live ACER CSV failed · using embedded fallback · latest ${fallbackLatest}`;
+      el.className='st err';
+      el.title='The authoritative /api/acer CSV did not load. Values shown are the embedded fallback only.';
+    }
     console.warn('[ACER] live fetch failed, keeping seeded data:',e.message);
   }
 }
