@@ -1,0 +1,57 @@
+const fs = require('fs');
+const path = require('path');
+
+const root = path.resolve(__dirname, '..');
+const js = fs.readFileSync(path.join(root, 'api/private/platform-js.txt'), 'utf8');
+const app = fs.readFileSync(path.join(root, 'api/private/platform-app.txt'), 'utf8');
+
+function assert(cond, msg) {
+  if (!cond) {
+    console.error(`FAIL: ${msg}`);
+    process.exitCode = 1;
+  }
+}
+
+assert(
+  app.includes('id="gmtab-euren"') &&
+    app.includes('EUROPEAN RENEWABLE') &&
+    app.includes('id="ga-tab-euren"') &&
+    app.includes("shellNav('gasanalytics','euren')") &&
+    /name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app),
+  'Gas & LNG Analytics must expose European Renewable as a main tab and home module with cache-bust'
+);
+
+assert(
+  js.includes("if(id==='euren'){renderEuroRenewables();return;}") &&
+    js.includes("id==='ga-tab-euren'") &&
+    js.includes('function renderEuroRenewables()') &&
+    js.includes('euren_prefs_v1'),
+  'European Renewable tab must be routed, renderable, and persist preferences'
+);
+
+assert(
+  js.includes("hydro: {label:'Hydro'") &&
+    js.includes("'B10','B11','B12'") &&
+    js.includes("wind:  {label:'Wind'") &&
+    js.includes("'B18','B19'") &&
+    js.includes("solar: {label:'Solar'") &&
+    js.includes("'B16'"),
+  'European Renewable must define hydro, wind, and solar ENTSO-E PSR mappings'
+);
+
+assert(
+  js.includes('/api/entsoe?') &&
+    js.includes("documentType:'A75'") &&
+    js.includes("processType:'A16'") &&
+    js.includes('ENTSO-E Transparency Platform Actual Generation per Type'),
+  'European Renewable must use the existing ENTSO-E proxy and cite Actual Generation per Type'
+);
+
+assert(
+  js.includes('Missing API/key/data stays blank') &&
+    js.includes('ENTSO-E proxy is available on deployed / localhost app, not file preview') &&
+    !js.slice(js.indexOf('const ER_PREF_KEY'), js.indexOf('// ══════════════════════════════════════════════════════════════════════════\n// LNG VALUE CHAIN')).includes('Math.random()'),
+  'European Renewable must not fabricate fallback renewable data'
+);
+
+if (!process.exitCode) console.log('European Renewable regression checks passed');

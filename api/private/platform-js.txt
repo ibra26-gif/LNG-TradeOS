@@ -2088,8 +2088,8 @@ function brentFallback(){const d=new Date();for(let i=0;i<6;i++){const mo=`${d.g
 let finLoaded=false;
 const PH_T={freight:'FREIGHT RATE CALCULATOR',cargo:'LNG GLOBAL NETBACK',mktstr:'MARKET STRUCTURE PRICING',regas:'EU REGAS MODEL',acer:'HISTORICAL ACER'};
 const PH_D={freight:'Voyage cost estimation across global LNG shipping routes with BLNG curves',cargo:'USGC/WAF/Oman arb, DES pricing, FOB netback matrix and global cargo economics',mktstr:'Near/far curve structure, per-day roll, pricing formula generation for JKM and TTF — leverages the loaded forward curve',regas:'European regasification terminal pricing, cost graphs, netback analysis and slot valuation',acer:'ACER daily DES physical NWE · SE · EU — seasonal scatter all daily obs, 2023–2026'};
-const GA_T={lngbal:'GLOBAL LNG BALANCES & SIGNPOSTS',eugas:'EU GAS BALANCE',storage:'EU STORAGE',regas:'LNG REGAS'};
-const GA_D={lngbal:'Key LNG country balances and pricing signals',eugas:'Pipeline imports, domestic production, LNG flows and EU gas demand — seasonal views',storage:'EU and country storage levels, seasonal comparison and injection/withdrawal — GIE AGSI+',regas:'Terminal utilisation heatmap, tank stocks, sendout and country aggregate — GIE AGGI+'};
+const GA_T={lngbal:'GLOBAL LNG BALANCES & SIGNPOSTS',eugas:'EU GAS BALANCE',euren:'EUROPEAN RENEWABLE',storage:'EU STORAGE',regas:'LNG REGAS'};
+const GA_D={lngbal:'Key LNG country balances and pricing signals',eugas:'Pipeline imports, domestic production, LNG flows and EU gas demand — seasonal views',euren:'Hydro, wind and solar generation by country — seasonal ENTSO-E charts',storage:'EU and country storage levels, seasonal comparison and injection/withdrawal — GIE AGSI+',regas:'Terminal utilisation heatmap, tank stocks, sendout and country aggregate — GIE AGGI+'};
 const PV_T={single:'SINGLE DEAL VALUATION',strips:'STRIPS VALUATION',portfolio:'PORTFOLIO VALUATION'};
 const PV_D={single:'Full extrinsic and optionality valuation for individual LNG cargo contracts',strips:'Multi-cargo strip optionality decomposition',portfolio:'Aggregated P&L, exposure summary and blended optionality'};
 const TB_T={converter:'NATURAL GAS CONVERTER',gasspec:'GAS SPECIFICATIONS',portcosts:'PORT COST DATABASE'};
@@ -2135,6 +2135,7 @@ function gaMainTab(id,btn){
   if(btn)btn.classList.add('active');
   if(id==='dashboard'){renderGaDashboard();return;}
   if(id==='dashboard2'){renderGaDashboard2();return;}
+  if(id==='euren'){renderEuroRenewables();return;}
   if(id==='lngbal' && typeof csInit==='function') setTimeout(csInit,120);
   if(id==='lngvc'){if(!window.gaInitDone)gaInitAll();setTimeout(renderLngVC,80);return;}
   if(!window.gaInitDone) gaInitAll();
@@ -20405,6 +20406,8 @@ function gdRerenderActive(){
               : txt.includes('domestic') || txt.includes('production') ? 'domprod'
               : 'balance';
     eugasTab(sub);
+  } else if(id==='ga-tab-euren'){
+    renderEuroRenewables();
   } else if(id==='ga-tab-storage'){
     const activeSub = document.querySelector('#ga-stor-subtabs .ga-stab.active');
     const sub = activeSub?.textContent?.toLowerCase().includes('country')?'country':
@@ -21252,6 +21255,255 @@ async function _loadFrNuclear(targetId='db-fr-nuclear'){
     </div>`;
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// EUROPEAN RENEWABLE — ENTSO-E actual generation by type
+// Source note: ENTSOG is gas-only. Renewable generation comes from ENTSO-E.
+// ═══════════════════════════════════════════════════════════════════════
+const ER_PREF_KEY = 'euren_prefs_v1';
+const ER_COUNTRIES = [
+  {id:'fr', name:'France', domain:'10YFR-RTE------C'},
+  {id:'de', name:'Germany / Luxembourg', domain:'10Y1001A1001A82H'},
+  {id:'es', name:'Spain', domain:'10YES-REE------0'},
+  {id:'it', name:'Italy', domain:'10YIT-GRTN-----B'},
+  {id:'nl', name:'Netherlands', domain:'10YNL----------L'},
+  {id:'be', name:'Belgium', domain:'10YBE----------2'},
+  {id:'gb', name:'United Kingdom', domain:'10YGB----------A'},
+  {id:'pt', name:'Portugal', domain:'10YPT-REN------W'},
+  {id:'at', name:'Austria', domain:'10YAT-APG------L'},
+  {id:'pl', name:'Poland', domain:'10YPL-AREA-----S'},
+  {id:'cz', name:'Czechia', domain:'10YCZ-CEPS-----N'},
+  {id:'hu', name:'Hungary', domain:'10YHU-MAVIR----U'},
+  {id:'ro', name:'Romania', domain:'10YRO-TEL------P'},
+  {id:'bg', name:'Bulgaria', domain:'10YCA-BULGARIA-R'},
+  {id:'gr', name:'Greece', domain:'10YGR-HTSO-----Y'},
+];
+const ER_TECH = {
+  hydro: {label:'Hydro', unit:'TWh/month', psr:['B10','B11','B12'], note:'B10 pumped storage + B11 run-of-river + B12 reservoir where reported'},
+  wind:  {label:'Wind',  unit:'TWh/month', psr:['B18','B19'],       note:'B18 offshore + B19 onshore'},
+  solar: {label:'Solar', unit:'TWh/month', psr:['B16'],             note:'B16 solar'},
+};
+let ER_TOKEN = 0;
+
+function erDefaultYears(){
+  const y = new Date().getFullYear();
+  return [y, y-1, y-2];
+}
+function erPrefs(){
+  try{
+    const p = JSON.parse(localStorage.getItem(ER_PREF_KEY) || '{}');
+    return {
+      tech: ER_TECH[p.tech] ? p.tech : 'hydro',
+      country: ER_COUNTRIES.some(c=>c.id===p.country) ? p.country : 'fr',
+      years: Array.isArray(p.years) && p.years.length ? p.years.map(Number).filter(Boolean) : erDefaultYears(),
+    };
+  }catch{
+    return {tech:'hydro', country:'fr', years:erDefaultYears()};
+  }
+}
+function erSavePrefs(p){ try{ localStorage.setItem(ER_PREF_KEY, JSON.stringify(p)); }catch{} }
+function erSetTech(tech){ const p=erPrefs(); p.tech=ER_TECH[tech]?tech:'hydro'; erSavePrefs(p); renderEuroRenewables(); }
+function erSetCountry(country){ const p=erPrefs(); p.country=ER_COUNTRIES.some(c=>c.id===country)?country:'fr'; erSavePrefs(p); renderEuroRenewables(); }
+function erToggleYear(year){
+  const p=erPrefs(), y=+year, idx=p.years.indexOf(y);
+  if(idx>=0){ if(p.years.length>1) p.years.splice(idx,1); }
+  else p.years.push(y);
+  p.years=Array.from(new Set(p.years)).sort((a,b)=>b-a);
+  erSavePrefs(p);
+  renderEuroRenewables();
+}
+function erEntsoeDate(d){
+  return `${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}${String(d.getUTCDate()).padStart(2,'0')}${String(d.getUTCHours()).padStart(2,'0')}${String(d.getUTCMinutes()).padStart(2,'0')}`;
+}
+function erResolutionHours(res){
+  const s=String(res||'PT60M');
+  let m=s.match(/^PT(\d+)M$/); if(m) return +m[1]/60;
+  m=s.match(/^PT(\d+)H$/); if(m) return +m[1];
+  m=s.match(/^P(\d+)D$/); if(m) return +m[1]*24;
+  return 1;
+}
+function erEls(root,name){ return Array.from(root.getElementsByTagName('*')).filter(n=>n.localName===name); }
+function erText(root,name){ const el=erEls(root,name)[0]; return el?(el.textContent||'').trim():''; }
+function erParseGenerationXml(xml){
+  const doc=new DOMParser().parseFromString(xml,'application/xml');
+  if(erEls(doc,'parsererror').length) throw new Error('ENTSO-E XML parse error');
+  const series=erEls(doc,'TimeSeries');
+  if(!series.length){
+    const reason=erText(doc,'text')||erText(doc,'reasonText');
+    if(reason) throw new Error(reason);
+  }
+  const out={psr:{},_meta:{points:0,parsedAt:new Date().toISOString()}};
+  series.forEach(ts=>{
+    const psr=erText(ts,'psrType');
+    if(!psr) return;
+    if(!out.psr[psr]) out.psr[psr]={};
+    erEls(ts,'Period').forEach(period=>{
+      const start=erText(period,'start');
+      if(!start) return;
+      const startMs=Date.parse(start);
+      if(!isFinite(startMs)) return;
+      const stepH=erResolutionHours(erText(period,'resolution'));
+      erEls(period,'Point').forEach(point=>{
+        const pos=+(erText(point,'position')||0);
+        const qty=+(erText(point,'quantity')||NaN);
+        if(!pos||!isFinite(qty)) return;
+        const d=new Date(startMs+(pos-1)*stepH*3600000);
+        const mo=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+        out.psr[psr][mo]=(out.psr[psr][mo]||0)+qty*stepH/1000; // MW avg -> GWh
+        out._meta.points++;
+      });
+    });
+  });
+  return out;
+}
+async function erFetchCountryYear(countryId,year){
+  const c=ER_COUNTRIES.find(x=>x.id===countryId)||ER_COUNTRIES[0];
+  const key=`euren_${countryId}_${year}`;
+  const cached=gdCacheGet(key);
+  if(cached) return cached;
+  if(location.protocol==='file:') throw new Error('ENTSO-E proxy is available on deployed / localhost app, not file preview');
+  const now=new Date();
+  const start=new Date(Date.UTC(year,0,1,0,0));
+  const end=year===now.getUTCFullYear()
+    ? new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,0,0))
+    : new Date(Date.UTC(year+1,0,1,0,0));
+  const params=new URLSearchParams({documentType:'A75',processType:'A16',in_Domain:c.domain,periodStart:erEntsoeDate(start),periodEnd:erEntsoeDate(end)});
+  const r=await fetch(`/api/entsoe?${params.toString()}`,{cache:'no-store'});
+  const txt=await r.text();
+  if(!r.ok) throw new Error(txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180)||`HTTP ${r.status}`);
+  if(txt.trim().startsWith('{')){
+    let msg='ENTSO-E proxy error';
+    try{ msg=JSON.parse(txt).error||msg; }catch{}
+    throw new Error(msg);
+  }
+  const data=erParseGenerationXml(txt);
+  data._meta.country=c.name;
+  data._meta.domain=c.domain;
+  data._meta.year=year;
+  gdCacheSet(key,data,year===now.getUTCFullYear()?6:0);
+  return data;
+}
+function erMonthlyTWh(data,tech,year){
+  const cfg=ER_TECH[tech]||ER_TECH.hydro;
+  return GA_MO.map((_,i)=>{
+    const mo=`${year}-${String(i+1).padStart(2,'0')}`;
+    let sum=0,found=false;
+    cfg.psr.forEach(psr=>{
+      const v=data?.psr?.[psr]?.[mo];
+      if(v!=null&&isFinite(v)){ sum+=+v; found=true; }
+    });
+    return found?+(sum/1000).toFixed(3):null; // GWh -> TWh
+  });
+}
+function erFmt(v,d=2){ return v!=null&&isFinite(v)?Number(v).toFixed(d):'--'; }
+function renderEuroRenewables(){
+  const pane=document.getElementById('ga-euren-pane'); if(!pane)return;
+  const p=erPrefs();
+  const cfg=ER_TECH[p.tech]||ER_TECH.hydro;
+  const curY=new Date().getFullYear();
+  const years=Array.from(new Set([curY,curY-1,curY-2,curY-3,curY-4]));
+  const cOpts=ER_COUNTRIES.map(c=>`<option value="${c.id}" ${c.id===p.country?'selected':''}>${c.name}</option>`).join('');
+  const yrBtns=years.map(y=>`<button class="f-btn sm${p.years.includes(y)?' on':''}" style="padding:2px 8px;font-size:9px" onclick="erToggleYear(${y})">${y}</button>`).join('');
+  pane.innerHTML=`
+    <div class="ga-subtabs" id="ga-euren-subtabs">
+      ${Object.entries(ER_TECH).map(([id,t])=>`<button class="ga-stab ${p.tech===id?'active':''}" onclick="erSetTech('${id}')">${t.label.toUpperCase()}</button>`).join('')}
+    </div>
+    <div class="ga-card" style="margin-top:12px;margin-bottom:12px">
+      <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+        <div><div class="ga-lbl">COUNTRY</div><select class="gsel" onchange="erSetCountry(this.value)">${cOpts}</select></div>
+        <div><div class="ga-lbl">YEARS</div><div style="display:flex;gap:4px;flex-wrap:wrap">${yrBtns}</div></div>
+        <div style="margin-left:auto;font-size:9px;color:#6b7a99;line-height:1.6;max-width:520px">
+          Source: ENTSO-E Transparency Platform, Actual Generation per Type (A75 / A16). ${cfg.note}. Missing API/key/data stays blank.
+        </div>
+      </div>
+    </div>
+    <div class="ga-g4" id="er-kpis" style="margin-bottom:12px">
+      <div class="ga-kpi"><div class="ga-kpi-lbl">LATEST MONTH</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">loading</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">YTD GENERATION</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">${cfg.unit}</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">YOY</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">same month</div></div>
+      <div class="ga-kpi"><div class="ga-kpi-lbl">STATUS</div><div class="ga-kpi-val" style="font-size:13px">LOADING</div><div class="ga-kpi-note">ENTSO-E</div></div>
+    </div>
+    <div class="ga-card">
+      <div class="ga-sec">${cfg.label.toUpperCase()} GENERATION — SEASONAL <span class="ga-tag">ENTSO-E</span></div>
+      <div class="ga-ch-wrap" style="height:330px"><canvas id="er-seasonal-chart"></canvas></div>
+      <div class="ga-source" id="er-source">Loading ENTSO-E data...</div>
+    </div>
+    <div class="ga-card" style="margin-top:12px">
+      <div class="ga-sec">MONTHLY TABLE — ${cfg.label.toUpperCase()} <span class="ga-tag">TWh</span></div>
+      <div id="er-table" style="overflow-x:auto"></div>
+    </div>`;
+  erLoadAndDraw();
+}
+async function erLoadAndDraw(){
+  const token=++ER_TOKEN;
+  const p=erPrefs();
+  const cfg=ER_TECH[p.tech]||ER_TECH.hydro;
+  const country=ER_COUNTRIES.find(c=>c.id===p.country)||ER_COUNTRIES[0];
+  const years=p.years.slice().sort((a,b)=>b-a);
+  const src=document.getElementById('er-source');
+  if(src) src.textContent=`Loading ${country.name} ${cfg.label.toLowerCase()} generation from ENTSO-E...`;
+  const results=await Promise.all(years.map(y=>erFetchCountryYear(p.country,y).then(data=>({year:y,data})).catch(error=>({year:y,error}))));
+  if(token!==ER_TOKEN) return;
+  const ok=results.filter(r=>r.data);
+  const errs=results.filter(r=>r.error);
+  const datasets=years.map((y,i)=>{
+    const r=ok.find(x=>x.year===y);
+    return {label:String(y),data:r?erMonthlyTWh(r.data,p.tech,y):Array(12).fill(null),borderColor:GA_COLS[i%GA_COLS.length],backgroundColor:'transparent',borderWidth:i===0?2.4:1.6,borderDash:i===0?[]:[5,4],tension:.25,pointRadius:2};
+  });
+  gaMakeChart('er-seasonal-chart','line',{labels:GA_MO,datasets},{
+    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'TWh/month',color:'#3d5070',font:{size:9}}}}
+  });
+  erRenderKpis(ok,errs,p.tech,country,cfg);
+  erRenderTable(years,ok,p.tech);
+  if(src){
+    const errTxt=errs.length?` · ${errs.length} year(s) missing: ${errs.map(e=>`${e.year} ${e.error.message}`).join(' | ')}`:'';
+    src.textContent=`Source: ENTSO-E Transparency Platform Actual Generation per Type · ${country.name} (${country.domain}) · ${cfg.note}${errTxt}`;
+  }
+}
+function erRenderKpis(ok,errs,tech,country,cfg){
+  const box=document.getElementById('er-kpis'); if(!box)return;
+  const sorted=ok.slice().sort((a,b)=>b.year-a.year);
+  let latest=null;
+  for(const r of sorted){
+    const arr=erMonthlyTWh(r.data,tech,r.year);
+    for(let i=11;i>=0;i--){ if(arr[i]!=null){ latest={year:r.year,month:i,value:arr[i],arr}; break; } }
+    if(latest) break;
+  }
+  let ytd=null,yoy=null;
+  if(latest){
+    ytd=latest.arr.slice(0,latest.month+1).reduce((a,v)=>a+(v||0),0);
+    const prev=ok.find(r=>r.year===latest.year-1);
+    if(prev){
+      const prevVal=erMonthlyTWh(prev.data,tech,latest.year-1)[latest.month];
+      if(prevVal!=null&&prevVal!==0) yoy=(latest.value/prevVal-1)*100;
+    }
+  }
+  const live=ok.length>0&&errs.length===0;
+  const partial=ok.length>0&&errs.length>0;
+  const stat=live?'LIVE':partial?'PARTIAL':'MISSING';
+  const statCol=live?'#34d399':partial?'#fbbf24':'#f87171';
+  box.innerHTML=`
+    <div class="ga-kpi"><div class="ga-kpi-lbl">LATEST MONTH</div><div class="ga-kpi-val">${latest?erFmt(latest.value):'--'}</div><div class="ga-kpi-note">${latest?`${GA_MO[latest.month]} ${latest.year} · TWh`:'no data'}</div></div>
+    <div class="ga-kpi"><div class="ga-kpi-lbl">YTD GENERATION</div><div class="ga-kpi-val">${ytd!=null?erFmt(ytd):'--'}</div><div class="ga-kpi-note">${latest?`${country.name} · through ${GA_MO[latest.month]}`:cfg.unit}</div></div>
+    <div class="ga-kpi"><div class="ga-kpi-lbl">YOY</div><div class="ga-kpi-val" style="color:${yoy==null?'#c8d6e5':yoy>=0?'#34d399':'#f87171'}">${yoy==null?'--':`${yoy>=0?'+':''}${yoy.toFixed(1)}%`}</div><div class="ga-kpi-note">same month vs prior year</div></div>
+    <div class="ga-kpi"><div class="ga-kpi-lbl">STATUS</div><div class="ga-kpi-val" style="font-size:13px;color:${statCol}">${stat}</div><div class="ga-kpi-note">ENTSO-E proxy / API key</div></div>`;
+}
+function erRenderTable(years,ok,tech){
+  const el=document.getElementById('er-table'); if(!el)return;
+  const rows=years.map(y=>{
+    const r=ok.find(x=>x.year===y);
+    const arr=r?erMonthlyTWh(r.data,tech,y):Array(12).fill(null);
+    const total=arr.reduce((a,v)=>a+(v||0),0);
+    return `<tr><td style="color:#c8d6e5;font-weight:600">${y}</td>${arr.map(v=>`<td style="text-align:right">${v==null?'--':erFmt(v)}</td>`).join('')}<td style="text-align:right;color:#c8d6e5;font-weight:600">${total?erFmt(total):'--'}</td></tr>`;
+  }).join('');
+  el.innerHTML=`<table class="ga-tbl" style="width:100%;font-size:10px">
+    <thead><tr><th style="text-align:left">Year</th>${GA_MO.map(m=>`<th style="text-align:right">${m}</th>`).join('')}<th style="text-align:right">YTD / Total</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+window.erSetTech = erSetTech;
+window.erSetCountry = erSetCountry;
+window.erToggleYear = erToggleYear;
 
 // ══════════════════════════════════════════════════════════════════════════
 // LNG VALUE CHAIN — EU · imports → regasification → sendout

@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260501-pipeline-history">
-<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260502-thailand-weather-monitor" defer></script>
+<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260503-eu-renewables" defer></script>
 </head>
 <body class="app-unlocked">
 <div id="public-site">
@@ -218,6 +218,7 @@
       <div class="mod-card" onclick="shellNav('gasanalytics','storage')"><span class="card-num">03</span><div class="card-ttl">EU Storage</div><div class="card-desc">EU &amp; country storage levels, seasonal comparison, injection/withdrawal flows — GIE AGSI+</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','regas')"><span class="card-num">04</span><div class="card-ttl">LNG Regas Terminals</div><div class="card-desc">Utilisation heatmap, tank stocks, sendout seasonal and country aggregate — GIE AGGI+</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','lngvc')"><span class="card-num">05</span><div class="card-ttl">LNG Value Chain</div><div class="card-desc">EU LNG imports, regasification utilisation, sendout and tank inventory — GIE ALSI</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
+      <div class="mod-card" onclick="shellNav('gasanalytics','euren')"><span class="card-num">06</span><div class="card-ttl">European Renewable</div><div class="card-desc">Hydro, wind and solar generation by country — seasonal ENTSO-E charts</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
     </div>
   </div>
   <div class="mod-group">
@@ -582,6 +583,7 @@
     <button class="gmtab" id="gmtab-dashboard2" onclick="gaMainTab('dashboard2',this)">FUNDAMENTALS DASHBOARD 2.0</button>
     <button class="gmtab" id="gmtab-lngbal" onclick="gaMainTab('lngbal',this)">LNG BALANCE</button>
     <button class="gmtab" id="gmtab-eugas"  onclick="gaMainTab('eugas',this)">EU GAS BALANCE</button>
+    <button class="gmtab" id="gmtab-euren"  onclick="gaMainTab('euren',this)">EUROPEAN RENEWABLE</button>
     
     <button class="gmtab" id="gmtab-regas"  onclick="gaMainTab('regas',this)">LNG REGAS</button>
     <button class="gmtab" id="gmtab-storage" onclick="gaMainTab('storage',this)">EU STORAGE</button>
@@ -985,6 +987,11 @@
       <button class="ga-stab" onclick="eugasTab('balance',this)">GAS BALANCE TABLE</button>
     </div>
     <div id="ga-eugas-pane" style="margin-top:2px"></div>
+  </div>
+
+  <!-- TAB 2B: EUROPEAN RENEWABLE GENERATION -->
+  <div id="ga-tab-euren" class="ga-tab-sec">
+    <div id="ga-euren-pane" style="margin-top:2px"></div>
   </div>
 
   <!-- TAB 3: EU GAS STORAGE -->
