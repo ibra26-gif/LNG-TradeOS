@@ -26376,38 +26376,28 @@ function renderKorPrices(el){
     tariffHistory.sort((a,b) => a.date.localeCompare(b.date));
   }
   const lastTariff = tariffHistory.length ? tariffHistory[tariffHistory.length - 1] : null;
-  const tariffFirst = tariffHistory.length ? tariffHistory[0].date.slice(0,7) : null;
-  const tariffLast = lastTariff ? lastTariff.date.slice(0,7) : null;
   const currentTariffMonth = currentTariff?.effectiveStart ? currentTariff.effectiveStart.slice(0,7) : null;
   const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const avgByMonth = (rows, dateFn, valFn) => {
-    const buckets = Array.from({length:12}, () => ({sum:0, n:0}));
-    for (const row of rows || []) {
-      const ds = dateFn(row);
-      const v = valFn(row);
-      const m = ds && /^(\d{4})-(\d{2})/.test(ds) ? parseInt(ds.slice(5,7), 10) - 1 : null;
-      if (m == null || m < 0 || m > 11 || v == null || !isFinite(v)) continue;
-      buckets[m].sum += +v;
-      buckets[m].n += 1;
-    }
-    return buckets.map(b => b.n ? +(b.sum / b.n).toFixed(2) : null);
-  };
   const marketJkmMonthly = korJkmMonthly();
   const marketBrentMonthly = korBrentMonthly();
   const marketSlopeBand = korSlopeBand(marketBrentMonthly);
-  const tariffSeasonal = avgByMonth(tariffHistory, r => r.date, r => r.usdMmbtu_total);
-  const jkmSeasonal = avgByMonth(marketJkmMonthly, r => `${r.ym}-01`, r => r.jkm);
-  const brentLowSeasonal = avgByMonth(marketSlopeBand, r => `${r.ym}-01`, r => r.lower);
-  const brentHighSeasonal = avgByMonth(marketSlopeBand, r => `${r.ym}-01`, r => r.upper);
-  const jkmFirst = marketJkmMonthly.length ? marketJkmMonthly[0].ym : null;
-  const jkmLast = marketJkmMonthly.length ? marketJkmMonthly[marketJkmMonthly.length - 1].ym : null;
-  const brentFirst = marketSlopeBand.length ? marketSlopeBand[0].ym : null;
-  const brentLast = marketSlopeBand.length ? marketSlopeBand[marketSlopeBand.length - 1].ym : null;
-  const seasonalScope = [
-    tariffFirst ? `KOGAS tariff ${tariffFirst}–${tariffLast}${currentTariffMonth ? ` incl latest official ${currentTariffMonth}` : ''}` : 'KOGAS tariff history missing',
-    jkmFirst ? `JKM ${jkmFirst}–${jkmLast}` : 'JKM not loaded',
-    brentFirst ? `Brent slope ${brentFirst}–${brentLast}` : 'Brent not loaded',
-  ].join(' · ');
+  const pick2026 = (rows, key) => {
+    const m = Object.fromEntries((rows || []).filter(r => /^2026-\d{2}$/.test(r.ym)).map(r => [r.ym, r[key]]));
+    return monthLabels.map((_, i) => {
+      const ym = `2026-${String(i + 1).padStart(2, '0')}`;
+      const v = m[ym];
+      return v == null || !isFinite(v) ? null : +v;
+    });
+  };
+  const jkm2026 = pick2026(marketJkmMonthly, 'jkm');
+  const brentLow2026 = pick2026(marketSlopeBand, 'lower');
+  const brentHigh2026 = pick2026(marketSlopeBand, 'upper');
+  const kogas2026 = monthLabels.map((_, i) => {
+    const ym = `2026-${String(i + 1).padStart(2, '0')}`;
+    return currentTariffMonth === ym ? currentDirectUsd : null;
+  });
+  const kogasMonths = kogas2026.map((v,i)=>v!=null?monthLabels[i]:null).filter(Boolean);
+  const chart2026Note = `2026 monthly chart · KOGAS official direct-power tariff shown only for ${kogasMonths.length?kogasMonths.join(', '):'no published 2026 month in cache'} · blanks are missing official data, not estimates`;
 
   el.innerHTML = `
     ${korFreshness([
@@ -26435,11 +26425,11 @@ function renderKorPrices(el){
 
     <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · KOGAS tariff · JKM · Brent 11-14% (3,0,1) · $/MMBtu</span>
-        <span style="font-size:9px;color:#5a6882">calendar-month average · see observation years below</span>
+        <span style="font-size:11px;color:#fff;font-weight:500">2026 · KOGAS tariff · JKM · Brent 11-14% (3,0,1) · $/MMBtu</span>
+        <span style="font-size:9px;color:#5a6882">monthly values only · no seasonal averaging</span>
       </div>
-      <div style="height:260px"><canvas id="kor-tariff-seasonal"></canvas></div>
-      <div style="font-size:9px;color:#5a6882;margin-top:6px;line-height:1.5">${seasonalScope}</div>
+      <div style="height:260px"><canvas id="kor-tariff-2026"></canvas></div>
+      <div style="font-size:9px;color:#5a6882;margin-top:6px;line-height:1.5">${chart2026Note}</div>
     </div>
 
     <div style="font-size:9px;color:#6b7280;margin-bottom:10px">
@@ -26461,19 +26451,19 @@ function renderKorPrices(el){
     </div>
   `;
 
-  // ── Seasonal economics: KOGAS tariff vs JKM vs 11-14% Brent band ──────
+  // ── 2026 economics: official KOGAS tariff vs JKM vs 11-14% Brent band ─
   if (window._korChartTariffSeasonal) { window._korChartTariffSeasonal.destroy(); window._korChartTariffSeasonal = null; }
-  const cSeason = document.getElementById('kor-tariff-seasonal');
+  const cSeason = document.getElementById('kor-tariff-2026');
   if (cSeason) {
     window._korChartTariffSeasonal = new Chart(cSeason.getContext('2d'), {
       type:'line',
       data: {
         labels: monthLabels,
         datasets: [
-          { label:'11% Brent 3-0-1', data:brentLowSeasonal, borderColor:'rgba(167,139,250,0.35)', borderWidth:1, borderDash:[4,3], pointRadius:0, tension:0.3, fill:false, spanGaps:true },
-          { label:'14% Brent 3-0-1', data:brentHighSeasonal, borderColor:'rgba(167,139,250,0.45)', borderWidth:1, borderDash:[4,3], pointRadius:0, tension:0.3, fill:'-1', backgroundColor:'rgba(167,139,250,0.10)', spanGaps:true },
-          { label:'KOGAS power tariff', data:tariffSeasonal, borderColor:'#fbbf24', backgroundColor:'transparent', borderWidth:2, pointRadius:3, tension:0.3, fill:false, spanGaps:true },
-          { label:'JKM', data:jkmSeasonal, borderColor:'#3b82f6', backgroundColor:'transparent', borderWidth:2, pointRadius:3, tension:0.3, fill:false, spanGaps:true },
+          { label:'11% Brent 3-0-1', data:brentLow2026, borderColor:'rgba(167,139,250,0.35)', borderWidth:1, borderDash:[4,3], pointRadius:2, tension:0.3, fill:false, spanGaps:false },
+          { label:'14% Brent 3-0-1', data:brentHigh2026, borderColor:'rgba(167,139,250,0.45)', borderWidth:1, borderDash:[4,3], pointRadius:2, tension:0.3, fill:'-1', backgroundColor:'rgba(167,139,250,0.10)', spanGaps:false },
+          { label:'KOGAS direct power tariff', data:kogas2026, borderColor:'#fbbf24', backgroundColor:'#fbbf24', borderWidth:2.5, pointRadius:5, pointHoverRadius:7, tension:0, fill:false, spanGaps:false },
+          { label:'JKM', data:jkm2026, borderColor:'#3b82f6', backgroundColor:'transparent', borderWidth:2, pointRadius:3, tension:0.3, fill:false, spanGaps:false },
         ]
       },
       options: {

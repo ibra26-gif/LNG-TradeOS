@@ -42,21 +42,21 @@ assert(
 );
 
 assert(
-  js.includes('Seasonal · KOGAS tariff · JKM · Brent 11-14% (3,0,1)') &&
-    js.includes('kor-tariff-seasonal') &&
+  js.includes('2026 · KOGAS tariff · JKM · Brent 11-14% (3,0,1)') &&
+    js.includes('kor-tariff-2026') &&
     !js.includes('kor-prices-chart') &&
     !js.includes('kor-tariff-history') &&
-    js.includes('avgByMonth') &&
     js.includes("_korLive?.kogasTariff") &&
     js.includes('KOGAS direct power') &&
     js.includes('Latest official KOGAS direct') &&
-    js.includes('calendar-month average · see observation years below') &&
-    js.includes('seasonalScope') &&
+    js.includes('monthly values only · no seasonal averaging') &&
+    js.includes('blanks are missing official data, not estimates') &&
+    js.includes('const kogas2026') &&
     js.includes('JKM vs KOGAS direct') &&
-    js.includes('KOGAS power tariff') &&
+    js.includes('KOGAS direct power tariff') &&
     js.includes('11% Brent 3-0-1') &&
     js.includes('14% Brent 3-0-1'),
-  'Tariffs tab must compare official KOGAS tariffs, JKM, and Brent slope range'
+  'Tariffs tab must compare 2026 official KOGAS tariffs, JKM, and Brent slope range without seasonal averaging'
 );
 
 assert(
