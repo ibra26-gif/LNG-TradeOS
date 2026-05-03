@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260501-pipeline-history">
-<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260503-eu-renewables-update-ts" defer></script>
+<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260503-eu-renewables-after-lngvc" defer></script>
 </head>
 <body class="app-unlocked">
 <div id="public-site">
@@ -583,11 +583,10 @@
     <button class="gmtab" id="gmtab-dashboard2" onclick="gaMainTab('dashboard2',this)">FUNDAMENTALS DASHBOARD 2.0</button>
     <button class="gmtab" id="gmtab-lngbal" onclick="gaMainTab('lngbal',this)">LNG BALANCE</button>
     <button class="gmtab" id="gmtab-eugas"  onclick="gaMainTab('eugas',this)">EU GAS BALANCE</button>
-    <button class="gmtab" id="gmtab-euren"  onclick="gaMainTab('euren',this)">EUROPEAN RENEWABLE</button>
-    
     <button class="gmtab" id="gmtab-regas"  onclick="gaMainTab('regas',this)">LNG REGAS</button>
     <button class="gmtab" id="gmtab-storage" onclick="gaMainTab('storage',this)">EU STORAGE</button>
-      <button class="gmtab" id="gmtab-lngvc"  onclick="gaMainTab('lngvc',this)">LNG VALUE CHAIN</button>
+    <button class="gmtab" id="gmtab-lngvc"  onclick="gaMainTab('lngvc',this)">LNG VALUE CHAIN</button>
+    <button class="gmtab" id="gmtab-euren"  onclick="gaMainTab('euren',this)">EUROPEAN RENEWABLE</button>
   </div>
 
   <!-- TAB 1: CHINA SIGNPOSTS -->
@@ -989,11 +988,6 @@
     <div id="ga-eugas-pane" style="margin-top:2px"></div>
   </div>
 
-  <!-- TAB 2B: EUROPEAN RENEWABLE GENERATION -->
-  <div id="ga-tab-euren" class="ga-tab-sec">
-    <div id="ga-euren-pane" style="margin-top:2px"></div>
-  </div>
-
   <!-- TAB 3: EU GAS STORAGE -->
 
   <div id="ga-tab-storage" class="ga-tab-sec">
@@ -1023,6 +1017,11 @@
   <!-- TAB 6: LNG VALUE CHAIN -->
   <div id="ga-tab-lngvc" class="ga-tab-sec">
     <div id="ga-lngvc-pane" style="padding:16px 18px"></div>
+  </div>
+
+  <!-- TAB 7: EUROPEAN RENEWABLE GENERATION -->
+  <div id="ga-tab-euren" class="ga-tab-sec">
+    <div id="ga-euren-pane" style="margin-top:2px"></div>
   </div>
 
   <!-- Modal (keep) -->

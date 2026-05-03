@@ -22,6 +22,13 @@ assert(
 );
 
 assert(
+  app.indexOf('id="gmtab-lngvc"') > -1 &&
+    app.indexOf('id="gmtab-euren"') > app.indexOf('id="gmtab-lngvc"') &&
+    app.indexOf('id="ga-tab-euren"') > app.indexOf('id="ga-tab-lngvc"'),
+  'European Renewable must sit after LNG Value Chain in the tab order'
+);
+
+assert(
   js.includes("if(id==='euren'){renderEuroRenewables();return;}") &&
     js.includes("id==='ga-tab-euren'") &&
     js.includes('function renderEuroRenewables()') &&
