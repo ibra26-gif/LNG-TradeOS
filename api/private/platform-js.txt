@@ -25059,6 +25059,7 @@ let _jpnDataPromise = null;
 let _jpnErr = null;
 let _jpnTab = 'gas';
 let _jpnYears = null;
+let _jpnGasChart = null;
 
 function jpnFetchLive(){
   if(_jpnDataPromise) return _jpnDataPromise;
@@ -25115,6 +25116,7 @@ function jpnLatestNuclear(){
   return s.length ? s[s.length-1] : null;
 }
 function jpnFmt(v,d=1){ return v==null||!isFinite(v) ? '--' : Number(v).toFixed(d); }
+function jpnEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function jpnDaysInMonth(dateStr){
   if(!dateStr) return null;
   const y = +dateStr.slice(0,4), m = +dateStr.slice(5,7);
@@ -25173,39 +25175,183 @@ function jpnStatusCard({label,value='--',note='',color='#c8d6e5'}){
   return `<div class="ga-kpi"><div class="ga-kpi-lbl">${label}</div><div class="ga-kpi-val" style="color:${color}">${value}</div><div class="ga-kpi-note">${note}</div></div>`;
 }
 
+function jpnMonthLabel(month){
+  if(!month || month.length < 7) return '--';
+  const [y,m] = month.split('-');
+  return `${m}/${String(y).slice(2)}`;
+}
+
+function jpnGasRows(){
+  return (_jpnData?.gasBalance?.monthlyRows || []).filter(r=>r?.month).sort((a,b)=>a.month.localeCompare(b.month));
+}
+
+function jpnLatestGasRow(){
+  const rows = jpnGasRows();
+  return rows.length ? rows[rows.length-1] : null;
+}
+
+function jpnSupplierText(row, n=3){
+  const suppliers = row?.topSuppliers || row?.customsCountries || [];
+  return suppliers.slice(0,n).map(s=>`${jpnEsc(s.country || s.code)} ${jpnFmt((s.tonnes||0)/1000000,2)} Mt`).join(' · ') || '--';
+}
+
+function jpnDrawGasBalance(){
+  const c = document.getElementById('jpn-gas-imports-chart');
+  if(!c) return;
+  const rows = jpnGasRows().slice(-15);
+  if(_jpnGasChart){ _jpnGasChart.destroy(); _jpnGasChart = null; }
+  if(!rows.length) return;
+  _jpnGasChart = new Chart(c.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: rows.map(r=>jpnMonthLabel(r.month)),
+      datasets: [
+        {
+          label: 'LNG imports · Mt/month',
+          data: rows.map(r=>r.lngImportsMillionTonnes ?? null),
+          backgroundColor: 'rgba(45,124,255,.55)',
+          borderColor: '#2d7cff',
+          borderWidth: 1,
+          borderRadius: 2,
+          yAxisID: 'y',
+        },
+        {
+          label: 'CIF value · JPY bn',
+          type: 'line',
+          data: rows.map(r=>r.lngImportsValueJpyBillion ?? null),
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251,191,36,.10)',
+          borderWidth: 1.8,
+          pointRadius: 2,
+          tension: .25,
+          yAxisID: 'y1',
+        },
+      ],
+    },
+    options: {
+      ...CD,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        ...CD.plugins,
+        legend: { display: true, labels: { color:'#6b7a99', font:{ size:9, family:'IBM Plex Mono' }, boxWidth:10 } },
+        tooltip: {
+          ...CD.plugins.tooltip,
+          callbacks: {
+            afterBody: items => {
+              const row = rows[items?.[0]?.dataIndex || 0];
+              return row ? `Top suppliers: ${jpnSupplierText(row,3).replaceAll('&amp;','&')}` : '';
+            },
+          },
+        },
+      },
+      scales: {
+        x: { ...CD.scales.x, ticks:{ color:'#3d5070', font:{ size:9, family:'IBM Plex Mono' }, maxRotation:0 } },
+        y: {
+          position:'left',
+          title:{ display:true, text:'Mt/month', color:'#3d5070', font:{ size:9 } },
+          ticks:{ color:'#3d5070', font:{ size:9, family:'IBM Plex Mono' } },
+          grid:{ color:'#0f1824' },
+          beginAtZero:true,
+        },
+        y1: {
+          position:'right',
+          title:{ display:true, text:'JPY bn', color:'#3d5070', font:{ size:9 } },
+          ticks:{ color:'#3d5070', font:{ size:9, family:'IBM Plex Mono' } },
+          grid:{ drawOnChartArea:false },
+          beginAtZero:true,
+        },
+      },
+    },
+  });
+}
+
 function jpnRenderGas(el){
   if(!el) return;
-  const gaps = _jpnData?.gasBalance?.sourceGaps || [];
+  const gb = _jpnData?.gasBalance || {};
+  const sources = gb.sourceMap || [];
+  const rows = jpnGasRows();
+  const latest = jpnLatestGasRow();
+  const gaps = gb.sourceGaps || [];
+  const customs = gb.lngImports || {};
+  const link = (url,label='Open source') => url ? `<a href="${jpnEsc(url)}" target="_blank" style="display:inline-block;margin-top:7px;font-size:9px;color:#93c5fd">${label}</a>` : '';
+  const sourceCard = s => {
+    const status = String(s.status || 'source_gap').replaceAll('_',' ');
+    const statusColor = s.status === 'wired' ? '#34d399' : s.status === 'cross_check_only' ? '#a78bfa' : s.status === 'source_identified' ? '#93c5fd' : '#fbbf24';
+    return `<div style="border:1px solid rgba(77,158,245,.16);background:#0d1320;padding:10px;min-height:178px">
+      <div style="font-size:10px;color:#c8d6e5;font-weight:600;margin-bottom:5px">${jpnEsc(s.item)}</div>
+      <div style="font-size:9px;color:#93c5fd;line-height:1.45;margin-bottom:6px">${jpnEsc(s.source)}</div>
+      <div style="font-size:8px;color:${statusColor};text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">${status}</div>
+      <div style="font-size:9px;color:#8a9bb5;line-height:1.55;margin-bottom:6px"><b style="color:#c8d6e5">Pull:</b> ${jpnEsc(s.pull || '')}</div>
+      <div style="font-size:8px;color:#546e7a;line-height:1.45">${(s.fields||[]).map(jpnEsc).join(' · ') || 'fields pending'}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${link(s.sourceUrl)}${link(s.searchUrl,'Search page')}${link(s.currentUrl,'Current page')}${link(s.downloadUrl,'Download page')}${link(s.unitSourceUrl,'Unit note')}</div>
+    </div>`;
+  };
+  const gapCell = (label) => `<span style="color:#546e7a">${label || '--'}</span>`;
+  const balanceRows = rows.slice(-15).reverse().map(r=>`<tr>
+    <td>${jpnEsc(r.month)}</td>
+    <td style="text-align:right;color:#c8d6e5">${jpnFmt(r.lngImportsMillionTonnes,3)}</td>
+    <td style="text-align:right;color:#fbbf24">${jpnFmt(r.lngImportsValueJpyBillion,1)}</td>
+    <td style="color:#8a9bb5">${jpnSupplierText(r,3)}</td>
+    <td style="text-align:center">${r.coverage?.metiGasBusiness ? 'parsed' : gapCell('source gap')}</td>
+    <td style="text-align:center">${r.coverage?.metiPowerFuel ? 'parsed' : gapCell('source gap')}</td>
+    <td style="text-align:center">${r.coverage?.jogmecInventory ? 'parsed' : gapCell('monthly cross-check only')}</td>
+  </tr>`).join('');
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-      ${jpnStatusCard({label:'Weekly LNG storage',value:'--',note:'not wired · no estimated tank stock',color:'#fbbf24'})}
-      ${jpnStatusCard({label:'LNG imports',value:'--',note:'monthly source not wired in Japan tab',color:'#8a9bb5'})}
-      ${jpnStatusCard({label:'Gas for power',value:'--',note:'OCCTO proof pending',color:'#8a9bb5'})}
-      ${jpnStatusCard({label:'Balance status',value:'SOURCE GAP',note:'show blanks until source is stable',color:'#f87171'})}
+      ${jpnStatusCard({label:'Monthly import rows',value:rows.length?String(rows.length):'--',note:customs.latestMonth?`Customs latest ${customs.latestMonth}`:'Customs parser pending',color:rows.length?'#34d399':'#fbbf24'})}
+      ${jpnStatusCard({label:`LNG imports · ${latest?.month || '--'}`,value:latest?.lngImportsMillionTonnes!=null?jpnFmt(latest.lngImportsMillionTonnes,3):'--',note:'Mt/month · Japan Customs HS 271111000',color:'#34d399'})}
+      ${jpnStatusCard({label:'CIF value',value:latest?.lngImportsValueJpyBillion!=null?jpnFmt(latest.lngImportsValueJpyBillion,1):'--',note:'JPY bn · Customs value unit JPY1000',color:'#fbbf24'})}
+      ${jpnStatusCard({label:'Balance coverage',value:rows.length?'PARTIAL':'SOURCE GAP',note:'imports parsed; demand/storage not estimated',color:rows.length?'#93c5fd':'#fbbf24'})}
+    </div>
+    ${rows.length ? `<div class="ga-card" style="margin-bottom:12px">
+      <div class="ga-sec">JAPAN LNG IMPORT SUPPLY <span class="ga-tag">CUSTOMS HS 271111000</span></div>
+      <div style="font-size:9px;color:#6b7a99;line-height:1.6;margin-bottom:8px">
+        This is the import side of the Japan gas balance only. City-gas demand, power LNG burn and inventories stay blank until the METI/JOGMEC rows are parsed from official files.
+      </div>
+      <div class="ga-ch-wrap" style="height:285px"><canvas id="jpn-gas-imports-chart"></canvas></div>
+      <div class="ga-source">Source: ${jpnEsc(customs.source || 'Japan Customs / Ministry of Finance Trade Statistics via e-Stat')} · quantity unit: metric tonnes · value unit: JPY1000. Latest Customs file update: ${jpnEsc(customs.latestUpdateDate || '--')}.</div>
     </div>
     <div class="ga-card" style="margin-bottom:12px">
-      <div class="ga-sec">JAPAN GAS BALANCE SOURCE MAP <span class="ga-tag">NO INVENTED DATA</span></div>
+      <div class="ga-sec">MONTHLY JAPAN GAS BALANCE <span class="ga-tag">PARTIAL · NO ESTIMATES</span></div>
+      <div style="overflow:auto">
+        <table class="ga-tbl" style="width:100%;font-size:10px;min-width:900px">
+          <thead><tr><th style="text-align:left">Month</th><th style="text-align:right">LNG imports Mt</th><th style="text-align:right">CIF JPY bn</th><th style="text-align:left">Top suppliers</th><th style="text-align:center">City gas</th><th style="text-align:center">Power LNG</th><th style="text-align:center">Inventory</th></tr></thead>
+          <tbody>${balanceRows}</tbody>
+        </table>
+      </div>
+      <div class="ga-source">Only Customs import supply is plotted. Missing METI/JOGMEC rows are displayed as gaps and are not backfilled.</div>
+    </div>` : ''}
+    <div class="ga-card" style="margin-bottom:12px">
+      <div class="ga-sec">JAPAN GAS BALANCE SOURCE STACK <span class="ga-tag">NO INVENTED DATA</span></div>
+      <div style="font-size:9px;color:#6b7a99;line-height:1.6;margin-bottom:10px">
+        LNG import supply is now parsed from Japan Customs HS 271111000. The remaining balance legs are intentionally still blank: city gas demand/stocks from METI Gas Business; power LNG burn/stocks from METI Electric Power; JOGMEC inventory as a monthly cross-check.
+      </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px">
-        ${gaps.map(g=>`<div style="border:1px solid rgba(77,158,245,.16);background:#0d1320;padding:10px">
+        ${sources.length ? sources.map(sourceCard).join('') : gaps.map(g=>`<div style="border:1px solid rgba(77,158,245,.16);background:#0d1320;padding:10px">
           <div style="font-size:10px;color:#c8d6e5;font-weight:600;margin-bottom:5px">${g.item}</div>
           <div style="font-size:9px;color:${g.status==='not_wired'?'#fbbf24':'#93c5fd'};text-transform:uppercase;margin-bottom:6px">${g.status.replaceAll('_',' ')}</div>
           <div style="font-size:9px;color:#6b7a99;line-height:1.55">${g.note || ''}</div>
           ${g.sourceUrl?`<a href="${g.sourceUrl}" target="_blank" style="display:inline-block;margin-top:7px;font-size:9px;color:#93c5fd">Open source</a>`:''}
         </div>`).join('')}
       </div>
-      <div class="ga-source">Japan gas balance is intentionally blank until weekly LNG storage, imports, and OCCTO gas-for-power extraction are proved. Missing source = gap, not modelled value.</div>
+      <div class="ga-source">Missing source row = gap, not modelled value. Partial balance means only the official Customs import leg is wired.</div>
     </div>
     <div class="ga-card">
-      <div class="ga-sec">NEXT SCRAPER PROOF <span class="ga-tag">OCCTO</span></div>
+      <div class="ga-sec">PARSER QUEUE <span class="ga-tag">MONTHLY FIRST</span></div>
       <table class="ga-tbl" style="width:100%;font-size:10px">
-        <thead><tr><th style="text-align:left">Step</th><th style="text-align:left">Purpose</th><th style="text-align:left">Status</th></tr></thead>
+        <thead><tr><th style="text-align:left">Balance item</th><th style="text-align:left">Official source</th><th style="text-align:left">Wiring</th></tr></thead>
         <tbody>
-          <tr><td>OCCTO navigation</td><td>Option 3 → Option 3 → Option 1 → month tab → refresh</td><td style="color:#fbbf24">Manual path known</td></tr>
-          <tr><td>Weekly LNG storage</td><td>Find METI/JOGMEC/public weekly stock table</td><td style="color:#f87171">Not wired</td></tr>
-          <tr><td>Balance chart</td><td>Plot only once real rows exist</td><td style="color:#8a9bb5">Waiting</td></tr>
+          ${(sources.length?sources:gaps).map(s=>`<tr>
+            <td>${jpnEsc(s.balanceUse || s.item)}</td>
+            <td>${jpnEsc(s.source || s.item)}</td>
+            <td style="color:${s.status==='wired'?'#34d399':s.status==='source_identified'?'#93c5fd':s.status==='cross_check_only'?'#a78bfa':'#fbbf24'}">${jpnEsc(s.wiring || s.status || 'pending').replaceAll('_',' ')}</td>
+          </tr>`).join('')}
+          <tr><td>Balance chart</td><td>All official rows above</td><td style="color:${rows.length?'#fbbf24':'#8a9bb5'}">${rows.length?'partial imports chart wired; demand/storage pending':'waiting for parsed monthlyRows'}</td></tr>
         </tbody>
       </table>
     </div>`;
+  if(rows.length) setTimeout(jpnDrawGasBalance,60);
 }
 
 function jpnRenderPower(el){

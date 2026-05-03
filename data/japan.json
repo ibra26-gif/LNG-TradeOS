@@ -1,23 +1,3985 @@
 {
   "schema": "japan_analytics_v1",
   "country": "Japan",
-  "cachedAt": "2026-05-03T14:22:00+00:00",
+  "cachedAt": "2026-05-03T19:15:39+00:00",
   "gasBalance": {
-    "status": "source_gap",
-    "weeklyLngStorage": null,
-    "lngImports": null,
-    "gasForPower": null,
-    "sourceGaps": [
+    "status": "partial_balance",
+    "monthlyRows": [
       {
-        "item": "Weekly LNG storage",
-        "status": "not_wired",
-        "note": "Find stable METI/OCCTO/JOGMEC public table before plotting. Do not estimate."
+        "month": "2025-01",
+        "lngImportsTonnes": 6640932.0,
+        "lngImportsValueJpyThousand": 666375402.0,
+        "customsCountryCount": 10,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2528801,
+            "valueJpyThousand": 257471692
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 1468303,
+            "valueJpyThousand": 145355834
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 572698,
+            "valueJpyThousand": 54391628
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 453875,
+            "valueJpyThousand": 47735723
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 330937,
+            "valueJpyThousand": 37976096
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 324346,
+            "valueJpyThousand": 31547919
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 316388,
+            "valueJpyThousand": 28650790
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 270621,
+            "valueJpyThousand": 26202878
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 239493,
+            "valueJpyThousand": 22292029
+          },
+          {
+            "code": "524",
+            "country": "Nigeria",
+            "tonnes": 135470,
+            "valueJpyThousand": 14750813
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2528801,
+            "valueJpyThousand": 257471692
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 1468303,
+            "valueJpyThousand": 145355834
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 572698,
+            "valueJpyThousand": 54391628
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 453875,
+            "valueJpyThousand": 47735723
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 330937,
+            "valueJpyThousand": 37976096
+          }
+        ],
+        "lngImportsMillionTonnes": 6.641,
+        "lngImportsValueJpyBillion": 666.4,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
       },
       {
-        "item": "OCCTO monthly power/generation",
-        "status": "manual_navigation_required",
-        "sourceUrl": "http://occtonet.occto.or.jp/public/dfw/RP11/OCCTO/SD/LOGIN_login#",
-        "note": "User path: Option 3 > Option 3 > Option 1 > month tab > refresh. Needs scraper proof."
+        "month": "2025-02",
+        "lngImportsTonnes": 5875249.0,
+        "lngImportsValueJpyThousand": 553959168.0,
+        "customsCountryCount": 12,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2314314,
+            "valueJpyThousand": 222237203
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 884837,
+            "valueJpyThousand": 77884828
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 585323,
+            "valueJpyThousand": 53949801
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 464746,
+            "valueJpyThousand": 44934592
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 343892,
+            "valueJpyThousand": 32988728
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 327407,
+            "valueJpyThousand": 30231062
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 250929,
+            "valueJpyThousand": 24242181
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 240275,
+            "valueJpyThousand": 24757561
+          },
+          {
+            "code": "407",
+            "country": "Peru",
+            "tonnes": 139196,
+            "valueJpyThousand": 12712699
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 131413,
+            "valueJpyThousand": 9046083
+          },
+          {
+            "code": "147",
+            "country": "United Arab Emirates",
+            "tonnes": 120648,
+            "valueJpyThousand": 13730246
+          },
+          {
+            "code": "545",
+            "country": "Mozambique",
+            "tonnes": 72269,
+            "valueJpyThousand": 7244184
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2314314,
+            "valueJpyThousand": 222237203
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 884837,
+            "valueJpyThousand": 77884828
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 585323,
+            "valueJpyThousand": 53949801
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 464746,
+            "valueJpyThousand": 44934592
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 343892,
+            "valueJpyThousand": 32988728
+          }
+        ],
+        "lngImportsMillionTonnes": 5.875,
+        "lngImportsValueJpyBillion": 554.0,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2025-03",
+        "lngImportsTonnes": 5151480.0,
+        "lngImportsValueJpyThousand": 467279568.0,
+        "customsCountryCount": 10,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2059726,
+            "valueJpyThousand": 188151540
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 885133,
+            "valueJpyThousand": 80222940
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 638970,
+            "valueJpyThousand": 55025889
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 389763,
+            "valueJpyThousand": 36325487
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 324693,
+            "valueJpyThousand": 29333810
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 275746,
+            "valueJpyThousand": 24644226
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 265866,
+            "valueJpyThousand": 26450395
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 132912,
+            "valueJpyThousand": 10532179
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 118709,
+            "valueJpyThousand": 11271903
+          },
+          {
+            "code": "147",
+            "country": "United Arab Emirates",
+            "tonnes": 59962,
+            "valueJpyThousand": 5321199
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2059726,
+            "valueJpyThousand": 188151540
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 885133,
+            "valueJpyThousand": 80222940
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 638970,
+            "valueJpyThousand": 55025889
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 389763,
+            "valueJpyThousand": 36325487
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 324693,
+            "valueJpyThousand": 29333810
+          }
+        ],
+        "lngImportsMillionTonnes": 5.151,
+        "lngImportsValueJpyBillion": 467.3,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2025-04",
+        "lngImportsTonnes": 5374388.0,
+        "lngImportsValueJpyThousand": 475350784.0,
+        "customsCountryCount": 13,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2274611,
+            "valueJpyThousand": 196363818
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 821599,
+            "valueJpyThousand": 74112574
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 412797,
+            "valueJpyThousand": 37340974
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 352094,
+            "valueJpyThousand": 29903257
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 293285,
+            "valueJpyThousand": 26262110
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 266711,
+            "valueJpyThousand": 25014561
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 263387,
+            "valueJpyThousand": 20086889
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 199376,
+            "valueJpyThousand": 19393634
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 190814,
+            "valueJpyThousand": 17068954
+          },
+          {
+            "code": "147",
+            "country": "United Arab Emirates",
+            "tonnes": 119508,
+            "valueJpyThousand": 12926884
+          },
+          {
+            "code": "105",
+            "country": "China",
+            "tonnes": 87749,
+            "valueJpyThousand": 8560780
+          },
+          {
+            "code": "524",
+            "country": "Nigeria",
+            "tonnes": 59150,
+            "valueJpyThousand": 5052103
+          },
+          {
+            "code": "112",
+            "country": "Country code 112",
+            "tonnes": 33307,
+            "valueJpyThousand": 3264246
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2274611,
+            "valueJpyThousand": 196363818
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 821599,
+            "valueJpyThousand": 74112574
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 412797,
+            "valueJpyThousand": 37340974
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 352094,
+            "valueJpyThousand": 29903257
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 293285,
+            "valueJpyThousand": 26262110
+          }
+        ],
+        "lngImportsMillionTonnes": 5.374,
+        "lngImportsValueJpyBillion": 475.4,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2025-05",
+        "lngImportsTonnes": 4664357.0,
+        "lngImportsValueJpyThousand": 403884331.0,
+        "customsCountryCount": 12,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2087954,
+            "valueJpyThousand": 180625056
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 496675,
+            "valueJpyThousand": 43266743
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 473372,
+            "valueJpyThousand": 44805546
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 368440,
+            "valueJpyThousand": 29148949
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 361224,
+            "valueJpyThousand": 33860702
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 264294,
+            "valueJpyThousand": 21211891
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 204693,
+            "valueJpyThousand": 16426034
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 197954,
+            "valueJpyThousand": 15354680
+          },
+          {
+            "code": "524",
+            "country": "Nigeria",
+            "tonnes": 75141,
+            "valueJpyThousand": 6714047
+          },
+          {
+            "code": "530",
+            "country": "Equatorial Guinea",
+            "tonnes": 66779,
+            "valueJpyThousand": 6292187
+          },
+          {
+            "code": "147",
+            "country": "United Arab Emirates",
+            "tonnes": 60055,
+            "valueJpyThousand": 5493032
+          },
+          {
+            "code": "112",
+            "country": "Country code 112",
+            "tonnes": 7776,
+            "valueJpyThousand": 685464
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2087954,
+            "valueJpyThousand": 180625056
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 496675,
+            "valueJpyThousand": 43266743
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 473372,
+            "valueJpyThousand": 44805546
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 368440,
+            "valueJpyThousand": 29148949
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 361224,
+            "valueJpyThousand": 33860702
+          }
+        ],
+        "lngImportsMillionTonnes": 4.664,
+        "lngImportsValueJpyBillion": 403.9,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2025-06",
+        "lngImportsTonnes": 4440265.0,
+        "lngImportsValueJpyThousand": 378788859.0,
+        "customsCountryCount": 11,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2193273,
+            "valueJpyThousand": 183898949
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 535545,
+            "valueJpyThousand": 44670873
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 275515,
+            "valueJpyThousand": 23919520
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 272459,
+            "valueJpyThousand": 22126798
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 250967,
+            "valueJpyThousand": 22446705
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 230409,
+            "valueJpyThousand": 21194136
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 195840,
+            "valueJpyThousand": 17375589
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 190185,
+            "valueJpyThousand": 15831430
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 165653,
+            "valueJpyThousand": 16271731
+          },
+          {
+            "code": "530",
+            "country": "Equatorial Guinea",
+            "tonnes": 67988,
+            "valueJpyThousand": 5877376
+          },
+          {
+            "code": "524",
+            "country": "Nigeria",
+            "tonnes": 62431,
+            "valueJpyThousand": 5175752
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2193273,
+            "valueJpyThousand": 183898949
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 535545,
+            "valueJpyThousand": 44670873
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 275515,
+            "valueJpyThousand": 23919520
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 272459,
+            "valueJpyThousand": 22126798
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 250967,
+            "valueJpyThousand": 22446705
+          }
+        ],
+        "lngImportsMillionTonnes": 4.44,
+        "lngImportsValueJpyBillion": 378.8,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2025-07",
+        "lngImportsTonnes": 5266883.0,
+        "lngImportsValueJpyThousand": 447290007.0,
+        "customsCountryCount": 13,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 1980586,
+            "valueJpyThousand": 165119598
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 779755,
+            "valueJpyThousand": 66531893
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 530777,
+            "valueJpyThousand": 47465018
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 444294,
+            "valueJpyThousand": 38644096
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 310912,
+            "valueJpyThousand": 27801867
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 307507,
+            "valueJpyThousand": 26140254
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 211251,
+            "valueJpyThousand": 19881625
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 189965,
+            "valueJpyThousand": 13967949
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 185761,
+            "valueJpyThousand": 14459280
+          },
+          {
+            "code": "545",
+            "country": "Mozambique",
+            "tonnes": 131746,
+            "valueJpyThousand": 10987452
+          },
+          {
+            "code": "302",
+            "country": "Canada",
+            "tonnes": 70042,
+            "valueJpyThousand": 4922407
+          },
+          {
+            "code": "407",
+            "country": "Peru",
+            "tonnes": 64066,
+            "valueJpyThousand": 5620331
+          },
+          {
+            "code": "147",
+            "country": "United Arab Emirates",
+            "tonnes": 60221,
+            "valueJpyThousand": 5748237
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 1980586,
+            "valueJpyThousand": 165119598
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 779755,
+            "valueJpyThousand": 66531893
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 530777,
+            "valueJpyThousand": 47465018
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 444294,
+            "valueJpyThousand": 38644096
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 310912,
+            "valueJpyThousand": 27801867
+          }
+        ],
+        "lngImportsMillionTonnes": 5.267,
+        "lngImportsValueJpyBillion": 447.3,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2025-08",
+        "lngImportsTonnes": 5356702.0,
+        "lngImportsValueJpyThousand": 453434002.0,
+        "customsCountryCount": 10,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2236671,
+            "valueJpyThousand": 192860296
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 592475,
+            "valueJpyThousand": 50694783
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 590571,
+            "valueJpyThousand": 47233151
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 509112,
+            "valueJpyThousand": 45256370
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 412553,
+            "valueJpyThousand": 35570780
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 390568,
+            "valueJpyThousand": 33002587
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 284008,
+            "valueJpyThousand": 26243610
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 262873,
+            "valueJpyThousand": 17722127
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 68097,
+            "valueJpyThousand": 3929319
+          },
+          {
+            "code": "545",
+            "country": "Mozambique",
+            "tonnes": 9774,
+            "valueJpyThousand": 920979
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2236671,
+            "valueJpyThousand": 192860296
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 592475,
+            "valueJpyThousand": 50694783
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 590571,
+            "valueJpyThousand": 47233151
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 509112,
+            "valueJpyThousand": 45256370
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 412553,
+            "valueJpyThousand": 35570780
+          }
+        ],
+        "lngImportsMillionTonnes": 5.357,
+        "lngImportsValueJpyBillion": 453.4,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2025-09",
+        "lngImportsTonnes": 5156165.0,
+        "lngImportsValueJpyThousand": 424348199.0,
+        "customsCountryCount": 12,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2031126,
+            "valueJpyThousand": 169352393
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 959611,
+            "valueJpyThousand": 74345313
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 554941,
+            "valueJpyThousand": 44459260
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 309118,
+            "valueJpyThousand": 25866721
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 306830,
+            "valueJpyThousand": 26169325
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 211157,
+            "valueJpyThousand": 18156302
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 196946,
+            "valueJpyThousand": 15464725
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 193355,
+            "valueJpyThousand": 16920338
+          },
+          {
+            "code": "524",
+            "country": "Nigeria",
+            "tonnes": 135153,
+            "valueJpyThousand": 11107641
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 127190,
+            "valueJpyThousand": 10211349
+          },
+          {
+            "code": "105",
+            "country": "China",
+            "tonnes": 71600,
+            "valueJpyThousand": 6501887
+          },
+          {
+            "code": "147",
+            "country": "United Arab Emirates",
+            "tonnes": 59138,
+            "valueJpyThousand": 5792945
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2031126,
+            "valueJpyThousand": 169352393
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 959611,
+            "valueJpyThousand": 74345313
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 554941,
+            "valueJpyThousand": 44459260
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 309118,
+            "valueJpyThousand": 25866721
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 306830,
+            "valueJpyThousand": 26169325
+          }
+        ],
+        "lngImportsMillionTonnes": 5.156,
+        "lngImportsValueJpyBillion": 424.3,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2025-10",
+        "lngImportsTonnes": 5781844.0,
+        "lngImportsValueJpyThousand": 472550344.0,
+        "customsCountryCount": 12,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2072084,
+            "valueJpyThousand": 169520676
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 987526,
+            "valueJpyThousand": 78213689
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 537676,
+            "valueJpyThousand": 44023505
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 440915,
+            "valueJpyThousand": 36040765
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 354794,
+            "valueJpyThousand": 30185831
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 299255,
+            "valueJpyThousand": 23710237
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 255894,
+            "valueJpyThousand": 20855873
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 249557,
+            "valueJpyThousand": 21768248
+          },
+          {
+            "code": "407",
+            "country": "Peru",
+            "tonnes": 200550,
+            "valueJpyThousand": 17097559
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 187441,
+            "valueJpyThousand": 14373964
+          },
+          {
+            "code": "147",
+            "country": "United Arab Emirates",
+            "tonnes": 125627,
+            "valueJpyThousand": 11516193
+          },
+          {
+            "code": "302",
+            "country": "Canada",
+            "tonnes": 70525,
+            "valueJpyThousand": 5243804
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2072084,
+            "valueJpyThousand": 169520676
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 987526,
+            "valueJpyThousand": 78213689
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 537676,
+            "valueJpyThousand": 44023505
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 440915,
+            "valueJpyThousand": 36040765
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 354794,
+            "valueJpyThousand": 30185831
+          }
+        ],
+        "lngImportsMillionTonnes": 5.782,
+        "lngImportsValueJpyBillion": 472.6,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2025-11",
+        "lngImportsTonnes": 4730411.0,
+        "lngImportsValueJpyThousand": 398014219.0,
+        "customsCountryCount": 11,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 1843247,
+            "valueJpyThousand": 156343443
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 568185,
+            "valueJpyThousand": 45948876
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 446289,
+            "valueJpyThousand": 38307874
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 385109,
+            "valueJpyThousand": 32767195
+          },
+          {
+            "code": "302",
+            "country": "Canada",
+            "tonnes": 271352,
+            "valueJpyThousand": 23525603
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 245871,
+            "valueJpyThousand": 20496747
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 227142,
+            "valueJpyThousand": 20871476
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 210671,
+            "valueJpyThousand": 19884208
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 198150,
+            "valueJpyThousand": 14198480
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 193323,
+            "valueJpyThousand": 16343024
+          },
+          {
+            "code": "407",
+            "country": "Peru",
+            "tonnes": 141072,
+            "valueJpyThousand": 9327293
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 1843247,
+            "valueJpyThousand": 156343443
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 568185,
+            "valueJpyThousand": 45948876
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 446289,
+            "valueJpyThousand": 38307874
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 385109,
+            "valueJpyThousand": 32767195
+          },
+          {
+            "code": "302",
+            "country": "Canada",
+            "tonnes": 271352,
+            "valueJpyThousand": 23525603
+          }
+        ],
+        "lngImportsMillionTonnes": 4.73,
+        "lngImportsValueJpyBillion": 398.0,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2025-12",
+        "lngImportsTonnes": 6538367.0,
+        "lngImportsValueJpyThousand": 561087595.0,
+        "customsCountryCount": 13,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2188117,
+            "valueJpyThousand": 185635550
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 861118,
+            "valueJpyThousand": 70620536
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 773138,
+            "valueJpyThousand": 67382422
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 527233,
+            "valueJpyThousand": 44602603
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 472993,
+            "valueJpyThousand": 40236989
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 443401,
+            "valueJpyThousand": 37858040
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 326673,
+            "valueJpyThousand": 31265875
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 320845,
+            "valueJpyThousand": 26358311
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 212670,
+            "valueJpyThousand": 19915212
+          },
+          {
+            "code": "302",
+            "country": "Canada",
+            "tonnes": 142729,
+            "valueJpyThousand": 12622694
+          },
+          {
+            "code": "524",
+            "country": "Nigeria",
+            "tonnes": 139307,
+            "valueJpyThousand": 12606583
+          },
+          {
+            "code": "530",
+            "country": "Equatorial Guinea",
+            "tonnes": 70039,
+            "valueJpyThousand": 6014338
+          },
+          {
+            "code": "147",
+            "country": "United Arab Emirates",
+            "tonnes": 60104,
+            "valueJpyThousand": 5968442
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040424872",
+        "customsSurveyDate": "2025Dec",
+        "customsUpdateDate": "2026-03-12",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2188117,
+            "valueJpyThousand": 185635550
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 861118,
+            "valueJpyThousand": 70620536
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 773138,
+            "valueJpyThousand": 67382422
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 527233,
+            "valueJpyThousand": 44602603
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 472993,
+            "valueJpyThousand": 40236989
+          }
+        ],
+        "lngImportsMillionTonnes": 6.538,
+        "lngImportsValueJpyBillion": 561.1,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2026-01",
+        "lngImportsTonnes": 6243802.0,
+        "lngImportsValueJpyThousand": 546227672.0,
+        "customsCountryCount": 12,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2440097,
+            "valueJpyThousand": 217356129
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 1053546,
+            "valueJpyThousand": 85610873
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 573288,
+            "valueJpyThousand": 49578664
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 393254,
+            "valueJpyThousand": 36601360
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 330030,
+            "valueJpyThousand": 27045969
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 322164,
+            "valueJpyThousand": 29663114
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 292699,
+            "valueJpyThousand": 27018482
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 265325,
+            "valueJpyThousand": 23287033
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 241292,
+            "valueJpyThousand": 20178111
+          },
+          {
+            "code": "302",
+            "country": "Canada",
+            "tonnes": 143744,
+            "valueJpyThousand": 13632811
+          },
+          {
+            "code": "524",
+            "country": "Nigeria",
+            "tonnes": 128222,
+            "valueJpyThousand": 10258878
+          },
+          {
+            "code": "147",
+            "country": "United Arab Emirates",
+            "tonnes": 60141,
+            "valueJpyThousand": 5996248
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040447808",
+        "customsSurveyDate": "2026Mar",
+        "customsUpdateDate": "2026-04-28",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040447808&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2440097,
+            "valueJpyThousand": 217356129
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 1053546,
+            "valueJpyThousand": 85610873
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 573288,
+            "valueJpyThousand": 49578664
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 393254,
+            "valueJpyThousand": 36601360
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 330030,
+            "valueJpyThousand": 27045969
+          }
+        ],
+        "lngImportsMillionTonnes": 6.244,
+        "lngImportsValueJpyBillion": 546.2,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2026-02",
+        "lngImportsTonnes": 5819682.0,
+        "lngImportsValueJpyThousand": 496941825.0,
+        "customsCountryCount": 14,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2564127,
+            "valueJpyThousand": 221805003
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 984078,
+            "valueJpyThousand": 82461107
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 575820,
+            "valueJpyThousand": 48245001
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 357480,
+            "valueJpyThousand": 30107586
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 308201,
+            "valueJpyThousand": 25403644
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 191895,
+            "valueJpyThousand": 15412265
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 186345,
+            "valueJpyThousand": 14882250
+          },
+          {
+            "code": "407",
+            "country": "Peru",
+            "tonnes": 130900,
+            "valueJpyThousand": 10260038
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 129333,
+            "valueJpyThousand": 11533246
+          },
+          {
+            "code": "147",
+            "country": "United Arab Emirates",
+            "tonnes": 119928,
+            "valueJpyThousand": 11398368
+          },
+          {
+            "code": "545",
+            "country": "Mozambique",
+            "tonnes": 72758,
+            "valueJpyThousand": 6813273
+          },
+          {
+            "code": "530",
+            "country": "Equatorial Guinea",
+            "tonnes": 70160,
+            "valueJpyThousand": 6716906
+          },
+          {
+            "code": "302",
+            "country": "Canada",
+            "tonnes": 67425,
+            "valueJpyThousand": 5499890
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 61232,
+            "valueJpyThousand": 6403248
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040447808",
+        "customsSurveyDate": "2026Mar",
+        "customsUpdateDate": "2026-04-28",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040447808&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2564127,
+            "valueJpyThousand": 221805003
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 984078,
+            "valueJpyThousand": 82461107
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 575820,
+            "valueJpyThousand": 48245001
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 357480,
+            "valueJpyThousand": 30107586
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 308201,
+            "valueJpyThousand": 25403644
+          }
+        ],
+        "lngImportsMillionTonnes": 5.82,
+        "lngImportsValueJpyBillion": 496.9,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      },
+      {
+        "month": "2026-03",
+        "lngImportsTonnes": 5869358.0,
+        "lngImportsValueJpyThousand": 517043804.0,
+        "customsCountryCount": 13,
+        "customsCountries": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2687648,
+            "valueJpyThousand": 237963679
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 777621,
+            "valueJpyThousand": 62771296
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 464555,
+            "valueJpyThousand": 38434768
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 418286,
+            "valueJpyThousand": 36177062
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 328215,
+            "valueJpyThousand": 28328545
+          },
+          {
+            "code": "118",
+            "country": "Indonesia",
+            "tonnes": 313545,
+            "valueJpyThousand": 30931489
+          },
+          {
+            "code": "302",
+            "country": "Canada",
+            "tonnes": 201130,
+            "valueJpyThousand": 17968713
+          },
+          {
+            "code": "105",
+            "country": "China",
+            "tonnes": 145275,
+            "valueJpyThousand": 12565915
+          },
+          {
+            "code": "140",
+            "country": "Qatar",
+            "tonnes": 144243,
+            "valueJpyThousand": 16166600
+          },
+          {
+            "code": "116",
+            "country": "Brunei",
+            "tonnes": 132196,
+            "valueJpyThousand": 9596931
+          },
+          {
+            "code": "304",
+            "country": "United States",
+            "tonnes": 130261,
+            "valueJpyThousand": 14872236
+          },
+          {
+            "code": "545",
+            "country": "Mozambique",
+            "tonnes": 65021,
+            "valueJpyThousand": 7218708
+          },
+          {
+            "code": "320",
+            "country": "Trinidad and Tobago",
+            "tonnes": 61362,
+            "valueJpyThousand": 4047862
+          }
+        ],
+        "customsUnit": "MT",
+        "customsStatus": "parsed",
+        "customsStatInfId": "000040447808",
+        "customsSurveyDate": "2026Mar",
+        "customsUpdateDate": "2026-04-28",
+        "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040447808&fileKind=1",
+        "topSuppliers": [
+          {
+            "code": "601",
+            "country": "Australia",
+            "tonnes": 2687648,
+            "valueJpyThousand": 237963679
+          },
+          {
+            "code": "113",
+            "country": "Malaysia",
+            "tonnes": 777621,
+            "valueJpyThousand": 62771296
+          },
+          {
+            "code": "224",
+            "country": "Russia",
+            "tonnes": 464555,
+            "valueJpyThousand": 38434768
+          },
+          {
+            "code": "602",
+            "country": "Papua New Guinea",
+            "tonnes": 418286,
+            "valueJpyThousand": 36177062
+          },
+          {
+            "code": "141",
+            "country": "Oman",
+            "tonnes": 328215,
+            "valueJpyThousand": 28328545
+          }
+        ],
+        "lngImportsMillionTonnes": 5.869,
+        "lngImportsValueJpyBillion": 517.0,
+        "coverage": {
+          "customsLngImports": true,
+          "metiGasBusiness": false,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasDemand": null,
+        "powerLngBurn": null,
+        "lngInventory": null
+      }
+    ],
+    "weeklyLngStorage": null,
+    "lngImports": {
+      "source": "Japan Customs / Ministry of Finance Trade Statistics via e-Stat",
+      "sourceUrl": "https://www.e-stat.go.jp/en/stat-search/files?page=1&layout=datalist&toukei=00350300&tstat=000001013141&cycle=1&tclass1=000001013180&tclass2=000001013182&cycle_facet=cycle&tclass3val=0&metadata=1&data=1",
+      "unitSourceUrl": "https://www.customs.go.jp/toukei/suii/html/time_e.htm",
+      "hs": "271111000",
+      "quantityUnit": "metric tonnes",
+      "valueUnit": "JPY1000",
+      "status": "parsed",
+      "latestMonth": "2026-03",
+      "latestUpdateDate": "2026-04-28",
+      "files": [
+        {
+          "year": 2026,
+          "monthToken": "11010303",
+          "label": "Mar",
+          "url": "https://www.e-stat.go.jp/en/stat-search/files?page=1&layout=datalist&data=1&metadata=1&cycle=1&toukei=00350300&tstat=000001013141&tclass1=000001013180&tclass2=000001013182&cycle_facet=cycle&tclass3val=0&year=20260&month=11010303&result_back=1",
+          "title": "Commodity by Country (Import Jan-Feb:Detailed,Mar:9-digit Provisional) Section V Chapter 25-27",
+          "surveyDate": "2026Mar",
+          "updateDate": "2026-04-28",
+          "statInfId": "000040447808",
+          "downloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040447808&fileKind=1",
+          "status": "parsed",
+          "rowCount": 3
+        },
+        {
+          "year": 2025,
+          "monthToken": "24101212",
+          "label": "Dec",
+          "url": "https://www.e-stat.go.jp/en/stat-search/files?page=1&layout=datalist&data=1&metadata=1&cycle=1&toukei=00350300&tstat=000001013141&tclass1=000001013180&tclass2=000001013182&cycle_facet=cycle&tclass3val=0&year=20250&month=24101212&result_back=1",
+          "title": "2025. Commodity by Country (Import Jan-Dec:Revised) Section V Chapter 25-27",
+          "surveyDate": "2025Dec",
+          "updateDate": "2026-03-12",
+          "statInfId": "000040424872",
+          "downloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "status": "parsed",
+          "rowCount": 12
+        }
+      ],
+      "rows": [
+        {
+          "month": "2025-01",
+          "lngImportsTonnes": 6640932.0,
+          "lngImportsValueJpyThousand": 666375402.0,
+          "customsCountryCount": 10,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2528801,
+              "valueJpyThousand": 257471692
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 1468303,
+              "valueJpyThousand": 145355834
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 572698,
+              "valueJpyThousand": 54391628
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 453875,
+              "valueJpyThousand": 47735723
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 330937,
+              "valueJpyThousand": 37976096
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 324346,
+              "valueJpyThousand": 31547919
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 316388,
+              "valueJpyThousand": 28650790
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 270621,
+              "valueJpyThousand": 26202878
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 239493,
+              "valueJpyThousand": 22292029
+            },
+            {
+              "code": "524",
+              "country": "Nigeria",
+              "tonnes": 135470,
+              "valueJpyThousand": 14750813
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2528801,
+              "valueJpyThousand": 257471692
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 1468303,
+              "valueJpyThousand": 145355834
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 572698,
+              "valueJpyThousand": 54391628
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 453875,
+              "valueJpyThousand": 47735723
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 330937,
+              "valueJpyThousand": 37976096
+            }
+          ],
+          "lngImportsMillionTonnes": 6.641,
+          "lngImportsValueJpyBillion": 666.4,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2025-02",
+          "lngImportsTonnes": 5875249.0,
+          "lngImportsValueJpyThousand": 553959168.0,
+          "customsCountryCount": 12,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2314314,
+              "valueJpyThousand": 222237203
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 884837,
+              "valueJpyThousand": 77884828
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 585323,
+              "valueJpyThousand": 53949801
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 464746,
+              "valueJpyThousand": 44934592
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 343892,
+              "valueJpyThousand": 32988728
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 327407,
+              "valueJpyThousand": 30231062
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 250929,
+              "valueJpyThousand": 24242181
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 240275,
+              "valueJpyThousand": 24757561
+            },
+            {
+              "code": "407",
+              "country": "Peru",
+              "tonnes": 139196,
+              "valueJpyThousand": 12712699
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 131413,
+              "valueJpyThousand": 9046083
+            },
+            {
+              "code": "147",
+              "country": "United Arab Emirates",
+              "tonnes": 120648,
+              "valueJpyThousand": 13730246
+            },
+            {
+              "code": "545",
+              "country": "Mozambique",
+              "tonnes": 72269,
+              "valueJpyThousand": 7244184
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2314314,
+              "valueJpyThousand": 222237203
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 884837,
+              "valueJpyThousand": 77884828
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 585323,
+              "valueJpyThousand": 53949801
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 464746,
+              "valueJpyThousand": 44934592
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 343892,
+              "valueJpyThousand": 32988728
+            }
+          ],
+          "lngImportsMillionTonnes": 5.875,
+          "lngImportsValueJpyBillion": 554.0,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2025-03",
+          "lngImportsTonnes": 5151480.0,
+          "lngImportsValueJpyThousand": 467279568.0,
+          "customsCountryCount": 10,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2059726,
+              "valueJpyThousand": 188151540
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 885133,
+              "valueJpyThousand": 80222940
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 638970,
+              "valueJpyThousand": 55025889
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 389763,
+              "valueJpyThousand": 36325487
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 324693,
+              "valueJpyThousand": 29333810
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 275746,
+              "valueJpyThousand": 24644226
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 265866,
+              "valueJpyThousand": 26450395
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 132912,
+              "valueJpyThousand": 10532179
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 118709,
+              "valueJpyThousand": 11271903
+            },
+            {
+              "code": "147",
+              "country": "United Arab Emirates",
+              "tonnes": 59962,
+              "valueJpyThousand": 5321199
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2059726,
+              "valueJpyThousand": 188151540
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 885133,
+              "valueJpyThousand": 80222940
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 638970,
+              "valueJpyThousand": 55025889
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 389763,
+              "valueJpyThousand": 36325487
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 324693,
+              "valueJpyThousand": 29333810
+            }
+          ],
+          "lngImportsMillionTonnes": 5.151,
+          "lngImportsValueJpyBillion": 467.3,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2025-04",
+          "lngImportsTonnes": 5374388.0,
+          "lngImportsValueJpyThousand": 475350784.0,
+          "customsCountryCount": 13,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2274611,
+              "valueJpyThousand": 196363818
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 821599,
+              "valueJpyThousand": 74112574
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 412797,
+              "valueJpyThousand": 37340974
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 352094,
+              "valueJpyThousand": 29903257
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 293285,
+              "valueJpyThousand": 26262110
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 266711,
+              "valueJpyThousand": 25014561
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 263387,
+              "valueJpyThousand": 20086889
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 199376,
+              "valueJpyThousand": 19393634
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 190814,
+              "valueJpyThousand": 17068954
+            },
+            {
+              "code": "147",
+              "country": "United Arab Emirates",
+              "tonnes": 119508,
+              "valueJpyThousand": 12926884
+            },
+            {
+              "code": "105",
+              "country": "China",
+              "tonnes": 87749,
+              "valueJpyThousand": 8560780
+            },
+            {
+              "code": "524",
+              "country": "Nigeria",
+              "tonnes": 59150,
+              "valueJpyThousand": 5052103
+            },
+            {
+              "code": "112",
+              "country": "Country code 112",
+              "tonnes": 33307,
+              "valueJpyThousand": 3264246
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2274611,
+              "valueJpyThousand": 196363818
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 821599,
+              "valueJpyThousand": 74112574
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 412797,
+              "valueJpyThousand": 37340974
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 352094,
+              "valueJpyThousand": 29903257
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 293285,
+              "valueJpyThousand": 26262110
+            }
+          ],
+          "lngImportsMillionTonnes": 5.374,
+          "lngImportsValueJpyBillion": 475.4,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2025-05",
+          "lngImportsTonnes": 4664357.0,
+          "lngImportsValueJpyThousand": 403884331.0,
+          "customsCountryCount": 12,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2087954,
+              "valueJpyThousand": 180625056
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 496675,
+              "valueJpyThousand": 43266743
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 473372,
+              "valueJpyThousand": 44805546
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 368440,
+              "valueJpyThousand": 29148949
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 361224,
+              "valueJpyThousand": 33860702
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 264294,
+              "valueJpyThousand": 21211891
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 204693,
+              "valueJpyThousand": 16426034
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 197954,
+              "valueJpyThousand": 15354680
+            },
+            {
+              "code": "524",
+              "country": "Nigeria",
+              "tonnes": 75141,
+              "valueJpyThousand": 6714047
+            },
+            {
+              "code": "530",
+              "country": "Equatorial Guinea",
+              "tonnes": 66779,
+              "valueJpyThousand": 6292187
+            },
+            {
+              "code": "147",
+              "country": "United Arab Emirates",
+              "tonnes": 60055,
+              "valueJpyThousand": 5493032
+            },
+            {
+              "code": "112",
+              "country": "Country code 112",
+              "tonnes": 7776,
+              "valueJpyThousand": 685464
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2087954,
+              "valueJpyThousand": 180625056
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 496675,
+              "valueJpyThousand": 43266743
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 473372,
+              "valueJpyThousand": 44805546
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 368440,
+              "valueJpyThousand": 29148949
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 361224,
+              "valueJpyThousand": 33860702
+            }
+          ],
+          "lngImportsMillionTonnes": 4.664,
+          "lngImportsValueJpyBillion": 403.9,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2025-06",
+          "lngImportsTonnes": 4440265.0,
+          "lngImportsValueJpyThousand": 378788859.0,
+          "customsCountryCount": 11,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2193273,
+              "valueJpyThousand": 183898949
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 535545,
+              "valueJpyThousand": 44670873
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 275515,
+              "valueJpyThousand": 23919520
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 272459,
+              "valueJpyThousand": 22126798
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 250967,
+              "valueJpyThousand": 22446705
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 230409,
+              "valueJpyThousand": 21194136
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 195840,
+              "valueJpyThousand": 17375589
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 190185,
+              "valueJpyThousand": 15831430
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 165653,
+              "valueJpyThousand": 16271731
+            },
+            {
+              "code": "530",
+              "country": "Equatorial Guinea",
+              "tonnes": 67988,
+              "valueJpyThousand": 5877376
+            },
+            {
+              "code": "524",
+              "country": "Nigeria",
+              "tonnes": 62431,
+              "valueJpyThousand": 5175752
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2193273,
+              "valueJpyThousand": 183898949
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 535545,
+              "valueJpyThousand": 44670873
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 275515,
+              "valueJpyThousand": 23919520
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 272459,
+              "valueJpyThousand": 22126798
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 250967,
+              "valueJpyThousand": 22446705
+            }
+          ],
+          "lngImportsMillionTonnes": 4.44,
+          "lngImportsValueJpyBillion": 378.8,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2025-07",
+          "lngImportsTonnes": 5266883.0,
+          "lngImportsValueJpyThousand": 447290007.0,
+          "customsCountryCount": 13,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 1980586,
+              "valueJpyThousand": 165119598
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 779755,
+              "valueJpyThousand": 66531893
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 530777,
+              "valueJpyThousand": 47465018
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 444294,
+              "valueJpyThousand": 38644096
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 310912,
+              "valueJpyThousand": 27801867
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 307507,
+              "valueJpyThousand": 26140254
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 211251,
+              "valueJpyThousand": 19881625
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 189965,
+              "valueJpyThousand": 13967949
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 185761,
+              "valueJpyThousand": 14459280
+            },
+            {
+              "code": "545",
+              "country": "Mozambique",
+              "tonnes": 131746,
+              "valueJpyThousand": 10987452
+            },
+            {
+              "code": "302",
+              "country": "Canada",
+              "tonnes": 70042,
+              "valueJpyThousand": 4922407
+            },
+            {
+              "code": "407",
+              "country": "Peru",
+              "tonnes": 64066,
+              "valueJpyThousand": 5620331
+            },
+            {
+              "code": "147",
+              "country": "United Arab Emirates",
+              "tonnes": 60221,
+              "valueJpyThousand": 5748237
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 1980586,
+              "valueJpyThousand": 165119598
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 779755,
+              "valueJpyThousand": 66531893
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 530777,
+              "valueJpyThousand": 47465018
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 444294,
+              "valueJpyThousand": 38644096
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 310912,
+              "valueJpyThousand": 27801867
+            }
+          ],
+          "lngImportsMillionTonnes": 5.267,
+          "lngImportsValueJpyBillion": 447.3,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2025-08",
+          "lngImportsTonnes": 5356702.0,
+          "lngImportsValueJpyThousand": 453434002.0,
+          "customsCountryCount": 10,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2236671,
+              "valueJpyThousand": 192860296
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 592475,
+              "valueJpyThousand": 50694783
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 590571,
+              "valueJpyThousand": 47233151
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 509112,
+              "valueJpyThousand": 45256370
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 412553,
+              "valueJpyThousand": 35570780
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 390568,
+              "valueJpyThousand": 33002587
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 284008,
+              "valueJpyThousand": 26243610
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 262873,
+              "valueJpyThousand": 17722127
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 68097,
+              "valueJpyThousand": 3929319
+            },
+            {
+              "code": "545",
+              "country": "Mozambique",
+              "tonnes": 9774,
+              "valueJpyThousand": 920979
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2236671,
+              "valueJpyThousand": 192860296
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 592475,
+              "valueJpyThousand": 50694783
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 590571,
+              "valueJpyThousand": 47233151
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 509112,
+              "valueJpyThousand": 45256370
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 412553,
+              "valueJpyThousand": 35570780
+            }
+          ],
+          "lngImportsMillionTonnes": 5.357,
+          "lngImportsValueJpyBillion": 453.4,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2025-09",
+          "lngImportsTonnes": 5156165.0,
+          "lngImportsValueJpyThousand": 424348199.0,
+          "customsCountryCount": 12,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2031126,
+              "valueJpyThousand": 169352393
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 959611,
+              "valueJpyThousand": 74345313
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 554941,
+              "valueJpyThousand": 44459260
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 309118,
+              "valueJpyThousand": 25866721
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 306830,
+              "valueJpyThousand": 26169325
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 211157,
+              "valueJpyThousand": 18156302
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 196946,
+              "valueJpyThousand": 15464725
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 193355,
+              "valueJpyThousand": 16920338
+            },
+            {
+              "code": "524",
+              "country": "Nigeria",
+              "tonnes": 135153,
+              "valueJpyThousand": 11107641
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 127190,
+              "valueJpyThousand": 10211349
+            },
+            {
+              "code": "105",
+              "country": "China",
+              "tonnes": 71600,
+              "valueJpyThousand": 6501887
+            },
+            {
+              "code": "147",
+              "country": "United Arab Emirates",
+              "tonnes": 59138,
+              "valueJpyThousand": 5792945
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2031126,
+              "valueJpyThousand": 169352393
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 959611,
+              "valueJpyThousand": 74345313
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 554941,
+              "valueJpyThousand": 44459260
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 309118,
+              "valueJpyThousand": 25866721
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 306830,
+              "valueJpyThousand": 26169325
+            }
+          ],
+          "lngImportsMillionTonnes": 5.156,
+          "lngImportsValueJpyBillion": 424.3,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2025-10",
+          "lngImportsTonnes": 5781844.0,
+          "lngImportsValueJpyThousand": 472550344.0,
+          "customsCountryCount": 12,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2072084,
+              "valueJpyThousand": 169520676
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 987526,
+              "valueJpyThousand": 78213689
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 537676,
+              "valueJpyThousand": 44023505
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 440915,
+              "valueJpyThousand": 36040765
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 354794,
+              "valueJpyThousand": 30185831
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 299255,
+              "valueJpyThousand": 23710237
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 255894,
+              "valueJpyThousand": 20855873
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 249557,
+              "valueJpyThousand": 21768248
+            },
+            {
+              "code": "407",
+              "country": "Peru",
+              "tonnes": 200550,
+              "valueJpyThousand": 17097559
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 187441,
+              "valueJpyThousand": 14373964
+            },
+            {
+              "code": "147",
+              "country": "United Arab Emirates",
+              "tonnes": 125627,
+              "valueJpyThousand": 11516193
+            },
+            {
+              "code": "302",
+              "country": "Canada",
+              "tonnes": 70525,
+              "valueJpyThousand": 5243804
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2072084,
+              "valueJpyThousand": 169520676
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 987526,
+              "valueJpyThousand": 78213689
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 537676,
+              "valueJpyThousand": 44023505
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 440915,
+              "valueJpyThousand": 36040765
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 354794,
+              "valueJpyThousand": 30185831
+            }
+          ],
+          "lngImportsMillionTonnes": 5.782,
+          "lngImportsValueJpyBillion": 472.6,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2025-11",
+          "lngImportsTonnes": 4730411.0,
+          "lngImportsValueJpyThousand": 398014219.0,
+          "customsCountryCount": 11,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 1843247,
+              "valueJpyThousand": 156343443
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 568185,
+              "valueJpyThousand": 45948876
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 446289,
+              "valueJpyThousand": 38307874
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 385109,
+              "valueJpyThousand": 32767195
+            },
+            {
+              "code": "302",
+              "country": "Canada",
+              "tonnes": 271352,
+              "valueJpyThousand": 23525603
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 245871,
+              "valueJpyThousand": 20496747
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 227142,
+              "valueJpyThousand": 20871476
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 210671,
+              "valueJpyThousand": 19884208
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 198150,
+              "valueJpyThousand": 14198480
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 193323,
+              "valueJpyThousand": 16343024
+            },
+            {
+              "code": "407",
+              "country": "Peru",
+              "tonnes": 141072,
+              "valueJpyThousand": 9327293
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 1843247,
+              "valueJpyThousand": 156343443
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 568185,
+              "valueJpyThousand": 45948876
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 446289,
+              "valueJpyThousand": 38307874
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 385109,
+              "valueJpyThousand": 32767195
+            },
+            {
+              "code": "302",
+              "country": "Canada",
+              "tonnes": 271352,
+              "valueJpyThousand": 23525603
+            }
+          ],
+          "lngImportsMillionTonnes": 4.73,
+          "lngImportsValueJpyBillion": 398.0,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2025-12",
+          "lngImportsTonnes": 6538367.0,
+          "lngImportsValueJpyThousand": 561087595.0,
+          "customsCountryCount": 13,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2188117,
+              "valueJpyThousand": 185635550
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 861118,
+              "valueJpyThousand": 70620536
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 773138,
+              "valueJpyThousand": 67382422
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 527233,
+              "valueJpyThousand": 44602603
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 472993,
+              "valueJpyThousand": 40236989
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 443401,
+              "valueJpyThousand": 37858040
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 326673,
+              "valueJpyThousand": 31265875
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 320845,
+              "valueJpyThousand": 26358311
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 212670,
+              "valueJpyThousand": 19915212
+            },
+            {
+              "code": "302",
+              "country": "Canada",
+              "tonnes": 142729,
+              "valueJpyThousand": 12622694
+            },
+            {
+              "code": "524",
+              "country": "Nigeria",
+              "tonnes": 139307,
+              "valueJpyThousand": 12606583
+            },
+            {
+              "code": "530",
+              "country": "Equatorial Guinea",
+              "tonnes": 70039,
+              "valueJpyThousand": 6014338
+            },
+            {
+              "code": "147",
+              "country": "United Arab Emirates",
+              "tonnes": 60104,
+              "valueJpyThousand": 5968442
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040424872",
+          "customsSurveyDate": "2025Dec",
+          "customsUpdateDate": "2026-03-12",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040424872&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2188117,
+              "valueJpyThousand": 185635550
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 861118,
+              "valueJpyThousand": 70620536
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 773138,
+              "valueJpyThousand": 67382422
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 527233,
+              "valueJpyThousand": 44602603
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 472993,
+              "valueJpyThousand": 40236989
+            }
+          ],
+          "lngImportsMillionTonnes": 6.538,
+          "lngImportsValueJpyBillion": 561.1,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2026-01",
+          "lngImportsTonnes": 6243802.0,
+          "lngImportsValueJpyThousand": 546227672.0,
+          "customsCountryCount": 12,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2440097,
+              "valueJpyThousand": 217356129
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 1053546,
+              "valueJpyThousand": 85610873
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 573288,
+              "valueJpyThousand": 49578664
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 393254,
+              "valueJpyThousand": 36601360
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 330030,
+              "valueJpyThousand": 27045969
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 322164,
+              "valueJpyThousand": 29663114
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 292699,
+              "valueJpyThousand": 27018482
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 265325,
+              "valueJpyThousand": 23287033
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 241292,
+              "valueJpyThousand": 20178111
+            },
+            {
+              "code": "302",
+              "country": "Canada",
+              "tonnes": 143744,
+              "valueJpyThousand": 13632811
+            },
+            {
+              "code": "524",
+              "country": "Nigeria",
+              "tonnes": 128222,
+              "valueJpyThousand": 10258878
+            },
+            {
+              "code": "147",
+              "country": "United Arab Emirates",
+              "tonnes": 60141,
+              "valueJpyThousand": 5996248
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040447808",
+          "customsSurveyDate": "2026Mar",
+          "customsUpdateDate": "2026-04-28",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040447808&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2440097,
+              "valueJpyThousand": 217356129
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 1053546,
+              "valueJpyThousand": 85610873
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 573288,
+              "valueJpyThousand": 49578664
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 393254,
+              "valueJpyThousand": 36601360
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 330030,
+              "valueJpyThousand": 27045969
+            }
+          ],
+          "lngImportsMillionTonnes": 6.244,
+          "lngImportsValueJpyBillion": 546.2,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2026-02",
+          "lngImportsTonnes": 5819682.0,
+          "lngImportsValueJpyThousand": 496941825.0,
+          "customsCountryCount": 14,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2564127,
+              "valueJpyThousand": 221805003
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 984078,
+              "valueJpyThousand": 82461107
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 575820,
+              "valueJpyThousand": 48245001
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 357480,
+              "valueJpyThousand": 30107586
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 308201,
+              "valueJpyThousand": 25403644
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 191895,
+              "valueJpyThousand": 15412265
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 186345,
+              "valueJpyThousand": 14882250
+            },
+            {
+              "code": "407",
+              "country": "Peru",
+              "tonnes": 130900,
+              "valueJpyThousand": 10260038
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 129333,
+              "valueJpyThousand": 11533246
+            },
+            {
+              "code": "147",
+              "country": "United Arab Emirates",
+              "tonnes": 119928,
+              "valueJpyThousand": 11398368
+            },
+            {
+              "code": "545",
+              "country": "Mozambique",
+              "tonnes": 72758,
+              "valueJpyThousand": 6813273
+            },
+            {
+              "code": "530",
+              "country": "Equatorial Guinea",
+              "tonnes": 70160,
+              "valueJpyThousand": 6716906
+            },
+            {
+              "code": "302",
+              "country": "Canada",
+              "tonnes": 67425,
+              "valueJpyThousand": 5499890
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 61232,
+              "valueJpyThousand": 6403248
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040447808",
+          "customsSurveyDate": "2026Mar",
+          "customsUpdateDate": "2026-04-28",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040447808&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2564127,
+              "valueJpyThousand": 221805003
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 984078,
+              "valueJpyThousand": 82461107
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 575820,
+              "valueJpyThousand": 48245001
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 357480,
+              "valueJpyThousand": 30107586
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 308201,
+              "valueJpyThousand": 25403644
+            }
+          ],
+          "lngImportsMillionTonnes": 5.82,
+          "lngImportsValueJpyBillion": 496.9,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        },
+        {
+          "month": "2026-03",
+          "lngImportsTonnes": 5869358.0,
+          "lngImportsValueJpyThousand": 517043804.0,
+          "customsCountryCount": 13,
+          "customsCountries": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2687648,
+              "valueJpyThousand": 237963679
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 777621,
+              "valueJpyThousand": 62771296
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 464555,
+              "valueJpyThousand": 38434768
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 418286,
+              "valueJpyThousand": 36177062
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 328215,
+              "valueJpyThousand": 28328545
+            },
+            {
+              "code": "118",
+              "country": "Indonesia",
+              "tonnes": 313545,
+              "valueJpyThousand": 30931489
+            },
+            {
+              "code": "302",
+              "country": "Canada",
+              "tonnes": 201130,
+              "valueJpyThousand": 17968713
+            },
+            {
+              "code": "105",
+              "country": "China",
+              "tonnes": 145275,
+              "valueJpyThousand": 12565915
+            },
+            {
+              "code": "140",
+              "country": "Qatar",
+              "tonnes": 144243,
+              "valueJpyThousand": 16166600
+            },
+            {
+              "code": "116",
+              "country": "Brunei",
+              "tonnes": 132196,
+              "valueJpyThousand": 9596931
+            },
+            {
+              "code": "304",
+              "country": "United States",
+              "tonnes": 130261,
+              "valueJpyThousand": 14872236
+            },
+            {
+              "code": "545",
+              "country": "Mozambique",
+              "tonnes": 65021,
+              "valueJpyThousand": 7218708
+            },
+            {
+              "code": "320",
+              "country": "Trinidad and Tobago",
+              "tonnes": 61362,
+              "valueJpyThousand": 4047862
+            }
+          ],
+          "customsUnit": "MT",
+          "customsStatus": "parsed",
+          "customsStatInfId": "000040447808",
+          "customsSurveyDate": "2026Mar",
+          "customsUpdateDate": "2026-04-28",
+          "customsDownloadUrl": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000040447808&fileKind=1",
+          "topSuppliers": [
+            {
+              "code": "601",
+              "country": "Australia",
+              "tonnes": 2687648,
+              "valueJpyThousand": 237963679
+            },
+            {
+              "code": "113",
+              "country": "Malaysia",
+              "tonnes": 777621,
+              "valueJpyThousand": 62771296
+            },
+            {
+              "code": "224",
+              "country": "Russia",
+              "tonnes": 464555,
+              "valueJpyThousand": 38434768
+            },
+            {
+              "code": "602",
+              "country": "Papua New Guinea",
+              "tonnes": 418286,
+              "valueJpyThousand": 36177062
+            },
+            {
+              "code": "141",
+              "country": "Oman",
+              "tonnes": 328215,
+              "valueJpyThousand": 28328545
+            }
+          ],
+          "lngImportsMillionTonnes": 5.869,
+          "lngImportsValueJpyBillion": 517.0,
+          "coverage": {
+            "customsLngImports": true,
+            "metiGasBusiness": false,
+            "metiPowerFuel": false,
+            "jogmecInventory": false
+          },
+          "cityGasDemand": null,
+          "powerLngBurn": null,
+          "lngInventory": null
+        }
+      ]
+    },
+    "gasForPower": null,
+    "sourceMap": [
+      {
+        "item": "LNG imports by country, volume and value",
+        "balanceUse": "LNG import supply and supplier mix",
+        "source": "Japan Customs / Ministry of Finance Trade Statistics",
+        "sourceUrl": "https://www.customs.go.jp/toukei/info/tsdl_e.htm",
+        "searchUrl": "https://www.customs.go.jp/toukei/srch/indexe.htm",
+        "downloadUrl": "https://www.e-stat.go.jp/en/stat-search/files?page=1&layout=datalist&toukei=00350300&tstat=000001013141&cycle=1&tclass1=000001013180&tclass2=000001013182&cycle_facet=cycle&tclass3val=0&metadata=1&data=1",
+        "unitSourceUrl": "https://www.customs.go.jp/toukei/suii/html/time_e.htm",
+        "pull": "Monthly Commodity by Country import table; HS 271111000 = liquefied natural gas. Quantity is Customs CSV Unit2; value is JPY1000 per Customs notes.",
+        "fields": [
+          "month",
+          "partner_country",
+          "quantity_mt",
+          "value_jpy_000"
+        ],
+        "status": "wired",
+        "wiring": "csv_parser_wired"
+      },
+      {
+        "item": "City gas production, purchases, sales and inventories",
+        "balanceUse": "City-gas demand, LNG receipts/production and city-gas stock cross-check",
+        "source": "METI / ANRE Gas Business Production Dynamic Statistics",
+        "sourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/results.html",
+        "pull": "Monthly Excel files from the statistics table list.",
+        "fields": [
+          "month",
+          "vaporized_lng",
+          "production_purchases",
+          "sales_by_sector",
+          "inventory"
+        ],
+        "status": "source_identified",
+        "wiring": "excel_parser_pending"
+      },
+      {
+        "item": "Power-sector LNG receipts, burn and stocks",
+        "balanceUse": "Power LNG demand and utility inventory",
+        "source": "METI / ANRE Electric Power Survey Statistics",
+        "sourceUrl": "https://www.enecho.meti.go.jp/statistics/electric_power/ep002/results_archive.html",
+        "currentUrl": "https://www.enecho.meti.go.jp/statistics/electric_power/ep002/results.html",
+        "pull": "Monthly thermal power fuel statistics Excel table; LNG fuel consumption/receipts/stocks where reported.",
+        "fields": [
+          "month",
+          "lng_receipts",
+          "lng_consumption",
+          "lng_inventory"
+        ],
+        "status": "source_identified",
+        "wiring": "excel_parser_pending"
+      },
+      {
+        "item": "Ready-made LNG inventory cross-check",
+        "balanceUse": "Published sanity check for total, city-gas and power LNG inventories",
+        "source": "JOGMEC Natural Gas & LNG related information",
+        "sourceUrl": "https://journal.jogmec.go.jp/oilgas/nglng-en/previous-articles/202412.html",
+        "pull": "Monthly Japan inventory commentary compiled from METI Gas Business and Thermal Power Generation Statistics.",
+        "fields": [
+          "month",
+          "total_lng_inventory",
+          "city_gas_inventory",
+          "power_inventory"
+        ],
+        "status": "cross_check_only",
+        "wiring": "manual_reference_until_table_feed_found"
+      }
+    ],
+    "sourceGaps": [
+      {
+        "item": "City-gas demand and inventories",
+        "status": "source_identified_not_wired",
+        "sourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/results.html",
+        "note": "METI Gas Business monthly Excel source is identified, but the Excel parser is not wired yet. Values stay blank until parsed from the official workbook."
+      },
+      {
+        "item": "Power-sector LNG burn, receipts and stocks",
+        "status": "source_identified_not_wired",
+        "sourceUrl": "https://www.enecho.meti.go.jp/statistics/electric_power/ep002/results.html",
+        "note": "METI Electric Power Survey fuel statistics source is identified, but not parsed yet. No gas-for-power or power inventory values are estimated."
+      },
+      {
+        "item": "Weekly LNG storage",
+        "status": "cross_check_available_monthly",
+        "sourceUrl": "https://journal.jogmec.go.jp/oilgas/nglng-en/previous-articles/202412.html",
+        "note": "JOGMEC publishes inventory commentary compiled from METI Gas Business and Thermal Power Generation Statistics. Use as cross-check, not invented weekly stock."
       }
     ]
   },
@@ -525,21 +4487,15 @@
         "weight": 0.34,
         "forecast": [
           {
-            "date": "2026-05-03",
-            "tempMeanC": 17.2,
-            "hdd18": 0.8,
-            "cdd24": 0.0
-          },
-          {
             "date": "2026-05-04",
-            "tempMeanC": 21.0,
+            "tempMeanC": 21.4,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-05",
-            "tempMeanC": 15.9,
-            "hdd18": 2.1,
+            "tempMeanC": 16.1,
+            "hdd18": 1.9,
             "cdd24": 0.0
           },
           {
@@ -550,61 +4506,67 @@
           },
           {
             "date": "2026-05-07",
-            "tempMeanC": 19.1,
+            "tempMeanC": 18.9,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-08",
-            "tempMeanC": 19.6,
+            "tempMeanC": 18.7,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-09",
-            "tempMeanC": 17.6,
-            "hdd18": 0.4,
+            "tempMeanC": 17.4,
+            "hdd18": 0.6,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-10",
-            "tempMeanC": 17.3,
-            "hdd18": 0.7,
+            "tempMeanC": 17.0,
+            "hdd18": 1.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-11",
-            "tempMeanC": 18.1,
+            "tempMeanC": 18.8,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-12",
-            "tempMeanC": 18.4,
+            "tempMeanC": 19.6,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-13",
-            "tempMeanC": 19.4,
+            "tempMeanC": 18.9,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-14",
-            "tempMeanC": 20.1,
+            "tempMeanC": 19.4,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-15",
-            "tempMeanC": 21.5,
+            "tempMeanC": 21.6,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-16",
-            "tempMeanC": 21.5,
+            "tempMeanC": 22.7,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-17",
+            "tempMeanC": 22.2,
             "hdd18": 0.0,
             "cdd24": 0.0
           }
@@ -618,86 +4580,86 @@
         "weight": 0.22,
         "forecast": [
           {
-            "date": "2026-05-03",
-            "tempMeanC": 17.1,
-            "hdd18": 0.9,
-            "cdd24": 0.0
-          },
-          {
             "date": "2026-05-04",
-            "tempMeanC": 17.5,
-            "hdd18": 0.5,
+            "tempMeanC": 17.8,
+            "hdd18": 0.2,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-05",
-            "tempMeanC": 15.7,
-            "hdd18": 2.3,
+            "tempMeanC": 15.9,
+            "hdd18": 2.1,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-06",
-            "tempMeanC": 16.8,
-            "hdd18": 1.2,
+            "tempMeanC": 17.2,
+            "hdd18": 0.8,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-07",
-            "tempMeanC": 18.4,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-08",
-            "tempMeanC": 19.3,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-09",
-            "tempMeanC": 16.6,
-            "hdd18": 1.4,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-10",
-            "tempMeanC": 18.4,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-11",
             "tempMeanC": 18.5,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
+            "date": "2026-05-08",
+            "tempMeanC": 18.3,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-09",
+            "tempMeanC": 16.8,
+            "hdd18": 1.2,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-10",
+            "tempMeanC": 16.4,
+            "hdd18": 1.6,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-11",
+            "tempMeanC": 17.6,
+            "hdd18": 0.4,
+            "cdd24": 0.0
+          },
+          {
             "date": "2026-05-12",
-            "tempMeanC": 18.1,
+            "tempMeanC": 18.9,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-13",
-            "tempMeanC": 19.0,
+            "tempMeanC": 19.8,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-14",
-            "tempMeanC": 20.0,
+            "tempMeanC": 20.3,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-15",
-            "tempMeanC": 19.7,
+            "tempMeanC": 21.7,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-16",
-            "tempMeanC": 20.8,
+            "tempMeanC": 22.4,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-17",
+            "tempMeanC": 23.1,
             "hdd18": 0.0,
             "cdd24": 0.0
           }
@@ -711,14 +4673,8 @@
         "weight": 0.16,
         "forecast": [
           {
-            "date": "2026-05-03",
-            "tempMeanC": 16.9,
-            "hdd18": 1.1,
-            "cdd24": 0.0
-          },
-          {
             "date": "2026-05-04",
-            "tempMeanC": 18.1,
+            "tempMeanC": 18.2,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
@@ -730,32 +4686,32 @@
           },
           {
             "date": "2026-05-06",
-            "tempMeanC": 16.5,
-            "hdd18": 1.5,
+            "tempMeanC": 17.1,
+            "hdd18": 0.9,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-07",
-            "tempMeanC": 19.0,
+            "tempMeanC": 18.5,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-08",
-            "tempMeanC": 18.1,
-            "hdd18": 0.0,
+            "tempMeanC": 17.2,
+            "hdd18": 0.8,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-09",
-            "tempMeanC": 16.1,
-            "hdd18": 1.9,
+            "tempMeanC": 16.2,
+            "hdd18": 1.8,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-10",
-            "tempMeanC": 18.6,
-            "hdd18": 0.0,
+            "tempMeanC": 15.9,
+            "hdd18": 2.1,
             "cdd24": 0.0
           },
           {
@@ -766,31 +4722,37 @@
           },
           {
             "date": "2026-05-12",
-            "tempMeanC": 17.8,
-            "hdd18": 0.2,
+            "tempMeanC": 18.2,
+            "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-13",
-            "tempMeanC": 18.9,
+            "tempMeanC": 20.4,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-14",
-            "tempMeanC": 20.6,
+            "tempMeanC": 20.9,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-15",
-            "tempMeanC": 21.8,
+            "tempMeanC": 22.0,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-16",
-            "tempMeanC": 22.9,
+            "tempMeanC": 22.6,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-17",
+            "tempMeanC": 22.1,
             "hdd18": 0.0,
             "cdd24": 0.0
           }
@@ -804,86 +4766,86 @@
         "weight": 0.14,
         "forecast": [
           {
-            "date": "2026-05-03",
-            "tempMeanC": 17.9,
-            "hdd18": 0.1,
-            "cdd24": 0.0
-          },
-          {
             "date": "2026-05-04",
-            "tempMeanC": 16.2,
-            "hdd18": 1.8,
+            "tempMeanC": 16.3,
+            "hdd18": 1.7,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-05",
-            "tempMeanC": 15.9,
-            "hdd18": 2.1,
+            "tempMeanC": 16.1,
+            "hdd18": 1.9,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-06",
-            "tempMeanC": 16.9,
-            "hdd18": 1.1,
+            "tempMeanC": 17.6,
+            "hdd18": 0.4,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-07",
-            "tempMeanC": 18.4,
+            "tempMeanC": 18.7,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-08",
-            "tempMeanC": 17.1,
-            "hdd18": 0.9,
+            "tempMeanC": 17.4,
+            "hdd18": 0.6,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-09",
-            "tempMeanC": 16.4,
-            "hdd18": 1.6,
+            "tempMeanC": 16.2,
+            "hdd18": 1.8,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-10",
-            "tempMeanC": 18.2,
-            "hdd18": 0.0,
+            "tempMeanC": 17.2,
+            "hdd18": 0.8,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-11",
-            "tempMeanC": 20.3,
+            "tempMeanC": 18.1,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-12",
-            "tempMeanC": 20.0,
+            "tempMeanC": 20.7,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-13",
-            "tempMeanC": 20.4,
+            "tempMeanC": 22.6,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-14",
-            "tempMeanC": 19.2,
+            "tempMeanC": 20.6,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-15",
-            "tempMeanC": 21.6,
+            "tempMeanC": 21.1,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-16",
-            "tempMeanC": 19.9,
+            "tempMeanC": 24.4,
+            "hdd18": 0.0,
+            "cdd24": 0.4
+          },
+          {
+            "date": "2026-05-17",
+            "tempMeanC": 22.4,
             "hdd18": 0.0,
             "cdd24": 0.0
           }
@@ -897,21 +4859,15 @@
         "weight": 0.14,
         "forecast": [
           {
-            "date": "2026-05-03",
-            "tempMeanC": 10.1,
-            "hdd18": 7.9,
-            "cdd24": 0.0
-          },
-          {
             "date": "2026-05-04",
-            "tempMeanC": 9.7,
-            "hdd18": 8.3,
+            "tempMeanC": 9.2,
+            "hdd18": 8.8,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-05",
-            "tempMeanC": 11.3,
-            "hdd18": 6.7,
+            "tempMeanC": 11.0,
+            "hdd18": 7.0,
             "cdd24": 0.0
           },
           {
@@ -922,62 +4878,68 @@
           },
           {
             "date": "2026-05-07",
-            "tempMeanC": 15.2,
-            "hdd18": 2.8,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-08",
-            "tempMeanC": 12.2,
-            "hdd18": 5.8,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-09",
-            "tempMeanC": 11.9,
-            "hdd18": 6.1,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-10",
-            "tempMeanC": 14.6,
-            "hdd18": 3.4,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-11",
             "tempMeanC": 15.3,
             "hdd18": 2.7,
             "cdd24": 0.0
           },
           {
+            "date": "2026-05-08",
+            "tempMeanC": 14.0,
+            "hdd18": 4.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-09",
+            "tempMeanC": 9.4,
+            "hdd18": 8.6,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-10",
+            "tempMeanC": 12.5,
+            "hdd18": 5.5,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-11",
+            "tempMeanC": 15.2,
+            "hdd18": 2.8,
+            "cdd24": 0.0
+          },
+          {
             "date": "2026-05-12",
-            "tempMeanC": 15.6,
-            "hdd18": 2.4,
+            "tempMeanC": 15.1,
+            "hdd18": 2.9,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-13",
-            "tempMeanC": 15.8,
-            "hdd18": 2.2,
+            "tempMeanC": 15.5,
+            "hdd18": 2.5,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-14",
-            "tempMeanC": 15.8,
-            "hdd18": 2.2,
+            "tempMeanC": 14.3,
+            "hdd18": 3.7,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-15",
-            "tempMeanC": 13.9,
-            "hdd18": 4.1,
+            "tempMeanC": 15.7,
+            "hdd18": 2.3,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-16",
-            "tempMeanC": 7.4,
-            "hdd18": 10.6,
+            "tempMeanC": 15.7,
+            "hdd18": 2.3,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-17",
+            "tempMeanC": 13.0,
+            "hdd18": 5.0,
             "cdd24": 0.0
           }
         ]
@@ -985,87 +4947,87 @@
     ],
     "national": [
       {
-        "date": "2026-05-03",
-        "tempMeanC": 16.2,
-        "hdd18": 1.8,
-        "cdd24": 0.0
-      },
-      {
         "date": "2026-05-04",
-        "tempMeanC": 17.5,
+        "tempMeanC": 17.7,
         "hdd18": 1.5,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-05",
-        "tempMeanC": 15.1,
-        "hdd18": 2.9,
+        "tempMeanC": 15.2,
+        "hdd18": 2.8,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-06",
-        "tempMeanC": 16.6,
-        "hdd18": 1.4,
+        "tempMeanC": 16.9,
+        "hdd18": 1.1,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-07",
-        "tempMeanC": 18.3,
+        "tempMeanC": 18.2,
         "hdd18": 0.4,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-08",
-        "tempMeanC": 17.9,
-        "hdd18": 0.9,
+        "tempMeanC": 17.5,
+        "hdd18": 0.8,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-09",
-        "tempMeanC": 16.2,
-        "hdd18": 1.8,
+        "tempMeanC": 15.8,
+        "hdd18": 2.2,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-10",
-        "tempMeanC": 17.5,
-        "hdd18": 0.7,
+        "tempMeanC": 16.1,
+        "hdd18": 1.9,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-11",
-        "tempMeanC": 18.1,
-        "hdd18": 0.4,
+        "tempMeanC": 17.8,
+        "hdd18": 0.5,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-12",
-        "tempMeanC": 18.1,
+        "tempMeanC": 18.7,
         "hdd18": 0.4,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-13",
-        "tempMeanC": 18.9,
-        "hdd18": 0.3,
+        "tempMeanC": 19.4,
+        "hdd18": 0.4,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-14",
-        "tempMeanC": 19.4,
-        "hdd18": 0.3,
+        "tempMeanC": 19.3,
+        "hdd18": 0.5,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-15",
-        "tempMeanC": 20.1,
-        "hdd18": 0.6,
+        "tempMeanC": 20.8,
+        "hdd18": 0.3,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-16",
-        "tempMeanC": 19.4,
-        "hdd18": 1.5,
+        "tempMeanC": 21.9,
+        "hdd18": 0.3,
+        "cdd24": 0.1
+      },
+      {
+        "date": "2026-05-17",
+        "tempMeanC": 21.1,
+        "hdd18": 0.7,
         "cdd24": 0.0
       }
     ]

@@ -23,11 +23,16 @@ assert(
   'Japan analytics must expose Gas Balance, Japan Power, and Weather Forecast tabs'
 );
 assert(
-  js.includes('weekly LNG storage') &&
-    js.includes('SOURCE GAP') &&
-    js.includes('no estimated tank stock') &&
-    js.includes('OCCTO navigation'),
-  'Japan Gas Balance must surface source gaps rather than invented storage or gas-for-power data'
+  js.includes('JAPAN GAS BALANCE SOURCE STACK') &&
+    js.includes('JAPAN LNG IMPORT SUPPLY') &&
+    js.includes('MONTHLY JAPAN GAS BALANCE') &&
+    js.includes('Japan Customs HS 271111000') &&
+    js.includes('METI Gas Business') &&
+    js.includes('METI Electric Power') &&
+    js.includes('JOGMEC') &&
+    js.includes('Missing source row = gap, not modelled value') &&
+    js.includes('partial imports chart wired; demand/storage pending'),
+  'Japan Gas Balance must render sourced Customs imports while keeping missing demand/storage as explicit gaps'
 );
 assert(
   js.includes('JAPAN NUCLEAR UTILIZATION') &&
@@ -51,8 +56,24 @@ assert(
   'Japan Weather Forecast must show JMA source context and numeric forecast status'
 );
 assert(data.schema === 'japan_analytics_v1', 'Japan data schema missing');
-assert(data.gasBalance?.status === 'source_gap', 'Japan gas balance must declare source_gap');
+assert(data.gasBalance?.status === 'partial_balance', 'Japan gas balance must declare partial_balance once Customs imports are parsed');
+assert(Array.isArray(data.gasBalance.monthlyRows) && data.gasBalance.monthlyRows.length >= 12, 'Japan monthly balance rows must include parsed Customs LNG imports');
 assert(data.gasBalance.weeklyLngStorage === null, 'Japan weekly LNG storage must stay null until sourced');
+const latestGas = data.gasBalance.monthlyRows.at(-1);
+assert(latestGas?.month === data.gasBalance.lngImports?.latestMonth, 'Japan gas balance latest row must match Customs latest month');
+assert(latestGas?.lngImportsMillionTonnes > 0, 'Japan Customs LNG import row must include positive Mt/month');
+assert(latestGas?.lngImportsValueJpyBillion > 0 && latestGas.lngImportsValueJpyBillion < 1000, 'Japan Customs LNG import value must be expressed in JPY bn, not raw JPY000');
+assert(latestGas?.coverage?.customsLngImports === true, 'Japan latest row must mark Customs import coverage');
+assert(latestGas?.coverage?.metiGasBusiness === false && latestGas?.cityGasDemand === null, 'Japan city gas must remain an explicit gap until METI Gas Business is parsed');
+assert(latestGas?.coverage?.metiPowerFuel === false && latestGas?.powerLngBurn === null, 'Japan power LNG burn must remain an explicit gap until METI power fuel is parsed');
+assert(
+  Array.isArray(data.gasBalance.sourceMap) &&
+    data.gasBalance.sourceMap.some(s => s.source?.includes('Japan Customs') && s.status === 'wired' && s.pull?.includes('HS 271111000')) &&
+    data.gasBalance.sourceMap.some(s => s.source?.includes('Gas Business Production Dynamic Statistics')) &&
+    data.gasBalance.sourceMap.some(s => s.source?.includes('Electric Power Survey Statistics')) &&
+    data.gasBalance.sourceMap.some(s => s.source?.includes('JOGMEC')),
+  'Japan gas balance source map must preserve Customs, METI gas, METI power, and JOGMEC sources'
+);
 assert(Array.isArray(data.nuclear?.series) && data.nuclear.series.length > 60, 'Japan nuclear series should include multi-year monthly rows');
 assert(data.nuclear.series.at(-1).twh != null, 'Japan latest nuclear row needs TWh');
 assert(data.nuclear.source === 'Ember Monthly Electricity Data', 'Japan nuclear source must be Ember');
@@ -63,9 +84,13 @@ assert(
   scraper.includes('Area") != "Japan"') &&
     scraper.includes('Variable") != "Nuclear"') &&
     scraper.includes('capacityReference') &&
+    scraper.includes('JAPAN_GAS_BALANCE_SOURCE_MAP') &&
+    scraper.includes('load_customs_lng_imports') &&
+    scraper.includes('CUSTOMS_HS_LNG = "271111000"') &&
+    scraper.includes('monthlyRows') &&
     scraper.includes('OPEN_METEO_URL') &&
     scraper.includes('"weeklyLngStorage": None'),
-  'Japan scraper must fetch real nuclear/weather data and keep gas storage as an explicit gap'
+  'Japan scraper must fetch real nuclear/weather data, parse Customs LNG imports, and keep unparsed Japan balance legs as gaps'
 );
 
 if (!process.exitCode) console.log('Japan analytics regression checks passed');
