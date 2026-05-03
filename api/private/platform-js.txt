@@ -24814,18 +24814,21 @@ function thaiAvailableYears(){
 }
 function thaiDaysInMonth(ym){return new Date(+ym.slice(0,4), +ym.slice(5,7), 0).getDate();}
 function thaiUnitLabel(){
-  return _thaiUnit === 'mcm_d' ? 'mcm/d' : _thaiUnit === 'bcm_m' ? 'bcm/month' : 'MMSCFD';
+  return _thaiUnit === 'mcm_d' ? 'mcm/d' : _thaiUnit === 'bcm_m' ? 'bcm/month' : _thaiUnit === 'mtpm' ? 'MTPM' : 'MMSCFD';
 }
 function thaiConvert(v, ym){
   if(v == null || isNaN(v)) return null;
-  if(_thaiUnit === 'mcm_d') return +(v * 0.028316846592).toFixed(1);
-  if(_thaiUnit === 'bcm_m') return +(v * 0.028316846592 * thaiDaysInMonth(ym) / 1000).toFixed(3);
+  const mcmD = v * 0.028316846592;
+  const bcmM = mcmD * thaiDaysInMonth(ym) / 1000;
+  if(_thaiUnit === 'mcm_d') return +mcmD.toFixed(1);
+  if(_thaiUnit === 'bcm_m') return +bcmM.toFixed(3);
+  if(_thaiUnit === 'mtpm') return +(bcmM * 0.735).toFixed(3);
   return +(+v).toFixed(0);
 }
 function thaiFmt(v, ym){
   const x = thaiConvert(v, ym);
   if(x == null) return '--';
-  const digits = _thaiUnit === 'bcm_m' ? 2 : _thaiUnit === 'mcm_d' ? 1 : 0;
+  const digits = _thaiUnit === 'bcm_m' || _thaiUnit === 'mtpm' ? 2 : _thaiUnit === 'mcm_d' ? 1 : 0;
   return x.toLocaleString('en-US', {minimumFractionDigits:digits, maximumFractionDigits:digits});
 }
 function thaiRawVal(row, key){
@@ -24887,7 +24890,7 @@ function thaiRenderBalance(container){
       <span style="font-size:9px;color:#546e7a">TABLE</span>
       ${['12M','24M','ALL'].map(r=>`<button class="f-btn sm${_thaiRange===r?' on':''}" onclick="thaiSetRange('${r}')">${r}</button>`).join('')}
       <span style="font-size:9px;color:#546e7a;margin-left:8px">UNIT</span>
-      ${[['mmscfd','MMSCFD'],['mcm_d','mcm/d'],['bcm_m','bcm/month']].map(([k,l])=>`<button class="f-btn sm${_thaiUnit===k?' on':''}" onclick="thaiSetUnit('${k}')">${l}</button>`).join('')}
+      ${[['mmscfd','MMSCFD'],['mcm_d','mcm/d'],['bcm_m','bcm/month'],['mtpm','MTPM']].map(([k,l])=>`<button class="f-btn sm${_thaiUnit===k?' on':''}" onclick="thaiSetUnit('${k}')">${l}</button>`).join('')}
       <span style="font-size:9px;color:#3d5070;margin-left:auto">EPPO monthly average · latest ${latest.month} · ${allRows.length} months</span>
     </div>
 

@@ -24,6 +24,7 @@ assert(js.includes('SEASONAL CHART') && js.includes('thaiToggleYear'), 'Thailand
 assert(js.includes('MONTHLY GAS BALANCE') && js.includes('Residual (supply - demand)'), 'Thailand view must include the monthly balance table and residual');
 assert(js.includes('THAILAND CDD INDEX') && js.includes('CDD vs POWER GAS BURN vs LNG IMPORTS'), 'Weather monitor must show CDD and power/LNG sensitivity charts');
 assert(js.includes('Distribution of NGL is ignored'), 'Thailand view must surface the NGL exclusion');
+assert(js.includes("['mtpm','MTPM']") && js.includes("bcmM * 0.735") && js.includes("_thaiUnit === 'mtpm' ? 'MTPM'"), 'Thailand balance must expose MTPM and convert from monthly bcm to LNG-equivalent Mt/month');
 assert(/name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app), 'Private platform script must keep a dated cache-bust');
 
 assert(data.schema === 'thailand_gas_balance_v1', 'Thailand data schema missing');
