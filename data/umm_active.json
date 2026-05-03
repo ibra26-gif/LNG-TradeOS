@@ -33,12 +33,12 @@
     {
       "title": "Gas production field unavailability · Unplanned",
       "asset": "Åsgard",
-      "impact": "-5.0 mcm/d",
+      "impact": "-10.0 mcm/d",
       "from": "2026-05-03",
       "to": "2026-05-04",
       "type": "unplanned",
-      "published": "2026-05-03T10:39:40.997000",
-      "msg_id": "2026-200__________________001"
+      "published": "2026-05-03T15:28:33.803000",
+      "msg_id": "2026-200__________________002"
     },
     {
       "title": "Other unavailability · Planned",
@@ -52,7 +52,7 @@
     }
   ],
   "_meta": {
-    "updated": "2026-05-03T13:23:29Z",
+    "updated": "2026-05-03T16:00:09Z",
     "source": "gassco xlexport",
     "total_messages": 155,
     "active_count": 5
