@@ -4,6 +4,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const js = fs.readFileSync(path.join(root, 'api/private/platform-js.txt'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'api/private/platform-app.txt'), 'utf8');
+const proxy = fs.readFileSync(path.join(root, 'api/entsoe.js'), 'utf8');
 
 function assert(cond, msg) {
   if (!cond) {
@@ -48,12 +49,20 @@ assert(
 
 assert(
   js.includes('/api/entsoe?') &&
+    !js.includes('securityToken=') &&
     js.includes("documentType:'A75'") &&
     js.includes("processType:'A16'") &&
     js.includes("documentType:'A68'") &&
     js.includes("processType:'A33'") &&
     js.includes('ENTSO-E Transparency Platform Actual Generation per Type'),
   'European Renewable must use the existing ENTSO-E proxy and cite generation plus installed capacity'
+);
+
+assert(
+  proxy.includes('process.env.ENTSOE_API_KEY || process.env.ENTSOE_SECURITY_TOKEN') &&
+    proxy.includes("params.delete('securityToken')") &&
+    proxy.includes("params.set('securityToken', apiKey)"),
+  'ENTSO-E proxy must keep the security token server-side and ignore browser-supplied tokens'
 );
 
 assert(

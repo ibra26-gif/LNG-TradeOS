@@ -21310,7 +21310,6 @@ function _drawDbMiniCharts(){
 // ══════════════════════════════════════════════════════════════════════════
 async function _loadFrNuclear(targetId='db-fr-nuclear'){
   const el=document.getElementById(targetId); if(!el) return;
-  const ENTSOE_KEY='5543d284-22f5-4467-969a-cd1d5b9ef39b';
   const today=new Date();
   const yr=today.getFullYear(), mo=String(today.getMonth()+1).padStart(2,'0'), dy=String(today.getDate()).padStart(2,'0');
   const pStart=`${yr}${mo}010000`;
@@ -21320,16 +21319,10 @@ async function _loadFrNuclear(targetId='db-fr-nuclear'){
   try{const c=sessionStorage.getItem(cacheKey);if(c)cached=JSON.parse(c);}catch{}
 
   async function fetchNuclear(){
-    // IS_LOCAL: direct fetch (will fail with CORS, shows error msg)
-    // Deployed: go via /api/entsoe proxy (server-side, no CORS)
-    let url, headers={};
-    if(IS_LOCAL){
-      url=`https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_KEY}&documentType=A75&processType=A16&in_Domain=10YFR-RTE------C&psrType=B14&periodStart=${pStart}&periodEnd=${pEnd}`;
-    } else {
-      // Vercel proxy: /api/entsoe?documentType=A75&...  (no token in URL — proxy adds it server-side)
-      url=`/api/entsoe?documentType=A75&processType=A16&in_Domain=10YFR-RTE------C&psrType=B14&periodStart=${pStart}&periodEnd=${pEnd}`;
-    }
-    const r=await fetch(url,{headers});
+    // Vercel proxy adds ENTSO-E securityToken server-side. The browser never
+    // receives or sends the token; missing env/key shows a clean data gap.
+    const url=`/api/entsoe?documentType=A75&processType=A16&in_Domain=10YFR-RTE------C&psrType=B14&periodStart=${pStart}&periodEnd=${pEnd}`;
+    const r=await fetch(url);
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const txt=await r.text();
     const vals=[...txt.matchAll(/<quantity>(\d+(?:\.\d+)?)<\/quantity>/g)].map(m=>+m[1]);
