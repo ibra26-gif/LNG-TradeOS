@@ -26376,6 +26376,9 @@ function renderKorPrices(el){
     tariffHistory.sort((a,b) => a.date.localeCompare(b.date));
   }
   const lastTariff = tariffHistory.length ? tariffHistory[tariffHistory.length - 1] : null;
+  const tariffFirst = tariffHistory.length ? tariffHistory[0].date.slice(0,7) : null;
+  const tariffLast = lastTariff ? lastTariff.date.slice(0,7) : null;
+  const currentTariffMonth = currentTariff?.effectiveStart ? currentTariff.effectiveStart.slice(0,7) : null;
   const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const avgByMonth = (rows, dateFn, valFn) => {
     const buckets = Array.from({length:12}, () => ({sum:0, n:0}));
@@ -26396,6 +26399,15 @@ function renderKorPrices(el){
   const jkmSeasonal = avgByMonth(marketJkmMonthly, r => `${r.ym}-01`, r => r.jkm);
   const brentLowSeasonal = avgByMonth(marketSlopeBand, r => `${r.ym}-01`, r => r.lower);
   const brentHighSeasonal = avgByMonth(marketSlopeBand, r => `${r.ym}-01`, r => r.upper);
+  const jkmFirst = marketJkmMonthly.length ? marketJkmMonthly[0].ym : null;
+  const jkmLast = marketJkmMonthly.length ? marketJkmMonthly[marketJkmMonthly.length - 1].ym : null;
+  const brentFirst = marketSlopeBand.length ? marketSlopeBand[0].ym : null;
+  const brentLast = marketSlopeBand.length ? marketSlopeBand[marketSlopeBand.length - 1].ym : null;
+  const seasonalScope = [
+    tariffFirst ? `KOGAS tariff ${tariffFirst}–${tariffLast}${currentTariffMonth ? ` incl latest official ${currentTariffMonth}` : ''}` : 'KOGAS tariff history missing',
+    jkmFirst ? `JKM ${jkmFirst}–${jkmLast}` : 'JKM not loaded',
+    brentFirst ? `Brent slope ${brentFirst}–${brentLast}` : 'Brent not loaded',
+  ].join(' · ');
 
   el.innerHTML = `
     ${korFreshness([
@@ -26407,9 +26419,10 @@ function renderKorPrices(el){
     ])}
 
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">
-      ${korKpiCard({ label:'KOGAS direct power', value: currentDirectUsd!=null?currentDirectUsd.toFixed(2):'—',
-                     sub: currentDirect?.total_krw_gj!=null ? `${currentDirect.total_krw_gj.toLocaleString()} KRW/GJ · ${currentIsStale?'stale':'official'}` : 'official source missing',
-                     color: currentIsStale?'#fbbf24':'#fbbf24' })}
+      ${korKpiCard({ label:`Latest official KOGAS direct power${currentTariffMonth ? ' · '+currentTariffMonth : ''}`, value: currentDirectUsd!=null?currentDirectUsd.toFixed(2):'—',
+                     sub: currentDirect?.total_krw_gj!=null ? `${currentDirect.total_krw_gj.toLocaleString()} KRW/GJ · ${tariffWindow}${currentIsStale?' · stale':''}` : 'official source missing',
+                     color: currentIsStale?'#fbbf24':'#fbbf24',
+                     badge:'$/MMBtu' })}
       ${korKpiCard({ label:'KOGAS general / CHP', value: currentGeneralUsd!=null?currentGeneralUsd.toFixed(2):'—',
                      sub: currentGeneral?.total_krw_gj!=null ? `${currentGeneral.total_krw_gj.toLocaleString()} KRW/GJ · ${tariffWindow}` : 'official source missing',
                      color:'#f59e0b' })}
@@ -26423,9 +26436,10 @@ function renderKorPrices(el){
     <div class="acard" style="padding:10px 14px;background:#0d1322;border:1px solid #1f2937;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
         <span style="font-size:11px;color:#fff;font-weight:500">Seasonal · KOGAS tariff · JKM · Brent 11-14% (3,0,1) · $/MMBtu</span>
-        <span style="font-size:9px;color:#5a6882">average by calendar month across available observations</span>
+        <span style="font-size:9px;color:#5a6882">calendar-month average · see observation years below</span>
       </div>
       <div style="height:260px"><canvas id="kor-tariff-seasonal"></canvas></div>
+      <div style="font-size:9px;color:#5a6882;margin-top:6px;line-height:1.5">${seasonalScope}</div>
     </div>
 
     <div style="font-size:9px;color:#6b7280;margin-bottom:10px">

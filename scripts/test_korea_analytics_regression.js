@@ -49,6 +49,9 @@ assert(
     js.includes('avgByMonth') &&
     js.includes("_korLive?.kogasTariff") &&
     js.includes('KOGAS direct power') &&
+    js.includes('Latest official KOGAS direct') &&
+    js.includes('calendar-month average · see observation years below') &&
+    js.includes('seasonalScope') &&
     js.includes('JKM vs KOGAS direct') &&
     js.includes('KOGAS power tariff') &&
     js.includes('11% Brent 3-0-1') &&
