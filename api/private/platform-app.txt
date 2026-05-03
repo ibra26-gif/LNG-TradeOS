@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260501-pipeline-history">
-<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260503-freight-history-spread" defer></script>
+<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260503-freight-health-guard" defer></script>
 </head>
 <body class="app-unlocked">
 <div id="public-site">

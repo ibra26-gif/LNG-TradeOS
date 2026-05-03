@@ -6299,6 +6299,7 @@ function initFreight(){
   F.validatedAudit=fg('f_validated_audit',null);  // [origId][dischId][mi]=$/MMBtu
   // Historical Freight Curves (Google Drive loaded)
   F.histCurves=fg('f_hist_curves',[]);
+  F.histStatus=fg('f_hist_status_v1',null);
   // Prior parser bug stored garbage values like -26/-27/-28 when the Date
   // subcolumn slipped into BLNG cells. Clean those every boot; never keep
   // impossible $/day values in the active historical database.
@@ -8040,6 +8041,7 @@ function renderHistorical(){
     </div>
     ${F.histProgress.errors?.length?`<div style="color:#f44336;font-size:8px;margin-top:4px">⚠ ${F.histProgress.errors.length} error(s)</div>`:''}
   </div>`:''}
+  ${fHistHealthPanel()}
   ${hasCurves
     ?`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
         <div style="background:#071a2b;border:1px solid #1e3a5f;padding:4px;display:inline-flex;gap:0;border-radius:2px">
@@ -8054,11 +8056,13 @@ function renderHistorical(){
       </div>
       ${(()=>{
         const v=F.histView||'historical';
-        if(v==='forward')  return fwdView();
-        if(v==='historical') return histSeriesView();
-        if(v==='spread')   return histSpreadView();
-        if(v==='vsbasis')  return histVsBasisView();
-        return histSeriesView();
+        return fHistSafeView(v,()=>{
+          if(v==='forward')  return fwdView();
+          if(v==='historical') return histSeriesView();
+          if(v==='spread')   return histSpreadView();
+          if(v==='vsbasis')  return histVsBasisView();
+          return histSeriesView();
+        });
       })()}`
     :`<div style="background:#0a1628;border:1px dashed #1e3a5f;padding:32px;text-align:center">
         <div style="color:#546e7a;font-size:10px;letter-spacing:1px;margin-bottom:8px">NO HISTORICAL CURVES LOADED</div>
@@ -8576,10 +8580,87 @@ function fHistMergeCurves(results){
   return{merged,added,updated};
 }
 
+function fHistEsc(v){
+  return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function fHistSetStatus(next){
+  const status={...(next||{}),ts:new Date().toISOString()};
+  F.histStatus=status;
+  try{fs('f_hist_status_v1',status);}catch(e){}
+  return status;
+}
+function fHistGetStatus(){
+  if(F.histStatus)return F.histStatus;
+  F.histStatus=fg('f_hist_status_v1',null);
+  return F.histStatus;
+}
+function fHistFmtTs(ts){
+  if(!ts)return'never';
+  const d=new Date(ts);
+  if(isNaN(d))return String(ts);
+  return d.toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+function fHistHealth(){
+  const all=Array.isArray(F.histCurves)?F.histCurves:[];
+  const valid=all.filter(s=>s&&s.date&&fBlngIsValid(s.blng));
+  const invalid=all.length-valid.length;
+  const latest=[...valid].sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0]||null;
+  const sources=valid.reduce((acc,s)=>{const k=s._source||'Manual/local';acc[k]=(acc[k]||0)+1;return acc;},{});
+  return{total:all.length,valid:valid.length,invalid,latest,sources,status:fHistGetStatus()};
+}
+function fHistHealthPanel(){
+  const h=fHistHealth();
+  const st=h.status||{};
+  const ok=st.ok!==false;
+  const latestLabel=h.latest?`${h.latest.date} · ${h.latest._source||h.latest.label||'saved curve'}`:'none';
+  const src=Object.entries(h.sources||{}).map(([k,v])=>`${v} ${k}`).join(' · ')||'no valid sources';
+  const statusMsg=st.msg||st.message||'No Drive/import status yet';
+  const errCount=st.errors||st.skipped||0;
+  return`
+  <div style="background:#071a2b;border:1px solid #1e3a5f;margin-bottom:12px;padding:10px 12px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="color:#4fc3f7;font-size:10px;letter-spacing:2px;font-weight:700">FREIGHT HISTORY HEALTH</span>
+      <span style="color:${ok?'#34d399':'#f87171'};font-size:9px">${ok?'OK':'CHECK'} · ${fHistEsc(fHistFmtTs(st.ts))}</span>
+      <span style="flex:1"></span>
+      <button class="f-btn sm" onclick="fAuthGate(()=>fHistRepairHistory(false))">REPAIR CACHE</button>
+      <button class="f-btn sm on" onclick="fAuthGate(()=>fHistRepairHistory(true))">REPAIR + DRIVE RELOAD</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+      <div style="border:1px solid #12304d;padding:8px;background:#06111f"><div class="f-lbl">VALID CURVES</div><div style="font-size:18px;color:#c8d6e5;font-weight:700">${h.valid}</div><div style="font-size:8px;color:#546e7a">${h.total} total saved</div></div>
+      <div style="border:1px solid #12304d;padding:8px;background:#06111f"><div class="f-lbl">LATEST SNAPSHOT</div><div style="font-size:11px;color:#c8d6e5;font-weight:700">${fHistEsc(latestLabel)}</div><div style="font-size:8px;color:#546e7a">source traced from saved curve</div></div>
+      <div style="border:1px solid #12304d;padding:8px;background:#06111f"><div class="f-lbl">INVALID / CORRUPT</div><div style="font-size:18px;color:${h.invalid?'#f87171':'#34d399'};font-weight:700">${h.invalid}</div><div style="font-size:8px;color:#546e7a">removed by repair only</div></div>
+      <div style="border:1px solid #12304d;padding:8px;background:#06111f"><div class="f-lbl">LAST IMPORT / SYNC</div><div style="font-size:10px;color:${ok?'#c8d6e5':'#f87171'};font-weight:700">${fHistEsc(statusMsg)}</div><div style="font-size:8px;color:#546e7a">${errCount?`${errCount} skipped · `:''}${fHistEsc(src)}</div></div>
+    </div>
+  </div>`;
+}
+function fHistRepairHistory(reloadDrive=false){
+  const before=Array.isArray(F.histCurves)?F.histCurves.length:0;
+  F.histCurves=(F.histCurves||[]).filter(s=>s&&s.date&&fBlngIsValid(s.blng));
+  fs('f_hist_curves',F.histCurves);
+  const removed=before-F.histCurves.length;
+  fHistSetStatus({kind:'repair',ok:true,msg:`Repair complete: removed ${removed} invalid curve(s)`,removed,total:F.histCurves.length});
+  if(reloadDrive)return syncFreightHistFromDrive(false,true);
+  _fHistRefresh();
+}
+function fHistSafeView(name,renderFn){
+  try{return renderFn();}
+  catch(e){
+    const msg=e&&e.message?e.message:String(e);
+    console.warn('[Freight history view failed]',name,e);
+    fHistSetStatus({kind:'view',ok:false,msg:`${name} view failed safely: ${msg}`});
+    return`<div style="background:#1a1014;border:1px solid #7f1d1d;padding:18px;margin-top:10px">
+      <div style="color:#f87171;font-size:11px;letter-spacing:1px;font-weight:700;margin-bottom:8px">FREIGHT HISTORY VIEW FAILED SAFELY</div>
+      <div style="color:#c8d6e5;font-size:10px;margin-bottom:10px">${fHistEsc(name)}: ${fHistEsc(msg)}</div>
+      <button class="f-btn sm on" onclick="F.histView='historical';fs('f_hist_view_v1','historical');_fHistRefresh()">RESET TO HISTORICAL</button>
+    </div>`;
+  }
+}
+
 let _freightHistDriveSyncing=false;
 async function syncFreightHistFromDrive(silent=false,refreshEditor=false){
   if(_freightHistDriveSyncing)return;
   _freightHistDriveSyncing=true;
+  fHistSetStatus({kind:'drive',ok:true,msg:silent?'Drive sync scheduled':'Drive sync running'});
   if(!silent){
     F.histLoading=true;
     F.histProgress={total:0,done:0,current:'Listing Freight Drive files…',errors:[]};
@@ -8638,6 +8719,7 @@ async function syncFreightHistFromDrive(silent=false,refreshEditor=false){
     const validCounts=valid.reduce((acc,f)=>{const k=sourceType(f);acc[k]=(acc[k]||0)+1;return acc;},{});
     const validSummary=Object.entries(validCounts).map(([k,v])=>`${v} ${k}`).join(', ')||'0 files';
     if(!toProcess.length){
+      fHistSetStatus({kind:'drive',ok:true,msg:`Drive already synced. Checked ${validSummary}`,checked:valid.length,added:0,updated:0,errors:0,skipped:0});
       if(!silent)alert(`Freight Drive is already synced. Checked ${validSummary}.`);
       return;
     }
@@ -8669,6 +8751,7 @@ async function syncFreightHistFromDrive(silent=false,refreshEditor=false){
     }
     const m=fHistMergeCurves(results);
     fs('f_hist_drive_seen_v1',seen);
+    fHistSetStatus({kind:'drive',ok:errors.length===0,msg:`Drive sync: ${m.added+m.updated} curve(s), ${errors.length} skipped`,checked:valid.length,processed:toProcess.length,added:m.added,updated:m.updated,errors:errors.length,skipped:errors.length,total:m.merged.length});
     if(!silent){
       const errMsg=errors.length?`\n⚠ ${errors.length} skipped:\n${errors.slice(0,8).join('\n')}`:'';
       alert(`✓ Synced ${m.added+m.updated} freight curve(s) from Drive. Checked ${validSummary}. Total in database: ${m.merged.length}.${errMsg}`);
@@ -8676,6 +8759,7 @@ async function syncFreightHistFromDrive(silent=false,refreshEditor=false){
     if((m.added||m.updated)&&typeof _fHistRefresh==='function')_fHistRefresh();
     if(refreshEditor&&typeof _fRefreshFreightCurveEditor==='function')_fRefreshFreightCurveEditor();
   }catch(err){
+    fHistSetStatus({kind:'drive',ok:false,msg:`Drive sync failed: ${err.message}`,errors:1});
     if(!silent)alert('Failed to load from Google Drive: '+err.message);
     else console.warn('[Freight Drive] sync failed:',err.message);
   }finally{
@@ -8693,6 +8777,7 @@ async function parseHistExcel(el){
   const files=[...el.files].filter(f=>f.name.match(/\.xlsx?$/i));
   if(!files.length){alert('No Excel files selected.');el.value='';return;}
   el.value='';
+  fHistSetStatus({kind:'excel',ok:true,msg:`Excel import running: ${files.length} file(s)`});
 
   F.histLoading=true;
   F.histProgress={total:files.length,done:0,current:'',errors:[]};
@@ -8718,6 +8803,7 @@ async function parseHistExcel(el){
 
   const m=fHistMergeCurves(results);
   F.histProgress.current='';
+  fHistSetStatus({kind:'excel',ok:F.histProgress.errors.length===0,msg:`Excel import: ${m.added+m.updated} curve(s), ${F.histProgress.errors.length} skipped`,checked:files.length,added:m.added,updated:m.updated,errors:F.histProgress.errors.length,skipped:F.histProgress.errors.length,total:m.merged.length});
 
   const errMsg=F.histProgress.errors.length
     ?`\n⚠ ${F.histProgress.errors.length} skipped:\n${F.histProgress.errors.slice(0,8).join('\n')}`:'';
@@ -8730,6 +8816,7 @@ async function parseHistExcel(el){
 async function parseHistImages(el){
   const files=[...el.files].filter(f=>f.name.match(/\.(png|jpg|jpeg)$/i));
   if(!files.length){alert('No PNG/JPG files selected.');el.value='';return;}
+  fHistSetStatus({kind:'image',ok:true,msg:`Image import running: ${files.length} file(s)`});
 
   // ── STEP 0: Read + compress ALL files BEFORE touching the DOM ────────────
   // Resize to max 1200px wide — reduces payload 80%+ and keeps well under Vercel timeout
@@ -8760,6 +8847,7 @@ async function parseHistImages(el){
   try{
     fileData=await Promise.all(files.map(f=>compressImage(f)));
   }catch(readErr){
+    fHistSetStatus({kind:'image',ok:false,msg:`Image import failed: ${readErr.message}`,errors:1});
     alert('Failed to read file(s): '+readErr.message);
     el.value='';
     return;
@@ -8849,23 +8937,18 @@ async function parseHistImages(el){
       const parsed=JSON.parse(text);
       const hasData=(parsed.BLNG1||[]).some(v=>v!=null)||(parsed.BLNG2||[]).some(v=>v!=null)||(parsed.BLNG3||[]).some(v=>v!=null);
       if(!hasData){F.histProgress.errors.push(`${fd.name}: no BLNG data found`);F.histProgress.done++;continue;}
-      results.push({date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:alignToML(parsed,isoDate)});
+      results.push({date:isoDate,label:`OB FFA ${isoDate.split('-').reverse().join('/')}`,blng:alignToML(parsed,isoDate),_source:'Local image upload'});
     }catch(err){
       F.histProgress.errors.push(`${fd.name}: ${err.message}`);
     }
     F.histProgress.done++;
   }
 
-  const existing=F.histCurves||[];
-  const existDates=new Set(existing.map(e=>e.date));
-  const merged=[...existing,...results.filter(r=>!existDates.has(r.date))];
-  merged.sort((a,b)=>a.date.localeCompare(b.date));
-  F.histCurves=merged;
-  fs('f_hist_curves',merged);
-  F.histSelDate=merged.length-1;
+  const m=fHistMergeCurves(results);
   F.histProgress.current='';
   const errMsg=F.histProgress.errors.length?`\n⚠ ${F.histProgress.errors.length} skipped:\n${F.histProgress.errors.slice(0,5).join('\n')}`:''
-  alert(`✓ Extracted ${results.length} curve(s) from ${fileData.length} image(s).${errMsg}`);
+  fHistSetStatus({kind:'image',ok:F.histProgress.errors.length===0,msg:`Image import: ${m.added+m.updated} curve(s), ${F.histProgress.errors.length} skipped`,checked:fileData.length,added:m.added,updated:m.updated,errors:F.histProgress.errors.length,skipped:F.histProgress.errors.length,total:m.merged.length});
+  alert(`✓ Extracted ${m.added+m.updated} curve(s) from ${fileData.length} image(s). Total in database: ${m.merged.length}.${errMsg}`);
   F.histLoading=false;
   _fHistRefresh();
 }

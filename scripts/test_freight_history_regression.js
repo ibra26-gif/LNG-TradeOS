@@ -78,6 +78,42 @@ assert(
 );
 
 assert(
+  js.includes("F.histStatus=fg('f_hist_status_v1',null)") &&
+    js.includes('function fHistHealth()') &&
+    js.includes('function fHistHealthPanel()') &&
+    js.includes('FREIGHT HISTORY HEALTH') &&
+    js.includes('REPAIR + DRIVE RELOAD'),
+  'freight history must expose persisted health, latest source, and repair controls'
+);
+
+assert(
+  js.includes('function fHistRepairHistory(reloadDrive=false)') &&
+    js.includes("fs('f_hist_curves',F.histCurves)") &&
+    js.includes('filter(s=>s&&s.date&&fBlngIsValid(s.blng))') &&
+    js.includes('syncFreightHistFromDrive(false,true)'),
+  'freight repair must purge only invalid cached curves and optionally reload Drive'
+);
+
+assert(
+  js.includes('function fHistSafeView(name,renderFn)') &&
+    /return fHistSafeView\(v,\(\)=>\{[\s\S]*?if\(v==='spread'\)[\s\S]*?return histSpreadView/.test(js) &&
+    js.includes('FREIGHT HISTORY VIEW FAILED SAFELY') &&
+    js.includes("F.histView='historical'"),
+  'freight history subviews must be wrapped so one broken chart cannot blank the whole tab'
+);
+
+assert(
+  /async function syncFreightHistFromDrive\(silent=false,refreshEditor=false\)[\s\S]*?fHistSetStatus\(\{kind:'drive'[\s\S]*?Drive already synced[\s\S]*?fHistSetStatus\(\{kind:'drive'[\s\S]*?Drive sync failed/.test(js),
+  'Drive sync must persist visible status for running, already-synced, success, and failure states'
+);
+
+assert(
+  /async function parseHistExcel\(el\)[\s\S]*?fHistSetStatus\(\{kind:'excel'[\s\S]*?const m=fHistMergeCurves\(results\)[\s\S]*?Excel import/.test(js) &&
+    /async function parseHistImages\(el\)[\s\S]*?fHistSetStatus\(\{kind:'image'[\s\S]*?const m=fHistMergeCurves\(results\)[\s\S]*?Image import/.test(js),
+  'manual Excel and image imports must use validated merge semantics and update health status'
+);
+
+assert(
   /name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app),
   'private platform script must carry a dated cache-bust'
 );
