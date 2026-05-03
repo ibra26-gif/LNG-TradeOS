@@ -1,5 +1,5 @@
 {
-  "gasday": "2026-05-02",
+  "gasday": "2026-05-03",
   "by_terminal": {
     "Sum Exit Nominations NCS": 285.9,
     "Fields Delivering into SEGAL": 12.6,
@@ -14,7 +14,7 @@
   },
   "today_total_mcm": 285.9,
   "_meta": {
-    "updated": "2026-05-02T21:51:35Z",
+    "updated": "2026-05-03T03:35:37Z",
     "source": "gassco homepage scrape"
   }
 }
