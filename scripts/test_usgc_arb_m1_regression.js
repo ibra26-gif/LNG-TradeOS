@@ -28,6 +28,24 @@ assert(
   'USGC PC/COGH DES pricing must keep separate same-month and next-month JKM rules'
 );
 
+assert(
+  js.includes('function _usgcIndicatorsTable(d)') &&
+    js.includes('USGC ARBITRAGE INDICATORS') &&
+    js.includes('Profit to Europe ($/MMBtu)') &&
+    js.includes('Profit to Asia PC ($/MMBtu)') &&
+    js.includes('Profit to Asia COGH ($/MMBtu)') &&
+    js.includes('JKM/TTF Spread COGH') &&
+    js.includes('${_usgcIndicatorsTable(d)}'),
+  'USGC Arb tab must show the requested indicator table before the existing charts'
+);
+
+assert(
+  js.includes('id="usgc-arb-cogh"') &&
+    js.includes('id="usgc-arb-pc"') &&
+    js.includes('function _usgcArbRenderCharts()'),
+  'USGC Arb charts must remain present on the tab'
+);
+
 const fnStart = js.indexOf('function _usgcArbComputeFromInputs');
 const fnEnd = js.indexOf('function _usgcArbCurves', fnStart);
 assert(fnStart >= 0 && fnEnd > fnStart, 'USGC arb compute function must be extractable');

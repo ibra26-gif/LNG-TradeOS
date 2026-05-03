@@ -12721,6 +12721,139 @@ function _usgcArbCurves(){
   return out;
 }
 
+function _usgcIndicatorsTable(d){
+  const n = Math.min(12, ML.length || 12);
+  const months = ML.slice(0, n);
+  const sl = CP.hhSlope || 1.15;
+  const num = v => v != null && isFinite(Number(v)) ? Number(v) : null;
+  const val = (arr, i) => num(arr?.[i]);
+  const add = (...xs) => xs.every(x => num(x) != null) ? xs.reduce((a,x)=>a+Number(x),0) : null;
+  const sub = (...xs) => xs.every(x => num(x) != null) ? xs.slice(1).reduce((a,x)=>a-Number(x), Number(xs[0])) : null;
+  const fmt = (v, dp=3, signed=false) => {
+    const x = num(v);
+    if (x == null) return '—';
+    const s = x.toFixed(dp);
+    return signed && x > 0 ? '+' + s : s;
+  };
+  const dir = v => {
+    const x = num(v);
+    if (x == null) return '—';
+    if (Math.abs(x) < 0.005) return 'Flat';
+    return x > 0 ? 'Asia' : 'Europe';
+  };
+
+  const hh = months.map((_,i)=>val(CP.fp?.HH, i));
+  const slHh = months.map((_,i)=>hh[i] != null ? sl * hh[i] : null);
+  const liq = months.map((_,i)=>val(CP.liqFee, i));
+  const fob = months.map((_,i)=>add(slHh[i], liq[i]));
+  const frGate = months.map((_,i)=>val(d.freight?.sabine_rotterdam, i));
+  const ttf = months.map((_,i)=>val(CP.fp?.TTF, i));
+  const nweDiff = months.map((_,i)=>val(CP.phys?.nwe, i));
+  const desNwe = months.map((_,i)=>val(d.des?.nwe, i) ?? add(ttf[i], nweDiff[i]));
+  const profEurope = months.map((_,i)=>sub(desNwe[i], frGate[i], fob[i]));
+
+  const frPc = months.map((_,i)=>val(d.sabine_tokyo_pc, i));
+  const jkmPc = months.map((_,i)=>val(CP.fp?.JKM, i));
+  const jktcDiffPc = months.map((_,i)=>val(CP.phys?.jktc, i));
+  const desPc = months.map((_,i)=>val(d.usgcJktcPcDes, i) ?? add(jkmPc[i], jktcDiffPc[i]));
+  const profPc = months.map((_,i)=>sub(desPc[i], frPc[i], fob[i]));
+
+  const frCogh = months.map((_,i)=>val(d.freight?.sabine_tokyo, i));
+  const jkmCogh = months.map((_,i)=>val(CP.fp?.JKM, i + 1));
+  const jktcDiffCogh = months.map((_,i)=>val(CP.phys?.jktc, i + 1));
+  const desCogh = months.map((_,i)=>val(d.usgcJktcCoghDes, i) ?? add(jkmCogh[i], jktcDiffCogh[i]));
+  const profCogh = months.map((_,i)=>sub(desCogh[i], frCogh[i], fob[i]));
+
+  const spreadPc = months.map((_,i)=>sub(jkmPc[i], ttf[i]));
+  const spreadCogh = months.map((_,i)=>sub(jkmCogh[i], ttf[i]));
+  const diffPc = months.map((_,i)=>sub(profPc[i], profEurope[i]));
+  const diffCogh = months.map((_,i)=>sub(profCogh[i], profEurope[i]));
+  const eod = (typeof sDates !== 'undefined' && sDates.length && typeof aD !== 'undefined' && aD?.[sDates[sDates.length - 1]]?.date)
+    ? aD[sDates[sDates.length - 1]].date.toISOString().slice(0,10)
+    : '—';
+
+  const row = (label, arr, cls='', signed=false) => `<tr class="${cls}">
+    <td class="usgc-ind-label">${label}</td>
+    ${months.map((_,i)=>`<td>${fmt(arr[i], 3, signed)}</td>`).join('')}
+  </tr>`;
+  const textRow = (label, arr, cls='') => `<tr class="${cls}">
+    <td class="usgc-ind-label">${label}</td>
+    ${arr.map(v=>`<td>${v}</td>`).join('')}
+  </tr>`;
+  const section = label => `<tr class="usgc-ind-section"><td colspan="${n+1}">${label}</td></tr>`;
+
+  return `
+    <div class="acard usgc-ind-card">
+      <style>
+        .usgc-ind-card{margin:0 14px 12px;padding:0;background:#07101e;border:1px solid #1e3a5f;overflow:hidden}
+        .usgc-ind-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;padding:10px 12px;border-bottom:1px solid #1e3a5f;background:#0b1728}
+        .usgc-ind-title{color:#dbeafe;font-size:12px;font-weight:700;letter-spacing:.02em}
+        .usgc-ind-date{color:#8aa0bd;font-size:9px;white-space:nowrap}
+        .usgc-ind-wrap{overflow-x:auto}
+        .usgc-ind{width:100%;border-collapse:collapse;min-width:980px;font-size:10px}
+        .usgc-ind th,.usgc-ind td{border:1px solid #26354b;padding:4px 6px;text-align:right;color:#d8e2ef;background:#f8fafc;color:#101827}
+        .usgc-ind th{background:#183a68;color:#eff6ff;font-weight:700;position:sticky;top:0;z-index:1}
+        .usgc-ind .usgc-ind-label{text-align:left;min-width:260px;font-weight:650;white-space:nowrap}
+        .usgc-ind-section td{background:#2d7dbc!important;color:#f8fafc!important;text-align:left!important;font-weight:800;font-size:11px}
+        .usgc-ind .usgc-ind-cost td{background:#d8e6f5;color:#0f172a;font-weight:700}
+        .usgc-ind .usgc-ind-price td{background:#bfdbf0;color:#0f172a}
+        .usgc-ind .usgc-ind-profit td{background:#e2f0da;color:#0f172a;font-weight:800}
+        .usgc-ind .usgc-ind-spread td{background:#fff2cc;color:#0f172a;font-weight:700}
+        .usgc-ind .usgc-ind-direction td{background:#fff2cc;color:#0f172a;font-weight:800}
+        .usgc-ind-note{padding:7px 12px;border-top:1px solid #1e3a5f;color:#7890ad;font-size:9px;line-height:1.45}
+      </style>
+      <div class="usgc-ind-head">
+        <div class="usgc-ind-title">USGC ARBITRAGE INDICATORS — Sabine Pass</div>
+        <div class="usgc-ind-date">Assessment Date: ${eod}</div>
+      </div>
+      <div class="usgc-ind-wrap">
+        <table class="usgc-ind">
+          <thead><tr><th class="usgc-ind-label">Item / Pricing Month</th>${months.map(m=>`<th>${m}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${section('MARKET PRICES')}
+            ${row('HH ($/MMBtu)', hh)}
+            ${row(`${Math.round(sl*100)}% HH ($/MMBtu)`, slHh)}
+            ${row('Liquefaction Fee ($/MMBtu)', liq)}
+            ${row(`USGC FOB Cost (${Math.round(sl*100)}% HH + Liq Fee)`, fob, 'usgc-ind-cost')}
+
+            ${section('EUROPE ARB (Sabine Pass -> Gate Rotterdam)')}
+            ${row('Freight Sabine -> Gate ($/MMBtu)', frGate)}
+            ${row('TTF ($/MMBtu)', ttf)}
+            ${row('DES Differential Europe ($/MMBtu)', nweDiff, '', true)}
+            ${row('DES NWE Price ($/MMBtu)', desNwe, 'usgc-ind-price')}
+            ${row('Profit to Europe ($/MMBtu)', profEurope, 'usgc-ind-profit', true)}
+
+            ${section('ASIA ARB (Sabine Pass -> Tokyo Bay) // Panama Canal')}
+            ${row('Freight Sabine -> Tokyo Bay PC ($/MMBtu)', frPc)}
+            ${row('JKM ($/MMBtu)', jkmPc)}
+            ${row('DES Differential JKTC ($/MMBtu)', jktcDiffPc, '', true)}
+            ${row('DES JKTC Price ($/MMBtu)', desPc, 'usgc-ind-price')}
+            ${row('Profit to Asia PC ($/MMBtu)', profPc, 'usgc-ind-profit', true)}
+
+            ${section('ASIA ARB (Sabine Pass -> Tokyo Bay) // COGH')}
+            ${row('Freight Sabine -> Tokyo Bay COGH ($/MMBtu)', frCogh)}
+            ${row('JKM (COGH arrival/pricing) ($/MMBtu)', jkmCogh)}
+            ${row('DES Differential JKTC (COGH timing) ($/MMBtu)', jktcDiffCogh, '', true)}
+            ${row('DES JKTC Price COGH ($/MMBtu)', desCogh, 'usgc-ind-price')}
+            ${row('Profit to Asia COGH ($/MMBtu)', profCogh, 'usgc-ind-profit', true)}
+
+            ${section('ARB DIRECTION & FOB BIDS DIFFERENTIALS')}
+            ${row('Freight Differential Gate/Tokyo PC', months.map((_,i)=>sub(frGate[i], frPc[i])), '', true)}
+            ${row('Freight Differential Gate/Tokyo COGH', months.map((_,i)=>sub(frGate[i], frCogh[i])), '', true)}
+            ${row('JKM/TTF Spread PC', spreadPc, 'usgc-ind-spread', true)}
+            ${row('JKM/TTF Spread COGH', spreadCogh, 'usgc-ind-spread', true)}
+            ${row('Profit Differential PC - Europe', diffPc, '', true)}
+            ${row('Profit Differential COGH - Europe', diffCogh, '', true)}
+            ${textRow('Arb Pointing PC', diffPc.map(dir), 'usgc-ind-direction')}
+            ${textRow('Arb Pointing COGH', diffCogh.map(dir), 'usgc-ind-direction')}
+          </tbody>
+        </table>
+      </div>
+      <div class="usgc-ind-note">Uses the same financial curves, physical differentials, liquefaction fee, and freight arrays as the USGC Arb charts below. Missing source inputs stay blank as —.</div>
+    </div>
+  `;
+}
+
 function cpUsgcArbViz(d){
   const arbData = _usgcArbCurves();
   const m1Label = ML[0] || 'M+1';
@@ -12741,6 +12874,8 @@ function cpUsgcArbViz(d){
       <span style="color:#fca5a5">Below 0</span> → arb pointing to Europe.<br/>
       Lines = each <a onclick="CP.tab=8;cpTab(8)" style="color:#a78bfa;cursor:pointer;text-decoration:underline">FOB Snapshot</a> you've captured + today's live curve.
     </div>
+
+    ${_usgcIndicatorsTable(d)}
 
     <div style="padding:0 14px 12px;display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:10px">
       <div class="acard" style="padding:10px 12px;background:#071a2b;border:1px solid #1e3a5f">
