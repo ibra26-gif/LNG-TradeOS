@@ -52611,34 +52611,61 @@
     {
       "cities": {
         "bangkok": {
-          "cdd": 7.2,
-          "temp_c": 31.2
+          "cdd": 7.3,
+          "temp_c": 31.3
         },
         "chiang_mai": {
-          "cdd": 5.8,
-          "temp_c": 29.8
+          "cdd": 6.0,
+          "temp_c": 30.0
         },
         "hat_yai": {
-          "cdd": 4.0,
-          "temp_c": 28.0
+          "cdd": 4.3,
+          "temp_c": 28.3
         },
         "khon_kaen": {
-          "cdd": 4.7,
-          "temp_c": 28.7
+          "cdd": 4.8,
+          "temp_c": 28.8
         },
         "rayong": {
-          "cdd": 5.7,
-          "temp_c": 29.7
+          "cdd": 5.8,
+          "temp_c": 29.8
         }
       },
       "date": "2026-05-02",
-      "index_cdd": 5.99,
-      "index_temp_c": 29.99
+      "index_cdd": 6.13,
+      "index_temp_c": 30.13
+    },
+    {
+      "cities": {
+        "bangkok": {
+          "cdd": 7.3,
+          "temp_c": 31.3
+        },
+        "chiang_mai": {
+          "cdd": 6.0,
+          "temp_c": 30.0
+        },
+        "hat_yai": {
+          "cdd": 4.2,
+          "temp_c": 28.2
+        },
+        "khon_kaen": {
+          "cdd": 5.8,
+          "temp_c": 29.8
+        },
+        "rayong": {
+          "cdd": 5.9,
+          "temp_c": 29.9
+        }
+      },
+      "date": "2026-05-03",
+      "index_cdd": 6.29,
+      "index_temp_c": 30.29
     }
   ],
   "forecast_included": false,
   "frequency": "daily and monthly",
-  "latest_date": "2026-05-02",
+  "latest_date": "2026-05-03",
   "latest_month": "2026-05",
   "monthly": [
     {
@@ -55202,49 +55229,49 @@
       "normal_cdd_to_date": 165.02
     },
     {
-      "avg_temp_c": 29.81,
-      "cdd": 11.63,
-      "cdd_anomaly": -138.33,
-      "cdd_anomaly_pct": -92.2,
-      "cdd_anomaly_to_date": 1.96,
-      "cdd_anomaly_to_date_pct": 20.2,
+      "avg_temp_c": 30.02,
+      "cdd": 18.06,
+      "cdd_anomaly": -131.9,
+      "cdd_anomaly_pct": -88.0,
+      "cdd_anomaly_to_date": 3.55,
+      "cdd_anomaly_to_date_pct": 24.4,
       "cities": {
         "bangkok": {
-          "avg_temp_c": 30.95,
-          "cdd": 13.9,
-          "days": 2
+          "avg_temp_c": 31.1,
+          "cdd": 21.3,
+          "days": 3
         },
         "chiang_mai": {
-          "avg_temp_c": 29.2,
-          "cdd": 10.4,
-          "days": 2
+          "avg_temp_c": 29.53,
+          "cdd": 16.6,
+          "days": 3
         },
         "hat_yai": {
-          "avg_temp_c": 28.85,
-          "cdd": 9.7,
-          "days": 2
+          "avg_temp_c": 28.73,
+          "cdd": 14.2,
+          "days": 3
         },
         "khon_kaen": {
-          "avg_temp_c": 28.35,
-          "cdd": 8.7,
-          "days": 2
+          "avg_temp_c": 28.87,
+          "cdd": 14.6,
+          "days": 3
         },
         "rayong": {
-          "avg_temp_c": 29.6,
-          "cdd": 11.2,
-          "days": 2
+          "avg_temp_c": 29.73,
+          "cdd": 17.2,
+          "days": 3
         }
       },
-      "days": 2,
+      "days": 3,
       "is_partial_month": true,
       "month": "2026-05",
       "normal_cdd": 149.96,
-      "normal_cdd_to_date": 9.67
+      "normal_cdd_to_date": 14.51
     }
   ],
   "normal_period": "2021-2025",
   "schema": "thailand_weather_cdd_v1",
-  "scraped_at": "2026-05-02T17:18:20.749306+00:00",
+  "scraped_at": "2026-05-03T06:43:43.586780+00:00",
   "sources": {
     "method": "CDD=max(daily mean temperature - 24C, 0); weighted city basket",
     "weather": "Open-Meteo Historical Weather API",
