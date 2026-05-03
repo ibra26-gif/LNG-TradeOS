@@ -2112,7 +2112,7 @@ function shellNav(sec,sub){
     else{if(sub)showSec(sub);else setTimeout(()=>{[hChart,spChart,spLegsChart,fcChart,seaChart,gasChart].forEach(c=>c&&c.resize());},80);}
     if(!finLoaded) _pendingFinSub=sub||null;
   }
-  if(sec==='gasanalytics') gaTab(sub||'dashboard');
+  if(sec==='gasanalytics') gaTab(sub||'dashboard2');
   if(sec==='portfolio') pvTab(sub||'morning');
   if(sec==='toolbox') tbTab(sub||'converter');
   window.scrollTo(0,0);
@@ -2120,20 +2120,20 @@ function shellNav(sec,sub){
 let _pendingFinSub=null;
 
 function gaTab(tab){
-  const map={'sd':'lngbal','signposts':'signposts','eumetrics':'eugas'};
+  const map={'sd':'lngbal','signposts':'signposts','eumetrics':'eugas','dashboard':'dashboard2'};
   const target=map[tab]||tab;
   document.querySelectorAll('[id^="gatab-"]').forEach(t=>t.classList.remove('active'));
   const el=document.getElementById('gatab-'+tab);if(el)el.classList.add('active');
   const gmBtn=document.getElementById('gmtab-'+target);
   if(gmBtn) gaMainTab(target,gmBtn);
-  else gaMainTab('dashboard',document.getElementById('gmtab-dashboard'));
+  else gaMainTab('dashboard2',document.getElementById('gmtab-dashboard2'));
 }
 function gaMainTab(id,btn){
+  if(id==='dashboard') id='dashboard2';
   document.querySelectorAll('.gmtab').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.ga-tab-sec').forEach(s=>s.classList.remove('active'));
   const sec=document.getElementById('ga-tab-'+id);if(sec)sec.classList.add('active');
   if(btn)btn.classList.add('active');
-  if(id==='dashboard'){renderGaDashboard();return;}
   if(id==='dashboard2'){renderGaDashboard2();return;}
   if(id==='euren'){renderEuroRenewables();return;}
   if(id==='lngbal' && typeof csInit==='function') setTimeout(csInit,120);
@@ -20802,10 +20802,10 @@ async function renderGaDashboard(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// GAS & LNG ANALYTICS — FUNDAMENTALS DASHBOARD 2.0
-// Purpose: morning-control-room view. Existing Global Fundamentals remains
-// untouched; this tab intentionally focuses on Europe first, LNG signposts
-// second, with missing sources rendered as "—" rather than filled.
+// GAS & LNG ANALYTICS — GLOBAL FUNDAMENTALS 2.0
+// Purpose: morning-control-room view. This tab intentionally focuses on
+// Europe first, LNG signposts second, with missing sources rendered as "—"
+// rather than filled.
 // ══════════════════════════════════════════════════════════════════════════
 async function renderGaDashboard2(){
   const b=document.getElementById('ga-dashboard2-body'); if(!b) return;
@@ -20917,7 +20917,7 @@ async function renderGaDashboard2(){
   <div style="padding:18px 20px;max-width:1760px;margin:0 auto">
     <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(77,158,245,.13)">
       <div>
-        <div style="font-size:13px;color:#4d9ef5;letter-spacing:.16em;font-weight:700">FUNDAMENTALS DASHBOARD 2.0</div>
+        <div style="font-size:13px;color:#4d9ef5;letter-spacing:.16em;font-weight:700">GLOBAL FUNDAMENTALS 2.0</div>
         <div style="font-size:9px;color:#6b7a99;margin-top:4px">First half: European gas physical signposts · Second half: LNG demand and power displacement signposts</div>
       </div>
       <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">${fresh}</div>
@@ -20932,7 +20932,7 @@ async function renderGaDashboard2(){
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-bottom:12px">
         ${kpi('EU+UK balance',storBalanceVal,netMcm==null?'':'mcm/d',storLat?`${storState} · AGSI ${storLat.date} · storage change is the truth anchor`:'AGSI not loaded',storCol)}
-        ${kpi('Storage action',`${fmtSigned(netMcm,0)}`,'mcm/d',stor?.net!=null?`injection minus withdrawal · AGSI ${storLat.date}`:'AGSI daily net unavailable',storCol)}
+        ${kpi('EU underground storage',storagePct!=null?fmt(storagePct,1):'—',storagePct!=null?'%':'',storLat?`AGSI ${storLat.date} · underground storage fill level`:'AGSI storage fill unavailable','#93c5fd')}
         ${kpi('LNG sendout (ALSI reported)',fmt(lngMcm,0),'mcm/d',lngLat?`latest ALSI gas day ${lngLat.date} · 7d avg ${fmt(lng7,0)} mcm/d · country=EU reporting scope`:'ALSI daily sendout unavailable','#ffb74d')}
         ${kpi('Norway flows',fmt(norwayNow?.mcm,1),'mcm/d',norwayNow?`${norwayNow.src} · gas day ${norwayNow.date}`:'Gassco nominations unavailable','#60a5fa')}
         ${kpi('Norway outages',outages.length?`${outages.length}`:'—',outages.length?'active UMM':'',outages.length?`${outageSeverity} · net impact ${fmtSigned(outageImpact,1)} mcm/d`:'Gassco UMM cache empty','#f87171')}

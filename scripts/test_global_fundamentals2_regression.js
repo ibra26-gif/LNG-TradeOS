@@ -14,15 +14,18 @@ function assert(cond, msg) {
 
 assert(
   app.includes("id=\"gmtab-dashboard2\"") &&
-    app.includes('FUNDAMENTALS DASHBOARD 2.0') &&
+    app.includes('GLOBAL FUNDAMENTALS 2.0') &&
     app.includes('id="ga-tab-dashboard2"') &&
+    !app.includes('id="gmtab-dashboard"') &&
+    !app.includes('id="ga-tab-dashboard"') &&
     /name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app),
-  'Gas Analytics must expose a separate Fundamentals dashboard 2.0 tab with dated cache-bust'
+  'Gas Analytics must expose Global Fundamentals 2.0 as the primary tab and remove the old Global Fundamentals tab'
 );
 
 assert(
   js.includes("if(id==='dashboard2'){renderGaDashboard2();return;}") &&
     js.includes("id==='ga-tab-dashboard2'") &&
+    js.includes("if(sec==='gasanalytics') gaTab(sub||'dashboard2')") &&
     js.includes('async function renderGaDashboard2()'),
   'dashboard2 routing must render and refresh its own view'
 );
@@ -62,8 +65,11 @@ assert(
 assert(
   js.includes('storBalanceVal') &&
     js.includes("${fmtSigned(netMcm,0)}") &&
-    js.includes("${storState} · AGSI ${storLat.date} · storage change is the truth anchor"),
-  'EU+UK balance KPI must show the actual storage-anchor mcm/d value, not only LONG/SHORT text'
+    js.includes("${storState} · AGSI ${storLat.date} · storage change is the truth anchor") &&
+    js.includes("'EU underground storage'") &&
+    js.includes('storagePct!=null?fmt(storagePct,1)') &&
+    !js.includes("'Storage action'"),
+  'EU+UK balance KPI must show the storage-anchor mcm/d value and the second KPI must show EU underground storage fill %'
 );
 
 assert(
