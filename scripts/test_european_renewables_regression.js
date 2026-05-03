@@ -43,8 +43,22 @@ assert(
   js.includes('/api/entsoe?') &&
     js.includes("documentType:'A75'") &&
     js.includes("processType:'A16'") &&
+    js.includes("documentType:'A68'") &&
+    js.includes("processType:'A33'") &&
     js.includes('ENTSO-E Transparency Platform Actual Generation per Type'),
-  'European Renewable must use the existing ENTSO-E proxy and cite Actual Generation per Type'
+  'European Renewable must use the existing ENTSO-E proxy and cite generation plus installed capacity'
+);
+
+assert(
+  js.includes('function erFetchCapacityCountryYear') &&
+    js.includes('function erParseCapacityXml') &&
+    js.includes('function erCapacityGW') &&
+    js.includes('INSTALLED CAPACITY') &&
+    js.includes('CAPACITY YoY') &&
+    js.includes('er-capacity-chart') &&
+    js.includes('Capacity GW') &&
+    js.includes('YoY add GW'),
+  'European Renewable must show installed capacity and YoY capacity increase'
 );
 
 assert(
