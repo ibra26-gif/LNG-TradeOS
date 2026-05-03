@@ -23,11 +23,22 @@ assert(
 );
 
 assert(
-  js.includes("if(id==='dashboard2'){renderGaDashboard2();return;}") &&
+  js.includes("if(id==='dashboard2')") &&
+    js.includes('Promise.resolve(renderGaDashboard2()).catch') &&
     js.includes("id==='ga-tab-dashboard2'") &&
     js.includes("if(sec==='gasanalytics') gaTab(sub||'dashboard2')") &&
     js.includes('async function renderGaDashboard2()'),
   'dashboard2 routing must render and refresh its own view'
+);
+
+assert(
+  js.includes("if(id==='eugas')") &&
+    js.includes('eugasTab(') &&
+    js.includes("if(id==='storage')") &&
+    js.includes('storTab(') &&
+    js.includes("if(id==='regas')") &&
+    js.includes('regasTab('),
+  'Gas & LNG main tabs must render their default active panes immediately'
 );
 
 assert(
@@ -50,7 +61,8 @@ assert(
     js.includes('JAPANESE NUCLEAR') &&
     js.includes('BRAZILIAN HYDRO') &&
     js.includes('JKM FLAT vs CHINA LNG TRUCK') &&
-    js.includes('No live Japan nuclear feed wired yet'),
+    js.includes('gf2-jpn-nuclear-val') &&
+    js.includes('Ember monthly electricity · Japan nuclear generation'),
   'LNG half must include Korean/Japanese nuclear, Brazilian hydro, and JKM vs China truck'
 );
 
@@ -76,8 +88,9 @@ assert(
   js.includes("_loadFrNuclear('gf2-fr-nuclear')") &&
     js.includes("_loadBrzHydroCard('gf2')") &&
     js.includes('_loadGf2ChinaTruckCard()') &&
+    js.includes('jpnUpdateGlobalFundamentalsCard()') &&
     js.includes("['gf','gf2'].forEach(prefix=>"),
-  'dashboard2 must reuse existing French nuclear, Brazil hydro, China truck, and Korea nuclear loaders'
+  'dashboard2 must reuse existing French nuclear, Brazil hydro, China truck, Korea nuclear, and Japan nuclear loaders'
 );
 
 assert(

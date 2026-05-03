@@ -2134,11 +2134,42 @@ function gaMainTab(id,btn){
   document.querySelectorAll('.ga-tab-sec').forEach(s=>s.classList.remove('active'));
   const sec=document.getElementById('ga-tab-'+id);if(sec)sec.classList.add('active');
   if(btn)btn.classList.add('active');
-  if(id==='dashboard2'){renderGaDashboard2();return;}
+  if(id==='dashboard2'){
+    Promise.resolve(renderGaDashboard2()).catch(e=>{
+      const body=document.getElementById('ga-dashboard2-body');
+      if(body) body.innerHTML=`<div style="padding:28px;text-align:center;color:#f87171;font-size:10px;border:1px solid rgba(248,113,113,.28)">Global Fundamentals 2.0 unavailable: ${e.message}</div>`;
+      console.warn('[GF2]',e);
+    });
+    return;
+  }
   if(id==='euren'){renderEuroRenewables();return;}
   if(id==='lngbal' && typeof csInit==='function') setTimeout(csInit,120);
   if(id==='lngvc'){if(!window.gaInitDone)gaInitAll();setTimeout(renderLngVC,80);return;}
   if(!window.gaInitDone) gaInitAll();
+  if(id==='eugas'){
+    setTimeout(()=>{
+      const activeSub=document.querySelector('#ga-eugas-subtabs .ga-stab.active');
+      const txt=(activeSub?.textContent||'').toLowerCase();
+      eugasTab(txt.includes('domestic')?'domprod':txt.includes('balance')?'balance':'pipeline',activeSub);
+    },80);
+    return;
+  }
+  if(id==='storage'){
+    setTimeout(()=>{
+      const activeSub=document.querySelector('#ga-stor-subtabs .ga-stab.active');
+      const txt=(activeSub?.textContent||'').toLowerCase();
+      storTab(txt.includes('country')?'country':txt.includes('heat')?'map':txt.includes('inject')?'inject':'eu',activeSub);
+    },80);
+    return;
+  }
+  if(id==='regas'){
+    setTimeout(()=>{
+      const activeSub=document.querySelector('#ga-regas-subtabs .ga-stab.active');
+      const txt=(activeSub?.textContent||'').toLowerCase();
+      regasTab(txt.includes('terminal')?'terminals':txt.includes('regional')?'regions':txt.includes('sendout')?'sendout':'heatmap',activeSub);
+    },80);
+    return;
+  }
   setTimeout(()=>Object.values(GA_CHARTS).forEach(c=>c&&c.resize()),80);
 }
 
@@ -21138,10 +21169,11 @@ async function renderGaDashboard2(){
         <div style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <div style="font-size:10px;letter-spacing:.12em;color:#f0f4ff;font-weight:600">JAPANESE NUCLEAR</div>
-            <div style="font-size:8px;letter-spacing:.1em;color:#6b7a99">SOURCE PENDING</div>
+            <div id="gf2-jpn-nuclear-badge" style="font-size:8px;letter-spacing:.1em;color:#fbbf24;background:rgba(251,191,36,.1);padding:1px 5px">LOADING</div>
           </div>
-          <div style="font-size:26px;font-weight:700;color:#8a9bb5;line-height:1">— <span style="font-size:10px;color:#6b7a99">GW</span></div>
-          <div style="font-size:9px;color:#3d5070;margin-top:7px">No live Japan nuclear feed wired yet. Keep blank until JAIF / utility availability source is implemented.</div>
+          <div style="font-size:26px;font-weight:700;color:#8a9bb5;line-height:1"><span id="gf2-jpn-nuclear-val">—</span> <span style="font-size:10px;color:#6b7a99">TWh</span></div>
+          <div id="gf2-jpn-nuclear-share" style="font-size:9px;color:#93c5fd;margin-top:7px">—</div>
+          <div id="gf2-jpn-nuclear-yoy" style="font-size:9px;color:#3d5070;margin-top:4px">Ember monthly electricity · Japan nuclear generation</div>
         </div>
         <div id="gf2-brz-hydro" style="background:#0f1221;border:1px solid rgba(77,158,245,.12);padding:12px 14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -21163,6 +21195,10 @@ async function renderGaDashboard2(){
     if(typeof korUpdateGlobalFundamentalsCard==='function'){
       if(_korLive) korUpdateGlobalFundamentalsCard();
       else if(typeof korFetchLive==='function') korFetchLive();
+    }
+    if(typeof jpnUpdateGlobalFundamentalsCard==='function'){
+      if(_jpnData) jpnUpdateGlobalFundamentalsCard();
+      else if(typeof jpnFetchLive==='function') jpnFetchLive();
     }
   },100);
 }
@@ -24288,6 +24324,7 @@ function asiaShow(country,btn){
     if(el) el.style.display=(c===country)?'':'none';
   });
   if(country==='china' && typeof csInit==='function') setTimeout(csInit,80);
+  if(country==='japan' && typeof jpnInit==='function') setTimeout(jpnInit,80);
   if(country==='korea' && typeof korInit==='function') setTimeout(korInit,80);
   if(country==='thailand' && typeof thaiInit==='function') setTimeout(thaiInit,80);
 }
@@ -24785,6 +24822,259 @@ function thaiInit(){
     });
 }
 window.thaiInit = thaiInit;
+
+// ────────────────────────────────────────────────────────────────────────────
+// JAPAN MODULE — Gas Balance · Japan Power · Weather Forecast
+// ────────────────────────────────────────────────────────────────────────────
+let _jpnData = null;
+let _jpnDataPromise = null;
+let _jpnErr = null;
+let _jpnTab = 'gas';
+let _jpnYears = null;
+
+function jpnFetchLive(){
+  if(_jpnDataPromise) return _jpnDataPromise;
+  _jpnDataPromise = fetch('/data/japan.json?v=' + Date.now(), {cache:'no-store'})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(j=>{ _jpnData = j; _jpnErr = null; jpnUpdateGlobalFundamentalsCard(); return j; })
+    .catch(err=>{ _jpnErr = err.message; return null; });
+  return _jpnDataPromise;
+}
+window.jpnFetchLive = jpnFetchLive;
+
+function jpnInit(){
+  const container = document.getElementById('jpn-container');
+  if(!container) return;
+  if(_jpnData){ jpnRender(); return; }
+  container.innerHTML = `<div style="padding:28px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">Loading Japan analytics...</div>`;
+  jpnFetchLive()
+    .then(j=>{ if(j) jpnRender(); else throw new Error(_jpnErr || 'Japan data unavailable'); })
+    .catch(err=>{
+      _jpnErr = err.message;
+      container.innerHTML = `<div style="padding:28px;text-align:center;color:#f87171;font-size:10px;border:1px solid rgba(248,113,113,.3)">Japan analytics unavailable: ${err.message}</div>`;
+    });
+}
+window.jpnInit = jpnInit;
+
+function jpnShowTab(tab){
+  _jpnTab = ['gas','power','weather'].includes(tab) ? tab : 'gas';
+  jpnRender();
+}
+window.jpnShowTab = jpnShowTab;
+
+function jpnToggleYear(yr){
+  const years = jpnAvailableYears();
+  if(!_jpnYears) _jpnYears = years.slice(-5);
+  const idx = _jpnYears.indexOf(yr);
+  if(idx >= 0){
+    if(_jpnYears.length > 1) _jpnYears.splice(idx,1);
+  }else{
+    _jpnYears.push(yr);
+    _jpnYears.sort((a,b)=>a-b);
+  }
+  jpnRenderPower(document.getElementById('jpn-tab-body'));
+}
+window.jpnToggleYear = jpnToggleYear;
+
+function jpnSeries(){
+  return (_jpnData?.nuclear?.series || []).filter(r=>r?.date).sort((a,b)=>a.date.localeCompare(b.date));
+}
+function jpnAvailableYears(){
+  return [...new Set(jpnSeries().map(r=>+r.date.slice(0,4)))].filter(Boolean).sort((a,b)=>a-b);
+}
+function jpnLatestNuclear(){
+  const s = jpnSeries().filter(r=>r.twh != null);
+  return s.length ? s[s.length-1] : null;
+}
+function jpnFmt(v,d=1){ return v==null||!isFinite(v) ? '--' : Number(v).toFixed(d); }
+function jpnUpdateGlobalFundamentalsCard(){
+  const latest = jpnLatestNuclear();
+  const valEl = document.getElementById('gf2-jpn-nuclear-val');
+  const badgeEl = document.getElementById('gf2-jpn-nuclear-badge');
+  const shareEl = document.getElementById('gf2-jpn-nuclear-share');
+  const yoyEl = document.getElementById('gf2-jpn-nuclear-yoy');
+  if(!latest || !valEl) return;
+  const prev = jpnSeries().find(r=>r.date === `${+latest.date.slice(0,4)-1}-${latest.date.slice(5,7)}-01`);
+  const yoy = latest.twh != null && prev?.twh ? (latest.twh / prev.twh - 1) * 100 : null;
+  valEl.textContent = jpnFmt(latest.twh,2);
+  valEl.style.color = '#a78bfa';
+  if(badgeEl){
+    badgeEl.textContent = 'EMBER';
+    badgeEl.style.color = '#34d399';
+    badgeEl.style.background = 'rgba(52,211,153,.10)';
+  }
+  if(shareEl) shareEl.textContent = `Share · ${jpnFmt(latest.sharePct,1)}% · ${latest.date.slice(0,7)}`;
+  if(yoyEl){
+    yoyEl.textContent = yoy == null ? 'YoY unavailable · Ember monthly electricity' : `YoY · ${yoy>=0?'+':''}${jpnFmt(yoy,1)}% vs ${+latest.date.slice(0,4)-1}`;
+    yoyEl.style.color = yoy == null ? '#3d5070' : yoy >= 0 ? '#34d399' : '#f87171';
+  }
+}
+window.jpnUpdateGlobalFundamentalsCard = jpnUpdateGlobalFundamentalsCard;
+
+function jpnRender(){
+  const container = document.getElementById('jpn-container');
+  if(!container || !_jpnData) return;
+  const active = _jpnTab || 'gas';
+  const cached = _jpnData.cachedAt ? new Date(_jpnData.cachedAt).toLocaleString('en-GB',{timeZone:'Europe/London',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '--';
+  container.innerHTML = `
+    <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">GAS & LNG ANALYTICS · JAPAN</div>
+    <div style="display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(77,158,245,.13);margin-bottom:12px">
+      ${[['gas','GAS BALANCE'],['power','JAPAN POWER'],['weather','WEATHER FORECAST']].map(([k,l])=>`<button class="f-tab${active===k?' active':''}" style="padding:8px 16px;font-size:10px;letter-spacing:1px" onclick="jpnShowTab('${k}')">${l}</button>`).join('')}
+      <span style="margin-left:auto;color:#3d5070;font-size:9px;padding-right:4px">Japan data cache · ${cached}</span>
+    </div>
+    <div id="jpn-tab-body"></div>`;
+  const body = document.getElementById('jpn-tab-body');
+  if(active === 'power') jpnRenderPower(body);
+  else if(active === 'weather') jpnRenderWeather(body);
+  else jpnRenderGas(body);
+}
+
+function jpnStatusCard({label,value='--',note='',color='#c8d6e5'}){
+  return `<div class="ga-kpi"><div class="ga-kpi-lbl">${label}</div><div class="ga-kpi-val" style="color:${color}">${value}</div><div class="ga-kpi-note">${note}</div></div>`;
+}
+
+function jpnRenderGas(el){
+  if(!el) return;
+  const gaps = _jpnData?.gasBalance?.sourceGaps || [];
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+      ${jpnStatusCard({label:'Weekly LNG storage',value:'--',note:'not wired · no estimated tank stock',color:'#fbbf24'})}
+      ${jpnStatusCard({label:'LNG imports',value:'--',note:'monthly source not wired in Japan tab',color:'#8a9bb5'})}
+      ${jpnStatusCard({label:'Gas for power',value:'--',note:'OCCTO proof pending',color:'#8a9bb5'})}
+      ${jpnStatusCard({label:'Balance status',value:'SOURCE GAP',note:'show blanks until source is stable',color:'#f87171'})}
+    </div>
+    <div class="ga-card" style="margin-bottom:12px">
+      <div class="ga-sec">JAPAN GAS BALANCE SOURCE MAP <span class="ga-tag">NO INVENTED DATA</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px">
+        ${gaps.map(g=>`<div style="border:1px solid rgba(77,158,245,.16);background:#0d1320;padding:10px">
+          <div style="font-size:10px;color:#c8d6e5;font-weight:600;margin-bottom:5px">${g.item}</div>
+          <div style="font-size:9px;color:${g.status==='not_wired'?'#fbbf24':'#93c5fd'};text-transform:uppercase;margin-bottom:6px">${g.status.replaceAll('_',' ')}</div>
+          <div style="font-size:9px;color:#6b7a99;line-height:1.55">${g.note || ''}</div>
+          ${g.sourceUrl?`<a href="${g.sourceUrl}" target="_blank" style="display:inline-block;margin-top:7px;font-size:9px;color:#93c5fd">Open source</a>`:''}
+        </div>`).join('')}
+      </div>
+      <div class="ga-source">Japan gas balance is intentionally blank until weekly LNG storage, imports, and OCCTO gas-for-power extraction are proved. Missing source = gap, not modelled value.</div>
+    </div>
+    <div class="ga-card">
+      <div class="ga-sec">NEXT SCRAPER PROOF <span class="ga-tag">OCCTO</span></div>
+      <table class="ga-tbl" style="width:100%;font-size:10px">
+        <thead><tr><th style="text-align:left">Step</th><th style="text-align:left">Purpose</th><th style="text-align:left">Status</th></tr></thead>
+        <tbody>
+          <tr><td>OCCTO navigation</td><td>Option 3 → Option 3 → Option 1 → month tab → refresh</td><td style="color:#fbbf24">Manual path known</td></tr>
+          <tr><td>Weekly LNG storage</td><td>Find METI/JOGMEC/public weekly stock table</td><td style="color:#f87171">Not wired</td></tr>
+          <tr><td>Balance chart</td><td>Plot only once real rows exist</td><td style="color:#8a9bb5">Waiting</td></tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function jpnRenderPower(el){
+  if(!el) return;
+  const series = jpnSeries();
+  const latest = jpnLatestNuclear();
+  const years = jpnAvailableYears();
+  if(!_jpnYears || !_jpnYears.length) _jpnYears = years.slice(-5);
+  const yearBtns = years.slice(-10).reverse().map(yr=>`<button class="f-btn sm${_jpnYears.includes(yr)?' on':''}" onclick="jpnToggleYear(${yr})">${yr}</button>`).join('');
+  const prevYear = latest ? series.find(r=>r.date === `${+latest.date.slice(0,4)-1}-${latest.date.slice(5,7)}-01`) : null;
+  const yoy = latest?.twh != null && prevYear?.twh ? (latest.twh/prevYear.twh-1)*100 : null;
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+      ${jpnStatusCard({label:`Nuclear generation · ${latest?latest.date.slice(0,7):'--'}`,value:latest?jpnFmt(latest.twh,2):'--',note:'TWh/month · Ember',color:'#a78bfa'})}
+      ${jpnStatusCard({label:'Nuclear share',value:latest?.sharePct!=null?jpnFmt(latest.sharePct,1)+'%':'--',note:'share of Japan generation',color:'#93c5fd'})}
+      ${jpnStatusCard({label:'Generation YoY',value:yoy!=null?(yoy>=0?'+':'')+jpnFmt(yoy,1)+'%':'--',note:'same month vs prior year',color:yoy==null?'#8a9bb5':yoy>=0?'#34d399':'#f87171'})}
+      ${jpnStatusCard({label:'Power data status',value:series.length?'LIVE FILE':'--',note:`${series.length} monthly rows`,color:series.length?'#34d399':'#f87171'})}
+    </div>
+    <div class="ga-card" style="margin-bottom:12px">
+      <div class="ga-sec">JAPAN NUCLEAR GENERATION <span class="ga-tag">EMBER · TWh</span></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-size:9px;color:#546e7a">YEARS</span>${yearBtns}
+      </div>
+      <div class="ga-ch-wrap" style="height:300px"><canvas id="jpn-nuclear-seasonal"></canvas></div>
+      <div class="ga-source">Source: Ember Monthly Electricity Data · Japan · Nuclear fuel · monthly TWh and generation share. Latest public monthly data may lag by several weeks.</div>
+    </div>
+    <div class="ga-card">
+      <div class="ga-sec">LATEST MONTHLY ROWS <span class="ga-tag">NO DAILY CLAIM</span></div>
+      <div style="overflow:auto">
+        <table class="ga-tbl" style="width:100%;font-size:10px">
+          <thead><tr><th style="text-align:left">Month</th><th style="text-align:right">Nuclear TWh</th><th style="text-align:right">Share %</th></tr></thead>
+          <tbody>${series.slice(-12).reverse().map(r=>`<tr><td>${r.date.slice(0,7)}</td><td style="text-align:right;color:#c8d6e5">${jpnFmt(r.twh,2)}</td><td style="text-align:right;color:#93c5fd">${jpnFmt(r.sharePct,1)}%</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  setTimeout(jpnDrawNuclear,60);
+}
+
+function jpnDrawNuclear(){
+  const canvas = document.getElementById('jpn-nuclear-seasonal');
+  if(!canvas) return;
+  const byMonth = Object.fromEntries(jpnSeries().map(r=>[r.date.slice(0,7),r]));
+  const selected = (_jpnYears && _jpnYears.length ? _jpnYears : jpnAvailableYears().slice(-5)).slice().sort((a,b)=>b-a);
+  const datasets = selected.map((yr,i)=>({
+    label:String(yr),
+    data:Array.from({length:12},(_,m)=>byMonth[`${yr}-${String(m+1).padStart(2,'0')}`]?.twh ?? null),
+    borderColor:GA_COLS[i % GA_COLS.length],
+    backgroundColor:GA_COLS[i % GA_COLS.length] + (i===0?'22':'00'),
+    borderWidth:i===0?2.4:1.5,
+    borderDash:i>0?[5,3]:undefined,
+    pointRadius:2,
+    tension:.25,
+    spanGaps:false,
+  }));
+  gaMakeChart('jpn-nuclear-seasonal','line',{labels:GA_MO,datasets},{
+    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'TWh/month',color:'#3d5070',font:{size:9}}}}
+  });
+}
+
+function jpnRenderWeather(el){
+  if(!el) return;
+  const weather = _jpnData?.weather || {};
+  const national = weather.national || [];
+  const latest = national[0] || null;
+  const seven = national.slice(0,7);
+  const hdd7 = seven.reduce((a,r)=>a+(r.hdd18||0),0);
+  const cdd7 = seven.reduce((a,r)=>a+(r.cdd24||0),0);
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+      ${jpnStatusCard({label:'Forecast start',value:latest?.date || '--',note:'14-day city basket',color:'#93c5fd'})}
+      ${jpnStatusCard({label:'7-day HDD18',value:national.length?jpnFmt(hdd7,1):'--',note:'weighted Tokyo/Osaka/Nagoya/Fukuoka/Sapporo',color:'#60a5fa'})}
+      ${jpnStatusCard({label:'7-day CDD24',value:national.length?jpnFmt(cdd7,1):'--',note:'power cooling proxy only',color:'#fbbf24'})}
+      ${jpnStatusCard({label:'JMA official',value:'LINKED',note:'long-range page not parsed yet',color:'#34d399'})}
+    </div>
+    <div class="ga-card" style="margin-bottom:12px">
+      <div class="ga-sec">JAPAN WEATHER FORECAST <span class="ga-tag">CITY BASKET</span></div>
+      <div class="ga-ch-wrap" style="height:280px"><canvas id="jpn-weather-chart"></canvas></div>
+      <div class="ga-source">${weather.note || 'Numeric forecast source pending.'}</div>
+    </div>
+    <div class="ga-card">
+      <div class="ga-sec">OFFICIAL WEATHER SOURCES <span class="ga-tag">JMA</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px">
+        <div style="border:1px solid rgba(77,158,245,.16);background:#0d1320;padding:10px">
+          <div style="font-size:10px;color:#c8d6e5;font-weight:600">JMA long-range forecast</div>
+          <div style="font-size:9px;color:#6b7a99;line-height:1.55;margin-top:6px">Official page is kept as source reference. Numeric parser not wired because the current public URL redirects into the JMA BOSAI app.</div>
+          <a href="${weather.officialJmaLongRangeUrl || 'https://www.jma.go.jp/en/longfcst/'}" target="_blank" style="display:inline-block;margin-top:7px;font-size:9px;color:#93c5fd">Open JMA</a>
+        </div>
+        <div style="border:1px solid rgba(77,158,245,.16);background:#0d1320;padding:10px">
+          <div style="font-size:10px;color:#c8d6e5;font-weight:600">Open-Meteo numeric forecast</div>
+          <div style="font-size:9px;color:#6b7a99;line-height:1.55;margin-top:6px">Used for city HDD/CDD chart until a stable JMA JSON endpoint is proven.</div>
+          <a href="${weather.sourceUrl || 'https://open-meteo.com/'}" target="_blank" style="display:inline-block;margin-top:7px;font-size:9px;color:#93c5fd">Open feed</a>
+        </div>
+      </div>
+    </div>`;
+  setTimeout(jpnDrawWeather,60);
+}
+
+function jpnDrawWeather(){
+  const canvas = document.getElementById('jpn-weather-chart');
+  const national = _jpnData?.weather?.national || [];
+  if(!canvas || !national.length) return;
+  gaMakeChart('jpn-weather-chart','bar',{labels:national.map(r=>r.date.slice(5)),datasets:[
+    {type:'bar',label:'HDD18',data:national.map(r=>r.hdd18),backgroundColor:'rgba(96,165,250,.35)',borderColor:'#60a5fa',borderWidth:1},
+    {type:'bar',label:'CDD24',data:national.map(r=>r.cdd24),backgroundColor:'rgba(251,191,36,.35)',borderColor:'#fbbf24',borderWidth:1},
+    {type:'line',label:'Mean temp C',data:national.map(r=>r.tempMeanC),borderColor:'#34d399',backgroundColor:'transparent',borderWidth:2,pointRadius:2,yAxisID:'y1'},
+  ]},{
+    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0}},y:{...GCD.scales.y,title:{display:true,text:'degree days',color:'#3d5070',font:{size:9}}},y1:{position:'right',grid:{drawOnChartArea:false,color:'#0d1a2e'},ticks:{color:'#546e7a',font:{size:9,family:'IBM Plex Mono'}},title:{display:true,text:'C',color:'#3d5070',font:{size:9}}}}
+  });
+}
 
 function thaiSetRange(v){_thaiRange=v;thaiSavePrefs();thaiRender();}
 function thaiSetUnit(v){_thaiUnit=v;thaiSavePrefs();thaiRender();}

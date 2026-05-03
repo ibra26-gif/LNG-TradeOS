@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260501-pipeline-history">
-<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260503-entsoe-psr-queries" defer></script>
+<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260503-japan-analytics" defer></script>
 </head>
 <body class="app-unlocked">
 <div id="public-site">
@@ -685,10 +685,8 @@
 
     </div><!-- end lngbal-asia-china -->
 
-    <div id="lngbal-asia-japan" style="display:none;padding:60px 20px;text-align:center">
-      <div style="font-size:10px;letter-spacing:.15em;color:#6b7a99;margin-bottom:12px">⬡ GAS &amp; LNG ANALYTICS · JAPAN SIGNPOSTS</div>
-      <div style="font-size:14px;color:#c8d6e5;margin-bottom:8px">Japan gas balance — coming soon</div>
-      <div style="font-size:11px;color:#546e7a;line-height:1.7;max-width:640px;margin:0 auto">Planned sources: METI monthly LNG import statistics · JOGMEC inventory &amp; receiving-terminal tank stocks · TEPCO / KEPCO / CEPCO gas-for-power consumption · JERA and Osaka Gas sendout.</div>
+    <div id="lngbal-asia-japan" style="display:none">
+      <div id="jpn-container"></div>
     </div>
     <div id="lngbal-asia-korea" style="display:none">
       <div id="kor-container"></div>

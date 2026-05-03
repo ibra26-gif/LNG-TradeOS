@@ -1,0 +1,1067 @@
+{
+  "schema": "japan_analytics_v1",
+  "country": "Japan",
+  "cachedAt": "2026-05-03T14:22:00+00:00",
+  "gasBalance": {
+    "status": "source_gap",
+    "weeklyLngStorage": null,
+    "lngImports": null,
+    "gasForPower": null,
+    "sourceGaps": [
+      {
+        "item": "Weekly LNG storage",
+        "status": "not_wired",
+        "note": "Find stable METI/OCCTO/JOGMEC public table before plotting. Do not estimate."
+      },
+      {
+        "item": "OCCTO monthly power/generation",
+        "status": "manual_navigation_required",
+        "sourceUrl": "http://occtonet.occto.or.jp/public/dfw/RP11/OCCTO/SD/LOGIN_login#",
+        "note": "User path: Option 3 > Option 3 > Option 1 > month tab > refresh. Needs scraper proof."
+      }
+    ]
+  },
+  "nuclear": {
+    "source": "Ember Monthly Electricity Data",
+    "sourceUrl": "https://files.ember-energy.org/public-downloads/monthly_full_release_long_format.csv",
+    "series": [
+      {
+        "date": "2018-04-01",
+        "twh": 2.84,
+        "sharePct": 4.07
+      },
+      {
+        "date": "2018-05-01",
+        "twh": 3.24,
+        "sharePct": 4.56
+      },
+      {
+        "date": "2018-06-01",
+        "twh": 3.86,
+        "sharePct": 5.23
+      },
+      {
+        "date": "2018-07-01",
+        "twh": 4.73,
+        "sharePct": 5.21
+      },
+      {
+        "date": "2018-08-01",
+        "twh": 4.09,
+        "sharePct": 4.55
+      },
+      {
+        "date": "2018-09-01",
+        "twh": 5.08,
+        "sharePct": 6.8
+      },
+      {
+        "date": "2018-10-01",
+        "twh": 5.43,
+        "sharePct": 7.44
+      },
+      {
+        "date": "2018-11-01",
+        "twh": 6.33,
+        "sharePct": 8.66
+      },
+      {
+        "date": "2018-12-01",
+        "twh": 6.78,
+        "sharePct": 7.99
+      },
+      {
+        "date": "2019-01-01",
+        "twh": 6.8,
+        "sharePct": 7.63
+      },
+      {
+        "date": "2019-02-01",
+        "twh": 6.14,
+        "sharePct": 7.69
+      },
+      {
+        "date": "2019-03-01",
+        "twh": 6.8,
+        "sharePct": 8.5
+      },
+      {
+        "date": "2019-04-01",
+        "twh": 6.01,
+        "sharePct": 8.41
+      },
+      {
+        "date": "2019-05-01",
+        "twh": 5.37,
+        "sharePct": 7.72
+      },
+      {
+        "date": "2019-06-01",
+        "twh": 4.86,
+        "sharePct": 6.85
+      },
+      {
+        "date": "2019-07-01",
+        "twh": 5.17,
+        "sharePct": 6.38
+      },
+      {
+        "date": "2019-08-01",
+        "twh": 4.7,
+        "sharePct": 5.39
+      },
+      {
+        "date": "2019-09-01",
+        "twh": 4.26,
+        "sharePct": 5.45
+      },
+      {
+        "date": "2019-10-01",
+        "twh": 4.9,
+        "sharePct": 6.86
+      },
+      {
+        "date": "2019-11-01",
+        "twh": 5.25,
+        "sharePct": 7.33
+      },
+      {
+        "date": "2019-12-01",
+        "twh": 5.37,
+        "sharePct": 6.52
+      },
+      {
+        "date": "2020-01-01",
+        "twh": 4.92,
+        "sharePct": 5.82
+      },
+      {
+        "date": "2020-02-01",
+        "twh": 5.09,
+        "sharePct": 6.37
+      },
+      {
+        "date": "2020-03-01",
+        "twh": 5.13,
+        "sharePct": 6.64
+      },
+      {
+        "date": "2020-04-01",
+        "twh": 4.63,
+        "sharePct": 6.79
+      },
+      {
+        "date": "2020-05-01",
+        "twh": 4.52,
+        "sharePct": 7.25
+      },
+      {
+        "date": "2020-06-01",
+        "twh": 3.94,
+        "sharePct": 5.73
+      },
+      {
+        "date": "2020-07-01",
+        "twh": 3.72,
+        "sharePct": 4.94
+      },
+      {
+        "date": "2020-08-01",
+        "twh": 3.17,
+        "sharePct": 3.6
+      },
+      {
+        "date": "2020-09-01",
+        "twh": 2.71,
+        "sharePct": 3.62
+      },
+      {
+        "date": "2020-10-01",
+        "twh": 1.82,
+        "sharePct": 2.64
+      },
+      {
+        "date": "2020-11-01",
+        "twh": 1.22,
+        "sharePct": 1.74
+      },
+      {
+        "date": "2020-12-01",
+        "twh": 2.13,
+        "sharePct": 2.49
+      },
+      {
+        "date": "2021-01-01",
+        "twh": 2.58,
+        "sharePct": 2.84
+      },
+      {
+        "date": "2021-02-01",
+        "twh": 2.79,
+        "sharePct": 3.59
+      },
+      {
+        "date": "2021-03-01",
+        "twh": 3.78,
+        "sharePct": 4.92
+      },
+      {
+        "date": "2021-04-01",
+        "twh": 4.73,
+        "sharePct": 6.86
+      },
+      {
+        "date": "2021-05-01",
+        "twh": 5.26,
+        "sharePct": 7.81
+      },
+      {
+        "date": "2021-06-01",
+        "twh": 5.06,
+        "sharePct": 7.07
+      },
+      {
+        "date": "2021-07-01",
+        "twh": 6.45,
+        "sharePct": 7.64
+      },
+      {
+        "date": "2021-08-01",
+        "twh": 6.57,
+        "sharePct": 7.81
+      },
+      {
+        "date": "2021-09-01",
+        "twh": 6.43,
+        "sharePct": 8.76
+      },
+      {
+        "date": "2021-10-01",
+        "twh": 6.19,
+        "sharePct": 8.46
+      },
+      {
+        "date": "2021-11-01",
+        "twh": 5.26,
+        "sharePct": 7.23
+      },
+      {
+        "date": "2021-12-01",
+        "twh": 6.12,
+        "sharePct": 7.14
+      },
+      {
+        "date": "2022-01-01",
+        "twh": 6.49,
+        "sharePct": 7.02
+      },
+      {
+        "date": "2022-02-01",
+        "twh": 5.2,
+        "sharePct": 6.15
+      },
+      {
+        "date": "2022-03-01",
+        "twh": 4.01,
+        "sharePct": 5.08
+      },
+      {
+        "date": "2022-04-01",
+        "twh": 3.56,
+        "sharePct": 5.23
+      },
+      {
+        "date": "2022-05-01",
+        "twh": 2.85,
+        "sharePct": 4.29
+      },
+      {
+        "date": "2022-06-01",
+        "twh": 2.6,
+        "sharePct": 3.57
+      },
+      {
+        "date": "2022-07-01",
+        "twh": 3.74,
+        "sharePct": 4.41
+      },
+      {
+        "date": "2022-08-01",
+        "twh": 4.9,
+        "sharePct": 5.71
+      },
+      {
+        "date": "2022-09-01",
+        "twh": 4.19,
+        "sharePct": 5.5
+      },
+      {
+        "date": "2022-10-01",
+        "twh": 4.11,
+        "sharePct": 5.93
+      },
+      {
+        "date": "2022-11-01",
+        "twh": 4.5,
+        "sharePct": 6.6
+      },
+      {
+        "date": "2022-12-01",
+        "twh": 5.64,
+        "sharePct": 6.73
+      },
+      {
+        "date": "2023-01-01",
+        "twh": 6.54,
+        "sharePct": 7.54
+      },
+      {
+        "date": "2023-02-01",
+        "twh": 5.39,
+        "sharePct": 6.91
+      },
+      {
+        "date": "2023-03-01",
+        "twh": 5.52,
+        "sharePct": 7.57
+      },
+      {
+        "date": "2023-04-01",
+        "twh": 6.0,
+        "sharePct": 9.2
+      },
+      {
+        "date": "2023-05-01",
+        "twh": 6.41,
+        "sharePct": 9.76
+      },
+      {
+        "date": "2023-06-01",
+        "twh": 6.46,
+        "sharePct": 9.18
+      },
+      {
+        "date": "2023-07-01",
+        "twh": 6.86,
+        "sharePct": 8.02
+      },
+      {
+        "date": "2023-08-01",
+        "twh": 7.81,
+        "sharePct": 8.83
+      },
+      {
+        "date": "2023-09-01",
+        "twh": 6.69,
+        "sharePct": 8.36
+      },
+      {
+        "date": "2023-10-01",
+        "twh": 6.99,
+        "sharePct": 10.25
+      },
+      {
+        "date": "2023-11-01",
+        "twh": 6.52,
+        "sharePct": 9.39
+      },
+      {
+        "date": "2023-12-01",
+        "twh": 6.27,
+        "sharePct": 7.75
+      },
+      {
+        "date": "2024-01-01",
+        "twh": 6.57,
+        "sharePct": 7.8
+      },
+      {
+        "date": "2024-02-01",
+        "twh": 6.74,
+        "sharePct": 8.71
+      },
+      {
+        "date": "2024-03-01",
+        "twh": 6.96,
+        "sharePct": 8.81
+      },
+      {
+        "date": "2024-04-01",
+        "twh": 6.72,
+        "sharePct": 10.39
+      },
+      {
+        "date": "2024-05-01",
+        "twh": 7.77,
+        "sharePct": 11.98
+      },
+      {
+        "date": "2024-06-01",
+        "twh": 7.26,
+        "sharePct": 10.63
+      },
+      {
+        "date": "2024-07-01",
+        "twh": 6.96,
+        "sharePct": 7.98
+      },
+      {
+        "date": "2024-08-01",
+        "twh": 6.58,
+        "sharePct": 7.48
+      },
+      {
+        "date": "2024-09-01",
+        "twh": 7.21,
+        "sharePct": 8.94
+      },
+      {
+        "date": "2024-10-01",
+        "twh": 7.16,
+        "sharePct": 10.2
+      },
+      {
+        "date": "2024-11-01",
+        "twh": 6.86,
+        "sharePct": 10.08
+      },
+      {
+        "date": "2024-12-01",
+        "twh": 8.11,
+        "sharePct": 9.98
+      },
+      {
+        "date": "2025-01-01",
+        "twh": 8.35,
+        "sharePct": 9.67
+      },
+      {
+        "date": "2025-02-01",
+        "twh": 7.87,
+        "sharePct": 9.67
+      },
+      {
+        "date": "2025-03-01",
+        "twh": 8.49,
+        "sharePct": 10.98
+      },
+      {
+        "date": "2025-04-01",
+        "twh": 7.44,
+        "sharePct": 11.23
+      },
+      {
+        "date": "2025-05-01",
+        "twh": 7.78,
+        "sharePct": 11.99
+      },
+      {
+        "date": "2025-06-01",
+        "twh": 7.78,
+        "sharePct": 10.69
+      },
+      {
+        "date": "2025-07-01",
+        "twh": 8.03,
+        "sharePct": 8.94
+      },
+      {
+        "date": "2025-08-01",
+        "twh": 7.42,
+        "sharePct": 8.42
+      },
+      {
+        "date": "2025-09-01",
+        "twh": 7.34,
+        "sharePct": 9.18
+      },
+      {
+        "date": "2025-10-01",
+        "twh": 7.32,
+        "sharePct": 10.44
+      },
+      {
+        "date": "2025-11-01",
+        "twh": 7.59,
+        "sharePct": 10.94
+      },
+      {
+        "date": "2025-12-01",
+        "twh": 8.67,
+        "sharePct": 10.72
+      },
+      {
+        "date": "2026-01-01",
+        "twh": 9.13,
+        "sharePct": 10.3
+      },
+      {
+        "date": "2026-02-01",
+        "twh": 6.86,
+        "sharePct": 8.91
+      }
+    ]
+  },
+  "weather": {
+    "source": "Open-Meteo Forecast API",
+    "sourceUrl": "https://api.open-meteo.com/v1/forecast",
+    "officialJmaLongRangeUrl": "https://www.jma.go.jp/en/longfcst/",
+    "officialJmaRegionalUrl": "https://www.jma.go.jp/en/longfcst/000_1_11.html",
+    "note": "Numeric city forecast is Open-Meteo. JMA long-range page is linked as official source until a stable JMA JSON feed is wired.",
+    "baseHddC": 18,
+    "baseCddC": 24,
+    "cities": [
+      {
+        "id": "tokyo",
+        "name": "Tokyo",
+        "lat": 35.6762,
+        "lon": 139.6503,
+        "weight": 0.34,
+        "forecast": [
+          {
+            "date": "2026-05-03",
+            "tempMeanC": 17.2,
+            "hdd18": 0.8,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-04",
+            "tempMeanC": 21.0,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-05",
+            "tempMeanC": 15.9,
+            "hdd18": 2.1,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-06",
+            "tempMeanC": 16.9,
+            "hdd18": 1.1,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-07",
+            "tempMeanC": 19.1,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-08",
+            "tempMeanC": 19.6,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-09",
+            "tempMeanC": 17.6,
+            "hdd18": 0.4,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-10",
+            "tempMeanC": 17.3,
+            "hdd18": 0.7,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-11",
+            "tempMeanC": 18.1,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-12",
+            "tempMeanC": 18.4,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-13",
+            "tempMeanC": 19.4,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-14",
+            "tempMeanC": 20.1,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-15",
+            "tempMeanC": 21.5,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-16",
+            "tempMeanC": 21.5,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          }
+        ]
+      },
+      {
+        "id": "osaka",
+        "name": "Osaka",
+        "lat": 34.6937,
+        "lon": 135.5023,
+        "weight": 0.22,
+        "forecast": [
+          {
+            "date": "2026-05-03",
+            "tempMeanC": 17.1,
+            "hdd18": 0.9,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-04",
+            "tempMeanC": 17.5,
+            "hdd18": 0.5,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-05",
+            "tempMeanC": 15.7,
+            "hdd18": 2.3,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-06",
+            "tempMeanC": 16.8,
+            "hdd18": 1.2,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-07",
+            "tempMeanC": 18.4,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-08",
+            "tempMeanC": 19.3,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-09",
+            "tempMeanC": 16.6,
+            "hdd18": 1.4,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-10",
+            "tempMeanC": 18.4,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-11",
+            "tempMeanC": 18.5,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-12",
+            "tempMeanC": 18.1,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-13",
+            "tempMeanC": 19.0,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-14",
+            "tempMeanC": 20.0,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-15",
+            "tempMeanC": 19.7,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-16",
+            "tempMeanC": 20.8,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          }
+        ]
+      },
+      {
+        "id": "nagoya",
+        "name": "Nagoya",
+        "lat": 35.1815,
+        "lon": 136.9066,
+        "weight": 0.16,
+        "forecast": [
+          {
+            "date": "2026-05-03",
+            "tempMeanC": 16.9,
+            "hdd18": 1.1,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-04",
+            "tempMeanC": 18.1,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-05",
+            "tempMeanC": 15.3,
+            "hdd18": 2.7,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-06",
+            "tempMeanC": 16.5,
+            "hdd18": 1.5,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-07",
+            "tempMeanC": 19.0,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-08",
+            "tempMeanC": 18.1,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-09",
+            "tempMeanC": 16.1,
+            "hdd18": 1.9,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-10",
+            "tempMeanC": 18.6,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-11",
+            "tempMeanC": 18.1,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-12",
+            "tempMeanC": 17.8,
+            "hdd18": 0.2,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-13",
+            "tempMeanC": 18.9,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-14",
+            "tempMeanC": 20.6,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-15",
+            "tempMeanC": 21.8,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-16",
+            "tempMeanC": 22.9,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          }
+        ]
+      },
+      {
+        "id": "fukuoka",
+        "name": "Fukuoka",
+        "lat": 33.5902,
+        "lon": 130.4017,
+        "weight": 0.14,
+        "forecast": [
+          {
+            "date": "2026-05-03",
+            "tempMeanC": 17.9,
+            "hdd18": 0.1,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-04",
+            "tempMeanC": 16.2,
+            "hdd18": 1.8,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-05",
+            "tempMeanC": 15.9,
+            "hdd18": 2.1,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-06",
+            "tempMeanC": 16.9,
+            "hdd18": 1.1,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-07",
+            "tempMeanC": 18.4,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-08",
+            "tempMeanC": 17.1,
+            "hdd18": 0.9,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-09",
+            "tempMeanC": 16.4,
+            "hdd18": 1.6,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-10",
+            "tempMeanC": 18.2,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-11",
+            "tempMeanC": 20.3,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-12",
+            "tempMeanC": 20.0,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-13",
+            "tempMeanC": 20.4,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-14",
+            "tempMeanC": 19.2,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-15",
+            "tempMeanC": 21.6,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-16",
+            "tempMeanC": 19.9,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          }
+        ]
+      },
+      {
+        "id": "sapporo",
+        "name": "Sapporo",
+        "lat": 43.0618,
+        "lon": 141.3545,
+        "weight": 0.14,
+        "forecast": [
+          {
+            "date": "2026-05-03",
+            "tempMeanC": 10.1,
+            "hdd18": 7.9,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-04",
+            "tempMeanC": 9.7,
+            "hdd18": 8.3,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-05",
+            "tempMeanC": 11.3,
+            "hdd18": 6.7,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-06",
+            "tempMeanC": 15.2,
+            "hdd18": 2.8,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-07",
+            "tempMeanC": 15.2,
+            "hdd18": 2.8,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-08",
+            "tempMeanC": 12.2,
+            "hdd18": 5.8,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-09",
+            "tempMeanC": 11.9,
+            "hdd18": 6.1,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-10",
+            "tempMeanC": 14.6,
+            "hdd18": 3.4,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-11",
+            "tempMeanC": 15.3,
+            "hdd18": 2.7,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-12",
+            "tempMeanC": 15.6,
+            "hdd18": 2.4,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-13",
+            "tempMeanC": 15.8,
+            "hdd18": 2.2,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-14",
+            "tempMeanC": 15.8,
+            "hdd18": 2.2,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-15",
+            "tempMeanC": 13.9,
+            "hdd18": 4.1,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-16",
+            "tempMeanC": 7.4,
+            "hdd18": 10.6,
+            "cdd24": 0.0
+          }
+        ]
+      }
+    ],
+    "national": [
+      {
+        "date": "2026-05-03",
+        "tempMeanC": 16.2,
+        "hdd18": 1.8,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-04",
+        "tempMeanC": 17.5,
+        "hdd18": 1.5,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-05",
+        "tempMeanC": 15.1,
+        "hdd18": 2.9,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-06",
+        "tempMeanC": 16.6,
+        "hdd18": 1.4,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-07",
+        "tempMeanC": 18.3,
+        "hdd18": 0.4,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-08",
+        "tempMeanC": 17.9,
+        "hdd18": 0.9,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-09",
+        "tempMeanC": 16.2,
+        "hdd18": 1.8,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-10",
+        "tempMeanC": 17.5,
+        "hdd18": 0.7,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-11",
+        "tempMeanC": 18.1,
+        "hdd18": 0.4,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-12",
+        "tempMeanC": 18.1,
+        "hdd18": 0.4,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-13",
+        "tempMeanC": 18.9,
+        "hdd18": 0.3,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-14",
+        "tempMeanC": 19.4,
+        "hdd18": 0.3,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-15",
+        "tempMeanC": 20.1,
+        "hdd18": 0.6,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-16",
+        "tempMeanC": 19.4,
+        "hdd18": 1.5,
+        "cdd24": 0.0
+      }
+    ]
+  }
+}
