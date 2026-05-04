@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260501-pipeline-history">
-<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260503-euren-europe-yoy" defer></script>
+<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260504-thai-weather-seasonal" defer></script>
 </head>
 <body class="app-unlocked">
 <div id="public-site">
@@ -219,6 +219,7 @@
       <div class="mod-card" onclick="shellNav('gasanalytics','regas')"><span class="card-num">04</span><div class="card-ttl">LNG Regas Terminals</div><div class="card-desc">Utilisation heatmap, tank stocks, sendout seasonal and country aggregate — GIE AGGI+</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','lngvc')"><span class="card-num">05</span><div class="card-ttl">LNG Value Chain</div><div class="card-desc">EU LNG imports, regasification utilisation, sendout and tank inventory — GIE ALSI</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
       <div class="mod-card" onclick="shellNav('gasanalytics','euren')"><span class="card-num">06</span><div class="card-ttl">European Renewable</div><div class="card-desc">Hydro, wind and solar generation by country — seasonal ENTSO-E charts</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
+      <div class="mod-card" onclick="shellNav('gasanalytics','weather')"><span class="card-num">07</span><div class="card-ttl">Weather Tracking</div><div class="card-desc">Open-Meteo HDD/CDD, wind forecast and NAO regime tracking by LNG demand center</div><span class="s-tag tag-gas">GAS &amp; LNG</span></div>
     </div>
   </div>
   <div class="mod-group">
@@ -394,7 +395,7 @@
           <button class="cr-pill" id="h-rng-1y" onclick="setHistRange('1y',this)">1Y</button>
           <button class="cr-pill on" id="h-rng-all" onclick="setHistRange('all',this)">ALL</button>
         </div></div>
-        <div class="acard"><div class="ctitle">DAILY PRICE HISTORY — $/MMBTU</div><div class="cw" style="height:280px"><canvas id="hChart"></canvas></div></div>
+        <div class="acard"><div class="ctitle" id="h-chart-title">DAILY PRICE HISTORY — $/MMBTU</div><div class="cw" style="height:280px"><canvas id="hChart"></canvas></div></div>
         <div class="acard"><div class="ctitle" id="box-title">DISTRIBUTION</div><div class="cw" style="height:130px;position:relative"><canvas id="hBoxChart"></canvas></div></div>
         <div class="acard"><div class="ctitle" id="stats-title">STATISTICS</div><div style="overflow-x:auto"><table class="stbl" id="statsTable"></table></div></div>
       </div>
@@ -589,6 +590,7 @@
     <button class="gmtab" id="gmtab-storage" onclick="gaMainTab('storage',this)">EU STORAGE</button>
     <button class="gmtab" id="gmtab-lngvc"  onclick="gaMainTab('lngvc',this)">LNG VALUE CHAIN</button>
     <button class="gmtab" id="gmtab-euren"  onclick="gaMainTab('euren',this)">EUROPEAN RENEWABLE</button>
+    <button class="gmtab" id="gmtab-weather" onclick="gaMainTab('weather',this)">WEATHER TRACKING</button>
   </div>
 
   <div id="ga-tab-dashboard2" class="ga-tab-sec active">
@@ -602,6 +604,7 @@
       <button id="lngbal-btn-asia" class="cty-tab active" onclick="lngbalCountry('asia',this)">ASIA</button>
       <button id="lngbal-btn-india" class="cty-tab" onclick="lngbalCountry('india',this)">INDIA</button>
       <button id="lngbal-btn-sam" class="cty-tab" onclick="samShow(this)">SOUTH AMERICA</button>
+      <button id="lngbal-btn-turkey" class="cty-tab" onclick="turShow(this)">TURKEY</button>
     </div>
     <div id="lngbal-asia">
       <!-- Asia sub-country selector -->
@@ -694,10 +697,8 @@
     <div id="lngbal-asia-korea" style="display:none">
       <div id="kor-container"></div>
     </div>
-    <div id="lngbal-asia-taiwan" style="display:none;padding:60px 20px;text-align:center">
-      <div style="font-size:10px;letter-spacing:.15em;color:#6b7a99;margin-bottom:12px">⬡ GAS &amp; LNG ANALYTICS · TAIWAN SIGNPOSTS</div>
-      <div style="font-size:14px;color:#c8d6e5;margin-bottom:8px">Taiwan gas balance — coming soon</div>
-      <div style="font-size:11px;color:#546e7a;line-height:1.7;max-width:640px;margin:0 auto">Planned sources: CPC Corp monthly LNG import statistics · Yung-An &amp; Taichung &amp; Taoyuan (Kuanyin) FSRU tank stocks · Taipower gas-fired generation (Tongsiao · Datan · Xingda · Tunghsiao).</div>
+    <div id="lngbal-asia-taiwan" style="display:none">
+      <div id="twn-container"></div>
     </div>
     <div id="lngbal-asia-thailand" style="display:none">
       <div id="thai-container"></div>
@@ -969,6 +970,10 @@
 </div>
 
 </div>
+
+    <div id="lngbal-turkey" style="display:none">
+      <div id="tur-container"></div>
+    </div>
   </div><!-- end ga-tab-lngbal -->
 
 
@@ -1017,6 +1022,11 @@
   <!-- TAB 7: EUROPEAN RENEWABLE GENERATION -->
   <div id="ga-tab-euren" class="ga-tab-sec">
     <div id="ga-euren-pane" style="margin-top:2px"></div>
+  </div>
+
+  <!-- TAB 8: WEATHER TRACKING -->
+  <div id="ga-tab-weather" class="ga-tab-sec">
+    <div id="ga-weather-pane" style="margin-top:2px"></div>
   </div>
 
   <!-- Modal (keep) -->

@@ -1,0 +1,41 @@
+name: Turkey gas balance weekly refresh
+
+on:
+  schedule:
+    - cron: "15 9 * * 0"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install parser dependencies
+        run: pip install openpyxl pdfplumber
+
+      - name: Refresh Turkey gas balance
+        run: python3 scripts/fetch_turkey_gas_balance.py
+
+      - name: Run Turkey regression
+        run: node scripts/test_turkey_gas_balance_regression.js
+
+      - name: Commit updated Turkey gas balance
+        run: |
+          if git diff --quiet -- data/turkey_gas_balance.json; then
+            echo "No Turkey gas balance changes"
+            exit 0
+          fi
+          git config user.name "lngtradeos-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/turkey_gas_balance.json
+          LATEST=$(python3 -c "import json;print(json.load(open('data/turkey_gas_balance.json'))['latest_month'] or 'source-gap')")
+          git commit -m "data: refresh turkey gas balance ${LATEST}"
+          git push

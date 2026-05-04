@@ -1,0 +1,2112 @@
+{
+  "schema": "turkey_gas_balance_v1",
+  "country": "Turkey",
+  "status": "wired",
+  "latest_month": "2026-02",
+  "cachedAt": "2026-05-04T04:33:46.268538+00:00",
+  "sourcePage": "https://www.epdk.gov.tr/Detay/Icerik/3-0-95-1007/dogal-gazaylik-sektor-raporu",
+  "unit": "bcm/month",
+  "balanceEquation": "LNG imports + domestic production + pipeline imports = sectorial gas demand",
+  "rows": [
+    {
+      "month": "2025-01",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.79539
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 2.78141
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.18597
+        },
+        {
+          "country": "ABD",
+          "licenseGroup": "LNG",
+          "volumeBcm": 1.57676
+        },
+        {
+          "country": "Brezilya",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.08108
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.51441
+        },
+        {
+          "country": "Ekvator Ginesi",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.29794
+        },
+        {
+          "country": "Nijerya",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.18592
+        }
+      ],
+      "lngImportsBcm": 2.6561,
+      "pipelineImportsBcm": 3.76278,
+      "undergroundStorageStockBcm": 3.69826,
+      "lngTerminalStockBcm": 0.35368,
+      "totalStorageStockBcm": 4.05194,
+      "powerGenerationDemandBcm": 1.6648,
+      "industryDemandBcm": 1.22752,
+      "residentialKonutDemandBcm": 3.71933,
+      "totalDemandBcm": 7.62515,
+      "domesticProductionBcm": 0.23375,
+      "totalImportsBcm": 6.41888,
+      "totalSupplyBcm": 6.65263,
+      "trackedDemandBcm": 6.61165,
+      "supplyDemandBalanceBcm": -0.97252
+    },
+    {
+      "month": "2025-02",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.87647
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 2.41057
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.08343
+        },
+        {
+          "country": "ABD",
+          "licenseGroup": "LNG",
+          "volumeBcm": 2.01902
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.3341
+        },
+        {
+          "country": "Kamerun",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.09153
+        },
+        {
+          "country": "Mozambik",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.07415
+        },
+        {
+          "country": "Nijerya",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.28884
+        },
+        {
+          "country": "Trinidad ve Tobago",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.16481
+        },
+        {
+          "country": "Umman",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.0901
+        }
+      ],
+      "lngImportsBcm": 3.06256,
+      "pipelineImportsBcm": 3.37046,
+      "undergroundStorageStockBcm": 2.36833,
+      "lngTerminalStockBcm": 0.27048,
+      "totalStorageStockBcm": 2.63881,
+      "powerGenerationDemandBcm": 1.59462,
+      "industryDemandBcm": 1.15431,
+      "residentialKonutDemandBcm": 3.79349,
+      "totalDemandBcm": 15.17537,
+      "domesticProductionBcm": 0.44718,
+      "totalImportsBcm": 6.43302,
+      "totalSupplyBcm": 6.8802,
+      "trackedDemandBcm": 6.54242,
+      "supplyDemandBalanceBcm": -8.29517
+    },
+    {
+      "month": "2025-03",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.04338
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.7905
+        },
+        {
+          "country": "Türkmenistan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.11242
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.45046
+        },
+        {
+          "country": "ABD",
+          "licenseGroup": "LNG",
+          "volumeBcm": 1.55624
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.64264
+        },
+        {
+          "country": "Kamerun",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.19171
+        },
+        {
+          "country": "Nijerya",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.21063
+        }
+      ],
+      "lngImportsBcm": 2.60123,
+      "pipelineImportsBcm": 3.39676,
+      "undergroundStorageStockBcm": 2.64127,
+      "lngTerminalStockBcm": 0.39751,
+      "totalStorageStockBcm": 3.03878,
+      "powerGenerationDemandBcm": 1.12393,
+      "industryDemandBcm": 1.15869,
+      "residentialKonutDemandBcm": 3.82853,
+      "totalDemandBcm": 22.26097,
+      "domesticProductionBcm": 0.67868,
+      "totalImportsBcm": 5.99799,
+      "totalSupplyBcm": 6.67667,
+      "trackedDemandBcm": 6.11115,
+      "supplyDemandBalanceBcm": -15.5843
+    },
+    {
+      "month": "2025-04",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.99983
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.81984
+        },
+        {
+          "country": "Türkmenistan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.12963
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.70687
+        },
+        {
+          "country": "ABD",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.09997
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.30468
+        }
+      ],
+      "lngImportsBcm": 0.40465,
+      "pipelineImportsBcm": 3.65617,
+      "undergroundStorageStockBcm": 2.32012,
+      "lngTerminalStockBcm": 0.184,
+      "totalStorageStockBcm": 2.50412,
+      "powerGenerationDemandBcm": 5.32968,
+      "industryDemandBcm": 4.67792,
+      "residentialKonutDemandBcm": 13.71774,
+      "totalDemandBcm": 27.44712,
+      "domesticProductionBcm": 0.96618,
+      "totalImportsBcm": 4.06082,
+      "totalSupplyBcm": 5.027,
+      "trackedDemandBcm": 23.72534,
+      "supplyDemandBalanceBcm": -22.42012
+    },
+    {
+      "month": "2025-05",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.05699
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.19255
+        },
+        {
+          "country": "Türkmenistan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.12003
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.79174
+        },
+        {
+          "country": "ABD",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.09601
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.2818
+        }
+      ],
+      "lngImportsBcm": 0.37781,
+      "pipelineImportsBcm": 3.16131,
+      "undergroundStorageStockBcm": 2.70356,
+      "lngTerminalStockBcm": 0.23815,
+      "totalStorageStockBcm": 2.94172,
+      "powerGenerationDemandBcm": 0.89573,
+      "industryDemandBcm": 1.13909,
+      "residentialKonutDemandBcm": 1.49431,
+      "totalDemandBcm": 31.55207,
+      "domesticProductionBcm": 1.2624,
+      "totalImportsBcm": 3.53912,
+      "totalSupplyBcm": 4.80152,
+      "trackedDemandBcm": 3.52913,
+      "supplyDemandBalanceBcm": -26.75055
+    },
+    {
+      "month": "2025-06",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.01983
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.97059
+        },
+        {
+          "country": "Türkmenistan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.10327
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.69707
+        },
+        {
+          "country": "ABD",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.09969
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.27795
+        }
+      ],
+      "lngImportsBcm": 0.37763,
+      "pipelineImportsBcm": 2.79076,
+      "undergroundStorageStockBcm": 3.48614,
+      "lngTerminalStockBcm": 0.27996,
+      "totalStorageStockBcm": 3.76609,
+      "powerGenerationDemandBcm": 0.81382,
+      "industryDemandBcm": 0.98765,
+      "residentialKonutDemandBcm": 0.51639,
+      "totalDemandBcm": 34.26152,
+      "domesticProductionBcm": 1.53094,
+      "totalImportsBcm": 3.16839,
+      "totalSupplyBcm": 4.69933,
+      "trackedDemandBcm": 2.31786,
+      "supplyDemandBalanceBcm": -29.56219
+    },
+    {
+      "month": "2025-07",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.00423
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.77524
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.85428
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.27913
+        }
+      ],
+      "lngImportsBcm": 0.27913,
+      "pipelineImportsBcm": 3.63376,
+      "undergroundStorageStockBcm": 4.05471,
+      "lngTerminalStockBcm": 0.2641,
+      "totalStorageStockBcm": 4.31881,
+      "powerGenerationDemandBcm": 1.77846,
+      "industryDemandBcm": 1.06519,
+      "residentialKonutDemandBcm": 0.33349,
+      "totalDemandBcm": 37.81542,
+      "domesticProductionBcm": 1.80948,
+      "totalImportsBcm": 3.91289,
+      "totalSupplyBcm": 5.72237,
+      "trackedDemandBcm": 3.17714,
+      "supplyDemandBalanceBcm": -32.09305
+    },
+    {
+      "month": "2025-08",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.04727
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.83524
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.84001
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.29873
+        }
+      ],
+      "lngImportsBcm": 0.29873,
+      "pipelineImportsBcm": 3.72252,
+      "undergroundStorageStockBcm": 4.74406,
+      "lngTerminalStockBcm": 0.2095,
+      "totalStorageStockBcm": 4.95356,
+      "powerGenerationDemandBcm": 10.5497,
+      "industryDemandBcm": 9.01067,
+      "residentialKonutDemandBcm": 16.35875,
+      "totalDemandBcm": 41.26965,
+      "domesticProductionBcm": 2.04663,
+      "totalImportsBcm": 4.02125,
+      "totalSupplyBcm": 6.06788,
+      "trackedDemandBcm": 35.91912,
+      "supplyDemandBalanceBcm": -35.20177
+    },
+    {
+      "month": "2025-09",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.95825
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.44712
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.80741
+        },
+        {
+          "country": "ABD",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.09595
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.29669
+        }
+      ],
+      "lngImportsBcm": 0.39264,
+      "pipelineImportsBcm": 3.21278,
+      "undergroundStorageStockBcm": 4.97417,
+      "lngTerminalStockBcm": 0.33797,
+      "totalStorageStockBcm": 5.31214,
+      "powerGenerationDemandBcm": 11.87507,
+      "industryDemandBcm": 10.11309,
+      "residentialKonutDemandBcm": 16.66671,
+      "totalDemandBcm": 44.37839,
+      "domesticProductionBcm": 2.3033,
+      "totalImportsBcm": 3.60542,
+      "totalSupplyBcm": 5.90872,
+      "trackedDemandBcm": 38.65487,
+      "supplyDemandBalanceBcm": -38.46967
+    },
+    {
+      "month": "2025-10",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.9968
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.6285
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.82011
+        },
+        {
+          "country": "ABD",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.09835
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.36355
+        },
+        {
+          "country": "Mısır",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.09657
+        },
+        {
+          "country": "Senegal",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.10094
+        }
+      ],
+      "lngImportsBcm": 0.6594,
+      "pipelineImportsBcm": 3.4454,
+      "undergroundStorageStockBcm": 5.05356,
+      "lngTerminalStockBcm": 0.30983,
+      "totalStorageStockBcm": 5.36339,
+      "powerGenerationDemandBcm": 13.15006,
+      "industryDemandBcm": 11.32825,
+      "residentialKonutDemandBcm": 17.20122,
+      "totalDemandBcm": 47.89336,
+      "domesticProductionBcm": 2.57568,
+      "totalImportsBcm": 4.1048,
+      "totalSupplyBcm": 6.68048,
+      "trackedDemandBcm": 41.67953,
+      "supplyDemandBalanceBcm": -41.21288
+    },
+    {
+      "month": "2025-11",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.03625
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.20489
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.88864
+        },
+        {
+          "country": "ABD",
+          "licenseGroup": "LNG",
+          "volumeBcm": 1.2273
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.36779
+        },
+        {
+          "country": "Ekvator Ginesi",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.10553
+        },
+        {
+          "country": "Moritanya",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.1055
+        },
+        {
+          "country": "Trinidad ve Tobago",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.10233
+        }
+      ],
+      "lngImportsBcm": 1.90845,
+      "pipelineImportsBcm": 3.12978,
+      "undergroundStorageStockBcm": 5.13626,
+      "lngTerminalStockBcm": 0.28485,
+      "totalStorageStockBcm": 5.42111,
+      "powerGenerationDemandBcm": 1.32038,
+      "industryDemandBcm": 1.21232,
+      "residentialKonutDemandBcm": 1.2366,
+      "totalDemandBcm": 52.2668,
+      "domesticProductionBcm": 2.83027,
+      "totalImportsBcm": 5.03823,
+      "totalSupplyBcm": 7.8685,
+      "trackedDemandBcm": 3.7693,
+      "supplyDemandBalanceBcm": -44.3983
+    },
+    {
+      "month": "2025-12",
+      "importsByCountry": [
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 1.08066
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 2.3038
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Boru Gazı",
+          "volumeBcm": 0.57599
+        },
+        {
+          "country": "ABD",
+          "licenseGroup": "LNG",
+          "volumeBcm": 2.32143
+        },
+        {
+          "country": "Angola",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.20115
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.47986
+        },
+        {
+          "country": "Ekvator Ginesi",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.10154
+        },
+        {
+          "country": "Kamerun",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.10116
+        },
+        {
+          "country": "Mısır",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.09433
+        },
+        {
+          "country": "Nijerya",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.18867
+        },
+        {
+          "country": "Senegal",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.10394
+        },
+        {
+          "country": "Trinidad ve Tobago",
+          "licenseGroup": "LNG",
+          "volumeBcm": 0.10171
+        }
+      ],
+      "lngImportsBcm": 3.69379,
+      "pipelineImportsBcm": 3.96045,
+      "undergroundStorageStockBcm": 4.84571,
+      "lngTerminalStockBcm": 0.36897,
+      "totalStorageStockBcm": 5.21468,
+      "powerGenerationDemandBcm": 1.82176,
+      "industryDemandBcm": 1.26806,
+      "residentialKonutDemandBcm": 2.41873,
+      "totalDemandBcm": 58.66255,
+      "domesticProductionBcm": 3.11097,
+      "totalImportsBcm": 7.65424,
+      "totalSupplyBcm": 10.76521,
+      "trackedDemandBcm": 5.50855,
+      "supplyDemandBalanceBcm": -47.89734
+    },
+    {
+      "month": "2026-01",
+      "importsByCountry": [
+        {
+          "country": "ABD",
+          "licenseGroup": "Spot",
+          "volumeBcm": 2.755385
+        },
+        {
+          "country": "ABD",
+          "licenseGroup": "Spot",
+          "volumeBcm": 2.755385
+        },
+        {
+          "country": "Angola",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.095985
+        },
+        {
+          "country": "Angola",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.095985
+        },
+        {
+          "country": "Kamerun",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.085282
+        },
+        {
+          "country": "Kamerun",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.085282
+        },
+        {
+          "country": "Moritanya",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.175354
+        },
+        {
+          "country": "Moritanya",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.175354
+        },
+        {
+          "country": "Mısır",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.089909
+        },
+        {
+          "country": "Mısır",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.089909
+        },
+        {
+          "country": "Nijerya",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.093154
+        },
+        {
+          "country": "Nijerya",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.093154
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.519146
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.519146
+        },
+        {
+          "country": "İspanya",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.08197
+        },
+        {
+          "country": "İspanya",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.08197
+        },
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 1.037487
+        },
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 1.037487
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 0.475195
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 0.475195
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 2.184303
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 2.184303
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 0.130052
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 0.130052
+        }
+      ],
+      "domesticProductionBcm": 0.27832,
+      "undergroundStorageStockBcm": 3.853987,
+      "lngTerminalStockBcm": 0.402959,
+      "totalStorageStockBcm": 4.256946,
+      "lngImportsBcm": 3.85223,
+      "pipelineImportsBcm": 3.87099,
+      "powerGenerationDemandBcm": 1.666906,
+      "industryDemandBcm": 1.270948,
+      "residentialKonutDemandBcm": 4.382259,
+      "totalDemandBcm": 8.433398,
+      "totalImportsBcm": 7.72322,
+      "totalSupplyBcm": 8.00154,
+      "trackedDemandBcm": 7.320113,
+      "supplyDemandBalanceBcm": -0.431858
+    },
+    {
+      "month": "2026-02",
+      "importsByCountry": [
+        {
+          "country": "ABD",
+          "licenseGroup": "Spot",
+          "volumeBcm": 1.431309
+        },
+        {
+          "country": "Angola",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.096855
+        },
+        {
+          "country": "Avustralya",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.091277
+        },
+        {
+          "country": "Ekvator Ginesi",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.309004
+        },
+        {
+          "country": "Nijerya",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.544089
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.280139
+        },
+        {
+          "country": "Umman",
+          "licenseGroup": "Spot",
+          "volumeBcm": 0.080435
+        },
+        {
+          "country": "Azerbaycan",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 0.428386
+        },
+        {
+          "country": "Cezayir",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 0.385897
+        },
+        {
+          "country": "Rusya Federasyonu",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 0.809016
+        },
+        {
+          "country": "İran",
+          "licenseGroup": "Uzun Dönemli İthalat Lisansı",
+          "volumeBcm": 0.803504
+        }
+      ],
+      "domesticProductionBcm": 0.248721,
+      "undergroundStorageStockBcm": 3.719311,
+      "lngTerminalStockBcm": 0.504992,
+      "totalStorageStockBcm": 4.224303,
+      "powerGenerationDemandBcm": 0.609094,
+      "industryDemandBcm": 1.125332,
+      "residentialKonutDemandBcm": 4.035228,
+      "totalDemandBcm": 6.78697,
+      "lngImportsBcm": 2.93887,
+      "pipelineImportsBcm": 2.32104,
+      "totalImportsBcm": 5.25991,
+      "totalSupplyBcm": 5.508631,
+      "trackedDemandBcm": 5.769654,
+      "supplyDemandBalanceBcm": -1.278339
+    }
+  ],
+  "powerGeneration": {
+    "status": "wired",
+    "sourceUrl": "https://www.teias.gov.tr/aylik-elektrik-uretim-tuketim-raporlari",
+    "rows": [
+      {
+        "month": "2022-01",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 4716.429,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6472.833,
+        "ligniteGenerationGWh": 4112.059,
+        "coalGenerationGWh": 10584.892,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 4767.226,
+        "alternativeFuelsGenerationGWh": 752.648,
+        "grossGenerationGWh": 28747.082,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2022-02",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 5040.887,
+        "hardCoalImportedAsphaltiteGenerationGWh": 5655.054,
+        "ligniteGenerationGWh": 3666.552,
+        "coalGenerationGWh": 9321.606,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 4461.404,
+        "alternativeFuelsGenerationGWh": 702.807,
+        "grossGenerationGWh": 25906.477,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2022-03",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 8054.631,
+        "hardCoalImportedAsphaltiteGenerationGWh": 4467.196,
+        "ligniteGenerationGWh": 4050.204,
+        "coalGenerationGWh": 8517.4,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5419.281,
+        "alternativeFuelsGenerationGWh": 740.091,
+        "grossGenerationGWh": 28824.693,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2022-04",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 8681.765,
+        "hardCoalImportedAsphaltiteGenerationGWh": 3149.07,
+        "ligniteGenerationGWh": 3684.67,
+        "coalGenerationGWh": 6833.74,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5091.885,
+        "alternativeFuelsGenerationGWh": 761.066,
+        "grossGenerationGWh": 26170.213,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2022-05",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 8668.427,
+        "hardCoalImportedAsphaltiteGenerationGWh": 3264.324,
+        "ligniteGenerationGWh": 3474.517,
+        "coalGenerationGWh": 6738.841,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 4801.993,
+        "alternativeFuelsGenerationGWh": 825.136,
+        "grossGenerationGWh": 25666.766,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2022-06",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 6950.11,
+        "hardCoalImportedAsphaltiteGenerationGWh": 4723.348,
+        "ligniteGenerationGWh": 3773.119,
+        "coalGenerationGWh": 8496.467,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5555.284,
+        "alternativeFuelsGenerationGWh": 810.772,
+        "grossGenerationGWh": 27449.578,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2022-07",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 5608.45,
+        "hardCoalImportedAsphaltiteGenerationGWh": 5968.817,
+        "ligniteGenerationGWh": 3601.341,
+        "coalGenerationGWh": 9570.158,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 7200.983,
+        "alternativeFuelsGenerationGWh": 826.833,
+        "grossGenerationGWh": 29102.866,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2022-08",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 5415.065,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6640.607,
+        "ligniteGenerationGWh": 3656.384,
+        "coalGenerationGWh": 10296.991,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5571.738,
+        "alternativeFuelsGenerationGWh": 802.406,
+        "grossGenerationGWh": 31861.31,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2022-09",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 3935.998,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6478.627,
+        "ligniteGenerationGWh": 3624.855,
+        "coalGenerationGWh": 10103.482,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5111.481,
+        "alternativeFuelsGenerationGWh": 771.874,
+        "grossGenerationGWh": 27492.016,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2022-10",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 3298.086,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6885.921,
+        "ligniteGenerationGWh": 3838.459,
+        "coalGenerationGWh": 10724.38,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5582.96,
+        "alternativeFuelsGenerationGWh": 769.849,
+        "grossGenerationGWh": 25442.836,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2022-11",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 3155.033,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7344.209,
+        "ligniteGenerationGWh": 3705.593,
+        "coalGenerationGWh": 11049.802,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 4945.413,
+        "alternativeFuelsGenerationGWh": 825.466,
+        "grossGenerationGWh": 24904.288,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2022-12",
+        "sourceDocument": "2022 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 3277.616,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7529.195,
+        "ligniteGenerationGWh": 3952.498,
+        "coalGenerationGWh": 11481.693,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 4442.166,
+        "alternativeFuelsGenerationGWh": 863.62,
+        "grossGenerationGWh": 26811.213,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-01",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 2963.163,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7445.58,
+        "ligniteGenerationGWh": 4005.82,
+        "coalGenerationGWh": 11451.4,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 4765.599,
+        "alternativeFuelsGenerationGWh": 872.571,
+        "grossGenerationGWh": 27329.793,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-02",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 2420.168,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6013.256,
+        "ligniteGenerationGWh": 3299.586,
+        "coalGenerationGWh": 9312.842,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5008.427,
+        "alternativeFuelsGenerationGWh": 720.116,
+        "grossGenerationGWh": 24440.393,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-03",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 5353.886,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6216.977,
+        "ligniteGenerationGWh": 3341.549,
+        "coalGenerationGWh": 9558.526,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5490.529,
+        "alternativeFuelsGenerationGWh": 827.491,
+        "grossGenerationGWh": 26535.178,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-04",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 7437.851,
+        "hardCoalImportedAsphaltiteGenerationGWh": 4154.95,
+        "ligniteGenerationGWh": 2799.237,
+        "coalGenerationGWh": 6954.187,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5182.759,
+        "alternativeFuelsGenerationGWh": 832.874,
+        "grossGenerationGWh": 24276.998,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-05",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 7518.722,
+        "hardCoalImportedAsphaltiteGenerationGWh": 4742.122,
+        "ligniteGenerationGWh": 3105.929,
+        "coalGenerationGWh": 7848.051,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5459.724,
+        "alternativeFuelsGenerationGWh": 856.559,
+        "grossGenerationGWh": 26668.078,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-06",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 7554.066,
+        "hardCoalImportedAsphaltiteGenerationGWh": 5715.771,
+        "ligniteGenerationGWh": 3385.546,
+        "coalGenerationGWh": 9101.317,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5506.71,
+        "alternativeFuelsGenerationGWh": 829.375,
+        "grossGenerationGWh": 25552.004,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-07",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 6512.593,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7605.707,
+        "ligniteGenerationGWh": 3717.715,
+        "coalGenerationGWh": 11323.422,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 6713.373,
+        "alternativeFuelsGenerationGWh": 844.655,
+        "grossGenerationGWh": 32293.558,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-08",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 5442.836,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7744.993,
+        "ligniteGenerationGWh": 3574.596,
+        "coalGenerationGWh": 11319.589,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 6632.371,
+        "alternativeFuelsGenerationGWh": 863.321,
+        "grossGenerationGWh": 33985.011,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-09",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 3908.367,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7254.5,
+        "ligniteGenerationGWh": 3460.868,
+        "coalGenerationGWh": 10715.368,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 6547.602,
+        "alternativeFuelsGenerationGWh": 851.073,
+        "grossGenerationGWh": 28996.71,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-10",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 3875.331,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7088.527,
+        "ligniteGenerationGWh": 3709.514,
+        "coalGenerationGWh": 10798.041,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5148.911,
+        "alternativeFuelsGenerationGWh": 847.236,
+        "grossGenerationGWh": 26387.778,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-11",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 4205.926,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7163.462,
+        "ligniteGenerationGWh": 3605.343,
+        "coalGenerationGWh": 10768.805,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5568.959,
+        "alternativeFuelsGenerationGWh": 864.423,
+        "grossGenerationGWh": 26369.147,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2023-12",
+        "sourceDocument": "2023 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 6809.537,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6915.239,
+        "ligniteGenerationGWh": 3729.602,
+        "coalGenerationGWh": 10644.841,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5276.722,
+        "alternativeFuelsGenerationGWh": 915.039,
+        "grossGenerationGWh": 28314.248,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-01",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 8349.975,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6821.77,
+        "ligniteGenerationGWh": 3636.867,
+        "coalGenerationGWh": 10458.637,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 6172.537,
+        "alternativeFuelsGenerationGWh": 917.859,
+        "grossGenerationGWh": 29856.34,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-02",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 7495.113,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6874.115,
+        "ligniteGenerationGWh": 3343.335,
+        "coalGenerationGWh": 10217.45,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5483.448,
+        "alternativeFuelsGenerationGWh": 874.384,
+        "grossGenerationGWh": 27381.136,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-03",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 6815.624,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6597.803,
+        "ligniteGenerationGWh": 3527.6,
+        "coalGenerationGWh": 10125.403,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5400.99,
+        "alternativeFuelsGenerationGWh": 923.33,
+        "grossGenerationGWh": 28333.773,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-04",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 8085.259,
+        "hardCoalImportedAsphaltiteGenerationGWh": 3729.255,
+        "ligniteGenerationGWh": 2650.924,
+        "coalGenerationGWh": 6380.179,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 6977.745,
+        "alternativeFuelsGenerationGWh": 887.224,
+        "grossGenerationGWh": 24811.275,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-05",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 8270.368,
+        "hardCoalImportedAsphaltiteGenerationGWh": 4919.153,
+        "ligniteGenerationGWh": 3373.679,
+        "coalGenerationGWh": 8292.832,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 6395.623,
+        "alternativeFuelsGenerationGWh": 908.118,
+        "grossGenerationGWh": 27707.798,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-06",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 6527.884,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6027.73,
+        "ligniteGenerationGWh": 3439.961,
+        "coalGenerationGWh": 9467.691,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 7513.335,
+        "alternativeFuelsGenerationGWh": 887.238,
+        "grossGenerationGWh": 29293.545,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-07",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 6298.025,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7572.167,
+        "ligniteGenerationGWh": 4031.466,
+        "coalGenerationGWh": 11603.633,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 8636.835,
+        "alternativeFuelsGenerationGWh": 906.053,
+        "grossGenerationGWh": 35312.926,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-08",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 5347.03,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7827.217,
+        "ligniteGenerationGWh": 3945.426,
+        "coalGenerationGWh": 11772.643,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 7750.443,
+        "alternativeFuelsGenerationGWh": 921.349,
+        "grossGenerationGWh": 34551.997,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-09",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 4766.221,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7535.447,
+        "ligniteGenerationGWh": 3669.068,
+        "coalGenerationGWh": 11204.515,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 6054.129,
+        "alternativeFuelsGenerationGWh": 839.795,
+        "grossGenerationGWh": 29141.883,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-10",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 4195.235,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7434.255,
+        "ligniteGenerationGWh": 3614.642,
+        "coalGenerationGWh": 11048.897,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 6687.38,
+        "alternativeFuelsGenerationGWh": 923.565,
+        "grossGenerationGWh": 28203.98,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-11",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 4272.473,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7480.968,
+        "ligniteGenerationGWh": 3590.916,
+        "coalGenerationGWh": 11071.884,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5728.028,
+        "alternativeFuelsGenerationGWh": 882.326,
+        "grossGenerationGWh": 28884.285,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2024-12",
+        "sourceDocument": "2024 Yılı Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 4429.974,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7699.585,
+        "ligniteGenerationGWh": 3653.414,
+        "coalGenerationGWh": 11352.999,
+        "windGenerationGWh": null,
+        "solarGenerationGWh": null,
+        "geothermalWindSolarGenerationGWh": 5911.823,
+        "alternativeFuelsGenerationGWh": 902.464,
+        "grossGenerationGWh": 31091.274,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND +SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-01",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 4825.712,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7879.354,
+        "ligniteGenerationGWh": 3179.974,
+        "coalGenerationGWh": 11059.328,
+        "windGenerationGWh": 2830.024,
+        "solarGenerationGWh": 1707.921,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 878.508,
+        "grossGenerationGWh": 30897.751,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-02",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 4167.789,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7029.041,
+        "ligniteGenerationGWh": 2898.985,
+        "coalGenerationGWh": 9928.026,
+        "windGenerationGWh": 3056.53,
+        "solarGenerationGWh": 1831.561,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 786.583,
+        "grossGenerationGWh": 28860.278,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-03",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 5399.701,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6323.666,
+        "ligniteGenerationGWh": 2989.835,
+        "coalGenerationGWh": 9313.501,
+        "windGenerationGWh": 3474.534,
+        "solarGenerationGWh": 2958.585,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 886.128,
+        "grossGenerationGWh": 28671.489,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-04",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 7323.452,
+        "hardCoalImportedAsphaltiteGenerationGWh": 4538.247,
+        "ligniteGenerationGWh": 2904.947,
+        "coalGenerationGWh": 7443.194,
+        "windGenerationGWh": 2823.303,
+        "solarGenerationGWh": 3137.511,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 832.165,
+        "grossGenerationGWh": 27306.243,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-05",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 7410.423,
+        "hardCoalImportedAsphaltiteGenerationGWh": 4665.186,
+        "ligniteGenerationGWh": 3269.659,
+        "coalGenerationGWh": 7934.845,
+        "windGenerationGWh": 2783.522,
+        "solarGenerationGWh": 3981.911,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 883.411,
+        "grossGenerationGWh": 28416.026,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-06",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 4809.915,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6495.639,
+        "ligniteGenerationGWh": 2901.542,
+        "coalGenerationGWh": 9397.181,
+        "windGenerationGWh": 3821.634,
+        "solarGenerationGWh": 4578.653,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 839.505,
+        "grossGenerationGWh": 28380.084,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-07",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 5697.955,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7893.344,
+        "ligniteGenerationGWh": 3402.92,
+        "coalGenerationGWh": 11296.264,
+        "windGenerationGWh": 3579.837,
+        "solarGenerationGWh": 4580.823,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 859.487,
+        "grossGenerationGWh": 36657.114,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-08",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 4495.287,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7908.465,
+        "ligniteGenerationGWh": 3715.13,
+        "coalGenerationGWh": 11623.595,
+        "windGenerationGWh": 4579.778,
+        "solarGenerationGWh": 4419.185,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 856.801,
+        "grossGenerationGWh": 35841.572,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-09",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 3263.78,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7216.013,
+        "ligniteGenerationGWh": 3428.242,
+        "coalGenerationGWh": 10644.255,
+        "windGenerationGWh": 3790.723,
+        "solarGenerationGWh": 3791.329,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 860.341,
+        "grossGenerationGWh": 30234.29,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-10",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 2823.934,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7497.121,
+        "ligniteGenerationGWh": 3485.61,
+        "coalGenerationGWh": 10982.731,
+        "windGenerationGWh": 2590.798,
+        "solarGenerationGWh": 3104.931,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 898.959,
+        "grossGenerationGWh": 28032.3,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-11",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 3226.23,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7524.613,
+        "ligniteGenerationGWh": 3303.129,
+        "coalGenerationGWh": 10827.742,
+        "windGenerationGWh": 2991.451,
+        "solarGenerationGWh": 2309.776,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 891.055,
+        "grossGenerationGWh": 28022.467,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2025-12",
+        "sourceDocument": "Aralık 2025 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 3986.966,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7730.921,
+        "ligniteGenerationGWh": 3729.558,
+        "coalGenerationGWh": 11460.479,
+        "windGenerationGWh": 3115.858,
+        "solarGenerationGWh": 1666.857,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 927.716,
+        "grossGenerationGWh": 31672.564,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2026-01",
+        "sourceDocument": "Mart 2026 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 4241.122,
+        "hardCoalImportedAsphaltiteGenerationGWh": 7563.387,
+        "ligniteGenerationGWh": 3449.673,
+        "coalGenerationGWh": 11013.06,
+        "windGenerationGWh": 5227.049,
+        "solarGenerationGWh": 1581.638,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 887.721,
+        "grossGenerationGWh": 32617.988,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2026-02",
+        "sourceDocument": "Mart 2026 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 8232.089,
+        "hardCoalImportedAsphaltiteGenerationGWh": 6120.145,
+        "ligniteGenerationGWh": 2945.71,
+        "coalGenerationGWh": 9065.855,
+        "windGenerationGWh": 4063.668,
+        "solarGenerationGWh": 1994.098,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 846.899,
+        "grossGenerationGWh": 28227.786,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      },
+      {
+        "month": "2026-03",
+        "sourceDocument": "Mart 2026 Elektrik Üretim-Tüketim Raporu",
+        "hydroGenerationGWh": 10601.072,
+        "hardCoalImportedAsphaltiteGenerationGWh": 4841.193,
+        "ligniteGenerationGWh": 3164.653,
+        "coalGenerationGWh": 8005.846,
+        "windGenerationGWh": 3661.563,
+        "solarGenerationGWh": 3238.563,
+        "geothermalWindSolarGenerationGWh": null,
+        "alternativeFuelsGenerationGWh": 896.104,
+        "grossGenerationGWh": 29950.989,
+        "sourceRows": {
+          "hardCoalImportedAsphaltiteGenerationGWh": "Hard Coal + Imported Coal",
+          "ligniteGenerationGWh": "Lignite",
+          "hydroGenerationGWh": "HYDRO",
+          "windGenerationGWh": "WIND",
+          "solarGenerationGWh": "SOLAR",
+          "geothermalWindSolarGenerationGWh": "GEOTHERMAL + WIND + SOLAR",
+          "alternativeFuelsGenerationGWh": "Renew and Wastes",
+          "grossGenerationGWh": "GROSS GENERATION"
+        }
+      }
+    ],
+    "latestMonth": "2026-03",
+    "fixedHistory": {
+      "startMonth": "2022-01",
+      "endMonth": "2025-12",
+      "status": "pinned_static",
+      "backfilledThisRun": false,
+      "rows": 48
+    },
+    "refreshPolicy": "TEİAŞ 2022-2025 monthly power-generation rows are fixed history and preserved from the cached JSON. Weekly refresh only re-scrapes years after 2025 unless the fixed cache is missing or incomplete."
+  },
+  "sourceMap": [
+    {
+      "item": "LNG imports and pipeline imports",
+      "source": "EPDK monthly natural gas sector report PDF",
+      "sourceUrl": "https://www.epdk.gov.tr/Detay/Icerik/3-0-95-1007/dogal-gazaylik-sektor-raporu",
+      "pull": "PDF Table 2.1.2 / Gazın Türüne Göre Dağılım: LNG and Boru Gazı import split.",
+      "status": "wired"
+    },
+    {
+      "item": "Domestic production",
+      "source": "EPDK monthly report Excel appendix",
+      "sourceUrl": "https://www.epdk.gov.tr/Detay/Icerik/3-0-95-1007/dogal-gazaylik-sektor-raporu",
+      "pull": "Appendix Table 1, Genel Toplam production row; older 2025 DOCX reports use the overview balance table.",
+      "status": "wired"
+    },
+    {
+      "item": "Sectorial gas demand",
+      "source": "EPDK monthly report Excel appendix",
+      "sourceUrl": "https://www.epdk.gov.tr/Detay/Icerik/3-0-95-1007/dogal-gazaylik-sektor-raporu",
+      "pull": "Appendix Table 7. Power generation/conversion = section 1 total; industry = section 4; residential = Konut; sectorial demand total = Genel Toplam.",
+      "status": "wired"
+    },
+    {
+      "item": "Storage",
+      "source": "EPDK monthly report Excel appendix",
+      "sourceUrl": "https://www.epdk.gov.tr/Detay/Icerik/3-0-95-1007/dogal-gazaylik-sektor-raporu",
+      "pull": "Appendix Table 6 / DEPOLAMA. Underground, LNG terminal, and total stock.",
+      "status": "wired"
+    },
+    {
+      "item": "Import countries",
+      "source": "EPDK monthly report Excel appendix",
+      "sourceUrl": "https://www.epdk.gov.tr/Detay/Icerik/3-0-95-1007/dogal-gazaylik-sektor-raporu",
+      "pull": "Appendix Table 4 country rows under Spot and Uzun Dönemli İthalat Lisansı.",
+      "status": "wired"
+    },
+    {
+      "item": "Power generation by source",
+      "source": "TEİAŞ monthly electricity production-consumption reports",
+      "sourceUrl": "https://www.teias.gov.tr/aylik-elektrik-uretim-tuketim-raporlari",
+      "pull": "Kaynaklara Göre workbook sheet. Hydro = HYDRO. Coal = Hard Coal + Imported Coal plus Lignite. Wind = WIND and Solar = SOLAR when TEİAŞ publishes separate rows. For 2022-2024, TEİAŞ publishes one GEOTHERMAL + WIND + SOLAR row, so individual wind/solar stay blank and the combined row is shown separately. Alternative Fuels = Renew and Wastes / Yenilenebilir + Atık.",
+      "status": "wired"
+    }
+  ],
+  "notes": [
+    "No fallback rows are estimated.",
+    "Supply equation total is LNG imports + domestic production + pipeline imports.",
+    "Sectorial gas demand total is the EPDK sector table Genel Toplam.",
+    "Power generation/conversion, industry, and residential/Konut are shown as demanded sub-components.",
+    "TEİAŞ power-generation source rows are shown separately from the gas balance and are not used to force the EPDK gas equation."
+  ]
+}

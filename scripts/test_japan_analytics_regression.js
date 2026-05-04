@@ -78,12 +78,19 @@ assert(Array.isArray(data.nuclear?.series) && data.nuclear.series.length > 60, '
 assert(data.nuclear.series.at(-1).twh != null, 'Japan latest nuclear row needs TWh');
 assert(data.nuclear.source === 'Ember Monthly Electricity Data', 'Japan nuclear source must be Ember');
 assert(data.nuclear.capacityReference?.operableGw > 0, 'Japan nuclear utilization needs a sourced operable capacity reference');
+assert(data.nuclear.capacityReference?.restartAdjustedGw > 0, 'Japan nuclear utilization must use a restart-adjusted denominator');
+assert(
+  data.nuclear.capacityReference?.note?.includes('restart review') &&
+    data.nuclear.capacityReference?.note?.includes('maintenance'),
+  'Japan nuclear capacity note must explain restart-review exclusions and maintenance/offline treatment'
+);
 assert(Array.isArray(data.weather?.national) && data.weather.national.length >= 7, 'Japan weather needs at least seven forecast days');
 assert(data.weather.officialJmaLongRangeUrl?.includes('jma.go.jp'), 'Japan weather must preserve the official JMA long-range source link');
 assert(
-  scraper.includes('Area") != "Japan"') &&
+    scraper.includes('Area") != "Japan"') &&
     scraper.includes('Variable") != "Nuclear"') &&
     scraper.includes('capacityReference') &&
+    scraper.includes('"restartAdjustedGw": 14.609') &&
     scraper.includes('JAPAN_GAS_BALANCE_SOURCE_MAP') &&
     scraper.includes('load_customs_lng_imports') &&
     scraper.includes('CUSTOMS_HS_LNG = "271111000"') &&
@@ -91,6 +98,13 @@ assert(
     scraper.includes('OPEN_METEO_URL') &&
     scraper.includes('"weeklyLngStorage": None'),
   'Japan scraper must fetch real nuclear/weather data, parse Customs LNG imports, and keep unparsed Japan balance legs as gaps'
+);
+
+assert(
+  js.includes('const capGw = capRef.restartAdjustedGw || capRef.operableGw') &&
+    js.includes('GW restart-adjusted fleet') &&
+    js.includes('Restart-review reactors are excluded until proper commercial restart'),
+  'Japan nuclear UI must calculate and label utilization with the restart-adjusted fleet denominator'
 );
 
 if (!process.exitCode) console.log('Japan analytics regression checks passed');

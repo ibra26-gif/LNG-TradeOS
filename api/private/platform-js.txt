@@ -201,8 +201,9 @@
       return out;
     }
 
-    // Convert truck ¥/kg → $/MMBtu
-    function truckToUSD(cny_kg, usdcny) { return +(cny_kg*1000/(52*usdcny)).toFixed(3); }
+    // Convert truck ¥/kg → $/MMBtu. Use the same LNG heat content across
+    // China Gas Price Chain, China Gas Prices and Global Fundamentals 2.0.
+    function truckToUSD(cny_kg, usdcny) { return +(cny_kg*1000/(52.5*usdcny)).toFixed(3); }
     // Convert ¥/m³ → $/MMBtu (1 m³ nat gas ≈ 0.0373 MMBtu)
     function pipeToUSD(cny_m3, usdcny) { return +(cny_m3/(0.0373*usdcny)).toFixed(3); }
     // Convert diesel ¥/tonne → $/MMBtu (40.4 MMBtu/tonne)
@@ -233,12 +234,18 @@
       const rng    = CS.ranges.t1;
 
       // Use real SHPGX data if loaded, else simulated
-      const truckData = liveOrSim('truck', ()=>TRUCK_CNY);
-      const cldData   = liveOrSim('cld',   ()=>CLD_USD);
-      const extData   = liveOrSim('exterm',()=>EXTERM_CNY_T);
-      const latTruck = truckData[truckData.length-1]?.value||5.0;
-      const latCLD   = cldData[cldData.length-1]?.value||14.0;
-      const latEXT   = extData[extData.length-1]?.value||4600;
+      const truckData = chinaNorthTruckSeries();
+      const cldData   = liveOrSim('cld',   ()=>[]);
+      const extData   = liveOrSim('exterm',()=>[]);
+      const latTruck = truckData[truckData.length-1]?.value ?? null;
+      const latCLD   = cldData[cldData.length-1]?.value ?? null;
+      const latEXT   = extData[extData.length-1]?.value ?? null;
+      if(latTruck==null||latCLD==null||latEXT==null){
+        const metrics = document.getElementById('cs-t1-metrics');
+        if(metrics) metrics.innerHTML = `<div class="cs-mc" style="grid-column:1/-1"><div class="cs-mc-lbl">SHPGX SOURCE GAP</div><div class="cs-mc-val">--</div><div class="cs-mc-sub">Load SHPGX truck, CLD and ex-terminal rows. No simulated price is shown.</div></div>`;
+        ['cs-wf-canvas','cs-t1-hist-canvas'].forEach(id=>{if(CS.charts[id]){CS.charts[id].destroy();delete CS.charts[id];}});
+        return;
+      }
 
       // Cost stack
       const vat = 0.09;
@@ -377,7 +384,7 @@
 
       // Use truck data dates as the primary x-axis for Tab 2
       // Then map JKM/LT onto those dates for comparison
-      const _tD=liveOrSim("truck",()=>TRUCK_CNY);
+      const _tD=chinaNorthTruckSeries();
       const daysMap2={'1M':30,'3M':90,'6M':180,'1Y':365};
       const days2=daysMap2[CS.ranges.t2]||90;
       const cutoff2=new Date(); cutoff2.setDate(cutoff2.getDate()-days2);
@@ -464,8 +471,8 @@
     function csT3Update() {
       const usdcny = parseFloat(document.getElementById('cs-usdcny')?.value||7.25);
       const rng = CS.ranges.t3;
-      const filtTruck  = filterByRng(liveOrSim("truck",()=>TRUCK_CNY), rng);
-      const filtDiesel = filterByRng(liveOrSim("diesel",()=>DIESEL_CNY_T), rng);
+      const filtTruck  = filterByRng(chinaNorthTruckSeries(), rng);
+      const filtDiesel = filterByRng(liveOrSim("diesel",()=>[]), rng);
       const labels     = filtTruck.map(r=>r.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}));
       const truckUSD   = filtTruck.map(r=>truckToUSD(r.value,usdcny));
       const dieselAligned = filtTruck.map(r=>{ const m=filtDiesel.find(x=>x.dateStr===r.dateStr); return m?dieselToUSD(m.value,usdcny):null; });
@@ -835,15 +842,16 @@ function csPricesUpdate(){
   const ltFloor=brentLatest?+(brentLatest*0.11).toFixed(2):null;
   const ltCeil=brentLatest?+(brentLatest*0.14).toFixed(2):null;
 
-  // Truck (CNY/kg → $/MMBtu): ×1000 ÷ fx ÷ 52.5
-  const truckRaw=liveOrSim('truck',()=>TRUCK_CNY);
+  // Truck (CNY/kg → $/MMBtu): ×1000 ÷ fx ÷ 52.5. Use the same North
+  // China aggregate series as Gas Price Chain and Global Fundamentals 2.0.
+  const truckRaw=chinaNorthTruckSeries();
   const latTruck=truckRaw.length?truckRaw[truckRaw.length-1]:null;
   const truckUSD=latTruck?+(latTruck.value*1000/fx/52.5).toFixed(2):null;
   const prevTruck=truckRaw.length>1?truckRaw[truckRaw.length-2]:null;
   const truckChg=truckUSD!=null&&prevTruck?+(truckUSD-prevTruck.value*1000/fx/52.5).toFixed(2):null;
 
   // Diesel (CNY/tonne → $/MMBtu): ÷ fx ÷ 43.1
-  const dieselRaw=liveOrSim('diesel',()=>typeof DIESEL_CNY_T!=='undefined'?DIESEL_CNY_T:[]);
+  const dieselRaw=liveOrSim('diesel',()=>[]);
   const latDiesel=dieselRaw.length?dieselRaw[dieselRaw.length-1]:null;
   const dieselUSD=latDiesel?+(latDiesel.value/fx/43.1).toFixed(2):null;
   const prevDiesel=dieselRaw.length>1?dieselRaw[dieselRaw.length-2]:null;
@@ -1142,8 +1150,17 @@ window.csPricesUpdate=csPricesUpdate;
       return SHPGX[key].map(r=>({
         date: new Date(r.date.slice(0,10)),
         dateStr: r.date.slice(0,10),
-        value: parseFloat(r.price_cny_kg||r.price_usd_mmbtu||r.price_cny_tonne||r.price_cny_m3||0)
+        value: parseFloat(r.price_cny_kg||r.price_usd_mmbtu||r.price_cny_tonne||r.price_cny_m3||0),
+        region: r.region || '',
+        raw: r
       })).filter(r=>!isNaN(r.value)&&r.value>0).sort((a,b)=>a.date-b.date);
+    }
+
+    function chinaNorthTruckSeries() {
+      const live = liveOrSim('truck', []);
+      if(!live.length) return [];
+      const north = live.filter(r=>String(r.region||r.raw?.region||'').includes('华北'));
+      return (north.length ? north : live).sort((a,b)=>a.date-b.date);
     }
 
     // ── API fetch: calls /api/shpgx Vercel function ──────────────────────────
@@ -2088,8 +2105,8 @@ function brentFallback(){const d=new Date();for(let i=0;i<6;i++){const mo=`${d.g
 let finLoaded=false;
 const PH_T={freight:'FREIGHT RATE CALCULATOR',cargo:'LNG GLOBAL NETBACK',mktstr:'MARKET STRUCTURE PRICING',regas:'EU REGAS MODEL',acer:'HISTORICAL ACER'};
 const PH_D={freight:'Voyage cost estimation across global LNG shipping routes with BLNG curves',cargo:'USGC/WAF/Oman arb, DES pricing, FOB netback matrix and global cargo economics',mktstr:'Near/far curve structure, per-day roll, pricing formula generation for JKM and TTF — leverages the loaded forward curve',regas:'European regasification terminal pricing, cost graphs, netback analysis and slot valuation',acer:'ACER daily DES physical NWE · SE · EU — seasonal scatter all daily obs, 2023–2026'};
-const GA_T={lngbal:'GLOBAL LNG BALANCES & SIGNPOSTS',eugas:'EU GAS BALANCE',euren:'EUROPEAN RENEWABLE',storage:'EU STORAGE',regas:'LNG REGAS'};
-const GA_D={lngbal:'Key LNG country balances and pricing signals',eugas:'Pipeline imports, domestic production, LNG flows and EU gas demand — seasonal views',euren:'Hydro, wind and solar generation by country — seasonal ENTSO-E charts',storage:'EU and country storage levels, seasonal comparison and injection/withdrawal — GIE AGSI+',regas:'Terminal utilisation heatmap, tank stocks, sendout and country aggregate — GIE AGGI+'};
+const GA_T={lngbal:'GLOBAL LNG BALANCES & SIGNPOSTS',eugas:'EU GAS BALANCE',euren:'EUROPEAN RENEWABLE',weather:'WEATHER TRACKING',storage:'EU STORAGE',regas:'LNG REGAS'};
+const GA_D={lngbal:'Key LNG country balances and pricing signals',eugas:'Pipeline imports, domestic production, LNG flows and EU gas demand — seasonal views',euren:'Hydro, wind and solar generation by country — seasonal ENTSO-E charts',weather:'Open-Meteo HDD/CDD, wind forecast and NAO regime tracking by LNG demand center',storage:'EU and country storage levels, seasonal comparison and injection/withdrawal — GIE AGSI+',regas:'Terminal utilisation heatmap, tank stocks, sendout and country aggregate — GIE AGGI+'};
 const PV_T={single:'SINGLE DEAL VALUATION',strips:'STRIPS VALUATION',portfolio:'PORTFOLIO VALUATION'};
 const PV_D={single:'Full extrinsic and optionality valuation for individual LNG cargo contracts',strips:'Multi-cargo strip optionality decomposition',portfolio:'Aggregated P&L, exposure summary and blended optionality'};
 const TB_T={converter:'NATURAL GAS CONVERTER',gasspec:'GAS SPECIFICATIONS',portcosts:'PORT COST DATABASE'};
@@ -2143,6 +2160,7 @@ function gaMainTab(id,btn){
     return;
   }
   if(id==='euren'){renderEuroRenewables();return;}
+  if(id==='weather'){renderWeatherTracking();return;}
   if(id==='lngbal' && typeof csInit==='function') setTimeout(csInit,120);
   if(id==='lngvc'){if(!window.gaInitDone)gaInitAll();setTimeout(renderLngVC,80);return;}
   if(!window.gaInitDone) gaInitAll();
@@ -13667,7 +13685,24 @@ function pDFN(name){
   return null;
 }
 function gSeaP(){const pks=aPKs();const years=[...new Set(pks.map(pk=>pk.split('-')[0]))];const out=[];years.forEach(y=>{out.push({v:'win-'+y,l:'Win-'+String(y).slice(2),months:[10,11,12,1,2,3],y:+y,type:'seasonal'});out.push({v:'sum-'+y,l:'Sum-'+String(y).slice(2),months:[4,5,6,7,8,9],y:+y,type:'seasonal'});['q1','q2','q3','q4'].forEach((q,qi)=>{const mths=[[1,2,3],[4,5,6],[7,8,9],[10,11,12]][qi];out.push({v:`${q}-${y}`,l:`${q.toUpperCase()}-${String(y).slice(2)}`,months:mths,y:+y,type:'quarterly'});});});return out;}
-function gAgg(inst,t,rows){const vals=[];t.months.forEach(m=>{const yr=(m<=3&&t.months.includes(12))?t.y+1:t.y;const pk=`${yr}-${String(m).padStart(2,'0')}`;const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)vals.push(row[inst]);});if(!vals.length)return null;return vals.reduce((a,b)=>a+b,0)/vals.length;}
+function rowInstValue(row,inst){
+  if(!row) return null;
+  const direct=row[inst];
+  if(direct!=null && direct!=='' && isFinite(+direct)) return +direct;
+  // Derived spread fallback from sourced legs only. This is not a backfill:
+  // if either leg is missing, the spread stays blank.
+  const n=k=>row[k]!=null&&row[k]!==''&&isFinite(+row[k])?+row[k]:null;
+  const j=n('JKM'),t=n('TTF'),h=n('HH'),b=n('NBP');
+  const calc=(a,c)=>a!=null&&c!=null?+(a-c).toFixed(4):null;
+  if(inst==='SP_JT') return calc(j,t);
+  if(inst==='SP_JH') return calc(j,h);
+  if(inst==='SP_TH') return calc(t,h);
+  if(inst==='SP_JN') return calc(j,b);
+  if(inst==='SP_HN') return calc(h,b);
+  if(inst==='SP_TN') return calc(t,b);
+  return null;
+}
+function gAgg(inst,t,rows){const vals=[];t.months.forEach(m=>{const yr=(m<=3&&t.months.includes(12))?t.y+1:t.y;const pk=`${yr}-${String(m).padStart(2,'0')}`;const row=rows.find(r=>r.pk===pk);const v=rowInstValue(row,inst);if(v!=null)vals.push(v);});if(!vals.length)return null;return vals.reduce((a,b)=>a+b,0)/vals.length;}
 function pExcel(buf){const wb=XLSX.read(buf,{type:'array',cellDates:true});let ws=wb.Sheets['EXCEL PASTE'];if(!ws){const mn=wb.SheetNames.find(n=>n.replace(/\s/g,'').toUpperCase()==='EXCELPASTE');if(mn)ws=wb.Sheets[mn];}if(!ws){for(const n of wb.SheetNames){const d=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:null,raw:false});if(d.slice(0,10).some(r=>r&&String(r[0]).trim()==='Period')){ws=wb.Sheets[n];break;}}}if(!ws)return[];const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});let hdr=-1;for(let i=0;i<Math.min(data.length,15);i++){const row=data[i];if(!row)continue;const c0=row[0]!=null?String(row[0]).trim():'';if(c0==='Period'||row.some(v=>v!=null&&String(v).trim()==='BRT SW')){hdr=i;break;}}if(hdr===-1)return[];const hdrs=data[hdr].map(h=>h?String(h).trim():'');const C={};for(const[k,c]of Object.entries(CN))C[k]=fCol2(hdrs,c);const rows=[];let nulls=0;for(let i=hdr+6;i<data.length;i++){const r=data[i];if(!r||r[0]==null){if(++nulls>8)break;continue;}nulls=0;const pk=getPK(r[0]);if(!pk)continue;const eu=(C.EURUSD>=0?toNum(r[C.EURUSD]):null)||1.15,gb=(C.GBPUSD>=0?toNum(r[C.GBPUSD]):null)||1.28;const g=k=>C[k]>=0?toNum(r[C[k]]):null;const ttfR=g('TTF'),nbpR=g('NBP'),jkm=g('JKM'),hh=g('HH'),brent=g('BRENT'),dated=g('DATED'),slope=g('SLOPE');
 // Prefer TFU (OB's own TTF in $/MMBtu) over computed conversion — more accurate
 const tfu=g('TFU');
@@ -13870,15 +13905,15 @@ async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.m
 function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();buildEuHubChart();updHist();if(typeof crxInvalidateCache==='function')crxInvalidateCache();cInit();updSpread();updFC();updSea();}
 function rPK(d,t){const r=new Date(d.getFullYear(),d.getMonth()+parseInt(t),1);return`${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}`;}
 function pkKey(pk){const m=String(pk||'').match(/^(\d{4})-(\d{2})$/);return m?(+m[1])*12+(+m[2]):null;}
-function rowHasInst(row,inst){return inst?row?.[inst]!=null:Object.keys(row||{}).some(k=>k!=='pk'&&row[k]!=null);}
+function rowHasInst(row,inst){return inst?rowInstValue(row,inst)!=null:Object.keys(row||{}).some(k=>k!=='pk'&&row[k]!=null);}
 function rollPkFromRows(rows,date,t=1,inst=null){
   const ref=date.getFullYear()*12+(date.getMonth()+1);
   const pks=[...new Set((rows||[]).filter(r=>rowHasInst(r,inst)).map(r=>r.pk).filter(pk=>{const k=pkKey(pk);return k&&k>ref;}))].sort();
   return pks[Math.max(0,parseInt(t,10)-1)]||rPK(date,t);
 }
 function aPKs(){const s=new Set();for(const ds of sDates)aD[ds].rows.forEach(r=>s.add(r.pk));return[...s].sort();}
-function gSR(inst,t){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const pk=rollPkFromRows(rows,date,t,inst);const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst],pk});}return out;}
-function gSF(inst,pk){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const row=rows.find(r=>r.pk===pk);if(row&&row[inst]!=null)out.push({date,value:row[inst]});}return out;}
+function gSR(inst,t){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const pk=rollPkFromRows(rows,date,t,inst);const row=rows.find(r=>r.pk===pk);const v=rowInstValue(row,inst);if(v!=null)out.push({date,value:v,pk});}return out;}
+function gSF(inst,pk){const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const row=rows.find(r=>r.pk===pk);const v=rowInstValue(row,inst);if(v!=null)out.push({date,value:v});}return out;}
 function gSS(inst,tv){const sea=gSeaP();const tObj=sea.find(s=>s.v===tv);if(!tObj)return[];const out=[];for(const ds of sDates){const{date,rows}=aD[ds];const val=gAgg(inst,tObj,rows);if(val!=null)out.push({date,value:val});}return out;}
 function gS(inst,tv){if(EEX_HUBS.includes(inst))return eexGS(inst,tv);if(tv.startsWith('r'))return gSR(inst,parseInt(tv.slice(1)));if(tv.startsWith('win-')||tv.startsWith('sum-')||tv.startsWith('q'))return gSS(inst,tv);return gSF(inst,tv);}
 function tvL(tv){if(tv.startsWith('r'))return'M+'+tv.slice(1);const s=gSeaP().find(x=>x.v===tv);if(s)return s.l;return pkL(tv);}
@@ -13913,7 +13948,7 @@ function aDval(inst, dateStr, contractPk=null){
   const entry=aD[dateStr]||aD[sDates.filter(d=>d<=dateStr).slice(-1)[0]];
   if(!entry) return null;
   const pk=contractPk||rollPkFromRows(entry.rows,entry.date,1,inst);
-  return entry.rows.find(r=>r.pk===pk)?.[inst]??null;
+  return rowInstValue(entry.rows.find(r=>r.pk===pk),inst);
 }
 
 function buildDash(){
@@ -13934,7 +13969,7 @@ function buildDash(){
   function mcLNG(k){
     const inst=INST[k];
     const pk=rollPkFromRows(lR,aD[ld].date,1,k);
-    const lv=lR.find(r=>r.pk===pk)?.[k]??null,pv=pR.find(r=>r.pk===pk)?.[k]??null;
+    const lv=rowInstValue(lR.find(r=>r.pk===pk),k),pv=rowInstValue(pR.find(r=>r.pk===pk),k);
     const chg=(lv!=null&&pv!=null)?+(lv-pv).toFixed(4):null;
     const pct=(chg!=null&&pv&&pv!==0)?+(chg/pv*100).toFixed(2):null;
     const cls=chg==null?'neu':chg>0?'pos':'neg',arr=chg==null?'':chg>0?'▲':'▼';
@@ -14024,7 +14059,7 @@ function buildDash(){
   // ── DoD table ────────────────────────────────────────────────────────────
   const keys=['JKM','TTF','HH','NBP','Brent','Dated','Slope','SP_JT','SP_JH','SP_TH'],pks=lR.map(r=>r.pk).slice(0,12);
   let dod=`<table class="stbl" style="font-size:10px"><thead><tr><th>Contract</th>${keys.map(k=>`<th>${INST[k].label}</th>`).join('')}</tr></thead><tbody>`;
-  for(const pk of pks){const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);dod+=`<tr><td>${pkL(pk)}</td>${keys.map(k=>{const lv=lr?.[k]??null,pv=pr?.[k]??null,d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null,dp=(k==='Brent'||k==='Dated')?2:3;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;}).join('')}</tr>`;}
+  for(const pk of pks){const lr=lR.find(r=>r.pk===pk),pr=pR.find(r=>r.pk===pk);dod+=`<tr><td>${pkL(pk)}</td>${keys.map(k=>{const lv=rowInstValue(lr,k),pv=rowInstValue(pr,k),d=(lv!=null&&pv!=null)?+(lv-pv).toFixed(3):null,dp=(k==='Brent'||k==='Dated')?2:3;return`<td class="${d==null?'':d>0?'pos':'neg'}">${d!=null?(d>0?'+':'')+d.toFixed(dp):'—'}</td>`;}).join('')}</tr>`;}
   const dd=$id('dash-dod');if(dd)dd.innerHTML=dod+'</tbody></table>';
 }
 
@@ -14048,8 +14083,8 @@ function dash2LatestM1(inst){
   const ld = sDates[sDates.length-1];
   const pd = sDates[sDates.length-2];
   const m1 = rollPkFromRows(aD[ld].rows, aD[ld].date, 1, inst);
-  const lv = aD[ld].rows.find(r => r.pk === m1)?.[inst] ?? null;
-  const pv = aD[pd].rows.find(r => r.pk === m1)?.[inst] ?? null;
+  const lv = rowInstValue(aD[ld].rows.find(r => r.pk === m1), inst);
+  const pv = rowInstValue(aD[pd].rows.find(r => r.pk === m1), inst);
   if (lv == null) return null;
   const change = (lv != null && pv != null) ? +(lv - pv).toFixed(4) : null;
   const dp = INST[inst]?.unit === '$/bbl' ? 2 : 3;
@@ -14281,7 +14316,7 @@ function dash2TenorPrice(inst, tenorCode, dateIdx){
   if (tenorCode.startsWith('r')) {
     const n = parseInt(tenorCode.slice(1), 10);
     const pk = rollPkFromRows(ent.rows, ent.date, n, inst);
-    return ent.rows.find(r => r.pk === pk)?.[inst] ?? null;
+    return rowInstValue(ent.rows.find(r => r.pk === pk), inst);
   }
   if (tenorCode.startsWith('q') || tenorCode.startsWith('win-') || tenorCode.startsWith('sum-')) {
     const tObj = gSeaP().find(s => s.v === tenorCode);
@@ -14475,14 +14510,14 @@ function dash2FwdPriceAt(inst, contract, which){
   if(contract&&contract.startsWith('r')){
     const n=parseInt(contract.slice(1),10);
     const pk=rollPkFromRows(ent.rows,ent.date,n,inst);
-    return ent.rows.find(r=>r.pk===pk)?.[inst]??null;
+    return rowInstValue(ent.rows.find(r=>r.pk===pk), inst);
   }
   if (contract.startsWith('cal-')) {
     const year = contract.slice(4);
     const vals = [];
     for (let m = 1; m <= 12; m++){
       const pk = `${year}-${String(m).padStart(2,'0')}`;
-      const v = ent.rows.find(r => r.pk === pk)?.[inst];
+      const v = rowInstValue(ent.rows.find(r => r.pk === pk), inst);
       if (v != null) vals.push(v);
     }
     return vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : null;
@@ -14493,7 +14528,7 @@ function dash2FwdPriceAt(inst, contract, which){
     return gAgg(inst, tObj, ent.rows);
   }
   // Monthly pk like '2026-06'
-  return ent.rows.find(r => r.pk === contract)?.[inst] ?? null;
+  return rowInstValue(ent.rows.find(r => r.pk === contract), inst);
 }
 
 function dash2FwdCellHTML(inst, contract){
@@ -14806,6 +14841,17 @@ function buildEuHubChart(){
 function updHist(){
   const i1=$id('h-i1').value,t1=$id('h-t1').value,i2=$id('h-i2').value,t2=$id('h-t2').value,has2=i2!=='none';
   let s1=gS(i1,t1),s2=has2?gS(i2,t2):null;
+  const latestLoaded=sDates.length?sDates[sDates.length-1]:null;
+  const latestSeries=s1.length?toStr(s1[s1.length-1].date):null;
+  const title=$id('h-chart-title');
+  const eexLatest=eexDates&&eexDates.length?eexDates[eexDates.length-1]:null;
+  const gapNote=latestLoaded&&latestSeries&&latestSeries<latestLoaded
+    ? ` · latest plotted ${fmtD(latestSeries)}; ${fmtD(latestLoaded)} has no ${INST[i1]?.label||i1} ${tvL(t1)} value`
+    : '';
+  const eexNote=EEX_HUBS.includes(i1)&&latestLoaded&&eexLatest&&eexLatest<latestLoaded
+    ? ` · EEX latest ${fmtD(eexLatest)} vs LNG EOD ${fmtD(latestLoaded)}`
+    : '';
+  if(title) title.textContent=`DAILY PRICE HISTORY — ${INST[i1]?.label||i1} ${tvL(t1)} · $/MMBtu${gapNote}${eexNote}`;
   // Apply date range filter
   const cut=rangeStart(_histRange);
   if(cut){s1=s1.filter(d=>d.date>=cut);if(s2)s2=s2.filter(d=>d.date>=cut);}
@@ -17525,7 +17571,7 @@ function fc2GetCurve(inst, date){
   rows.sort((a, b) => a.pk.localeCompare(b.pk));
   return {
     pks: rows.map(r => r.pk),
-    values: rows.map(r => r[inst] != null ? +r[inst].toFixed(4) : null),
+    values: rows.map(r => { const v=rowInstValue(r,inst); return v != null ? +v.toFixed(4) : null; }),
   };
 }
 
@@ -17851,7 +17897,7 @@ function updFC(){
     tile('Shape', shape.label, '', shape.color),
   ].join('');
 }
-function updSea(){if(!sDates.length)return;const inst=$id('sea-i').value,type=$id('sea-type').value,unit=INST[inst].unit,st=$id('sea-title');if(st)st.textContent=INST[inst].label+' — SEASONAL · YEAR OVER YEAR ('+unit+')';const yd={};if(type==='fwd'){const lat=sDates[sDates.length-1];aD[lat].rows.forEach(r=>{const[y,m]=r.pk.split('-');if(!yd[+y])yd[+y]={};if(r[inst]!=null)yd[+y][+m-1]=r[inst];});}else{sDates.forEach(ds=>{const{date,rows}=aD[ds],yr=date.getFullYear(),mo=date.getMonth(),pk=rollPkFromRows(rows,date,1,inst),row=rows.find(r=>r.pk===pk);if(!row||row[inst]==null)return;if(!yd[yr])yd[yr]={};if(yd[yr][mo]===undefined)yd[yr][mo]=row[inst];});}const years=Object.keys(yd).map(Number).sort(),dsets=years.map((yr,idx)=>({label:String(yr),data:MA.map((_,mo)=>yd[yr][mo]!==undefined?+yd[yr][mo].toFixed(4):null),borderColor:SC[idx%SC.length],backgroundColor:'transparent',borderWidth:2,pointRadius:4,tension:.3,spanGaps:false}));if(seaChart)seaChart.destroy();const sc=$id('seaChart');if(sc)seaChart=new Chart(sc.getContext('2d'),{type:'line',data:{labels:MA,datasets:dsets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});let tbl=`<thead><tr><th>Month</th>${years.map(y=>`<th>${y}</th>`).join('')}${years.slice(0,-1).map((y,i)=>`<th>${y}→${years[i+1]}</th>`).join('')}</tr></thead><tbody>`;MA.forEach((m,mo)=>{tbl+=`<tr><td>${m}</td>${years.map(yr=>`<td>${yd[yr][mo]!==undefined?yd[yr][mo].toFixed(3):'—'}</td>`).join('')}`;for(let i=0;i<years.length-1;i++){const a=yd[years[i]][mo],b=yd[years[i+1]][mo];tbl+=a!==undefined&&b!==undefined?`<td class="${b-a>=0?'pos':'neg'}">${b-a>=0?'+':''}${(b-a).toFixed(3)}</td>`:`<td style="color:#3d5070">—</td>`;}tbl+=`</tr>`;});const st2=$id('sea-tbl');if(st2)st2.innerHTML=tbl+'</tbody>';}
+function updSea(){if(!sDates.length)return;const inst=$id('sea-i').value,type=$id('sea-type').value,unit=INST[inst].unit,st=$id('sea-title');if(st)st.textContent=INST[inst].label+' — SEASONAL · YEAR OVER YEAR ('+unit+')';const yd={};if(type==='fwd'){const lat=sDates[sDates.length-1];aD[lat].rows.forEach(r=>{const[y,m]=r.pk.split('-');const v=rowInstValue(r,inst);if(!yd[+y])yd[+y]={};if(v!=null)yd[+y][+m-1]=v;});}else{sDates.forEach(ds=>{const{date,rows}=aD[ds],yr=date.getFullYear(),mo=date.getMonth(),pk=rollPkFromRows(rows,date,1,inst),row=rows.find(r=>r.pk===pk);const v=rowInstValue(row,inst);if(v==null)return;if(!yd[yr])yd[yr]={};if(yd[yr][mo]===undefined)yd[yr][mo]=v;});}const years=Object.keys(yd).map(Number).sort(),dsets=years.map((yr,idx)=>({label:String(yr),data:MA.map((_,mo)=>yd[yr][mo]!==undefined?+yd[yr][mo].toFixed(4):null),borderColor:SC[idx%SC.length],backgroundColor:'transparent',borderWidth:2,pointRadius:4,tension:.3,spanGaps:false}));if(seaChart)seaChart.destroy();const sc=$id('seaChart');if(sc)seaChart=new Chart(sc.getContext('2d'),{type:'line',data:{labels:MA,datasets:dsets},options:{...CD,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{title:{display:true,text:unit,color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}}}});let tbl=`<thead><tr><th>Month</th>${years.map(y=>`<th>${y}</th>`).join('')}${years.slice(0,-1).map((y,i)=>`<th>${y}→${years[i+1]}</th>`).join('')}</tr></thead><tbody>`;MA.forEach((m,mo)=>{tbl+=`<tr><td>${m}</td>${years.map(yr=>`<td>${yd[yr][mo]!==undefined?yd[yr][mo].toFixed(3):'—'}</td>`).join('')}`;for(let i=0;i<years.length-1;i++){const a=yd[years[i]][mo],b=yd[years[i+1]][mo];tbl+=a!==undefined&&b!==undefined?`<td class="${b-a>=0?'pos':'neg'}">${b-a>=0?'+':''}${(b-a).toFixed(3)}</td>`:`<td style="color:#3d5070">—</td>`;}tbl+=`</tr>`;});const st2=$id('sea-tbl');if(st2)st2.innerHTML=tbl+'</tbody>';}
 function updSpread(){
   const i1=$id('sp-i1').value,t1=$id('sp-t1').value,i2=$id('sp-i2').value,t2=$id('sp-t2').value;
   if(!i1||!i2||!t1||!t2) return;
@@ -19976,24 +20022,48 @@ const DOMPROD_CODE_TO_LABEL = {
 // under 25s and lets us re-render progressively as years arrive.
 const _domYearInflight = {}; // year → Promise (so concurrent calls don't double-fetch)
 
+function gaDomProdMonthRanges(year, today){
+  const curY = Number(String(today||'').slice(0,4)) || new Date().getFullYear();
+  const end = year < curY ? `${year}-12-31` : today;
+  const endMonth = Math.max(1, Math.min(12, Number(String(end).slice(5,7)) || 12));
+  const ranges = [];
+  for(let m=1; m<=endMonth; m++){
+    const mm = String(m).padStart(2,'0');
+    const from = `${year}-${mm}-01`;
+    const monthEnd = new Date(Date.UTC(year, m, 0)).toISOString().slice(0,10);
+    const to = m===endMonth ? end : monthEnd;
+    if(to >= from) ranges.push({from,to});
+  }
+  return ranges;
+}
+
 async function gaLoadDomProductionYear(year){
   if(_domYearInflight[year]) return _domYearInflight[year];
   const today = new Date().toISOString().slice(0,10);
-  const yStart = `${year}-01-01`;
-  const yEnd   = year < new Date().getFullYear() ? `${year}-12-31` : today;
-  const cacheKey = `dom_prod_eu_v5_${year}`;
+  const cacheKey = `dom_prod_eu_v6_${year}`;
   const ttlH = year < new Date().getFullYear() ? 720 : 6; // closed years: 30d, current: 6h
 
   _domYearInflight[year] = (async () => {
     let raw = gaCacheGet(cacheKey);
     if(!raw){
+      const ranges = gaDomProdMonthRanges(year, today);
+      const rows = [];
+      let completeFetch = true;
       try{
-        const r = await fetch(`/api/entsog-prod?from=${yStart}&to=${yEnd}`,
-          { signal: AbortSignal.timeout(28000) });
-        if(!r.ok) throw new Error(`proxy ${r.status}`);
-        const j = await r.json();
-        raw = { rows: j.rows || [] };
-        gaCacheSet(cacheKey, raw, ttlH);
+        for(const {from,to} of ranges){
+          try{
+            const r = await fetch(`/api/entsog-prod?from=${from}&to=${to}`,
+              { signal: AbortSignal.timeout(28000) });
+            if(!r.ok) throw new Error(`proxy ${r.status}`);
+            const j = await r.json();
+            rows.push(...(j.rows || []));
+          } catch(e){
+            completeFetch = false;
+            console.warn(`Dom prod ${year} ${from}..${to}:`, e.message);
+          }
+        }
+        raw = { rows, chunked: 'monthly' };
+        if(completeFetch && rows.length) gaCacheSet(cacheKey, raw, ttlH);
       } catch(e){
         console.warn(`Dom prod ${year}:`, e.message);
         return false;
@@ -20773,6 +20843,8 @@ function gdRerenderActive(){
     eugasTab(sub);
   } else if(id==='ga-tab-euren'){
     renderEuroRenewables();
+  } else if(id==='ga-tab-weather'){
+    renderWeatherTracking();
   } else if(id==='ga-tab-storage'){
     const activeSub = document.querySelector('#ga-stor-subtabs .ga-stab.active');
     const sub = activeSub?.textContent?.toLowerCase().includes('country')?'country':
@@ -21146,7 +21218,7 @@ async function renderGaDashboard(){
 
     <!-- Quick nav -->
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:12px">
-      ${[['LNG BALANCE','lngbal'],['EU GAS','eugas'],['STORAGE','storage'],['LNG REGAS','regas'],['LNG VALUE CHAIN','lngvc']].map(([l,id])=>
+      ${[['LNG BALANCE','lngbal'],['EU GAS','eugas'],['STORAGE','storage'],['LNG REGAS','regas'],['LNG VALUE CHAIN','lngvc'],['WEATHER','weather']].map(([l,id])=>
         `<button class="gbtn sm" onclick="gaMainTab('${id}',document.getElementById('gmtab-${id}'))">${l} →</button>`
       ).join('')}
     </div>
@@ -21618,6 +21690,212 @@ async function _loadFrNuclear(targetId='db-fr-nuclear'){
     </div>`;
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// WEATHER TRACKING — Open-Meteo HDD/CDD, wind and NAO regime
+// No demand weights are inferred. Multi-city areas are equal-city baskets.
+// ═══════════════════════════════════════════════════════════════════════
+const WX_PREF_KEY='weather_tracking_prefs_v1';
+const WX_FORECAST_DAYS=46;
+const WX_HIST_VARS=['temperature_2m_mean','wind_speed_10m_mean','wind_speed_100m_mean'];
+const WX_METRICS={
+  hdd:{label:'HDD',unit:'degree days',note:'max(base - daily mean temp, 0)'},
+  cdd:{label:'CDD',unit:'degree days',note:'max(daily mean temp - base, 0)'},
+  temp:{label:'Mean temperature',unit:'deg C',note:'daily mean 2m temperature'},
+  wind10:{label:'10m wind',unit:'km/h',note:'daily mean 10m wind speed'},
+  wind100:{label:'100m wind',unit:'km/h',note:'daily mean 100m wind speed'},
+};
+const WX_GROUPS=[
+  {id:'europe',label:'Europe',areas:[
+    {id:'eu-agg',label:'Europe Aggregate',cities:[['London',51.5072,-0.1276],['Paris',48.8566,2.3522],['Berlin',52.52,13.41],['Amsterdam',52.3676,4.9041],['Milan',45.4642,9.19],['Madrid',40.4168,-3.7038],['Warsaw',52.2297,21.0122],['Vienna',48.2082,16.3738]]},
+    {id:'iberia',label:'Iberia',cities:[['Madrid',40.4168,-3.7038],['Barcelona',41.3874,2.1686],['Lisbon',38.7223,-9.1393],['Bilbao',43.263,-2.935]]},
+    {id:'baltic',label:'Baltic',cities:[['Helsinki',60.1699,24.9384],['Tallinn',59.437,24.7536],['Riga',56.9496,24.1052],['Vilnius',54.6872,25.2797]]},
+    {id:'nwe',label:'NWE',cities:[['London',51.5072,-0.1276],['Paris',48.8566,2.3522],['Amsterdam',52.3676,4.9041],['Brussels',50.8503,4.3517],['Cologne',50.9375,6.9603],['Hamburg',53.5511,9.9937]]},
+    {id:'med',label:'Med',cities:[['Milan',45.4642,9.19],['Rome',41.9028,12.4964],['Marseille',43.2965,5.3698],['Barcelona',41.3874,2.1686],['Athens',37.9838,23.7275]]},
+  ]},
+  {id:'asia',label:'Asia Demand Centers',areas:[
+    {id:'ne-asia',label:'NE Asia Aggregate',cities:[['Tokyo',35.6762,139.6503],['Seoul',37.5665,126.978],['Shanghai',31.2304,121.4737],['Beijing',39.9042,116.4074],['Taipei',25.033,121.5654]]},
+    {id:'japan',label:'Japan',cities:[['Tokyo',35.6762,139.6503],['Osaka',34.6937,135.5023],['Nagoya',35.1815,136.9066],['Fukuoka',33.5902,130.4017]]},
+    {id:'korea',label:'South Korea',cities:[['Seoul',37.5665,126.978],['Busan',35.1796,129.0756],['Incheon',37.4563,126.7052],['Daegu',35.8714,128.6014]]},
+    {id:'china-east',label:'China East',cities:[['Shanghai',31.2304,121.4737],['Nanjing',32.0603,118.7969],['Hangzhou',30.2741,120.1551],['Ningbo',29.8683,121.544]]},
+    {id:'china-north',label:'China North',cities:[['Beijing',39.9042,116.4074],['Tianjin',39.3434,117.3616],['Shijiazhuang',38.0428,114.5149],['Jinan',36.6512,117.1201]]},
+    {id:'taiwan',label:'Taiwan',cities:[['Taipei',25.033,121.5654],['Taichung',24.1477,120.6736],['Kaohsiung',22.6273,120.3014]]},
+    {id:'thailand',label:'Thailand',cities:[['Bangkok',13.7563,100.5018],['Rayong',12.6814,101.2816],['Chonburi',13.3611,100.9847]]},
+  ]},
+  {id:'other-lng',label:'Other LNG Demand Centers',areas:[
+    {id:'turkey',label:'Turkey',cities:[['Istanbul',41.0082,28.9784],['Ankara',39.9334,32.8597],['Izmir',38.4237,27.1428],['Bursa',40.1885,29.061]]},
+    {id:'brazil-se',label:'Brazil Southeast',cities:[['Sao Paulo',-23.5558,-46.6396],['Rio de Janeiro',-22.9068,-43.1729],['Belo Horizonte',-19.9167,-43.9345]]},
+    {id:'india-west',label:'India West',cities:[['Mumbai',19.076,72.8777],['Ahmedabad',23.0225,72.5714],['Pune',18.5204,73.8567]]},
+    {id:'pakistan',label:'Pakistan',cities:[['Karachi',24.8607,67.0011],['Lahore',31.5204,74.3587],['Islamabad',33.6844,73.0479]]},
+    {id:'egypt',label:'Egypt',cities:[['Cairo',30.0444,31.2357],['Alexandria',31.2001,29.9187],['Damietta',31.4165,31.8133]]},
+  ]},
+];
+let WX_TOKEN=0;
+function wxEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function wxFmt(v,d=1){return v!=null&&isFinite(v)?Number(v).toFixed(d):'--';}
+function wxIso(d){return d.toISOString().slice(0,10);}
+function wxArchiveEnd(){const d=new Date();d.setUTCDate(d.getUTCDate()-4);return wxIso(d);}
+function wxAvg(values){const arr=(values||[]).filter(v=>v!=null&&isFinite(v));return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;}
+function wxPct(values,p){const arr=(values||[]).filter(v=>v!=null&&isFinite(v)).sort((a,b)=>a-b);if(!arr.length)return null;const pos=(arr.length-1)*p,lo=Math.floor(pos),hi=Math.ceil(pos);return lo===hi?arr[lo]:arr[lo]+(arr[hi]-arr[lo])*(pos-lo);}
+function wxMetricLabel(metric,base){const m=WX_METRICS[metric]||WX_METRICS.hdd;return metric==='hdd'||metric==='cdd'?`${m.label} ${base}C`:m.label;}
+function wxMetricUnit(metric){return (WX_METRICS[metric]||WX_METRICS.hdd).unit;}
+function wxMetricValue(day,metric,base){if(!day)return null;const t=day.temperature_2m_mean;if(metric==='hdd')return t!=null&&isFinite(t)?Math.max(base-t,0):null;if(metric==='cdd')return t!=null&&isFinite(t)?Math.max(t-base,0):null;if(metric==='temp')return t!=null&&isFinite(t)?t:null;if(metric==='wind10')return day.wind_speed_10m_mean!=null&&isFinite(day.wind_speed_10m_mean)?day.wind_speed_10m_mean:null;if(metric==='wind100')return day.wind_speed_100m_mean!=null&&isFinite(day.wind_speed_100m_mean)?day.wind_speed_100m_mean:null;return null;}
+function wxMetricFromMember(v,metric,base){if(v==null||!isFinite(v))return null;if(metric==='hdd')return Math.max(base-v,0);if(metric==='cdd')return Math.max(v-base,0);return +v;}
+function wxGroup(id){return WX_GROUPS.find(g=>g.id===id)||WX_GROUPS[0];}
+function wxArea(groupId,areaId){const g=wxGroup(groupId);return g.areas.find(a=>a.id===areaId)||g.areas[0];}
+function wxDefaultYears(){const y=new Date().getFullYear();return [y,y-1,y-2];}
+function wxPrefs(){try{const raw=JSON.parse(localStorage.getItem(WX_PREF_KEY)||'{}');const group=WX_GROUPS.some(g=>g.id===raw.group)?raw.group:'europe';const area=wxArea(group,raw.area).id;const metric=WX_METRICS[raw.metric]?raw.metric:'hdd';const base=Number.isFinite(+raw.base)?+raw.base:18;const years=Array.isArray(raw.years)&&raw.years.length?raw.years.map(Number).filter(Boolean):wxDefaultYears();return{group,area,metric,base,years:Array.from(new Set(years)).sort((a,b)=>b-a)};}catch{return{group:'europe',area:'eu-agg',metric:'hdd',base:18,years:wxDefaultYears()};}}
+function wxSavePrefs(p){try{localStorage.setItem(WX_PREF_KEY,JSON.stringify(p));}catch{}}
+function wxSetGroup(group){const p=wxPrefs();p.group=group;p.area=wxGroup(group).areas[0].id;wxSavePrefs(p);renderWeatherTracking();}
+function wxSetArea(area){const p=wxPrefs();p.area=wxArea(p.group,area).id;wxSavePrefs(p);renderWeatherTracking();}
+function wxSetMetric(metric){const p=wxPrefs();p.metric=WX_METRICS[metric]?metric:'hdd';wxSavePrefs(p);renderWeatherTracking();}
+function wxSetBase(base){const p=wxPrefs();p.base=Number.isFinite(+base)?+base:18;wxSavePrefs(p);renderWeatherTracking();}
+function wxToggleYear(year){const p=wxPrefs(),y=+year,idx=p.years.indexOf(y);if(idx>=0){if(p.years.length>1)p.years.splice(idx,1);}else p.years.push(y);p.years=Array.from(new Set(p.years)).sort((a,b)=>b-a);wxSavePrefs(p);renderWeatherTracking();}
+function wxReload(){Object.keys(localStorage).filter(k=>k.startsWith('gd2_wx_')).forEach(k=>localStorage.removeItem(k));renderWeatherTracking();}
+async function wxFetchJson(url,key,ttlH){const cached=gdCacheGet(key);if(cached)return cached;const r=await fetch(url,{cache:'no-store'});let data=null;try{data=await r.json();}catch{}if(!r.ok||data?.error)throw new Error(data?.reason||data?.error||`HTTP ${r.status}`);gdCacheSet(key,data,ttlH);return data;}
+function wxCityId(city){return city[0].toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
+function wxNormalizeDaily(json){const out={},daily=json?.daily||{};(daily.time||[]).forEach((date,i)=>{out[date]={temperature_2m_mean:daily.temperature_2m_mean?.[i]??null,wind_speed_10m_mean:daily.wind_speed_10m_mean?.[i]??null,wind_speed_100m_mean:daily.wind_speed_100m_mean?.[i]??null};});return out;}
+async function wxFetchCityHistory(city,start,end){const [,lat,lon]=city;const vars=WX_HIST_VARS.join(',');const url=`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${start}&end_date=${end}&daily=${encodeURIComponent(vars)}&timezone=auto`;const ttl=end>=wxArchiveEnd()?24:0;return wxFetchJson(url,`wx_hist_${wxCityId(city)}_${start}_${end}_v2`,ttl);}
+async function wxFetchAreaHistory(area,years){
+  const curY=new Date().getFullYear();
+  const normalYears=Array.from({length:5},(_,i)=>curY-5+i);
+  const allYears=Array.from(new Set([...years,...normalYears])).sort((a,b)=>a-b);
+  const start=`${allYears[0]}-01-01`;
+  const end=allYears.includes(curY)?wxArchiveEnd():`${allYears[allYears.length-1]}-12-31`;
+  const rows=await Promise.all(area.cities.map(city=>wxFetchCityHistory(city,start,end).then(data=>({city,data})).catch(error=>({city,error}))));
+  const bucket={};
+  rows.forEach(row=>{if(!row.data)return;Object.entries(wxNormalizeDaily(row.data)).forEach(([date,day])=>{if(!bucket[date])bucket[date]={temperature_2m_mean:[],wind_speed_10m_mean:[],wind_speed_100m_mean:[],cities:0};WX_HIST_VARS.forEach(v=>{if(day[v]!=null&&isFinite(day[v]))bucket[date][v].push(+day[v]);});bucket[date].cities++;});});
+  const series={};
+  Object.entries(bucket).forEach(([date,b])=>{series[date]={temperature_2m_mean:wxAvg(b.temperature_2m_mean),wind_speed_10m_mean:wxAvg(b.wind_speed_10m_mean),wind_speed_100m_mean:wxAvg(b.wind_speed_100m_mean),cityCoverage:b.cities};});
+  const dates=Object.keys(series).sort();
+  return{series,start,end,normalYears,latestDate:dates[dates.length-1]||null,cityOk:rows.filter(r=>r.data).map(r=>r.city[0]),cityMissing:rows.filter(r=>r.error).map(r=>`${r.city[0]}: ${r.error.message}`)};
+}
+function wxForecastMemberValues(daily,varName,i){const out=[];for(let n=1;n<=50;n++){const key=`${varName}_member${String(n).padStart(2,'0')}`;const v=daily[key]?.[i];if(v!=null&&isFinite(v))out.push(+v);}return out;}
+async function wxFetchCityForecast(city){const [,lat,lon]=city;const vars=WX_HIST_VARS.join(',');const url=`https://seasonal-api.open-meteo.com/v1/seasonal?latitude=${lat}&longitude=${lon}&daily=${encodeURIComponent(vars)}&forecast_days=${WX_FORECAST_DAYS}&timezone=auto`;return wxFetchJson(url,`wx_fc_${wxCityId(city)}_${WX_FORECAST_DAYS}_v2`,6);}
+async function wxFetchAreaForecast(area){
+  const rows=await Promise.all(area.cities.map(city=>wxFetchCityForecast(city).then(data=>({city,data})).catch(error=>({city,error}))));
+  const bucket={};
+  rows.forEach(row=>{const daily=row.data?.daily;if(!daily?.time)return;daily.time.forEach((date,i)=>{if(!bucket[date])bucket[date]={temperature_2m_mean:[],wind_speed_10m_mean:[],wind_speed_100m_mean:[],temperatureMembers:[],wind10Members:[],wind100Members:[],cities:0};WX_HIST_VARS.forEach(v=>{const val=daily[v]?.[i];if(val!=null&&isFinite(val))bucket[date][v].push(+val);});bucket[date].temperatureMembers.push(...wxForecastMemberValues(daily,'temperature_2m_mean',i));bucket[date].wind10Members.push(...wxForecastMemberValues(daily,'wind_speed_10m_mean',i));bucket[date].wind100Members.push(...wxForecastMemberValues(daily,'wind_speed_100m_mean',i));bucket[date].cities++;});});
+  const series={};
+  Object.entries(bucket).forEach(([date,b])=>{series[date]={temperature_2m_mean:wxAvg(b.temperature_2m_mean),wind_speed_10m_mean:wxAvg(b.wind_speed_10m_mean),wind_speed_100m_mean:wxAvg(b.wind_speed_100m_mean),temperatureMembers:b.temperatureMembers,wind10Members:b.wind10Members,wind100Members:b.wind100Members,cityCoverage:b.cities};});
+  const dates=Object.keys(series).sort();
+  return{series,firstDate:dates[0]||null,lastDate:dates[dates.length-1]||null,cityOk:rows.filter(r=>r.data).map(r=>r.city[0]),cityMissing:rows.filter(r=>r.error).map(r=>`${r.city[0]}: ${r.error.message}`)};
+}
+async function wxFetchNao(){return wxFetchJson('/api/weather-nao','wx_nao_v1',6);}
+function wxNormalMap(history,metric,base){const years=history?.normalYears||[],b={};Object.entries(history?.series||{}).forEach(([date,day])=>{const y=+date.slice(0,4);if(!years.includes(y))return;const v=wxMetricValue(day,metric,base);if(v==null)return;const md=date.slice(5);if(!b[md])b[md]=[];b[md].push(v);});const out={};Object.entries(b).forEach(([md,vals])=>{out[md]=wxAvg(vals);});return out;}
+function wxMemberSpread(day,metric,base){if(!day)return{p10:null,p90:null,n:0};const raw=metric==='wind10'?day.wind10Members:metric==='wind100'?day.wind100Members:day.temperatureMembers;const vals=(raw||[]).map(v=>wxMetricFromMember(v,metric,base)).filter(v=>v!=null&&isFinite(v));return{p10:wxPct(vals,0.10),p90:wxPct(vals,0.90),n:vals.length};}
+function wxYearCumulative(history,year,metric,base){let total=0,started=false;return Array.from({length:366},(_,i)=>{const d=new Date(Date.UTC(year,0,i+1));if(d.getUTCFullYear()!==year)return null;const v=wxMetricValue(history?.series?.[wxIso(d)],metric,base);if(v==null)return null;total+=v;started=true;return started?+total.toFixed(2):null;});}
+function wxMonthlyTotals(history,year,metric,base){const sums=Array(12).fill(0),counts=Array(12).fill(0);Object.entries(history?.series||{}).forEach(([date,day])=>{if(+date.slice(0,4)!==year)return;const v=wxMetricValue(day,metric,base);if(v==null)return;const m=+date.slice(5,7)-1;sums[m]+=v;counts[m]++;});return sums.map((v,i)=>counts[i]?+v.toFixed(2):null);}
+function wxLatestActual(history,metric,base){const dates=Object.keys(history?.series||{}).sort().reverse();for(const d of dates){const v=wxMetricValue(history.series[d],metric,base);if(v!=null)return{date:d,value:v};}return null;}
+function wxNaoPhase(value){if(value==null||!isFinite(value))return{label:'--',color:'#6b7a99'};const side=value>=0.5?'NAO+':value<=-0.5?'NAO-':'Neutral';return{label:`${Math.abs(value)>=1?'Strong ':''}${side}`,color:value>=0.5?'#34d399':value<=-0.5?'#60a5fa':'#fbbf24'};}
+function wxRenderStatus(id,msg,color='#6b7a99'){const el=document.getElementById(id);if(el)el.innerHTML=`<div style="height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:${color};font-size:10px;border:1px dashed rgba(77,158,245,.2);padding:16px">${wxEsc(msg)}</div>`;}
+function renderWeatherTracking(){
+  const pane=document.getElementById('ga-weather-pane');if(!pane)return;
+  const p=wxPrefs(),group=wxGroup(p.group),area=wxArea(p.group,p.area),curY=new Date().getFullYear();
+  const years=Array.from({length:5},(_,i)=>curY-i);
+  const groupOpts=WX_GROUPS.map(g=>`<option value="${g.id}" ${g.id===p.group?'selected':''}>${wxEsc(g.label)}</option>`).join('');
+  const areaOpts=group.areas.map(a=>`<option value="${a.id}" ${a.id===p.area?'selected':''}>${wxEsc(a.label)}</option>`).join('');
+  const metricOpts=Object.entries(WX_METRICS).map(([k,m])=>`<option value="${k}" ${k===p.metric?'selected':''}>${wxEsc(m.label)}</option>`).join('');
+  const yrBtns=years.map(y=>`<button class="f-btn sm${p.years.includes(y)?' on':''}" style="padding:2px 8px;font-size:9px" onclick="wxToggleYear(${y})">${y}</button>`).join('');
+  pane.innerHTML=`
+    <div class="ga-card" style="margin-bottom:12px">
+      <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+        <div><div class="ga-lbl">MARKET GROUP</div><select class="gsel" onchange="wxSetGroup(this.value)">${groupOpts}</select></div>
+        <div><div class="ga-lbl">AREA / COUNTRY</div><select class="gsel" onchange="wxSetArea(this.value)">${areaOpts}</select></div>
+        <div><div class="ga-lbl">METRIC</div><select class="gsel" onchange="wxSetMetric(this.value)">${metricOpts}</select></div>
+        <div><div class="ga-lbl">BASE TEMP</div><select class="gsel" onchange="wxSetBase(this.value)">${[15.5,18,20,22].map(v=>`<option value="${v}" ${+p.base===v?'selected':''}>${v}C</option>`).join('')}</select></div>
+        <div><div class="ga-lbl">YEARS</div><div style="display:flex;gap:4px;flex-wrap:wrap">${yrBtns}</div></div>
+        <button class="gbtn sm" style="margin-left:auto" onclick="wxReload()">REFRESH WEATHER</button>
+      </div>
+      <div style="margin-top:10px;font-size:9px;color:#6b7a99;line-height:1.6">Area is an equal-city weather basket: ${area.cities.map(c=>wxEsc(c[0])).join(' · ')}. No demand weights are inferred.</div>
+    </div>
+    <div id="wx-kpis" style="display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:8px;margin-bottom:12px"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:12px">
+      <div class="ga-card"><div class="ga-sec">${wxEsc(wxMetricLabel(p.metric,p.base)).toUpperCase()} SEASONAL CUMULATIVE <span class="ga-tag">ACTUALS</span></div><div id="wx-seasonal-wrap" class="ga-ch-wrap" style="height:310px"><canvas id="wx-seasonal-chart"></canvas></div><div class="ga-source" id="wx-seasonal-source">Loading Open-Meteo archive...</div></div>
+      <div class="ga-card"><div class="ga-sec">MONTHLY YoY DIFFERENCE <span class="ga-tag">ACTUALS</span></div><div id="wx-yoy-wrap" class="ga-ch-wrap" style="height:310px"><canvas id="wx-yoy-chart"></canvas></div><div class="ga-source" id="wx-yoy-source">Loading monthly differences...</div></div>
+      <div class="ga-card"><div class="ga-sec">46-DAY FORECAST VS 5Y NORMAL <span class="ga-tag">OPEN-METEO SEASONAL</span></div><div id="wx-forecast-wrap" class="ga-ch-wrap" style="height:310px"><canvas id="wx-forecast-chart"></canvas></div><div class="ga-source" id="wx-forecast-source">Loading seasonal forecast...</div></div>
+      <div class="ga-card"><div class="ga-sec">WIND + NAO REGIME <span class="ga-tag">OPEN-METEO + NOAA/CPC</span></div><div id="wx-regime-wrap" class="ga-ch-wrap" style="height:310px"><canvas id="wx-regime-chart"></canvas></div><div class="ga-source" id="wx-regime-source">Loading wind and NAO...</div></div>
+    </div>
+    <div class="ga-card" style="margin-top:12px"><div class="ga-sec">SOURCE / COVERAGE <span class="ga-tag">${wxEsc(area.label).toUpperCase()}</span></div><div id="wx-source-table" style="overflow-x:auto"></div></div>`;
+  wxLoadDashboard(++WX_TOKEN,p,area);
+}
+async function wxLoadDashboard(token,p,area){
+  const kpi=document.getElementById('wx-kpis');if(kpi)kpi.innerHTML=Array.from({length:4},()=>'<div class="ga-kpi"><div class="ga-kpi-lbl">LOADING</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">Open-Meteo / NOAA</div></div>').join('');
+  const [histRes,fcRes,naoRes]=await Promise.allSettled([wxFetchAreaHistory(area,p.years),wxFetchAreaForecast(area),wxFetchNao()]);
+  if(token!==WX_TOKEN)return;
+  const history=histRes.status==='fulfilled'?histRes.value:null,forecast=fcRes.status==='fulfilled'?fcRes.value:null,nao=naoRes.status==='fulfilled'?naoRes.value:null;
+  wxRenderWeatherKpis(history,forecast,nao,p,histRes,fcRes,naoRes);
+  wxDrawWeatherSeasonal(history,p);
+  wxDrawWeatherYoy(history,p);
+  wxDrawWeatherForecast(history,forecast,p);
+  wxDrawWeatherRegime(forecast,nao);
+  wxRenderWeatherSourceTable(history,forecast,nao,p,area,histRes,fcRes,naoRes);
+}
+function wxRenderWeatherKpis(history,forecast,nao,p,histRes,fcRes,naoRes){
+  const el=document.getElementById('wx-kpis');if(!el)return;
+  const latest=wxLatestActual(history,p.metric,p.base),normal=wxNormalMap(history,p.metric,p.base),fcDates=Object.keys(forecast?.series||{}).sort().slice(0,14);
+  const fcVals=fcDates.map(d=>wxMetricValue(forecast.series[d],p.metric,p.base)).filter(v=>v!=null);
+  const anoms=fcDates.map(d=>{const v=wxMetricValue(forecast.series[d],p.metric,p.base),n=normal[d.slice(5)];return v!=null&&n!=null?v-n:null;}).filter(v=>v!=null);
+  const wind14=fcDates.map(d=>forecast?.series?.[d]?.wind_speed_100m_mean).filter(v=>v!=null);
+  const naoLatest=nao?.observedLatest,phase=wxNaoPhase(naoLatest?.value);
+  el.innerHTML=[
+    {l:`LATEST ACTUAL · ${wxMetricLabel(p.metric,p.base)}`,v:latest?wxFmt(latest.value,1):'--',n:latest?`${latest.date} · ${wxMetricUnit(p.metric)}`:(histRes.status==='rejected'?histRes.reason.message:'No sourced actual'),c:'#f0f4ff'},
+    {l:'14D FORECAST AVG',v:fcVals.length?wxFmt(wxAvg(fcVals),1):'--',n:anoms.length?`vs 5Y normal ${wxAvg(anoms)>=0?'+':''}${wxFmt(wxAvg(anoms),1)}`:(fcRes.status==='rejected'?fcRes.reason.message:'normal unavailable'),c:'#4fc3f7'},
+    {l:'100M WIND FORECAST',v:wind14.length?wxFmt(wxAvg(wind14),1):'--',n:wind14.length?'km/h · next 14 days':'Open-Meteo seasonal gap',c:'#81c784'},
+    {l:'LATEST NAO',v:naoLatest?wxFmt(naoLatest.value,2):'--',n:naoLatest?`${phase.label} · ${naoLatest.date}`:(naoRes.status==='rejected'?naoRes.reason.message:'NOAA/CPC unavailable'),c:phase.color},
+  ].map(x=>`<div class="ga-kpi"><div class="ga-kpi-lbl">${wxEsc(x.l)}</div><div class="ga-kpi-val" style="color:${x.c}">${wxEsc(x.v)}</div><div class="ga-kpi-note">${wxEsc(x.n)}</div></div>`).join('');
+}
+function wxDrawWeatherSeasonal(history,p){
+  if(!history){wxRenderStatus('wx-seasonal-wrap','Open-Meteo archive unavailable for this basket','#f87171');return;}
+  const labels=Array.from({length:366},(_,i)=>i+1);
+  const datasets=p.years.map((y,i)=>({label:String(y),data:wxYearCumulative(history,y,p.metric,p.base),borderColor:GA_COLS[i%GA_COLS.length],backgroundColor:'transparent',borderWidth:i===0?2.4:1.5,borderDash:i===0?[]:[5,4],pointRadius:0,tension:.2,spanGaps:false}));
+  gaMakeChart('wx-seasonal-chart','line',{labels,datasets},{scales:{x:{...GCD.scales.x,title:{display:true,text:'Day of year',color:'#3d5070',font:{size:9}},ticks:{...GCD.scales.x.ticks,maxRotation:0,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:`Cumulative ${wxMetricUnit(p.metric)}`,color:'#3d5070',font:{size:9}}}}});
+  const s=document.getElementById('wx-seasonal-source');if(s)s.textContent=`Source: Open-Meteo Historical Weather API · latest actual ${history.latestDate||'--'} · coverage ${history.cityOk.length}/${history.cityOk.length+history.cityMissing.length} cities · ${WX_METRICS[p.metric].note}`;
+}
+function wxDrawWeatherYoy(history,p){
+  if(!history){wxRenderStatus('wx-yoy-wrap','Open-Meteo archive unavailable for monthly YoY','#f87171');return;}
+  const y=Math.max(...p.years),py=y-1,cur=wxMonthlyTotals(history,y,p.metric,p.base),prev=wxMonthlyTotals(history,py,p.metric,p.base),diff=cur.map((v,i)=>v!=null&&prev[i]!=null?+(v-prev[i]).toFixed(2):null);
+  gaMakeChart('wx-yoy-chart','bar',{labels:GA_MO,datasets:[{label:`${y} minus ${py}`,data:diff,backgroundColor:diff.map(v=>v==null?'rgba(84,110,122,.25)':v>=0?'rgba(52,211,153,.55)':'rgba(248,113,113,.55)'),borderColor:diff.map(v=>v==null?'#546e7a':v>=0?'#34d399':'#f87171'),borderWidth:1}]},{plugins:{...GCD.plugins,legend:{display:false}},scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:`${wxMetricUnit(p.metric)} difference`,color:'#3d5070',font:{size:9}}}}});
+  const s=document.getElementById('wx-yoy-source');if(s)s.textContent='Monthly actual difference uses only observed Open-Meteo archive rows. Missing month = blank, not zero.';
+}
+function wxDrawWeatherForecast(history,forecast,p){
+  if(!forecast){wxRenderStatus('wx-forecast-wrap','Open-Meteo seasonal forecast unavailable for this basket','#f87171');return;}
+  const normal=wxNormalMap(history,p.metric,p.base),dates=Object.keys(forecast.series||{}).sort().slice(0,WX_FORECAST_DAYS),labels=dates.map(d=>d.slice(5));
+  const fc=dates.map(d=>wxMetricValue(forecast.series[d],p.metric,p.base)),norm=dates.map(d=>normal[d.slice(5)]??null),anom=dates.map((d,i)=>fc[i]!=null&&norm[i]!=null?+(fc[i]-norm[i]).toFixed(2):null);
+  const p10=dates.map(d=>wxMemberSpread(forecast.series[d],p.metric,p.base).p10),p90=dates.map(d=>wxMemberSpread(forecast.series[d],p.metric,p.base).p90);
+  gaMakeChart('wx-forecast-chart','bar',{labels,datasets:[
+    {type:'bar',label:'Forecast anomaly',data:anom,backgroundColor:anom.map(v=>v==null?'rgba(84,110,122,.2)':v>=0?'rgba(52,211,153,.45)':'rgba(96,165,250,.38)'),borderWidth:0,yAxisID:'y'},
+    {type:'line',label:'Forecast',data:fc,borderColor:'#4fc3f7',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.25,yAxisID:'y1'},
+    {type:'line',label:'5Y normal',data:norm,borderColor:'#8a9bb5',backgroundColor:'transparent',borderDash:[5,4],borderWidth:1.4,pointRadius:0,tension:.25,yAxisID:'y1'},
+    {type:'line',label:'Ensemble p10',data:p10,borderColor:'rgba(206,147,216,.55)',backgroundColor:'transparent',borderWidth:1,pointRadius:0,borderDash:[2,3],yAxisID:'y1'},
+    {type:'line',label:'Ensemble p90',data:p90,borderColor:'rgba(206,147,216,.55)',backgroundColor:'transparent',borderWidth:1,pointRadius:0,borderDash:[2,3],yAxisID:'y1'},
+  ]},{scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'Anomaly',color:'#3d5070',font:{size:9}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#546e7a',font:{size:9,family:'IBM Plex Mono'}},title:{display:true,text:wxMetricUnit(p.metric),color:'#3d5070',font:{size:9}}}}});
+  const s=document.getElementById('wx-forecast-source');if(s)s.textContent=`Source: Open-Meteo Seasonal Forecast API · ${forecast.firstDate||'--'} to ${forecast.lastDate||'--'} · ensemble mean and member p10/p90 · normal is computed from Open-Meteo actuals (${history?.normalYears?.join(', ')||'unavailable'}).`;
+}
+function wxDrawWeatherRegime(forecast,nao){
+  if(!forecast&&!nao){wxRenderStatus('wx-regime-wrap','Wind forecast and NAO unavailable','#f87171');return;}
+  const dates=Object.keys(forecast?.series||{}).sort().slice(0,WX_FORECAST_DAYS),naoMap={};(nao?.forecast||[]).forEach(r=>{naoMap[r.date]=r.value;});
+  const labels=dates.length?dates.map(d=>d.slice(5)):(nao?.forecast||[]).slice(0,30).map(r=>r.date.slice(5));
+  const wind=dates.map(d=>forecast?.series?.[d]?.wind_speed_100m_mean??null),naoVals=dates.length?dates.map(d=>naoMap[d]??null):(nao?.forecast||[]).slice(0,30).map(r=>r.value);
+  gaMakeChart('wx-regime-chart','line',{labels,datasets:[{label:'100m wind forecast',data:wind,borderColor:'#81c784',backgroundColor:'rgba(129,199,132,.12)',borderWidth:2,pointRadius:0,tension:.25,fill:true,yAxisID:'y'},{label:'NAO forecast',data:naoVals,borderColor:'#fbbf24',backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,tension:.25,yAxisID:'y1'}]},{scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'100m wind km/h',color:'#3d5070',font:{size:9}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#546e7a',font:{size:9,family:'IBM Plex Mono'}},title:{display:true,text:'NAO index',color:'#3d5070',font:{size:9}}}}});
+  const s=document.getElementById('wx-regime-source');if(s)s.textContent='Open-Meteo provides wind forecast. NAO comes from NOAA/CPC via /api/weather-nao; NAO is regime context only, not a demand model.';
+}
+function wxRenderWeatherSourceTable(history,forecast,nao,p,area,histRes,fcRes,naoRes){
+  const el=document.getElementById('wx-source-table');if(!el)return;
+  const rows=[
+    ['Actual weather','Open-Meteo Historical Weather API',history?`${history.start} to ${history.latestDate||history.end}`:`gap: ${histRes.reason?.message||'unavailable'}`],
+    ['Seasonal forecast','Open-Meteo Seasonal Forecast API',forecast?`${forecast.firstDate||'--'} to ${forecast.lastDate||'--'}`:`gap: ${fcRes.reason?.message||'unavailable'}`],
+    ['Open-source code','https://github.com/open-meteo/open-meteo','Official Open-Meteo GitHub repository'],
+    ['NAO regime','NOAA/CPC CSVs',nao?`latest ${nao.observedLatest?.date||'--'}`:`gap: ${naoRes.reason?.message||'unavailable'}`],
+    ['Refresh','Client cache','Open-Meteo actuals 24h for live range; seasonal forecast 6h; NAO 6h; old actual years pinned until Refresh Weather'],
+  ];
+  el.innerHTML=`<table class="ga-tbl" style="width:100%;font-size:10px;min-width:820px"><thead><tr><th style="text-align:left">Layer</th><th style="text-align:left">Source</th><th style="text-align:left">Status / note</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td style="color:#c8d6e5;font-weight:600">${wxEsc(r[0])}</td><td>${String(r[1]).startsWith('https://')?`<a href="${wxEsc(r[1])}" target="_blank" style="color:#93c5fd">${wxEsc(r[1])}</a>`:wxEsc(r[1])}</td><td>${wxEsc(r[2])}</td></tr>`).join('')}
+    <tr><td style="color:#c8d6e5;font-weight:600">Basket</td><td>Equal-city proxy</td><td>${area.cities.map(c=>wxEsc(c[0])).join(' · ')}. Missing city fetches are excluded and flagged, never filled as zero.</td></tr>
+    <tr><td style="color:#c8d6e5;font-weight:600">Coverage</td><td>Open-Meteo city calls</td><td>Actuals ${history?history.cityOk.length+'/'+(history.cityOk.length+history.cityMissing.length):'--'} · Forecast ${forecast?forecast.cityOk.length+'/'+(forecast.cityOk.length+forecast.cityMissing.length):'--'}${history?.cityMissing?.length?` · Actual gaps: ${wxEsc(history.cityMissing.join(' | '))}`:''}${forecast?.cityMissing?.length?` · Forecast gaps: ${wxEsc(forecast.cityMissing.join(' | '))}`:''}</td></tr>
+  </tbody></table>`;
+}
+window.wxSetGroup=wxSetGroup;window.wxSetArea=wxSetArea;window.wxSetMetric=wxSetMetric;window.wxSetBase=wxSetBase;window.wxToggleYear=wxToggleYear;window.wxReload=wxReload;
 
 // ═══════════════════════════════════════════════════════════════════════
 // EUROPEAN RENEWABLE — ENTSO-E actual generation by type
@@ -24517,8 +24795,12 @@ function lngbalCountry(cty,btn){
   if(btn)btn.classList.add('active');
   const asia=document.getElementById('lngbal-asia');
   const india=document.getElementById('lngbal-india');
+  const sam=document.getElementById('lngbal-sam');
+  const turkey=document.getElementById('lngbal-turkey');
   if(asia) asia.style.display=cty==='asia'?'':'none';
   if(india) india.style.display=cty==='india'?'':'none';
+  if(sam) sam.style.display='none';
+  if(turkey) turkey.style.display='none';
   if(cty==='india'){
     indInit();
   } else if(cty==='asia'){
@@ -24544,6 +24826,7 @@ function asiaShow(country,btn){
   if(country==='china' && typeof csInit==='function') setTimeout(csInit,80);
   if(country==='japan' && typeof jpnInit==='function') setTimeout(jpnInit,80);
   if(country==='korea' && typeof korInit==='function') setTimeout(korInit,80);
+  if(country==='taiwan' && typeof twnInit==='function') setTimeout(twnInit,80);
   if(country==='thailand' && typeof thaiInit==='function') setTimeout(thaiInit,80);
 }
 window.asiaShow=asiaShow;
@@ -25114,7 +25397,8 @@ function jpnDaysInMonth(dateStr){
   return new Date(y, m, 0).getDate();
 }
 function jpnNuclearUtilPct(row){
-  const capGw = _jpnData?.nuclear?.capacityReference?.operableGw;
+  const capRef = _jpnData?.nuclear?.capacityReference || {};
+  const capGw = capRef.restartAdjustedGw || capRef.operableGw;
   const days = jpnDaysInMonth(row?.date);
   return row?.twh != null && capGw && days ? row.twh * 1000 / (capGw * 24 * days) * 100 : null;
 }
@@ -25128,6 +25412,8 @@ function jpnUpdateGlobalFundamentalsCard(){
   const prev = jpnSeries().find(r=>r.date === `${+latest.date.slice(0,4)-1}-${latest.date.slice(5,7)}-01`);
   const yoy = latest.twh != null && prev?.twh ? (latest.twh / prev.twh - 1) * 100 : null;
   const util = jpnNuclearUtilPct(latest);
+  const capRef = _jpnData?.nuclear?.capacityReference || {};
+  const capGw = capRef.restartAdjustedGw || capRef.operableGw;
   valEl.textContent = util != null ? `${jpnFmt(util,1)}%` : '--';
   valEl.style.color = '#34d399';
   if(badgeEl){
@@ -25135,7 +25421,7 @@ function jpnUpdateGlobalFundamentalsCard(){
     badgeEl.style.color = '#34d399';
     badgeEl.style.background = 'rgba(52,211,153,.10)';
   }
-  if(shareEl) shareEl.textContent = `Generation ${jpnFmt(latest.twh,2)} TWh · Share ${jpnFmt(latest.sharePct,1)}% · ${latest.date.slice(0,7)}`;
+  if(shareEl) shareEl.textContent = `Generation ${jpnFmt(latest.twh,2)} TWh · Share ${jpnFmt(latest.sharePct,1)}% · ${latest.date.slice(0,7)} · ${capGw?jpnFmt(capGw,3)+' GW denominator':'capacity gap'}`;
   if(yoyEl){
     yoyEl.textContent = yoy == null ? 'YoY unavailable · Ember monthly electricity' : `YoY · ${yoy>=0?'+':''}${jpnFmt(yoy,1)}% vs ${+latest.date.slice(0,4)-1}`;
     yoyEl.style.color = yoy == null ? '#3d5070' : yoy >= 0 ? '#34d399' : '#f87171';
@@ -25355,9 +25641,13 @@ function jpnRenderPower(el){
   const yoy = latest?.twh != null && prevYear?.twh ? (latest.twh/prevYear.twh-1)*100 : null;
   const util = jpnNuclearUtilPct(latest);
   const capRef = _jpnData?.nuclear?.capacityReference || {};
+  const capGw = capRef.restartAdjustedGw || capRef.operableGw;
+  const capNote = capRef.restartAdjustedGw
+    ? `Ember TWh ÷ ${jpnFmt(capGw,3)} GW restart-adjusted fleet`
+    : capRef.operableGw ? `Ember TWh ÷ ${jpnFmt(capRef.operableGw,3)} GW operable` : 'capacity reference missing';
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-      ${jpnStatusCard({label:`Nuclear utilization · ${latest?latest.date.slice(0,7):'--'}`,value:util!=null?jpnFmt(util,1)+'%':'--',note:capRef.operableGw?`Ember TWh ÷ ${jpnFmt(capRef.operableGw,3)} GW operable`:'capacity reference missing',color:'#34d399'})}
+      ${jpnStatusCard({label:`Nuclear utilization · ${latest?latest.date.slice(0,7):'--'}`,value:util!=null?jpnFmt(util,1)+'%':'--',note:capNote,color:'#34d399'})}
       ${jpnStatusCard({label:'Nuclear generation',value:latest?jpnFmt(latest.twh,2):'--',note:'TWh/month · Ember',color:'#a78bfa'})}
       ${jpnStatusCard({label:'Nuclear share',value:latest?.sharePct!=null?jpnFmt(latest.sharePct,1)+'%':'--',note:'share of Japan generation',color:'#93c5fd'})}
       ${jpnStatusCard({label:'Generation YoY',value:yoy!=null?(yoy>=0?'+':'')+jpnFmt(yoy,1)+'%':'--',note:'same month vs prior year',color:yoy==null?'#8a9bb5':yoy>=0?'#34d399':'#f87171'})}
@@ -25368,7 +25658,7 @@ function jpnRenderPower(el){
         <span style="font-size:9px;color:#546e7a">YEARS</span>${yearBtns}
       </div>
       <div class="ga-ch-wrap" style="height:300px"><canvas id="jpn-nuclear-seasonal"></canvas></div>
-      <div class="ga-source">Source: Ember Monthly Electricity Data · Japan · Nuclear fuel · monthly TWh and generation share. Utilization is a derived proxy using ${capRef.source || 'capacity reference'}${capRef.sourceUrl?` (<a href="${capRef.sourceUrl}" target="_blank" style="color:#93c5fd">source</a>)`:''}. Latest public monthly data may lag by several weeks.</div>
+      <div class="ga-source">Source: Ember Monthly Electricity Data · Japan · Nuclear fuel · monthly TWh and generation share. Utilization is a derived proxy using ${capRef.source || 'capacity reference'}${capRef.sourceUrl?` (<a href="${capRef.sourceUrl}" target="_blank" style="color:#93c5fd">status</a>)`:''}${capRef.capacitySourceUrl?` · <a href="${capRef.capacitySourceUrl}" target="_blank" style="color:#93c5fd">capacity</a>`:''}. Restart-review reactors are excluded until proper commercial restart; maintenance/offline months for restarted units remain in the denominator. Latest public monthly data may lag by several weeks.</div>
     </div>
     <div class="ga-card">
       <div class="ga-sec">LATEST MONTHLY ROWS <span class="ga-tag">NO DAILY CLAIM</span></div>
@@ -25718,7 +26008,6 @@ function thaiRenderWeather(el){
   const selected = (_thaiYears && _thaiYears.length ? _thaiYears : thaiAvailableYears().slice(-5)).slice().sort((a,b)=>b-a);
   const weatherYears = [...new Set(weather.map(r=>+r.month.slice(0,4)))].filter(Boolean).sort((a,b)=>b-a);
   const yearButtons = [...new Set([...weatherYears.slice(0,10), ...selected])].sort((a,b)=>b-a);
-  const aligned = weather.filter(w=>bByMonth[w.month]).slice(-48);
   const cityWeights = _thaiWeather?.city_weights || [];
   const latestCity = latestW.cities || {};
   const cityCards = cityWeights.map(c=>{
@@ -25748,9 +26037,9 @@ function thaiRenderWeather(el){
     </div>
 
     <div class="ga-card" style="margin-bottom:12px">
-      <div class="ga-sec">CDD vs POWER GAS BURN vs LNG IMPORTS <span class="ga-tag">last 48 matched months</span></div>
+      <div class="ga-sec">CDD vs POWER GAS BURN vs LNG IMPORTS — SEASONAL <span class="ga-tag">matched monthly observations</span></div>
       <div class="ga-ch-wrap" style="height:280px"><canvas id="thai-cdd-power-chart"></canvas></div>
-      <div class="ga-source">CDD from Open-Meteo; power gas burn and LNG imports from EPPO. Different latest dates are shown explicitly.</div>
+      <div class="ga-source">CDD from Open-Meteo; power gas burn and LNG imports from EPPO. Month is blank when either side is missing; current month is month-to-date.</div>
     </div>
 
     <div class="ga-card">
@@ -25776,21 +26065,578 @@ function thaiRenderWeather(el){
       scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'CDD',color:'#3d5070',font:{size:9}}}},
       plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}
     });
-    const labels = aligned.map(r=>GA_MO[+r.month.slice(5,7)-1]+"'"+r.month.slice(2,4));
-    gaMakeChart('thai-cdd-power-chart','bar',{labels,datasets:[
-      {label:'CDD index',data:aligned.map(r=>r.cdd),backgroundColor:'rgba(251,191,36,.40)',borderColor:'#fbbf24',borderWidth:1,yAxisID:'y'},
-      {label:'Power gas burn',data:aligned.map(r=>thaiRawVal(bByMonth[r.month],'electricity_mmscfd')),type:'line',borderColor:'#ffb74d',borderWidth:2,pointRadius:1.8,fill:false,tension:.25,yAxisID:'y1'},
-      {label:'LNG imports',data:aligned.map(r=>thaiRawVal(bByMonth[r.month],'lng_imports_mmscfd')),type:'line',borderColor:'#1D9E75',borderWidth:2,pointRadius:1.8,fill:false,tension:.25,yAxisID:'y1'},
-    ]},{
+    const seasonalYears = selected.slice(0,4);
+    const combo = [];
+    seasonalYears.forEach((yr,i)=>{
+      const c=GA_COLS[i % GA_COLS.length];
+      combo.push({
+        label:`CDD ${yr}`,
+        data:Array.from({length:12},(_,m)=>{
+          const key=`${yr}-${String(m+1).padStart(2,'0')}`;
+          return (wByMonth[key] && bByMonth[key]) ? wByMonth[key].cdd : null;
+        }),
+        type:'bar',
+        backgroundColor:c+'26',
+        borderColor:c,
+        borderWidth:i===0?1.4:1,
+        yAxisID:'y',
+        order:3+i,
+      });
+      combo.push({
+        label:`Power gas ${yr}`,
+        data:Array.from({length:12},(_,m)=>thaiRawVal(bByMonth[`${yr}-${String(m+1).padStart(2,'0')}`],'electricity_mmscfd')),
+        type:'line',
+        borderColor:c,
+        backgroundColor:'transparent',
+        borderWidth:i===0?2.4:1.6,
+        borderDash:i>0?[5,3]:undefined,
+        pointRadius:i===0?2.5:1.5,
+        fill:false,
+        tension:.25,
+        yAxisID:'y1',
+        order:1,
+      });
+      combo.push({
+        label:`LNG imports ${yr}`,
+        data:Array.from({length:12},(_,m)=>thaiRawVal(bByMonth[`${yr}-${String(m+1).padStart(2,'0')}`],'lng_imports_mmscfd')),
+        type:'line',
+        borderColor:c,
+        backgroundColor:'transparent',
+        borderWidth:i===0?2.1:1.4,
+        borderDash:i===0?[2,2]:[2,4],
+        pointRadius:i===0?2.2:1.2,
+        fill:false,
+        tension:.25,
+        yAxisID:'y1',
+        order:2,
+      });
+    });
+    gaMakeChart('thai-cdd-power-chart','bar',{labels:GA_MO,datasets:combo},{
       interaction:{mode:'index',intersect:false},
       scales:{
-        x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:16}},
+        x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},
         y:{...GCD.scales.y,position:'left',title:{display:true,text:'CDD',color:'#3d5070',font:{size:9}}},
         y1:{...GCD.scales.y,position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'MMSCFD',color:'#3d5070',font:{size:9}}},
       },
       plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}
     });
   },60);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TAIWAN MODULE — Gas Balance
+// ════════════════════════════════════════════════════════════════════════════
+let _twnData = null;
+let _twnErr = null;
+let _twnUnit = 'bcm_m';
+let _twnYears = null;
+let _twnComponent = 'lngImportsBcm';
+
+const TWN_COMPONENTS = [
+  {key:'totalSupplyBcm', label:'Total supply', group:'Supply'},
+  {key:'domesticProductionBcm', label:'Domestic production', group:'Supply'},
+  {key:'lngAdjustedSupplyBcm', label:'LNG adjusted grid supply', group:'Supply'},
+  {key:'physicalLngImportsBcm', label:'Physical LNG imports', group:'Supply'},
+  {key:'totalDemandBcm', label:'Total demand', group:'Demand'},
+  {key:'powerDemandBcm', label:'Power + CHP', group:'Demand'},
+  {key:'industryDemandBcm', label:'Industry', group:'Demand'},
+  {key:'residentialCommercialDemandBcm', label:'Residential + commercial', group:'Demand'},
+  {key:'residualBcm', label:'Residual', group:'Balance'},
+];
+
+function twnInit(){
+  const container = document.getElementById('twn-container');
+  if(!container) return;
+  if(_twnData){ twnRender(); return; }
+  container.innerHTML = `<div style="padding:28px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">Loading Taiwan MOEA gas balance...</div>`;
+  fetch('/data/taiwan_gas_balance.json?v=' + Date.now(), {cache:'no-store'})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(j=>{ _twnData = j; _twnErr = null; twnRender(); })
+    .catch(err=>{
+      _twnErr = err.message;
+      container.innerHTML = `<div style="padding:28px;text-align:center;color:#f87171;font-size:10px;border:1px solid rgba(248,113,113,.3)">Taiwan gas balance unavailable: ${err.message}</div>`;
+    });
+}
+window.twnInit = twnInit;
+
+function twnRows(){
+  return (_twnData?.rows || []).filter(r=>r?.month).sort((a,b)=>a.month.localeCompare(b.month));
+}
+function twnLatest(){ const rows=twnRows(); return rows.length?rows[rows.length-1]:null; }
+function twnFmt(v,d=2){ return v==null||!isFinite(v)?'--':Number(v).toFixed(d); }
+function twnEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function twnDays(month){
+  const y=+(month||'').slice(0,4), m=+(month||'').slice(5,7);
+  return y&&m ? new Date(y,m,0).getDate() : 30;
+}
+function twnUnitLabel(){
+  return _twnUnit === 'mcm_d' ? 'mcm/d' : _twnUnit === 'mtpm' ? 'MTPM' : 'bcm/month';
+}
+function twnConvert(bcm, month){
+  if(bcm==null||!isFinite(bcm)) return null;
+  if(_twnUnit === 'mcm_d') return +(bcm * 1000 / twnDays(month)).toFixed(2);
+  if(_twnUnit === 'mtpm') return +(bcm * 0.735).toFixed(3);
+  return +bcm.toFixed(3);
+}
+function twnCell(row,key){ return row ? twnConvert(row[key], row.month) : null; }
+function twnSetUnit(unit){
+  _twnUnit = ['bcm_m','mcm_d','mtpm'].includes(unit) ? unit : 'bcm_m';
+  twnRender();
+}
+window.twnSetUnit = twnSetUnit;
+function twnSetComponent(key){
+  _twnComponent = TWN_COMPONENTS.some(c=>c.key===key) ? key : 'lngImportsBcm';
+  twnRender();
+}
+window.twnSetComponent = twnSetComponent;
+function twnAvailableYears(){
+  return [...new Set(twnRows().map(r=>+r.month.slice(0,4)))].filter(Boolean).sort((a,b)=>a-b);
+}
+function twnToggleYear(yr){
+  const years=twnAvailableYears();
+  if(!_twnYears||!_twnYears.length) _twnYears=years.slice(-5);
+  const idx=_twnYears.indexOf(yr);
+  if(idx>=0){ if(_twnYears.length>1) _twnYears.splice(idx,1); }
+  else _twnYears.push(yr);
+  _twnYears.sort((a,b)=>a-b);
+  twnRender();
+}
+window.twnToggleYear = twnToggleYear;
+
+function twnKpi(label,value,note,color='#c8d6e5'){
+  return `<div class="ga-kpi"><div class="ga-kpi-lbl">${label}</div><div class="ga-kpi-val" style="color:${color}">${value}</div><div class="ga-kpi-note">${note}</div></div>`;
+}
+
+function twnRender(){
+  const container=document.getElementById('twn-container');
+  if(!container || !_twnData) return;
+  const rows=twnRows();
+  const latest=twnLatest();
+  const years=twnAvailableYears();
+  if(!_twnYears || !_twnYears.length) _twnYears=years.slice(-5);
+  const selectedYears=(_twnYears||[]).slice().sort((a,b)=>b-a);
+  const unit=twnUnitLabel();
+  const latestMonth=latest?.month || _twnData.latest_month || '--';
+  const status=_twnData.status || (rows.length?'partial_balance':'source_gap');
+  const cached=_twnData.cachedAt ? new Date(_twnData.cachedAt).toLocaleString('en-GB',{timeZone:'Europe/London',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '--';
+  const yearBtns=[...new Set([...years.slice(-10), ...selectedYears])].sort((a,b)=>b-a).map(yr=>`<button class="f-btn sm${selectedYears.includes(yr)?' on':''}" onclick="twnToggleYear(${yr})">${yr}</button>`).join('');
+  container.innerHTML=`
+    <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">GAS & LNG ANALYTICS · TAIWAN</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid rgba(77,158,245,.13);padding-bottom:10px;margin-bottom:12px">
+      <span style="font-size:9px;color:#546e7a">UNIT</span>
+      ${[['bcm_m','bcm/month'],['mcm_d','mcm/d'],['mtpm','MTPM']].map(([k,l])=>`<button class="f-btn sm${_twnUnit===k?' on':''}" onclick="twnSetUnit('${k}')">${l}</button>`).join('')}
+      <span style="font-size:9px;color:#546e7a;margin-left:8px">YEARS</span>
+      ${yearBtns || '<span style="font-size:9px;color:#546e7a">waiting for parsed monthly rows</span>'}
+      <span style="margin-left:auto;color:#3d5070;font-size:9px">MOEA monthly balance · latest ${twnEsc(latestMonth)} · cache ${cached}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:8px;margin-bottom:12px">
+      ${twnKpi('Total supply', latest?twnFmt(twnCell(latest,'totalSupplyBcm')):'--', `${latestMonth} · ${unit}`, '#4fc3f7')}
+      ${twnKpi('LNG adjusted grid supply', latest?twnFmt(twnCell(latest,'lngAdjustedSupplyBcm')):'--', 'NG1 LNG adjustment + NG2 marketable gas', '#34d399')}
+      ${twnKpi('Power + CHP demand', latest?twnFmt(twnCell(latest,'powerDemandBcm')):'--', 'MOEA transformation input', '#ffb74d')}
+      ${twnKpi('Residual', latest?(latest.residualBcm>=0?'+':'')+twnFmt(twnCell(latest,'residualBcm')):'--', 'Supply - demand', latest?.residualBcm==null?'#8a9bb5':latest.residualBcm>=0?'#34d399':'#f87171')}
+    </div>
+    ${rows.length ? twnBalanceHtml(rows, selectedYears, unit) : twnSourceGapHtml(status)}
+    ${twnSourceStackHtml()}
+    <style>
+      #twn-container .ga-card table td{padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.08);color:#8a9bb5}
+      #twn-container .ga-card table td.num{text-align:right;font-family:'IBM Plex Mono',monospace;color:#c8d6e5;font-variant-numeric:tabular-nums}
+      #twn-container .ga-card table tr.tot td{background:rgba(77,158,245,.08);font-weight:600}
+      #twn-container .ga-card table tr.res td{background:rgba(255,183,77,.08);font-weight:600}
+    </style>`;
+  if(rows.length) setTimeout(twnDrawSeasonal,60);
+}
+
+function twnBalanceHtml(rows, selectedYears, unit){
+  const latestRows=rows.slice(-12);
+  const comp=TWN_COMPONENTS.find(c=>c.key===_twnComponent)||TWN_COMPONENTS[2];
+  const rowHtml=(label,key,cls='',note='')=>`<tr class="${cls}"><td style="color:#8a9bb5">${label}${note?`<div style="font-size:8px;color:#546e7a">${note}</div>`:''}</td>${latestRows.map(r=>`<td class="num">${twnFmt(twnCell(r,key))}</td>`).join('')}</tr>`;
+  return `
+    <div class="ga-card" style="margin-bottom:12px;overflow:auto">
+      <div class="ga-sec">MONTHLY TAIWAN GAS BALANCE <span class="ga-tag">${unit}</span></div>
+      <table style="width:100%;border-collapse:collapse;font-size:10px;min-width:980px">
+        <thead><tr><th style="text-align:left;color:#8a9bb5;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">Taiwan gas balance</th>${latestRows.map(r=>`<th style="text-align:right;color:#8abfff;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">${GA_MO[+r.month.slice(5,7)-1]}<br>${r.month.slice(0,4)}</th>`).join('')}</tr></thead>
+        <tbody>
+          <tr><td colspan="${latestRows.length+1}" style="padding:8px;color:#8a9bb5;text-decoration:underline">Supply</td></tr>
+          ${rowHtml('Domestic production','domesticProductionBcm')}
+          ${rowHtml('LNG adjusted grid supply','lngAdjustedSupplyBcm','','NG1 LNG calorific adjustment + NG2 marketable gas')}
+          ${rowHtml('Physical LNG imports','physicalLngImportsBcm','','MOEA physical LNG import quantity; not directly added to grid supply')}
+          ${rowHtml('Total supply','totalSupplyBcm','tot')}
+          <tr><td colspan="${latestRows.length+1}" style="padding:8px;color:#8a9bb5;text-decoration:underline">Demand</td></tr>
+          ${rowHtml('Power + CHP','powerDemandBcm')}
+          ${rowHtml('Industry','industryDemandBcm')}
+          ${rowHtml('Residential + commercial','residentialCommercialDemandBcm')}
+          ${rowHtml('Total demand','totalDemandBcm','tot')}
+          ${rowHtml('Residual (supply - demand)','residualBcm','res','computed from sourced monthly supply and demand')}
+        </tbody>
+      </table>
+      <div class="ga-source">Source: MOEA Energy Administration open data. Source unit converted to ${unit}. Missing source cells stay blank.</div>
+    </div>
+    <div class="ga-card" style="margin-bottom:12px">
+      <div class="ga-sec">TAIWAN SEASONAL BALANCE <span class="ga-tag">${comp.group} · ${unit}</span></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-size:9px;color:#546e7a">COMPONENT</span>
+        <select onchange="twnSetComponent(this.value)" style="background:#0d1320;color:#c8d6e5;border:1px solid #1e3a5f;padding:5px 8px;font-size:10px;font-family:inherit">
+          ${TWN_COMPONENTS.map(c=>`<option value="${c.key}" ${c.key===_twnComponent?'selected':''}>${c.group} - ${c.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="ga-ch-wrap" style="height:280px"><canvas id="twn-seasonal-chart"></canvas></div>
+      <div class="ga-source">Monthly MOEA rows only. No modeled balancing item is added.</div>
+    </div>`;
+}
+
+function twnSourceGapHtml(status){
+  return `<div class="ga-card" style="margin-bottom:12px">
+    <div class="ga-sec">TAIWAN GAS BALANCE DATA <span class="ga-tag">${String(status).replaceAll('_',' ').toUpperCase()}</span></div>
+    <div style="font-size:10px;color:#fbbf24;line-height:1.7;max-width:900px">
+      The Taiwan tab is wired to official MOEA Energy Administration open-data endpoints, but no monthly rows are cached yet in this deployment. The dashboard will stay blank until the scraper can fetch the official CSV. No fallback estimates are displayed.
+    </div>
+  </div>`;
+}
+
+function twnSourceStackHtml(){
+  const sources=_twnData?.sourceMap || [];
+  return `<div class="ga-card">
+    <div class="ga-sec">TAIWAN SOURCE STACK <span class="ga-tag">NO INVENTED DATA</span></div>
+    <div style="font-size:9px;color:#6b7a99;line-height:1.6;margin-bottom:10px">
+      Gassco UMM is not used here: it is Norwegian maintenance/outage data, not a Taiwan gas-balance source. Taiwan uses MOEA Energy Administration open data.
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px">
+      ${sources.map(s=>`<div style="border:1px solid rgba(77,158,245,.16);background:#0d1320;padding:10px;min-height:150px">
+        <div style="font-size:10px;color:#c8d6e5;font-weight:600;margin-bottom:5px">${twnEsc(s.item)}</div>
+        <div style="font-size:9px;color:#93c5fd;line-height:1.45;margin-bottom:6px">${twnEsc(s.source)}</div>
+        <div style="font-size:8px;color:${s.status==='wired'?'#34d399':s.status==='not_used'?'#f87171':'#fbbf24'};text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">${twnEsc(String(s.status||'pending').replaceAll('_',' '))}</div>
+        <div style="font-size:9px;color:#8a9bb5;line-height:1.55">${twnEsc(s.pull || '')}</div>
+        ${s.sourceUrl?`<a href="${twnEsc(s.sourceUrl)}" target="_blank" style="display:inline-block;margin-top:7px;font-size:9px;color:#93c5fd">Open source</a>`:''}
+      </div>`).join('')}
+    </div>
+    <div class="ga-source">Missing source row = gap, not modelled value. LNG-equivalent MTPM uses bcm/month x 0.735, matching the Thailand unit convention.</div>
+  </div>`;
+}
+
+function twnDrawSeasonal(){
+  const canvas=document.getElementById('twn-seasonal-chart');
+  if(!canvas) return;
+  const rows=twnRows();
+  const byMonth=Object.fromEntries(rows.map(r=>[r.month,r]));
+  const selected=(_twnYears&&_twnYears.length?_twnYears:twnAvailableYears().slice(-5)).slice().sort((a,b)=>b-a);
+  const datasets=selected.map((yr,i)=>({
+    label:String(yr),
+    data:Array.from({length:12},(_,m)=>{
+      const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
+      return twnCell(byMonth[mo], _twnComponent);
+    }),
+    borderColor:GA_COLS[i % GA_COLS.length],
+    backgroundColor:GA_COLS[i % GA_COLS.length] + (i===0?'22':'00'),
+    borderWidth:i===0?2.4:1.6,
+    borderDash:i>0?[5,3]:undefined,
+    pointRadius:2,
+    tension:.25,
+    spanGaps:false,
+  }));
+  gaMakeChart('twn-seasonal-chart','line',{labels:GA_MO,datasets},{
+    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:twnUnitLabel(),color:'#3d5070',font:{size:9}}}},
+    plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TURKEY MODULE — Gas Balance + TEIAS Power Source Mix
+// ════════════════════════════════════════════════════════════════════════════
+let _turData = null;
+let _turErr = null;
+let _turUnit = 'bcm_m';
+let _turYears = null;
+let _turComponent = 'totalSupplyBcm';
+
+const TUR_COMPONENTS = [
+  {key:'totalSupplyBcm', label:'Supply equation total', group:'Supply'},
+  {key:'lngImportsBcm', label:'LNG imports', group:'Supply'},
+  {key:'domesticProductionBcm', label:'Domestic production', group:'Supply'},
+  {key:'pipelineImportsBcm', label:'Pipeline imports', group:'Supply'},
+  {key:'powerGenerationDemandBcm', label:'Power generation / conversion', group:'Demand'},
+  {key:'industryDemandBcm', label:'Industry', group:'Demand'},
+  {key:'residentialKonutDemandBcm', label:'Residential / Konut', group:'Demand'},
+  {key:'totalDemandBcm', label:'Sectorial gas demand', group:'Demand'},
+  {key:'supplyDemandBalanceBcm', label:'Supply - sectorial demand', group:'Balance'},
+];
+
+const TUR_POWER_COMPONENTS = [
+  {key:'hydroGenerationGWh', label:'Hydro', color:'#4fc3f7'},
+  {key:'coalGenerationGWh', label:'Coal', color:'#9ca3af'},
+  {key:'windGenerationGWh', label:'Wind', color:'#34d399'},
+  {key:'solarGenerationGWh', label:'Solar', color:'#ffb74d'},
+  {key:'alternativeFuelsGenerationGWh', label:'Alternative fuels', color:'#a78bfa'},
+];
+const TUR_POWER_TABLE_COMPONENTS = [
+  ...TUR_POWER_COMPONENTS,
+  {key:'geothermalWindSolarGenerationGWh', label:'Geo + wind + solar', color:'#22d3ee'},
+];
+
+function turShow(btn){
+  ['lngbal-asia','lngbal-india','lngbal-sam'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+  const turkey=document.getElementById('lngbal-turkey');
+  if(turkey) turkey.style.display='';
+  document.querySelectorAll('#lngbal-cty-bar .cty-tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(typeof turInit==='function') setTimeout(turInit,80);
+}
+window.turShow = turShow;
+
+function turInit(){
+  const container = document.getElementById('tur-container');
+  if(!container) return;
+  if(_turData){ turRender(); return; }
+  container.innerHTML = `<div style="padding:28px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">Loading Turkey EPDK gas balance...</div>`;
+  fetch('/data/turkey_gas_balance.json?v=' + Date.now(), {cache:'no-store'})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(j=>{ _turData = j; _turErr = null; turRender(); })
+    .catch(err=>{
+      _turErr = err.message;
+      container.innerHTML = `<div style="padding:28px;text-align:center;color:#f87171;font-size:10px;border:1px solid rgba(248,113,113,.3)">Turkey gas balance unavailable: ${turEsc(err.message)}</div>`;
+    });
+}
+window.turInit = turInit;
+
+function turRows(){ return (_turData?.rows || []).filter(r=>r?.month).sort((a,b)=>a.month.localeCompare(b.month)); }
+function turLatest(){ const rows=turRows(); return rows.length?rows[rows.length-1]:null; }
+function turEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function turDays(month){ const y=+(month||'').slice(0,4), m=+(month||'').slice(5,7); return y&&m ? new Date(y,m,0).getDate() : 30; }
+function turUnitLabel(){ return _turUnit === 'mcm_d' ? 'mcm/d' : _turUnit === 'mtpm' ? 'MTPM' : 'bcm/month'; }
+function turDecimals(){ return _turUnit === 'bcm_m' || _turUnit === 'mtpm' ? 3 : 2; }
+function turConvert(bcm, month){
+  if(bcm==null||!isFinite(bcm)) return null;
+  if(_turUnit === 'mcm_d') return +(bcm * 1000 / turDays(month)).toFixed(2);
+  if(_turUnit === 'mtpm') return +(bcm * 0.735).toFixed(3);
+  return +bcm.toFixed(3);
+}
+function turFmt(v,d=turDecimals()){ return v==null||!isFinite(v)?'--':Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function turCell(row,key){ return row ? turConvert(row[key], row.month) : null; }
+function turSetUnit(unit){ _turUnit = ['bcm_m','mcm_d','mtpm'].includes(unit) ? unit : 'bcm_m'; turRender(); }
+window.turSetUnit = turSetUnit;
+function turSetComponent(key){ _turComponent = TUR_COMPONENTS.some(c=>c.key===key) ? key : 'totalSupplyBcm'; turRender(); }
+window.turSetComponent = turSetComponent;
+function turAvailableYears(){ return [...new Set(turRows().map(r=>+r.month.slice(0,4)))].filter(Boolean).sort((a,b)=>a-b); }
+function turToggleYear(yr){
+  const years=turAvailableYears();
+  if(!_turYears||!_turYears.length) _turYears=years.slice(-5);
+  const idx=_turYears.indexOf(yr);
+  if(idx>=0){ if(_turYears.length>1) _turYears.splice(idx,1); } else _turYears.push(yr);
+  _turYears.sort((a,b)=>a-b);
+  turRender();
+}
+window.turToggleYear = turToggleYear;
+function turKpi(label,value,note,color='#c8d6e5'){ return `<div class="ga-kpi"><div class="ga-kpi-lbl">${label}</div><div class="ga-kpi-val" style="color:${color}">${value}</div><div class="ga-kpi-note">${note}</div></div>`; }
+function turPowerRows(){ return ((_turData?.powerGeneration||{}).rows || []).filter(r=>r?.month).sort((a,b)=>a.month.localeCompare(b.month)); }
+
+function turRender(){
+  const container=document.getElementById('tur-container');
+  if(!container || !_turData) return;
+  const rows=turRows(), latest=turLatest(), years=turAvailableYears();
+  if(!_turYears || !_turYears.length) _turYears=years.slice(-5);
+  const selectedYears=(_turYears||[]).slice().sort((a,b)=>b-a);
+  const unit=turUnitLabel();
+  const latestMonth=latest?.month || _turData.latest_month || '--';
+  const status=_turData.status || (rows.length?'partial_balance':'source_gap');
+  const cached=_turData.cachedAt ? new Date(_turData.cachedAt).toLocaleString('en-GB',{timeZone:'Europe/London',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '--';
+  const yearBtns=[...new Set([...years.slice(-10), ...selectedYears])].sort((a,b)=>b-a).map(yr=>`<button class="f-btn sm${selectedYears.includes(yr)?' on':''}" onclick="turToggleYear(${yr})">${yr}</button>`).join('');
+  container.innerHTML=`
+    <div style="margin-bottom:4px;font-size:9px;letter-spacing:.15em;color:#6b7a99">GAS & LNG ANALYTICS · TURKEY</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid rgba(77,158,245,.13);padding-bottom:10px;margin-bottom:12px">
+      <span style="font-size:9px;color:#546e7a">UNIT</span>
+      ${[['bcm_m','bcm/month'],['mcm_d','mcm/d'],['mtpm','MTPM']].map(([k,l])=>`<button class="f-btn sm${_turUnit===k?' on':''}" onclick="turSetUnit('${k}')">${l}</button>`).join('')}
+      <span style="font-size:9px;color:#546e7a;margin-left:8px">YEARS</span>
+      ${yearBtns || '<span style="font-size:9px;color:#546e7a">waiting for parsed EPDK rows</span>'}
+      <span style="margin-left:auto;color:#3d5070;font-size:9px">EPDK monthly reports · latest ${turEsc(latestMonth)} · cache ${cached}</span>
+    </div>
+    <div style="font-size:10px;color:#c8d6e5;letter-spacing:.12em;margin-bottom:12px">TURKEY GAS BALANCE</div>
+    ${turBalancePage(rows, selectedYears, unit, latest, latestMonth, status)}
+    ${turSourceStackHtml()}
+    <style>
+      #tur-container .ga-card table td{padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.08);color:#8a9bb5}
+      #tur-container .ga-card table td.num{text-align:right;font-family:'IBM Plex Mono',monospace;color:#c8d6e5;font-variant-numeric:tabular-nums}
+      #tur-container .ga-card table tr.tot td{background:rgba(77,158,245,.08);font-weight:600;color:#f0f4ff}
+      #tur-container .ga-card table tr.res td{background:rgba(255,183,77,.08);font-weight:600}
+      #tur-container .tur-note{font-size:9px;color:#6b7a99;line-height:1.6}
+    </style>`;
+  if(rows.length) setTimeout(turDrawSeasonal,60);
+  if(turPowerRows().length) setTimeout(turDrawPower,60);
+}
+
+function turBalancePage(rows, selectedYears, unit, latest, latestMonth, status){
+  if(!rows.length) return turSourceGapHtml(status);
+  return `
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:8px;margin-bottom:12px">
+      ${turKpi('Supply equation', latest?turFmt(turCell(latest,'totalSupplyBcm')):'--', `LNG + domestic + pipeline · ${unit}`, '#4fc3f7')}
+      ${turKpi('LNG imports', latest?turFmt(turCell(latest,'lngImportsBcm')):'--', 'EPDK gas-type import split', '#34d399')}
+      ${turKpi('Sectorial gas demand', latest?turFmt(turCell(latest,'totalDemandBcm')):'--', `${latestMonth} · EPDK sector table`, '#ffb74d')}
+      ${turKpi('Supply - demand', latest?(latest.supplyDemandBalanceBcm>=0?'+':'')+turFmt(turCell(latest,'supplyDemandBalanceBcm')):'--', 'Not forced to zero', latest?.supplyDemandBalanceBcm==null?'#8a9bb5':latest.supplyDemandBalanceBcm>=0?'#34d399':'#f87171')}
+    </div>
+    ${turBalanceHtml(rows, selectedYears, unit)}
+    ${turCountryHtml(latest, unit)}
+    ${turPowerHtml()}`;
+}
+
+function turBalanceHtml(rows, selectedYears, unit){
+  const latestRows=rows.slice(-12);
+  const comp=TUR_COMPONENTS.find(c=>c.key===_turComponent)||TUR_COMPONENTS[0];
+  const rowHtml=(label,key,cls='',note='',stock=false)=>`<tr class="${cls}"><td style="color:#8a9bb5">${label}${note?`<div style="font-size:8px;color:#546e7a">${note}</div>`:''}</td>${latestRows.map(r=>`<td class="num">${stock?turFmt(r[key],3):turFmt(turCell(r,key))}</td>`).join('')}</tr>`;
+  return `
+    <div class="ga-card" style="margin-bottom:12px;overflow:auto">
+      <div class="ga-sec">MONTHLY TURKEY GAS BALANCE <span class="ga-tag">${unit}</span></div>
+      <table style="width:100%;border-collapse:collapse;font-size:10px;min-width:1040px">
+        <thead><tr><th style="text-align:left;color:#8a9bb5;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">Turkey gas balance</th>${latestRows.map(r=>`<th style="text-align:right;color:#8abfff;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">${GA_MO[+r.month.slice(5,7)-1]}<br>${r.month.slice(0,4)}</th>`).join('')}</tr></thead>
+        <tbody>
+          <tr><td colspan="${latestRows.length+1}" style="padding:8px;color:#8a9bb5;text-decoration:underline">Supply equation</td></tr>
+          ${rowHtml('LNG imports','lngImportsBcm')}
+          ${rowHtml('Domestic production','domesticProductionBcm')}
+          ${rowHtml('Pipeline imports','pipelineImportsBcm')}
+          ${rowHtml('Supply equation total','totalSupplyBcm','tot','LNG imports + domestic production + pipeline imports')}
+          <tr><td colspan="${latestRows.length+1}" style="padding:8px;color:#8a9bb5;text-decoration:underline">Sectorial gas demand</td></tr>
+          ${rowHtml('Power generation / conversion','powerGenerationDemandBcm','','EPDK section 1 total')}
+          ${rowHtml('Industry','industryDemandBcm','','EPDK section 4')}
+          ${rowHtml('Residential / Konut','residentialKonutDemandBcm','','EPDK Konut row')}
+          ${rowHtml('Sectorial gas demand total','totalDemandBcm','tot','EPDK sector table total')}
+          <tr><td colspan="${latestRows.length+1}" style="padding:8px;color:#8a9bb5;text-decoration:underline">Storage stock · bcm</td></tr>
+          ${rowHtml('Underground storage stock','undergroundStorageStockBcm','','EPDK Depolama',true)}
+          ${rowHtml('LNG terminal stock','lngTerminalStockBcm','','EPDK Depolama',true)}
+          ${rowHtml('Total storage stock','totalStorageStockBcm','tot','EPDK Depolama',true)}
+          ${rowHtml('Supply - sectorial demand','supplyDemandBalanceBcm','res','Supply equation total minus EPDK sectorial demand total.')}
+        </tbody>
+      </table>
+      <div class="ga-source">Source: EPDK monthly natural gas sector report and appendix. Missing PDF/Excel cells stay blank.</div>
+    </div>
+    <div class="ga-card" style="margin-bottom:12px">
+      <div class="ga-sec">TURKEY SEASONAL BALANCE <span class="ga-tag">${comp.group} · ${unit}</span></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-size:9px;color:#546e7a">COMPONENT</span>
+        <select onchange="turSetComponent(this.value)" style="background:#0d1320;color:#c8d6e5;border:1px solid #1e3a5f;padding:5px 8px;font-size:10px;font-family:inherit">
+          ${TUR_COMPONENTS.map(c=>`<option value="${c.key}" ${c.key===_turComponent?'selected':''}>${c.group} - ${c.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="ga-ch-wrap" style="height:280px"><canvas id="tur-seasonal-chart"></canvas></div>
+      <div class="ga-source">Only parsed EPDK monthly rows are plotted. No seasonal backfill is generated.</div>
+    </div>`;
+}
+
+function turCountryHtml(latest, unit){
+  const items=(latest?.importsByCountry||[]).filter(x=>x&&x.country);
+  if(!items.length) return '';
+  const rows=items.slice().sort((a,b)=>(b.volumeBcm||0)-(a.volumeBcm||0));
+  return `<div class="ga-card" style="margin-bottom:12px;overflow:auto">
+    <div class="ga-sec">TURKEY IMPORTS BY COUNTRY <span class="ga-tag">${turEsc(latest.month)} · ${unit}</span></div>
+    <table style="width:100%;border-collapse:collapse;font-size:10px;min-width:620px">
+      <thead><tr><th style="text-align:left;color:#8a9bb5;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">Country</th><th style="text-align:left;color:#8a9bb5;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">EPDK licence group</th><th style="text-align:right;color:#8a9bb5;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">Volume</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr><td>${turEsc(r.country)}</td><td>${turEsc(r.licenseGroup||'--')}</td><td class="num">${turFmt(turConvert(r.volumeBcm,latest.month))}</td></tr>`).join('')}</tbody>
+    </table>
+    <div class="ga-source">EPDK appendix country rows. Licence group is Spot vs long-term import licence.</div>
+  </div>`;
+}
+
+function turSourceGapHtml(status){
+  return `<div class="ga-card" style="margin-bottom:12px">
+    <div class="ga-sec">TURKEY GAS BALANCE DATA <span class="ga-tag">${String(status).replaceAll('_',' ').toUpperCase()}</span></div>
+    <div style="font-size:10px;color:#fbbf24;line-height:1.7;max-width:920px">
+      The Turkey tab is wired to EPDK monthly sector reports. If the report page or appendix download is unavailable, this panel stays blank and marks the source gap. No fallback estimates are displayed.
+    </div>
+  </div>`;
+}
+
+function turPowerHtml(){
+  const power=_turData?.powerGeneration || {};
+  const rows=turPowerRows();
+  const latest=rows.length?rows[rows.length-1]:null;
+  if(!rows.length){
+    return `<div class="ga-card" style="margin-bottom:12px">
+      <div class="ga-sec">TURKEY POWER GENERATION BY SOURCE <span class="ga-tag">${turEsc(String(power.status||'source_gap').replaceAll('_',' ').toUpperCase())}</span></div>
+      <div style="font-size:10px;color:#fbbf24;line-height:1.7;max-width:920px">
+        TEİAŞ power generation by source is wired separately from the EPDK gas balance. If the TEİAŞ workbook or expected source rows are unavailable, this block stays blank rather than estimated.
+      </div>
+      <div class="ga-source">Source: TEİAŞ monthly electricity production-consumption reports, Kaynaklara Göre sheet. Missing source = blank.</div>
+    </div>`;
+  }
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px">
+      ${TUR_POWER_COMPONENTS.map(c=>turKpi(c.label, latest[c.key]!=null?turFmt(latest[c.key],1):'--', `${latest.month || '--'} · GWh`, c.color)).join('')}
+    </div>
+    <div class="ga-card" style="margin-bottom:12px">
+      <div class="ga-sec">TURKEY POWER GENERATION BY SOURCE <span class="ga-tag">GWh/month</span></div>
+      <div class="ga-ch-wrap" style="height:300px"><canvas id="tur-power-chart"></canvas></div>
+      <div class="ga-source">Source: TEİAŞ Kaynaklara Göre. Coal = Hard Coal + Imported Coal + Lignite. 2022-2024 publish one Geo + Wind + Solar row, so individual wind/solar stay blank before TEİAŞ separates them. Alternative Fuels = Renew and Wastes / Yenilenebilir + Atık. No estimates are added.</div>
+    </div>
+    <div class="ga-card" style="margin-bottom:12px;overflow:auto">
+      <div class="ga-sec">TEİAŞ SOURCE MIX TABLE <span class="ga-tag">${turEsc(power.status||'wired')}</span></div>
+      <table style="width:100%;border-collapse:collapse;font-size:10px;min-width:780px">
+        <thead><tr>
+          <th style="text-align:left;color:#8a9bb5;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">Month</th>
+          ${TUR_POWER_TABLE_COMPONENTS.map(c=>`<th style="text-align:right;color:#8a9bb5;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">${turEsc(c.label)}</th>`).join('')}
+          <th style="text-align:right;color:#8a9bb5;padding:6px 8px;border-bottom:1px solid rgba(77,158,245,.25)">Gross generation</th>
+        </tr></thead>
+        <tbody>${rows.slice(-30).reverse().map(r=>`<tr>
+          <td>${turEsc(r.month)}</td>
+          ${TUR_POWER_TABLE_COMPONENTS.map(c=>`<td class="num">${r[c.key]!=null?turFmt(r[c.key],1):'--'}</td>`).join('')}
+          <td class="num">${r.grossGenerationGWh!=null?turFmt(r.grossGenerationGWh,1):'--'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+function turSourceStackHtml(){
+  const sources=_turData?.sourceMap || [];
+  return `<div class="ga-card">
+    <div class="ga-sec">TURKEY SOURCE STACK <span class="ga-tag">NO INVENTED DATA</span></div>
+    <div class="tur-note" style="margin-bottom:10px">Turkey gas balance uses EPDK only. Power generation by source uses TEİAŞ only and is displayed separately from the gas equation.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px">
+      ${sources.map(s=>`<div style="border:1px solid rgba(77,158,245,.16);background:#0d1320;padding:10px;min-height:140px">
+        <div style="font-size:10px;color:#c8d6e5;font-weight:600;margin-bottom:5px">${turEsc(s.item)}</div>
+        <div style="font-size:9px;color:#93c5fd;line-height:1.45;margin-bottom:6px">${turEsc(s.source)}</div>
+        <div style="font-size:8px;color:${s.status==='wired'?'#34d399':'#fbbf24'};text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">${turEsc(String(s.status||'pending').replaceAll('_',' '))}</div>
+        <div style="font-size:9px;color:#8a9bb5;line-height:1.55">${turEsc(s.pull || '')}</div>
+        ${s.sourceUrl?`<a href="${turEsc(s.sourceUrl)}" target="_blank" style="display:inline-block;margin-top:7px;font-size:9px;color:#93c5fd">Open source</a>`:''}
+      </div>`).join('')}
+    </div>
+    <div class="ga-source">Refresh target: weekly scrape. Missing source row = gap, not modelled value.</div>
+  </div>`;
+}
+
+function turDrawSeasonal(){
+  const canvas=document.getElementById('tur-seasonal-chart');
+  if(!canvas) return;
+  const byMonth=Object.fromEntries(turRows().map(r=>[r.month,r]));
+  const selected=(_turYears&&_turYears.length?_turYears:turAvailableYears().slice(-5)).slice().sort((a,b)=>b-a);
+  const datasets=selected.map((yr,i)=>({
+    label:String(yr),
+    data:Array.from({length:12},(_,m)=>turCell(byMonth[`${yr}-${String(m+1).padStart(2,'0')}`], _turComponent)),
+    borderColor:GA_COLS[i % GA_COLS.length],
+    backgroundColor:GA_COLS[i % GA_COLS.length] + (i===0?'22':'00'),
+    borderWidth:i===0?2.4:1.6,
+    borderDash:i>0?[5,3]:undefined,
+    pointRadius:2,
+    tension:.25,
+    spanGaps:false,
+  }));
+  gaMakeChart('tur-seasonal-chart','line',{labels:GA_MO,datasets},{
+    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:turUnitLabel(),color:'#3d5070',font:{size:9}}}},
+    plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}
+  });
+}
+
+function turDrawPower(){
+  const rows=turPowerRows().slice(-36);
+  const canvas=document.getElementById('tur-power-chart');
+  if(!canvas || !rows.length) return;
+  const datasets=TUR_POWER_TABLE_COMPONENTS.map(c=>({
+    label:c.label,
+    data:rows.map(r=>r[c.key]),
+    borderColor:c.color,
+    backgroundColor:c.color+'18',
+    borderWidth:c.key==='hydroGenerationGWh'?2.2:1.7,
+    pointRadius:0,
+    tension:.25,
+    spanGaps:false,
+  }));
+  gaMakeChart('tur-power-chart','line',{labels:rows.map(r=>r.month),datasets},{
+    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'GWh/month',color:'#3d5070',font:{size:9}}}},
+    plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}}}
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -29458,9 +30304,11 @@ window.samShow = function(btn) {
   var asiaEl  = document.getElementById('lngbal-asia');
   var indiaEl = document.getElementById('lngbal-india');
   var samEl   = document.getElementById('lngbal-sam');
+  var turEl   = document.getElementById('lngbal-turkey');
   if (asiaEl)  asiaEl.style.display  = 'none';
   if (indiaEl) indiaEl.style.display = 'none';
   if (samEl)   samEl.style.display   = '';
+  if (turEl)   turEl.style.display   = 'none';
   document.querySelectorAll('#lngbal-cty-bar .cty-tab').forEach(function(b){ b.classList.remove('active'); });
   if (btn) btn.classList.add('active');
   if (!SAM.inited) { SAM.init(); SAM.inited = true; }

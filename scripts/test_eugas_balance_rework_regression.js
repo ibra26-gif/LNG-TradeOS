@@ -79,4 +79,13 @@ assert(
   'historical pipeline cache must load before falling back to live year fetches'
 );
 
+assert(
+  js.includes('function gaDomProdMonthRanges') &&
+    js.includes('dom_prod_eu_v6_${year}') &&
+    js.includes("chunked: 'monthly'") &&
+    js.includes('/api/entsog-prod?from=${from}&to=${to}') &&
+    !js.includes('/api/entsog-prod?from=${yStart}&to=${yEnd}'),
+  'domestic production must fetch monthly chunks so recent days are not truncated out of ENTSOG year-to-date responses'
+);
+
 if (!process.exitCode) console.log('EU gas balance rework regression checks passed');

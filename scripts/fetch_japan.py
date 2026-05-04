@@ -344,9 +344,12 @@ def load_ember_japan_nuclear() -> dict:
         "sourceUrl": EMBER_URL,
         "capacityReference": {
             "operableGw": 31.679,
-            "source": "World Nuclear Association",
+            "restartAdjustedGw": 14.609,
+            "source": "World Nuclear Association + JAIF Japan NPPs in Operation",
             "sourceUrl": "https://world-nuclear.org/information-library/country-profiles/countries-g-n/japan-nuclear-power",
-            "note": "Used only to convert monthly Ember TWh into an operable-fleet utilization proxy. It is not a live reactor availability feed.",
+            "capacitySourceUrl": "https://www.jaif.or.jp/cms_admin/wp-content/uploads/2026/02/jp-npps-operation20260209_en.pdf",
+            "basisDate": "2026-05-04",
+            "note": "Utilization uses Ember monthly TWh divided by restarted/reactor-returned capacity. Units still under restart review are excluded until proper commercial restart; restarted units that are idle, offline, under maintenance, or not producing remain in the denominator.",
         },
         "series": series,
     }

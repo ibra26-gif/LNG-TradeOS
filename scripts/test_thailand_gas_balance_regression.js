@@ -22,7 +22,13 @@ assert(js.includes("const THAI_PREF_KEY = 'thai_gb_prefs_v1'"), 'Thailand balanc
 assert(js.includes('function thaiShowTab') && js.includes('WEATHER MONITOR'), 'Thailand must expose Gas Balance and Weather Monitor tabs');
 assert(js.includes('SEASONAL CHART') && js.includes('thaiToggleYear'), 'Thailand view must include a seasonal chart with multi-year toggles');
 assert(js.includes('MONTHLY GAS BALANCE') && js.includes('Residual (supply - demand)'), 'Thailand view must include the monthly balance table and residual');
-assert(js.includes('THAILAND CDD INDEX') && js.includes('CDD vs POWER GAS BURN vs LNG IMPORTS'), 'Weather monitor must show CDD and power/LNG sensitivity charts');
+assert(
+  js.includes('THAILAND CDD INDEX') &&
+  js.includes('CDD vs POWER GAS BURN vs LNG IMPORTS — SEASONAL') &&
+  js.includes('const seasonalYears = selected.slice(0,4)') &&
+  !js.includes('last 48 matched months'),
+  'Weather monitor must show the combined CDD/power/LNG view as a seasonal chart'
+);
 assert(js.includes('Distribution of NGL is ignored'), 'Thailand view must surface the NGL exclusion');
 assert(js.includes("['mtpm','MTPM']") && js.includes("bcmM * 0.735") && js.includes("_thaiUnit === 'mtpm' ? 'MTPM'"), 'Thailand balance must expose MTPM and convert from monthly bcm to LNG-equivalent Mt/month');
 assert(/name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app), 'Private platform script must keep a dated cache-bust');
