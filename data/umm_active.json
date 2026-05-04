@@ -12,6 +12,16 @@
     },
     {
       "title": "Other unavailability · Planned",
+      "asset": "St.Fergus",
+      "impact": "-33.7 mcm/d",
+      "from": "2026-05-04",
+      "to": "2026-05-07",
+      "type": "planned",
+      "published": "2025-12-18T13:24:00",
+      "msg_id": "2026-54___________________005"
+    },
+    {
+      "title": "Other unavailability · Planned",
       "asset": "Oseberg",
       "impact": "-26.6 mcm/d",
       "from": "2026-05-01",
@@ -31,30 +41,20 @@
       "msg_id": "2026-96___________________006"
     },
     {
-      "title": "Gas production field unavailability · Unplanned",
-      "asset": "Åsgard",
-      "impact": "-10.0 mcm/d",
-      "from": "2026-05-03",
-      "to": "2026-05-04",
-      "type": "unplanned",
-      "published": "2026-05-03T15:28:33.803000",
-      "msg_id": "2026-200__________________002"
-    },
-    {
       "title": "Other unavailability · Planned",
-      "asset": "Dornum",
-      "impact": "+0.0 mcm/d",
-      "from": "2026-03-02",
-      "to": "2029-01-01",
+      "asset": "St.Fergus",
+      "impact": "-20.7 mcm/d",
+      "from": "2026-05-04",
+      "to": "2026-05-11",
       "type": "planned",
-      "published": "2026-02-19T10:14:35.540000",
-      "msg_id": "2026-136__________________002"
+      "published": "2026-04-07T14:26:00",
+      "msg_id": "2026-55___________________006"
     }
   ],
   "_meta": {
-    "updated": "2026-05-04T03:33:24Z",
+    "updated": "2026-05-04T08:41:38Z",
     "source": "gassco xlexport",
-    "total_messages": 156,
-    "active_count": 5
+    "total_messages": 155,
+    "active_count": 7
   }
 }
