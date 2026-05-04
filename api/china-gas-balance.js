@@ -5,7 +5,8 @@
 // with fresh NBS (~16th) and GACC (~10th) releases, then commit the CSV.
 //
 // CSV columns: month,prod_bcm,lng_mt,pipe_mt,lng_bcm,pipe_bcm,total_bcm,apparent_bcm
-// Response rows: { m, prod, lng, pipe } — all in BCM, matching frontend expectations.
+// Response rows preserve blanks as null. The frontend must not infer missing
+// China demand or storage from seasonal estimates.
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -16,19 +17,39 @@ function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   const hdr = lines[0].split(',').map(h => h.trim());
   const ix = Object.fromEntries(hdr.map((h, i) => [h, i]));
+  const val = (cells, key) => {
+    const pos = ix[key];
+    if (pos == null) return null;
+    const raw = String(cells[pos] ?? '').trim();
+    if (!raw) return null;
+    const parsed = parseFloat(raw.replace(/,/g, ''));
+    return Number.isFinite(parsed) ? parsed : null;
+  };
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const cells = lines[i].split(',');
     if (cells.length < hdr.length) continue;
-    const prod = parseFloat(cells[ix.prod_bcm]);
-    const lng  = parseFloat(cells[ix.lng_bcm]);
-    const pipe = parseFloat(cells[ix.pipe_bcm]);
-    if (isNaN(prod) && isNaN(lng) && isNaN(pipe)) continue;
+    const month = String(cells[ix.month] ?? '').trim();
+    if (!/^\d{4}-\d{2}$/.test(month)) continue;
+    const prod = val(cells, 'prod_bcm');
+    const lng = val(cells, 'lng_bcm');
+    const pipe = val(cells, 'pipe_bcm');
+    const total = val(cells, 'total_bcm');
+    const apparent = val(cells, 'apparent_bcm');
+    if ([prod, lng, pipe, total, apparent].every(v => v == null)) continue;
     rows.push({
-      m: cells[ix.month],
-      prod: isNaN(prod) ? 0 : prod,
-      lng:  isNaN(lng)  ? 0 : lng,
-      pipe: isNaN(pipe) ? 0 : pipe,
+      m: month,
+      month,
+      prod,
+      lng,
+      pipe,
+      prod_bcm: prod,
+      lng_bcm: lng,
+      pipe_bcm: pipe,
+      lng_mt: val(cells, 'lng_mt'),
+      pipe_mt: val(cells, 'pipe_mt'),
+      total_bcm: total,
+      apparent_bcm: apparent,
     });
   }
   return rows;

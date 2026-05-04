@@ -160,46 +160,13 @@
       return result;
     }
 
-    // ── SHPGX Simulated Data (Phase 1 — realistic estimates) ──
-    function genShpgxSeries(startDays, config) {
-      // Generate realistic daily series going back startDays
-      const out = [];
-      const today = new Date();
-      let val = config.base + (Math.random()-0.5)*config.spread;
-      for(let i=startDays; i>=0; i--) {
-        const d = new Date(today); d.setDate(d.getDate()-i);
-        if(d.getDay()===0||d.getDay()===6) continue; // weekdays only
-        val += (Math.random()-0.48)*config.drift;
-        val = Math.max(config.min, Math.min(config.max, val));
-        out.push({ date: d, dateStr: d.toISOString().slice(0,10), value: +val.toFixed(3) });
-      }
-      return out;
-    }
-
-    // North China truck retail ¥/kg → realistic seasonal pattern
-    const TRUCK_CNY = genShpgxSeries(400, {base:5.0, spread:0.4, drift:0.05, min:3.8, max:6.2});
-    const CLD_USD   = genShpgxSeries(400, {base:14.2, spread:1.0, drift:0.12, min:10, max:18});
-    const EXTERM_CNY_T = genShpgxSeries(400, {base:4600, spread:300, drift:40, min:3800, max:5500}); // ¥/tonne
-    const DIESEL_CNY_T = genShpgxSeries(400, {base:8200, spread:300, drift:30, min:6800, max:9500}); // ¥/tonne
-
-    // Pipeline gas ¥/m³ (monthly - simulated)
-    function genPipelineMonthly() {
-      const out = [];
-      const today = new Date();
-      // Spot pipeline weekly → monthly avg simulation
-      const spotBase = 2.1, cnpNational = 2.05;
-      const regions = ['National','North','East','South','Central'];
-      const offsets = [0, 0.05, 0.10, 0.15, -0.05];
-      for(let m=14; m>=0; m--) {
-        const d = new Date(today.getFullYear(), today.getMonth()-m, 1);
-        const row = { month: d, label: d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}) };
-        const drift = (Math.random()-0.49)*0.05;
-        regions.forEach((r,i)=>{ row[r] = +(cnpNational + offsets[i] + drift + Math.sin(m/3)*0.1).toFixed(3); });
-        row.spot = +(spotBase + drift*1.5 + Math.sin(m/2)*0.15).toFixed(3);
-        out.push(row);
-      }
-      return out;
-    }
+    // China module rule: do not create synthetic market series. Missing SHPGX,
+    // EOD or balance fields render as source gaps.
+    const CN_NDRC_IND_CNY_M3 = 3.58; // static reference, displayed as reference only
+    const CN_NDRC_GATE_USD = 7.50;
+    const CN_CAGP_RANGE = [6.0, 8.0];
+    const CN_RUSSIA_POS_RANGE = [3.0, 5.0];
+    const CN_PROD_COST_RANGE = [3.0, 8.0];
 
     // Convert truck ¥/kg → $/MMBtu. Use the same LNG heat content across
     // China Gas Price Chain, China Gas Prices and Global Fundamentals 2.0.
@@ -229,21 +196,23 @@
     // ── TAB 1: PRICE CHAIN ──
     function csT1Update() {
       const usdcny = parseFloat(document.getElementById('cs-usdcny')?.value||7.25);
+      const region = document.getElementById('cs-t1-region')?.value || 'north';
       const dist   = parseInt(document.getElementById('cs-dist')?.value||300);
       const other  = parseFloat(document.getElementById('cs-other-cost')?.value||0.20);
       const rng    = CS.ranges.t1;
 
-      // Use real SHPGX data if loaded, else simulated
-      const truckData = chinaNorthTruckSeries();
+      // Use real SHPGX data only.
+      const truckData = chinaTruckSeriesForRegion(region);
       const cldData   = liveOrSim('cld',   ()=>[]);
-      const extData   = liveOrSim('exterm',()=>[]);
+      const extData   = chinaSeriesForRegion('exterm', region);
       const latTruck = truckData[truckData.length-1]?.value ?? null;
       const latCLD   = cldData[cldData.length-1]?.value ?? null;
       const latEXT   = extData[extData.length-1]?.value ?? null;
       if(latTruck==null||latCLD==null||latEXT==null){
         const metrics = document.getElementById('cs-t1-metrics');
-        if(metrics) metrics.innerHTML = `<div class="cs-mc" style="grid-column:1/-1"><div class="cs-mc-lbl">SHPGX SOURCE GAP</div><div class="cs-mc-val">--</div><div class="cs-mc-sub">Load SHPGX truck, CLD and ex-terminal rows. No simulated price is shown.</div></div>`;
+        if(metrics) metrics.innerHTML = `<div class="cs-mc" style="grid-column:1/-1"><div class="cs-mc-lbl">SHPGX SOURCE GAP</div><div class="cs-mc-val">--</div><div class="cs-mc-sub">Load SHPGX truck, CLD and ex-terminal rows for the selected region. No simulated price is shown.</div></div>`;
         ['cs-wf-canvas','cs-t1-hist-canvas'].forEach(id=>{if(CS.charts[id]){CS.charts[id].destroy();delete CS.charts[id];}});
+        const leg=document.getElementById('cs-wf-legend'); if(leg) leg.innerHTML='';
         return;
       }
 
@@ -497,8 +466,8 @@
       mkChart('cs-t3-canvas',{
         type:'line',
         data:{labels,datasets:[
-          {label:'Diesel $/MMBtu ★EST',data:dieselAligned,borderColor:'#f59e0b',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:.3,spanGaps:true,order:3},
-          {label:'LNG Truck $/MMBtu ★EST',data:truckUSD,borderColor:'#4d9ef5',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true,order:2},
+          {label:'Diesel $/MMBtu',data:dieselAligned,borderColor:'#f59e0b',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:.3,spanGaps:true,order:3},
+          {label:'LNG Truck $/MMBtu',data:truckUSD,borderColor:'#4d9ef5',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,spanGaps:true,order:2},
           {label:'Spread — LNG cheaper',data:spreadGreen,borderColor:'rgba(52,211,153,0.8)',backgroundColor:'rgba(52,211,153,0.12)',borderWidth:1.5,pointRadius:0,tension:.3,spanGaps:false,fill:'origin',order:1},
           {label:'Spread — Diesel cheaper',data:spreadRed,borderColor:'rgba(248,113,113,0.8)',backgroundColor:'rgba(248,113,113,0.12)',borderWidth:1.5,pointRadius:0,tension:.3,spanGaps:false,fill:'origin',order:1},
         ]},
@@ -514,13 +483,21 @@
     function csT4Update() {
       const usdcny  = parseFloat(document.getElementById('cs-usdcny')?.value||7.25);
       const rng     = CS.ranges.t4;
-      const showReg = document.getElementById('cs-t4-region')?.value==='all';
+      const showReg = false;
       const daysMap = {'6M':180,'1Y':365,'ALL':9999};
       const days    = daysMap[rng]||365;
       const cutoff  = new Date(); cutoff.setDate(cutoff.getDate()-days);
 
-      // ── Simulated domestic series (monthly) ──
-      const pipeData = genPipelineMonthly();
+      // ── Real CNP monthly rows only. No simulated pipeline series. ──
+      const pipeData = liveOrSim('cnp', []).map(r=>{
+        const month = new Date(r.date.getFullYear(), r.date.getMonth(), 1);
+        return {
+          month,
+          label: month.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}),
+          National: r.value,
+          spot: null,
+        };
+      }).filter(r=>r.National!=null);
       const filtPipe = pipeData.filter(r=>r.month>=cutoff);
       const labels   = filtPipe.map(r=>r.label);
       const n        = labels.length;
@@ -549,14 +526,10 @@
 
       // Domestic series in $/MMBtu
       const cnpA    = filtPipe.map(r=>pipeToUSD(r.National, usdcny));
-      const spotA   = filtPipe.map(r=>pipeToUSD(r.spot,     usdcny));
+      const spotA   = filtPipe.map(r=>r.spot!=null?pipeToUSD(r.spot, usdcny):null);
 
-      // NDRC 36-city industrial avg: ¥3.58/m³ Nov 2025 — use as flat reference
-      // We simulate slight monthly variation around the known value
-      const ndrcInd = filtPipe.map((r,i)=>{
-        const base = 3.58 + Math.sin(i/3)*0.04 + (Math.random()-0.5)*0.02;
-        return +pipeToUSD(+base.toFixed(3), usdcny).toFixed(3);
-      });
+      // NDRC 36-city industrial avg: ¥3.58/m³ static reference.
+      const ndrcInd = filtPipe.map(()=>+pipeToUSD(CN_NDRC_IND_CNY_M3, usdcny).toFixed(3));
 
       // Static reference lines (same value every month)
       const ndrcGate = filtPipe.map(()=>+(7.0).toFixed(1));   // NDRC city gate ~$7
@@ -606,7 +579,7 @@
           card('LT 14% vs PIPELINE', lt14_cnp, 'LT 14% Brent − Spot Pipeline ($/MMBtu)') +
           card('LT 11% vs PIPELINE', lt11_cnp, 'LT 11% Brent − Spot Pipeline ($/MMBtu)') +
           `<div class="cs-mc"><div class="cs-mc-lbl">DISTRIB MARGIN</div><div class="cs-mc-val" style="color:#f0f4ff">${dist_margin!=null?'+'+dist_margin.toFixed(2):'—'}</div><div class="cs-mc-sub">End-user industrial − Pipeline (distrib. margin)</div></div>` +
-          `<div class="cs-mc"><div class="cs-mc-lbl">SPOT PIPELINE GAS</div><div class="cs-mc-val" style="color:#81c784">${latCNP!=null?'$'+latCNP.toFixed(2):'—'}</div><div class="cs-mc-sub">$/MMBtu · PetroChina open market ★EST</div></div>` +
+          `<div class="cs-mc"><div class="cs-mc-lbl">SPOT PIPELINE GAS</div><div class="cs-mc-val" style="color:#81c784">${latCNP!=null?'$'+latCNP.toFixed(2):'—'}</div><div class="cs-mc-sub">$/MMBtu · PetroChina open market · SHPGX</div></div>` +
           `<div class="cs-mc"><div class="cs-mc-lbl">JKM SETTLEMENT</div><div class="cs-mc-val" style="color:#4d9ef5">${latJKM!=null?'$'+latJKM.toFixed(2):'—'}</div><div class="cs-mc-sub">$/MMBtu · monthly avg (16th→15th)</div></div>`;
       }
 
@@ -654,7 +627,7 @@
         },
         // CNP open market
         {
-          label:'Spot Pipeline Gas Price ★EST',
+          label:'Spot Pipeline Gas Price',
           data: cnpA,
           borderColor:'#81c784',
           backgroundColor:'transparent',
@@ -667,7 +640,7 @@
         },
         // Pipeline spot
         {
-          label:'Pipeline spot ★EST',
+          label:'Pipeline spot',
           data: spotA,
           borderColor:'#34d399',
           backgroundColor:'transparent',
@@ -742,7 +715,7 @@
         const regColors=['#ffb74d','#4fc3f7','#f48fb1','#80cbc4'];
         ['North','East','South','Central'].forEach((reg,i)=>{
           datasets.push({
-            label:`CNP ${reg} ★EST`,
+            label:`CNP ${reg}`,
             data:filtPipe.map(r=>pipeToUSD(r[reg],usdcny)),
             borderColor:regColors[i],
             backgroundColor:'transparent',
@@ -863,11 +836,11 @@ function csPricesUpdate(){
   const cnpUSD=latCNP?pipeToUSD(latCNP.value,fx):null;
 
   // Hardcoded
-  const NDRC_IND=pipeToUSD(3.58,fx); // ¥3.58/m³ NDRC 36-city industrial
-  const NDRC_GATE=7.50;
-  const CAGP_L=6.0,CAGP_H=8.0;
-  const RUS_L=3.0,RUS_H=5.0;
-  const PROD_L=3.0,PROD_H=8.0;
+  const NDRC_IND=pipeToUSD(CN_NDRC_IND_CNY_M3,fx); // ¥3.58/m³ NDRC 36-city industrial reference
+  const NDRC_GATE=CN_NDRC_GATE_USD;
+  const [CAGP_L,CAGP_H]=CN_CAGP_RANGE;
+  const [RUS_L,RUS_H]=CN_RUSSIA_POS_RANGE;
+  const [PROD_L,PROD_H]=CN_PROD_COST_RANGE;
 
   function chgBadge(d){
     if(d==null) return '';
@@ -895,9 +868,6 @@ function csPricesUpdate(){
   const jkmMonthly=typeof getJKMMonthlySettlement==='function'?getJKMMonthlySettlement().filter(m=>m.month>=cutoff):[];
   // Brent monthly
   const brentMonthly=typeof getBrentMonthlyLT==='function'?getBrentMonthlyLT():{};
-  // Pipeline monthly (simulated)
-  const pipeMonthly=typeof genPipelineMonthly==='function'?genPipelineMonthly().filter(r=>r.month>=cutoff):[];
-
   // Aggregate truck to monthly avg
   function toMonthly(rawArr,convFn){
     const map={};
@@ -913,9 +883,16 @@ function csPricesUpdate(){
   const dieselMo=toMonthly(dieselRaw,v=>+(v/fx/43.1).toFixed(2));
   const cnpMo=toMonthly(cnpRaw,v=>pipeToUSD(v,fx));
 
-  // Align all to pipeMonthly months
-  const chartLabels=pipeMonthly.map(r=>r.label);
-  const mos=pipeMonthly.map(r=>r.month.toISOString().slice(0,7));
+  // Align on real months present in EOD or SHPGX data. No synthetic month spine.
+  const monthSet=new Set();
+  jkmMonthly.forEach(m=>monthSet.add(m.month.toISOString().slice(0,7)));
+  Object.keys(brentMonthly).forEach(mo=>{ if(new Date(mo+'-01')>=cutoff) monthSet.add(mo); });
+  [truckMo,dieselMo,cnpMo].forEach(mp=>Object.keys(mp).forEach(mo=>monthSet.add(mo)));
+  const mos=[...monthSet].filter(mo=>new Date(mo+'-01')>=cutoff).sort();
+  const chartLabels=mos.map(mo=>{
+    const d=new Date(mo+'-01T00:00:00Z');
+    return d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'});
+  });
   const jkmA=mos.map(mo=>{const m=jkmMonthly.find(j=>j.month.toISOString().slice(0,7)===mo);return m?+(m.JKM-0.15).toFixed(3):null;});
   const lt14A=mos.map(mo=>{const b=brentMonthly[mo];return b?+(b*0.14).toFixed(2):null;});
   const lt11A=mos.map(mo=>{const b=brentMonthly[mo];return b?+(b*0.11).toFixed(2):null;});
@@ -927,9 +904,10 @@ function csPricesUpdate(){
   // Check SHPGX data status
   const shpgxLoaded=Object.keys(SHPGX).some(k=>SHPGX[k]?.length>0);
   const shpgxSeries=Object.keys(SHPGX).filter(k=>SHPGX[k]?.length>0);
+  const shpgxLatest=shpgxSeries.map(k=>(SHPGX[k]||[]).map(r=>String(r.date||'').slice(0,10)).filter(Boolean).sort().slice(-1)[0]).filter(Boolean).sort().slice(-1)[0];
   const shpgxStatus=shpgxLoaded
-    ?`✓ SHPGX loaded: ${shpgxSeries.join(', ')} · ${SHPGX[shpgxSeries[0]]?.[0]?.dateStr||''} → ${SHPGX[shpgxSeries[0]]?.slice(-1)[0]?.dateStr||''}`
-    :'No SHPGX data — upload CSVs from shpgx_fetch.py';
+    ?`✓ SHPGX loaded: ${shpgxSeries.join(', ')} · latest ${shpgxLatest||'—'}`
+    :'No SHPGX data — source gap';
 
   el.innerHTML=`
   <!-- SHPGX upload bar -->
@@ -957,10 +935,10 @@ function csPricesUpdate(){
           {sort:jkmM1,html:box('#c8d6e5','JKM flat Price M+1',fmtVal(jkmM1),'JKM M+1 · from EOD files in Financial Trading')},
           {sort:ltCeil||(brentLatest?brentLatest*0.125:null),html:box('#f87171','LNG LT oil-indexed',ltFloor&&ltCeil?'$'+ltFloor+'–$'+ltCeil:'— load EOD','11–14% × Brent'+(brentLatest?' $'+brentLatest.toFixed(2):'')+' · from EOD Brent')},
           {sort:truckUSD,html:box('#7F77DD','LNG truck retail (N.China)',fmtVal(truckUSD,'— upload SHPGX'),'Ex-terminal · daily SHPGX',chgBadge(truckChg))},
-          {sort:NDRC_IND,html:box('#ffb74d','Industrial max bid (NDRC)','$'+NDRC_IND.toFixed(2),'¥3.58/m³ · 36-city industrial avg')},
+          {sort:NDRC_IND,html:box('#ffb74d','Industrial max bid (NDRC ref)','$'+NDRC_IND.toFixed(2),'¥3.58/m³ · static public reference')},
           {sort:cnpUSD,html:box('#1D9E75','Spot pipeline gas (CNP)',fmtVal(cnpUSD,'— upload SHPGX'),'PetroChina open market · SHPGX')},
-          {sort:(CAGP_L+CAGP_H)/2,html:box('#4fc3f7','Pipeline imports ★','$'+CAGP_L+'–$'+CAGP_H,'CAGP ~$6–8 · Russia PoS ~$3–5 · indicative')},
-          {sort:(PROD_L+NDRC_GATE)/2,html:box('#81c784','Domestic prod cost / NDRC gate','$'+PROD_L+'–$'+NDRC_GATE,'Conv. $3–5 · Deep $6–8 · NDRC gate ~$7.50')},
+          {sort:(CAGP_L+CAGP_H)/2,html:box('#4fc3f7','Pipeline import ref','$'+CAGP_L+'–$'+CAGP_H,'CAGP reference · Russia PoS ref $'+RUS_L+'–$'+RUS_H)},
+          {sort:(PROD_L+NDRC_GATE)/2,html:box('#81c784','Domestic prod / city gate ref','$'+PROD_L+'–$'+NDRC_GATE,'Public reference range · not a live series')},
         ];
         const withVal=items.filter(i=>i.sort!=null).sort((a,b)=>b.sort-a.sort);
         const noVal=items.filter(i=>i.sort==null);
@@ -977,7 +955,7 @@ function csPricesUpdate(){
     <div>
       <div style="font-size:9px;letter-spacing:.1em;color:#546e7a;margin-bottom:8px">PRICE HISTORY · $/MMBTU · MONTHLY AVERAGES</div>
       <div class="ga-ch-wrap" style="height:480px"><canvas id="cn-prices-chart"></canvas></div>
-      <div class="ga-source">JKM/Brent from EOD · Truck/Diesel/CNP monthly avg from SHPGX · NDRC/pipeline hardcoded · All $/MMBtu</div>
+      <div class="ga-source">JKM/Brent from EOD · Truck/Diesel/CNP monthly avg from SHPGX · NDRC/pipeline public reference ranges are static · All $/MMBtu</div>
     </div>
   </div>`;
 
@@ -1094,6 +1072,7 @@ window.csPricesUpdate=csPricesUpdate;
               const lines = text.trim().split('\n');
               const headers = lines[0].split(',').map(h=>h.trim());
               const gbRows = [];
+              const num=v=>{ if(v==null||v==='') return null; const n=parseFloat(v); return Number.isFinite(n)?n:null; };
               for(let i=1;i<lines.length;i++){
                 const cells = lines[i].split(',').map(v=>v.trim());
                 const row={};
@@ -1101,17 +1080,22 @@ window.csPricesUpdate=csPricesUpdate;
                 if(row.month&&row.month.match(/\d{4}-\d{2}/)){
                   gbRows.push({
                     m:row.month,
-                    prod:parseFloat(row.prod_bcm)||0,
-                    lng:parseFloat(row.lng_bcm)||0,
-                    pipe:parseFloat(row.pipe_bcm)||0,
-                    lng_mt:parseFloat(row.lng_mt)||0,
-                    pipe_mt:parseFloat(row.pipe_mt)||0,
-                    apparent:parseFloat(row.apparent_bcm)||0,
+                    month:row.month,
+                    prod:num(row.prod_bcm),
+                    lng:num(row.lng_bcm),
+                    pipe:num(row.pipe_bcm),
+                    prod_bcm:num(row.prod_bcm),
+                    lng_bcm:num(row.lng_bcm),
+                    pipe_bcm:num(row.pipe_bcm),
+                    lng_mt:num(row.lng_mt),
+                    pipe_mt:num(row.pipe_mt),
+                    total_bcm:num(row.total_bcm),
+                    apparent_bcm:num(row.apparent_bcm),
                   });
                 }
               }
               if(gbRows.length>0){
-                try{localStorage.setItem('lng_china_gb_v1',JSON.stringify({ts:Date.now(),rows:gbRows}));}catch(e){}
+                try{localStorage.setItem('lng_china_gb_v1',JSON.stringify({ts:Date.now(),rows:gbRows}));localStorage.setItem('lng_china_gb_v2',JSON.stringify({ts:Date.now(),rows:gbRows}));}catch(e){}
                 if(typeof GB!=='undefined'){
                   GB.data=gbRows;
                   // status removed —'✓ CSV — '+gbRows.length+' months · '+gbRows[0].m+' → '+gbRows[gbRows.length-1].m+' · NBS + GACC';
@@ -1132,7 +1116,7 @@ window.csPricesUpdate=csPricesUpdate;
       });
     }
 
-    // Override simulated data getters to use real data when available
+    // Read SHPGX series; fallback must be an explicit empty array/source gap.
     function getShpgxSeries(key, fallbackFn, dateFn) {
       if(SHPGX[key]?.length) return SHPGX[key].map(r=>({
         date: new Date(r.date),
@@ -1144,7 +1128,7 @@ window.csPricesUpdate=csPricesUpdate;
       return fallbackFn();
     }
 
-    // Patch TRUCK_CNY, CLD_USD, etc. to use real data when loaded
+    // Normalise SHPGX rows into chart-ready series.
     function liveOrSim(key, simData) {
       if(!SHPGX[key]?.length) return typeof simData==='function'?simData():simData;
       return SHPGX[key].map(r=>({
@@ -1157,10 +1141,53 @@ window.csPricesUpdate=csPricesUpdate;
     }
 
     function chinaNorthTruckSeries() {
+      return chinaTruckSeriesForRegion('north', true);
+    }
+    function cnRegionMatches(region, key) {
+      const r=String(region||'');
+      const buckets={
+        north:['华北','北京市','北京','天津市','天津','河北省','河北','山东省','山东','山西省','山西','辽宁省','辽宁'],
+        east:['华东','上海市','上海','江苏省','江苏','浙江省','浙江','安徽省','安徽'],
+        south:['华南','广东省','广东','广西','海南','福建省','福建'],
+      };
+      return (buckets[key]||[]).some(x=>r.includes(x));
+    }
+    function cnRegionAggregateTokens(key) {
+      return { north:['华北'], east:['华东'], south:['华南'] }[key] || [];
+    }
+    function cnAverageByDate(rows, label) {
+      const byDate = {};
+      rows.forEach(r=>{
+        const ds = r.dateStr || (r.date ? r.date.toISOString().slice(0,10) : '');
+        if(!ds || r.value==null || !isFinite(r.value)) return;
+        if(!byDate[ds]) byDate[ds] = { sum:0, n:0, date:r.date || new Date(ds), dateStr:ds };
+        byDate[ds].sum += r.value;
+        byDate[ds].n += 1;
+      });
+      return Object.values(byDate).map(r=>({
+        date:r.date,
+        dateStr:r.dateStr,
+        value:+(r.sum/r.n).toFixed(4),
+        region:label || 'regional average',
+        raw:{ averaged:true, count:r.n }
+      })).sort((a,b)=>a.date-b.date);
+    }
+    function chinaTruckSeriesForRegion(regionKey='north', allowFallback=false) {
       const live = liveOrSim('truck', []);
       if(!live.length) return [];
-      const north = live.filter(r=>String(r.region||r.raw?.region||'').includes('华北'));
-      return (north.length ? north : live).sort((a,b)=>a.date-b.date);
+      const exact = live.filter(r=>cnRegionAggregateTokens(regionKey).some(x=>String(r.region||r.raw?.region||'').includes(x)));
+      if(exact.length) return exact.sort((a,b)=>a.date-b.date);
+      const picked = live.filter(r=>cnRegionMatches(r.region||r.raw?.region||'', regionKey));
+      if(picked.length) return cnAverageByDate(picked, regionKey);
+      return allowFallback ? live.sort((a,b)=>a.date-b.date) : [];
+    }
+    function chinaSeriesForRegion(key, regionKey='north') {
+      const live = liveOrSim(key, []);
+      if(!live.length) return [];
+      const exact = live.filter(r=>cnRegionAggregateTokens(regionKey).some(x=>String(r.region||r.raw?.region||'').includes(x)));
+      if(exact.length) return exact.sort((a,b)=>a.date-b.date);
+      const picked = live.filter(r=>cnRegionMatches(r.region||r.raw?.region||'', regionKey));
+      return picked.length ? cnAverageByDate(picked, `${regionKey} avg`) : [];
     }
 
     // ── API fetch: calls /api/shpgx Vercel function ──────────────────────────
@@ -1239,7 +1266,7 @@ window.csPricesUpdate=csPricesUpdate;
           csUpdateShpgxBadges('CACHED');
           csRefreshActiveTab();
         } else {
-          csSetStatus(`✗ data unavailable — using estimates`, '#ef4444');
+          csSetStatus(`✗ SHPGX data unavailable — source gap`, '#ef4444');
           csSetBtn('cs-fetch-btn', '⟳ RETRY', false);
         }
       }
@@ -1249,6 +1276,8 @@ window.csPricesUpdate=csPricesUpdate;
     function csRefreshActiveTab() {
       const activePane = document.querySelector('.cs-tab-pane.active');
       if(activePane?.id==='cs-pane-0') csT1Update();
+      else if(activePane?.id==='cs-pane-prices') csPricesUpdate();
+      else if(activePane?.id==='cs-pane-4'&&typeof csGBUpdate==='function') csGBUpdate();
       else if(activePane?.id==='cs-pane-1') csT2Update();
       else if(activePane?.id==='cs-pane-2') csT3Update();
       else if(activePane?.id==='cs-pane-3') csT4Update();
@@ -1306,7 +1335,7 @@ window.csPricesUpdate=csPricesUpdate;
         csUpdateShpgxBadges('CSV');
         csT1Update();
       } else {
-        csSetStatus('No data · Upload CSVs from SHPGX Extractor to load real prices', '#6b7a99');
+        csSetStatus('No SHPGX data · source gap until JSON/CSV loads', '#6b7a99');
         csT1Update();
       }
     }
@@ -1352,17 +1381,21 @@ window.csPricesUpdate=csPricesUpdate;
       const wrap = document.getElementById('cs-shpgx-badges');
       if(!wrap) return;
       wrap.innerHTML = Object.keys(SHPGX).filter(k=>SHPGX[k]?.length).map(k=>{
-        const rows=SHPGX[k], first=rows[0]?.date||'', last=rows[rows.length-1]?.date||'';
-        return `<span style="font-size:8px;padding:3px 8px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);color:#34d399">★CSV ${k.toUpperCase()} · ${rows.length}r · ${last.slice(0,10)}→${first.slice(0,10)}</span>`;
+        const rows=SHPGX[k];
+        const dates=rows.map(r=>String(r.date||'').slice(0,10)).filter(Boolean).sort();
+        const first=dates[0]||'', last=dates[dates.length-1]||'';
+        const ageDays=last?Math.floor((Date.now()-new Date(last+'T00:00:00Z').getTime())/86400000):null;
+        const stale=ageDays!=null&&ageDays>21;
+        return `<span style="font-size:8px;padding:3px 8px;background:${stale?'rgba(245,158,11,0.10)':'rgba(52,211,153,0.1)'};border:1px solid ${stale?'rgba(245,158,11,0.28)':'rgba(52,211,153,0.25)'};color:${stale?'#f59e0b':'#34d399'}">${(source||'SHPGX')} ${k.toUpperCase()} · ${rows.length}r · ${first}→${last}${stale?' · stale':''}</span>`;
       }).join('');
       // Update per-tab EST badges
       const loaded=Object.keys(SHPGX).filter(k=>SHPGX[k]?.length);
       const truckL=loaded.includes('truck'),cldL=loaded.includes('cld'),extL=loaded.includes('exterm'),dieselL=loaded.includes('diesel'),cnpL=loaded.includes('cnp');
       const setB=(id,txt,col)=>{const el=document.getElementById(id);if(!el)return;el.textContent=txt;el.style.background=col;el.style.display=txt?'':'none';};
-      setB('cs-badge-t1a',cldL&&extL&&truckL?'':'SHPGX ESTIMATE','rgba(245,158,11,0.15)');
-      setB('cs-badge-t1b',cldL&&extL&&truckL?'':'SHPGX ESTIMATE','rgba(245,158,11,0.15)');
-      setB('cs-badge-t2', truckL?'TRUCK: LIVE':'TRUCK: SHPGX ESTIMATE',truckL?'rgba(52,211,153,0.15)':'rgba(245,158,11,0.15)');
-      setB('cs-badge-t3', dieselL&&truckL?'LIVE DATA':'SHPGX ESTIMATE',dieselL&&truckL?'rgba(52,211,153,0.15)':'rgba(245,158,11,0.15)');
+      setB('cs-badge-t1a',cldL&&extL&&truckL?'':'SHPGX SOURCE GAP','rgba(245,158,11,0.15)');
+      setB('cs-badge-t1b',cldL&&extL&&truckL?'':'SHPGX SOURCE GAP','rgba(245,158,11,0.15)');
+      setB('cs-badge-t2', truckL?'TRUCK: LIVE':'TRUCK: SOURCE GAP',truckL?'rgba(52,211,153,0.15)':'rgba(245,158,11,0.15)');
+      setB('cs-badge-t3', dieselL&&truckL?'LIVE DATA':'SHPGX SOURCE GAP',dieselL&&truckL?'rgba(52,211,153,0.15)':'rgba(245,158,11,0.15)');
       setB('cs-badge-t4','','');
     }
 
@@ -1418,56 +1451,16 @@ window.csPricesUpdate=csPricesUpdate;
       csGBUpdate();
     };
 
-    // ── Hardcoded historical data (NBS + GACC) ───────────────
-    // Monthly: production (BCM), LNG imports (BCM), pipeline imports (BCM)
-    // Source: NBS monthly bulletins + GACC customs tables
-    const GB_HISTORICAL = [
-      // 2023
-      {m:'2023-01', prod:19.1, lng:5.2, pipe:3.7},
-      {m:'2023-02', prod:15.8, lng:4.1, pipe:3.2},
-      {m:'2023-03', prod:17.2, lng:5.6, pipe:3.8},
-      {m:'2023-04', prod:17.8, lng:4.9, pipe:3.5},
-      {m:'2023-05', prod:18.1, lng:5.3, pipe:3.6},
-      {m:'2023-06', prod:18.5, lng:5.8, pipe:3.9},
-      {m:'2023-07', prod:19.6, lng:5.4, pipe:4.0},
-      {m:'2023-08', prod:20.1, lng:5.1, pipe:3.8},
-      {m:'2023-09', prod:19.0, lng:5.3, pipe:3.7},
-      {m:'2023-10', prod:19.8, lng:5.7, pipe:3.9},
-      {m:'2023-11', prod:19.2, lng:6.2, pipe:4.1},
-      {m:'2023-12', prod:21.5, lng:7.1, pipe:4.5},
-      // 2024
-      {m:'2024-01', prod:20.5, lng:7.8, pipe:4.6},
-      {m:'2024-02', prod:18.2, lng:6.9, pipe:4.1},
-      {m:'2024-03', prod:19.8, lng:7.2, pipe:4.3},
-      {m:'2024-04', prod:19.5, lng:6.8, pipe:4.0},
-      {m:'2024-05', prod:20.2, lng:6.5, pipe:4.2},
-      {m:'2024-06', prod:20.8, lng:6.9, pipe:4.4},
-      {m:'2024-07', prod:21.3, lng:7.1, pipe:4.5},
-      {m:'2024-08', prod:21.9, lng:7.3, pipe:4.6},
-      {m:'2024-09', prod:20.7, lng:6.8, pipe:4.3},
-      {m:'2024-10', prod:21.4, lng:7.0, pipe:4.4},
-      {m:'2024-11', prod:21.1, lng:7.8, pipe:4.6},
-      {m:'2024-12', prod:22.8, lng:9.2, pipe:5.1},
-      // 2025
-      {m:'2025-01', prod:22.1, lng:9.5, pipe:5.2},
-      {m:'2025-02', prod:19.5, lng:7.8, pipe:4.5},
-      {m:'2025-03', prod:21.2, lng:8.1, pipe:4.7},
-      {m:'2025-04', prod:21.8, lng:7.9, pipe:4.6},
-      {m:'2025-05', prod:22.0, lng:8.3, pipe:4.8},
-      {m:'2025-06', prod:22.5, lng:8.6, pipe:4.9},
-      {m:'2025-07', prod:22.9, lng:8.4, pipe:4.8},
-      {m:'2025-08', prod:23.1, lng:8.2, pipe:4.7},
-      {m:'2025-09', prod:22.0, lng:8.5, pipe:4.9},
-      {m:'2025-10', prod:22.4, lng:9.0, pipe:5.0},
-      {m:'2025-11', prod:22.2, lng:9.8, pipe:5.2},
-      {m:'2025-12', prod:23.8, lng:11.2, pipe:5.8},
-    ];
+    // China gas balance is served from data/china_gas_balance.csv via
+    // /api/china-gas-balance. No embedded historical fallback.
+    const GB_HISTORICAL = [];
 
     // ── Fetch live data from /api/china-gas-balance ───────────
     window.csGBFetch = async function() {
-      // status removed — 'Fetching live data from NBS & GACC...';
+      const statusEl = document.getElementById('cs-gb-status');
+      if (statusEl) statusEl.textContent = 'Loading committed China gas balance CSV...';
       let cached = null;
-      try { cached = JSON.parse(localStorage.getItem(GB.cache_key)||'null'); } catch(e) {}
+      try { cached = JSON.parse(localStorage.getItem('lng_china_gb_v2')||localStorage.getItem(GB.cache_key)||'null'); } catch(e) {}
 
       try {
         const resp = await fetch('/api/china-gas-balance', {signal: AbortSignal.timeout(20000)});
@@ -1475,7 +1468,7 @@ window.csPricesUpdate=csPricesUpdate;
           const data = await resp.json();
           if (data.rows?.length) {
             const apiLatest = data.rows[data.rows.length-1].m || '';
-            const cacheLatest = cached?.rows?.length ? (cached.rows[cached.rows.length-1].m || '') : '';
+            const cacheLatest = cached?.rows?.length ? (cached.rows[cached.rows.length-1].m || cached.rows[cached.rows.length-1].month || '') : '';
             // Preserve a cache that is strictly ahead of the API (e.g. the
             // user manually uploaded a CSV with newer months via the UI).
             if (cacheLatest && cacheLatest > apiLatest) {
@@ -1485,7 +1478,7 @@ window.csPricesUpdate=csPricesUpdate;
               return;
             }
             GB.data = data.rows;
-            try { localStorage.setItem(GB.cache_key, JSON.stringify({ts: Date.now(), rows: data.rows})); } catch(e) {}
+            try { localStorage.setItem(GB.cache_key, JSON.stringify({ts: Date.now(), rows: data.rows})); localStorage.setItem('lng_china_gb_v2', JSON.stringify({ts: Date.now(), rows: data.rows})); } catch(e) {}
             if (statusEl) statusEl.textContent = `✓ LIVE — ${data.rows.length} months · ${data.source || 'NBS + GACC'} · updated ${new Date().toLocaleTimeString()}`;
             csGBUpdate();
             return;
@@ -1495,7 +1488,7 @@ window.csPricesUpdate=csPricesUpdate;
 
       // Try cache
       try {
-        const cached = JSON.parse(localStorage.getItem(GB.cache_key)||'null');
+        const cached = JSON.parse(localStorage.getItem('lng_china_gb_v2')||localStorage.getItem(GB.cache_key)||'null');
         if (cached?.rows?.length) {
           GB.data = cached.rows;
           const age = Math.round((Date.now()-cached.ts)/60000);
@@ -1505,15 +1498,14 @@ window.csPricesUpdate=csPricesUpdate;
         }
       } catch(e) {}
 
-      // Fallback to hardcoded historical
       GB.data = null;
-      if (statusEl) statusEl.textContent = '★ ESTIMATED — hardcoded historical data (NBS/GACC public sources) · Click Refresh to load live';
+      if (statusEl) statusEl.textContent = 'SOURCE GAP — committed China gas balance CSV unavailable';
       csGBUpdate();
     };
 
     // ── Get active dataset ────────────────────────────────────
     function gbGetData() {
-      const raw = GB.data || GB_HISTORICAL;
+      const raw = GB.data || [];
       if (GB.period === 'ALL') return raw;
       const months = GB.period === '1Y' ? 12 : 24;
       return raw.slice(-months);
@@ -1752,8 +1744,11 @@ window.csPricesUpdate=csPricesUpdate;
 
     function csGBUpdate(){
       const el=document.getElementById('cs-gb-body'); if(!el)return;
-      const raw=csGBGetData();
-      if(!raw||!raw.length){ el.innerHTML='<div style="padding:24px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">No data. Upload CSV from china_gas_balance_fetch.py or using fallback data.</div>'; csGBRender(el,GB.data||GB_HISTORICAL); return; }
+      const raw=csGBGetData() || GB.data;
+      if(!raw||!raw.length){
+        el.innerHTML='<div style="padding:24px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">Loading committed China gas balance CSV. If unavailable, this stays as a source gap.</div>';
+        return;
+      }
       csGBRender(el,raw);
     }
     window.csGBUpdate=csGBUpdate;
@@ -1766,9 +1761,6 @@ window.csPricesUpdate=csPricesUpdate;
         return parsed.rows||null;
       }catch{return null;}
     }
-
-    // China storage adj (BCM) — seasonal draw/inject pattern
-    const CN_STOR_ADJ={'01':3.5,'02':2.8,'03':1.2,'04':-1.5,'05':-2.8,'06':-3.2,'07':-3.5,'08':-3.0,'09':-1.8,'10':0.5,'11':2.5,'12':4.2};
 
     function csGBConv(v,unit,mo){
       if(v==null||isNaN(v))return null;
@@ -1788,13 +1780,19 @@ window.csPricesUpdate=csPricesUpdate;
                     '2Y':new Date(now.getFullYear()-2,now.getMonth()+1,1).toISOString().slice(0,7),
                    }[rng]||'2000-01';
 
-      // Normalise rows — handle both GB_HISTORICAL {m,prod,lng,pipe} and CSV {month,prod_bcm,lng_bcm,pipe_bcm,apparent_bcm}
+      const num = v => {
+        if(v==null || v==='') return null;
+        const n = parseFloat(v);
+        return Number.isFinite(n) ? n : null;
+      };
+      // Normalise rows from API/CSV. Missing fields stay null.
       const norm=rows.map(r=>({
         mo:r.month||r.m,
-        prod:parseFloat(r.prod_bcm||r.prod)||null,
-        lng:parseFloat(r.lng_bcm||r.lng)||null,
-        pipe:parseFloat(r.pipe_bcm||r.pipe)||null,
-        apparent:parseFloat(r.apparent_bcm)||null,
+        prod:num(r.prod_bcm ?? r.prod),
+        lng:num(r.lng_bcm ?? r.lng),
+        pipe:num(r.pipe_bcm ?? r.pipe),
+        total:num(r.total_bcm ?? r.total),
+        apparent:num(r.apparent_bcm ?? r.apparent),
       })).filter(r=>r.mo);
       const filt=norm.filter(r=>r.mo>=cutoff);
       if(!filt.length){el.innerHTML='<div style="padding:20px;text-align:center;color:#3d5070;font-size:9px">No data in selected range.</div>';return;}
@@ -1803,11 +1801,9 @@ window.csPricesUpdate=csPricesUpdate;
       const lyMo=`${+latR.mo.slice(0,4)-1}-${latR.mo.slice(5,7)}`;
       const lyR=norm.find(r=>r.mo===lyMo)||{};
       const latProd=latR.prod, latLng=latR.lng, latPipe=latR.pipe;
-      const latTotal=latProd!=null&&latLng!=null&&latPipe!=null?+(latProd+latLng+latPipe).toFixed(2):null;
-      // Apparent demand = total + storage adj (BCM)
-      const storAdj=CN_STOR_ADJ[latR.mo.slice(5,7)]||0;
-      const latApparent=latR.apparent||(latTotal!=null?+(latTotal+storAdj).toFixed(2):null);
-      function pctYoY(a,b){if(!a||!b)return'';const d=+(((a-b)/b)*100).toFixed(1);return`<span style="font-size:9px;color:${d>0?'#4ade80':'#f87171'}">${d>0?'+':''}${d}% YoY</span>`;}
+      const latTotal=latR.total!=null?latR.total:(latProd!=null&&latLng!=null&&latPipe!=null?+(latProd+latLng+latPipe).toFixed(2):null);
+      const latApparent=latR.apparent;
+      function pctYoY(a,b){if(a==null||b==null||b===0)return'';const d=+(((a-b)/b)*100).toFixed(1);return`<span style="font-size:9px;color:${d>0?'#4ade80':'#f87171'}">${d>0?'+':''}${d}% YoY</span>`;}
 
       el.innerHTML=`
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -1820,6 +1816,7 @@ window.csPricesUpdate=csPricesUpdate;
         </label>
         <button onclick="csGBClear()" style="padding:5px 10px;font-size:9px;letter-spacing:.1em;border:1px solid rgba(248,113,113,0.4);color:#f87171;background:rgba(248,113,113,0.06);font-family:inherit;cursor:pointer">✕ CLEAR</button>
         <span style="font-size:9px;color:#3d5070">${filt.length} months · ${norm[0]?.mo||''}→${norm[norm.length-1]?.mo||''}</span>
+        <span id="cs-gb-status" style="font-size:9px;color:#3d5070;flex-basis:100%">Source: committed CSV · missing fields stay blank</span>
       </div>
 
       <!-- KPIs -->
@@ -1835,7 +1832,7 @@ window.csPricesUpdate=csPricesUpdate;
           <div class="ga-kpi-note">${pctYoY(latPipe,lyR.pipe)}</div></div>
         <div class="ga-kpi"><div class="ga-kpi-lbl">Apparent demand · ${latR.mo}</div>
           <div class="ga-kpi-val" style="color:#ffb74d">${latApparent!=null?csGBConv(latApparent,unit,latR.mo).toLocaleString():'—'}<span class="ga-kpi-unit"> ${u}</span></div>
-          <div class="ga-kpi-note">Supply + storage Δ</div></div>
+          <div class="ga-kpi-note">${latApparent!=null?'CSV apparent_bcm':'No sourced apparent_bcm'}</div></div>
       </div>
 
       <!-- Chart 1: Supply vs Demand + surplus/deficit -->
@@ -1845,7 +1842,7 @@ window.csPricesUpdate=csPricesUpdate;
         <div style="height:1px;background:rgba(77,158,245,.1);margin:6px 0"></div>
         <div class="ga-sec" style="font-size:8.5px;margin-top:4px">SURPLUS / DEFICIT <span class="ga-tag">${u}</span></div>
         <div class="ga-ch-wrap" style="height:80px"><canvas id="cn-gb-gap"></canvas></div>
-        <div class="ga-source">Prod (blue) + LNG (teal) + Pipeline (purple) stacked · Apparent demand (dashed) · Gap = supply − demand</div>
+        <div class="ga-source">Prod (blue) + LNG (teal) + Pipeline (purple) stacked · Apparent demand (dashed) from CSV · Gap = total_bcm − apparent_bcm where both are sourced</div>
       </div>
 
       <!-- Charts 2+3 -->
@@ -1856,9 +1853,9 @@ window.csPricesUpdate=csPricesUpdate;
           <div class="ga-source">LNG (teal) vs Pipeline (purple) · hover for % of total imports</div>
         </div>
         <div class="ga-card">
-          <div class="ga-sec">STORAGE ADJUSTMENT <span class="ga-tag">BCM · seasonal est.</span></div>
+          <div class="ga-sec">SUPPLY - APPARENT DEMAND <span class="ga-tag">${u}</span></div>
           <div class="ga-ch-wrap" style="height:220px"><canvas id="cn-gb-storage"></canvas></div>
-          <div class="ga-source">Teal bars ↑ = injection (into storage) · Amber bars ↓ = withdrawal (drawn from storage) · Seasonal est.</div>
+          <div class="ga-source">Uses sourced total_bcm and apparent_bcm only. Blank if either side is missing.</div>
         </div>
       </div>
 
@@ -1886,13 +1883,8 @@ window.csPricesUpdate=csPricesUpdate;
         const prodV=filt.map(r=>cv(r.prod));
         const lngV=filt.map(r=>cv(r.lng));
         const pipeV=filt.map(r=>cv(r.pipe));
-        const totalV=filt.map(r=>r.prod!=null&&r.lng!=null&&r.pipe!=null?cv(r.prod+r.lng+r.pipe):null);
-        const demV=filt.map(r=>{
-          const tot=r.prod!=null&&r.lng!=null&&r.pipe!=null?r.prod+r.lng+r.pipe:null;
-          const adj=CN_STOR_ADJ[r.mo.slice(5,7)]||0;
-          const app=r.apparent||(tot!=null?+(tot+adj).toFixed(2):null);
-          return app!=null?csGBConv(app,unit,r.mo):null;
-        });
+        const totalV=filt.map(r=>r.total!=null?cv(r.total):(r.prod!=null&&r.lng!=null&&r.pipe!=null?cv(r.prod+r.lng+r.pipe):null));
+        const demV=filt.map(r=>r.apparent!=null?csGBConv(r.apparent,unit,r.mo):null);
         const gapV=filt.map((r,i)=>totalV[i]!=null&&demV[i]!=null?+(totalV[i]-demV[i]).toFixed(2):null);
         const scX={...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxTicksLimit:16}};
 
@@ -1908,8 +1900,8 @@ window.csPricesUpdate=csPricesUpdate;
         // Chart 1b: Gap
         gaMakeChart('cn-gb-gap','bar',{labels,datasets:[{
           label:`Gap`,data:gapV,
-          backgroundColor:gapV.map(v=>v!=null&&v>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)'),
-          borderColor:gapV.map(v=>v!=null&&v>=0?'#4ade80':'#f87171'),borderWidth:1,
+          backgroundColor:gapV.map(v=>v==null?'rgba(107,122,153,0.12)':v>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)'),
+          borderColor:gapV.map(v=>v==null?'rgba(107,122,153,0.25)':v>=0?'#4ade80':'#f87171'),borderWidth:1,
         }]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},plugins:{legend:{display:false}}});
 
         // Chart 2: Imports breakdown
@@ -1921,17 +1913,12 @@ window.csPricesUpdate=csPricesUpdate;
            plugins:{legend:{display:true,position:'top',labels:{color:'#8a9bb5',font:{size:9},boxWidth:10}},
                     tooltip:{callbacks:{afterBody(items){const mo=filt[items[0].dataIndex].mo;const tot=totImports[items[0].dataIndex];if(!tot)return[];const lng=filt[items[0].dataIndex].lng||0;const pipe=filt[items[0].dataIndex].pipe||0;return[`LNG: ${(lng/tot*100).toFixed(1)}%`,`Pipeline: ${(pipe/tot*100).toFixed(1)}%`];}}}}});
 
-        // Chart 3: Storage adj — display convention: injection positive (gas
-        // flowing INTO storage), withdrawal negative (gas flowing OUT).
-        // CN_STOR_ADJ is signed from the demand-balance perspective (+ = adds
-        // to apparent demand), so we flip the sign for display only.
-        const storV=filt.map(r=>-(CN_STOR_ADJ[r.mo.slice(5,7)]||0));
         gaMakeChart('cn-gb-storage','bar',{labels,datasets:[{
-          label:'Storage Δ (BCM)',data:storV,
-          backgroundColor:storV.map(v=>v>=0?'rgba(77,208,225,0.55)':'rgba(255,183,77,0.55)'),
-          borderColor:storV.map(v=>v>=0?'#4dd0e1':'#ffb74d'),borderWidth:1,
-        }]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:'BCM',color:'#3d5070',font:{size:9}}}},plugins:{legend:{display:false},
-          tooltip:{callbacks:{afterLabel(ctx){return ctx.raw>=0?'↑ INJECTION (into storage)':'↓ WITHDRAWAL (storage draw)';}}}}});
+          label:`Supply - apparent demand (${u})`,data:gapV,
+          backgroundColor:gapV.map(v=>v==null?'rgba(107,122,153,0.12)':v>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)'),
+          borderColor:gapV.map(v=>v==null?'rgba(107,122,153,0.25)':v>=0?'#4ade80':'#f87171'),borderWidth:1,
+        }]},{scales:{x:scX,y:{...GCD.scales.y,title:{display:true,text:u,color:'#3d5070',font:{size:9}}}},plugins:{legend:{display:false},
+          tooltip:{callbacks:{afterLabel(ctx){return ctx.raw==null?'Source gap':ctx.raw>=0?'Supply above apparent demand':'Apparent demand above supply';}}}}});
 
         // Chart 4: Seasonal
         const curY=new Date().getFullYear();
@@ -1940,11 +1927,11 @@ window.csPricesUpdate=csPricesUpdate;
         function seasVal(yr,m){
           const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
           const r=norm.find(d=>d.mo===mo);if(!r)return null;
-          if(series==='supply')return cv(r.prod!=null&&r.lng!=null&&r.pipe!=null?r.prod+r.lng+r.pipe:null);
+          if(series==='supply')return cv(r.total!=null?r.total:(r.prod!=null&&r.lng!=null&&r.pipe!=null?r.prod+r.lng+r.pipe:null));
           if(series==='prod')return cv(r.prod);
           if(series==='lng')return cv(r.lng);
           if(series==='pipe')return cv(r.pipe);
-          if(series==='demand'){const tot=r.prod!=null&&r.lng!=null&&r.pipe!=null?r.prod+r.lng+r.pipe:null;const adj=CN_STOR_ADJ[mo.slice(5,7)]||0;return tot!=null?cv(+(tot+adj).toFixed(2)):null;}
+          if(series==='demand')return r.apparent!=null?cv(r.apparent):null;
           return null;
         }
         const seasDs=seasYrs.map((yr,i)=>({
@@ -1965,19 +1952,20 @@ window.csPricesUpdate=csPricesUpdate;
         try{
           const lines=e.target.result.trim().split('\n');
           const hdrs=lines[0].split(',').map(s=>s.trim());
+          const num=v=>{ if(v==null||v==='') return null; const n=parseFloat(v); return Number.isFinite(n)?n:null; };
           const rows=lines.slice(1).map(line=>{
             const cells=line.split(',').map(s=>s.trim());
             const obj={};hdrs.forEach((h,i)=>obj[h]=cells[i]||'');
-            // Support both china_gas_balance_fetch.py output and GB_HISTORICAL format
+            // Support both china_gas_balance_fetch.py output and API shape.
             return {
               month:obj.month||obj.m||'',
-              prod_bcm:parseFloat(obj.prod_bcm||obj.prod)||null,
-              lng_bcm:parseFloat(obj.lng_bcm||obj.lng)||null,
-              pipe_bcm:parseFloat(obj.pipe_bcm||obj.pipe)||null,
-              apparent_bcm:parseFloat(obj.apparent_bcm)||null,
-              lng_mt:parseFloat(obj.lng_mt)||null,
-              pipe_mt:parseFloat(obj.pipe_mt)||null,
-              total_bcm:parseFloat(obj.total_bcm)||null,
+              prod_bcm:num(obj.prod_bcm||obj.prod),
+              lng_bcm:num(obj.lng_bcm||obj.lng),
+              pipe_bcm:num(obj.pipe_bcm||obj.pipe),
+              apparent_bcm:num(obj.apparent_bcm||obj.apparent),
+              lng_mt:num(obj.lng_mt),
+              pipe_mt:num(obj.pipe_mt),
+              total_bcm:num(obj.total_bcm||obj.total),
             };
           }).filter(r=>r.month.match(/\d{4}-\d{2}/));
           if(!rows.length){alert('No valid rows found.');return;}
@@ -2021,7 +2009,7 @@ window.csGBUpdate = csGBUpdate;
     // update they never picked up.
     function csGBInit() {
       try {
-        const cached = JSON.parse(localStorage.getItem(GB.cache_key)||'null');
+        const cached = JSON.parse(localStorage.getItem('lng_china_gb_v2')||localStorage.getItem(GB.cache_key)||'null');
         if (cached?.rows?.length) GB.data = cached.rows;
       } catch(e) {}
       csGBUpdate();

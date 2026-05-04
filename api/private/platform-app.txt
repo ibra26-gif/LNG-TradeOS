@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="/api/drive?action=asset&name=lngtradeos.css&v=20260501-pipeline-history">
-<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260504-thai-weather-seasonal" defer></script>
+<script src="/api/drive?action=asset&name=lngtradeos.js&v=20260504-china-integrity" defer></script>
 </head>
 <body class="app-unlocked">
 <div id="public-site">
@@ -670,12 +670,12 @@
         <div class="cs-wf-chart" style="height:320px;position:relative"><canvas id="cs-wf-canvas"></canvas></div>
         <div class="cs-wf-legend" id="cs-wf-legend"></div>
       </div>
-      <div class="cs-src">Source: SHPGX (estimated) · CLD, ex-terminal, ex-factory, truck retail · Freight: Longzhong benchmark · VAT: 9%</div>
+      <div class="cs-src">Source: SHPGX · CLD, ex-terminal and truck retail. Missing rows stay blank · Freight input: Longzhong benchmark assumption · VAT: 9%</div>
 
       <!-- View B: Stack over time -->
       <div class="cs-divider" style="margin-top:24px">VIEW B — PRICE STACK OVER TIME <span class="cs-est-badge" id="cs-badge-t1b"></span></div>
       <div class="cs-chart-wrap" style="height:280px"><canvas id="cs-t1-hist-canvas"></canvas></div>
-      <div class="cs-src">Source: SHPGX (estimated) · CLD import price, ex-terminal price, truck retail — all $/MMBtu · Shaded bands = margin at each stage</div>
+      <div class="cs-src">Source: SHPGX · CLD import price, ex-terminal price, truck retail — all $/MMBtu · Shaded bands = margin at each stage</div>
     </div>
 
     <!-- ── TAB 2: TRUCK vs JKM & LT ── -->
