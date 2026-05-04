@@ -13518,7 +13518,7 @@
     }
   ],
   "schema": "thailand_gas_balance_v1",
-  "scraped_at": "2026-05-03T06:43:42.675717+00:00",
+  "scraped_at": "2026-05-04T07:28:30.493201+00:00",
   "sources": {
     "page": "https://www.eppo.go.th/index.php/en/en-energystatistics/ngv-statistic",
     "production_import": {
