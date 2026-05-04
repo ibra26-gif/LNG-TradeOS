@@ -21646,44 +21646,49 @@ const ER_TECH = {
   wind:  {label:'Wind',  unit:'TWh/month', psr:['B18','B19'],       note:'B18 offshore + B19 onshore'},
   solar: {label:'Solar', unit:'TWh/month', psr:['B16'],             note:'B16 solar'},
 };
+const ER_EU_ID = 'europe';
 let ER_TOKEN = 0;
 
 function erDefaultYears(){
   const y = new Date().getFullYear();
-  return [y, y-1, y-2];
+  return [y, y-1];
 }
 function erCountriesForTech(tech){
   const key=ER_TECH[tech]?tech:'hydro';
   return ER_COUNTRIES.filter(c=>(c.techs||[]).includes(key));
 }
-function erDefaultCountryForTech(tech){
-  return erCountriesForTech(tech)[0]?.id || ER_COUNTRIES[0].id;
+function erEuropeArea(tech){
+  const cfg=ER_TECH[tech]||ER_TECH.hydro;
+  const count=erCountriesForTech(tech).length;
+  return {id:ER_EU_ID,name:`Europe tracked ${cfg.label} markets`,domain:`${count} mapped ENTSO-E areas`,aggregate:true};
+}
+function erAreaForSelection(area,tech){
+  return area === ER_EU_ID ? erEuropeArea(tech) : (ER_COUNTRIES.find(c=>c.id===area) || erEuropeArea(tech));
+}
+function erDashboardArea(area){
+  if(area === ER_EU_ID) return {id:ER_EU_ID,name:'Europe Aggregate',domain:'mapped ENTSO-E areas by technology',aggregate:true};
+  return ER_COUNTRIES.find(c=>c.id===area) || erDashboardArea(ER_EU_ID);
+}
+function erIsValidDashboardArea(area){
+  return area === ER_EU_ID || ER_COUNTRIES.some(c=>c.id===area);
 }
 function erPrefs(){
   try{
     const p = JSON.parse(localStorage.getItem(ER_PREF_KEY) || '{}');
     const tech = ER_TECH[p.tech] ? p.tech : 'hydro';
-    const countries = erCountriesForTech(tech);
     return {
       tech,
-      country: countries.some(c=>c.id===p.country) ? p.country : erDefaultCountryForTech(tech),
+      country: erIsValidDashboardArea(p.country) ? p.country : ER_EU_ID,
       years: Array.isArray(p.years) && p.years.length ? p.years.map(Number).filter(Boolean) : erDefaultYears(),
     };
   }catch{
-    return {tech:'hydro', country:'fr', years:erDefaultYears()};
+    return {tech:'hydro', country:ER_EU_ID, years:erDefaultYears()};
   }
 }
 function erSavePrefs(p){ try{ localStorage.setItem(ER_PREF_KEY, JSON.stringify(p)); }catch{} }
-function erSetTech(tech){
+function erSetArea(area){
   const p=erPrefs();
-  p.tech=ER_TECH[tech]?tech:'hydro';
-  if(!erCountriesForTech(p.tech).some(c=>c.id===p.country)) p.country=erDefaultCountryForTech(p.tech);
-  erSavePrefs(p);
-  renderEuroRenewables();
-}
-function erSetCountry(country){
-  const p=erPrefs();
-  p.country=erCountriesForTech(p.tech).some(c=>c.id===country)?country:erDefaultCountryForTech(p.tech);
+  p.country=area===ER_EU_ID || ER_COUNTRIES.some(c=>c.id===area) ? area : ER_EU_ID;
   erSavePrefs(p);
   renderEuroRenewables();
 }
@@ -21747,30 +21752,6 @@ function erParseGenerationXml(xml){
   });
   return out;
 }
-function erParseCapacityXml(xml){
-  const doc=new DOMParser().parseFromString(xml,'application/xml');
-  if(erEls(doc,'parsererror').length) throw new Error('ENTSO-E XML parse error');
-  const series=erEls(doc,'TimeSeries');
-  if(!series.length){
-    const reason=erText(doc,'text')||erText(doc,'reasonText');
-    if(reason) throw new Error(reason);
-  }
-  const out={psr:{},_meta:{points:0,parsedAt:new Date().toISOString(),createdDateTime:erText(doc,'createdDateTime')}};
-  series.forEach(ts=>{
-    const psr=erText(ts,'psrType');
-    if(!psr) return;
-    const vals=[];
-    erEls(ts,'Point').forEach(point=>{
-      const qty=+(erText(point,'quantity')||NaN);
-      if(isFinite(qty)) vals.push(qty);
-    });
-    if(vals.length){
-      out.psr[psr]=(out.psr[psr]||0)+vals[vals.length-1]; // MW installed capacity
-      out._meta.points+=vals.length;
-    }
-  });
-  return out;
-}
 function erBlankEntsoeBundle(country,year){
   return {psr:{},_meta:{points:0,parsedAt:new Date().toISOString(),createdDateTime:null,country:country.name,domain:country.domain,year}};
 }
@@ -21789,6 +21770,17 @@ function erMergeEntsoeBundle(base,next){
   if(upd&&(!base._meta.createdDateTime||Date.parse(upd)>Date.parse(base._meta.createdDateTime))) base._meta.createdDateTime=upd;
   return base;
 }
+async function erFetchEntsoeXml(params,psr,parser){
+  const r=await fetch(`/api/entsoe?${params.toString()}`,{cache:'no-store'});
+  const txt=await r.text();
+  if(!r.ok) throw new Error(`${psr}: ${txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180)||`HTTP ${r.status}`}`);
+  if(txt.trim().startsWith('{')){
+    let msg='ENTSO-E proxy error';
+    try{ msg=JSON.parse(txt).error||msg; }catch{}
+    throw new Error(`${psr}: ${msg}`);
+  }
+  return parser(txt);
+}
 async function erFetchCountryYear(countryId,year,tech){
   const c=ER_COUNTRIES.find(x=>x.id===countryId)||ER_COUNTRIES[0];
   const cfg=ER_TECH[tech]||ER_TECH.hydro;
@@ -21802,45 +21794,47 @@ async function erFetchCountryYear(countryId,year,tech){
     ? new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,0,0))
     : new Date(Date.UTC(year+1,0,1,0,0));
   const data=erBlankEntsoeBundle(c,year);
-  await Promise.all(cfg.psr.map(async psr=>{
+  const psrResults=await Promise.all(cfg.psr.map(async psr=>{
     const params=new URLSearchParams({documentType:'A75',processType:'A16',in_Domain:c.domain,psrType:psr,periodStart:erEntsoeDate(start),periodEnd:erEntsoeDate(end)});
-    const r=await fetch(`/api/entsoe?${params.toString()}`,{cache:'no-store'});
-    const txt=await r.text();
-    if(!r.ok) throw new Error(`${psr}: ${txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180)||`HTTP ${r.status}`}`);
-    if(txt.trim().startsWith('{')){
-      let msg='ENTSO-E proxy error';
-      try{ msg=JSON.parse(txt).error||msg; }catch{}
-      throw new Error(`${psr}: ${msg}`);
-    }
-    erMergeEntsoeBundle(data,erParseGenerationXml(txt));
+    try{return {psr,data:await erFetchEntsoeXml(params,psr,erParseGenerationXml)};}
+    catch(error){return {psr,error};}
   }));
+  psrResults.forEach(r=>{ if(r.data) erMergeEntsoeBundle(data,r.data); });
+  data._meta.missingPsr=psrResults.filter(r=>r.error).map(r=>({psr:r.psr,error:r.error.message}));
+  if(!data._meta.points) throw new Error(data._meta.missingPsr.map(x=>x.error).join(' | ') || `${cfg.label} returned no ENTSO-E points`);
   gdCacheSet(key,data,year===now.getUTCFullYear()?6:0);
   return data;
 }
-async function erFetchCapacityCountryYear(countryId,year,tech){
-  const c=ER_COUNTRIES.find(x=>x.id===countryId)||ER_COUNTRIES[0];
+async function erFetchEuropeYear(year,tech){
   const cfg=ER_TECH[tech]||ER_TECH.hydro;
-  const key=`euren_cap_${countryId}_${tech}_${year}`;
+  const key=`euren_${ER_EU_ID}_${tech}_${year}_tracked_v1`;
   const cached=gdCacheGet(key);
   if(cached) return cached;
-  if(location.protocol==='file:') throw new Error('ENTSO-E proxy is available on deployed / localhost app, not file preview');
-  const start=new Date(Date.UTC(year,0,1,0,0));
-  const end=new Date(Date.UTC(year+1,0,1,0,0));
-  const data=erBlankEntsoeBundle(c,year);
-  await Promise.all(cfg.psr.map(async psr=>{
-    const params=new URLSearchParams({documentType:'A68',processType:'A33',in_Domain:c.domain,psrType:psr,periodStart:erEntsoeDate(start),periodEnd:erEntsoeDate(end)});
-    const r=await fetch(`/api/entsoe?${params.toString()}`,{cache:'no-store'});
-    const txt=await r.text();
-    if(!r.ok) throw new Error(`${psr}: ${txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180)||`HTTP ${r.status}`}`);
-    if(txt.trim().startsWith('{')){
-      let msg='ENTSO-E proxy error';
-      try{ msg=JSON.parse(txt).error||msg; }catch{}
-      throw new Error(`${psr}: ${msg}`);
+  const members=erCountriesForTech(tech);
+  const data=erBlankEntsoeBundle(erEuropeArea(tech),year);
+  data._meta.aggregate=true;
+  data._meta.memberCount=members.length;
+  data._meta.memberOk=[];
+  data._meta.memberMissing=[];
+  for(const c of members){
+    try{
+      const row=await erFetchCountryYear(c.id,year,tech);
+      if(row?._meta?.points){
+        erMergeEntsoeBundle(data,row);
+        data._meta.memberOk.push(c.name);
+      }else{
+        data._meta.memberMissing.push(`${c.name}: no points`);
+      }
+    }catch(error){
+      data._meta.memberMissing.push(`${c.name}: ${error.message}`);
     }
-    erMergeEntsoeBundle(data,erParseCapacityXml(txt));
-  }));
-  gdCacheSet(key,data,year===new Date().getUTCFullYear()?24:0);
+  }
+  if(!data._meta.memberOk.length) throw new Error(`Europe tracked ${cfg.label.toLowerCase()} aggregate has no ENTSO-E country data`);
+  gdCacheSet(key,data,year===new Date().getUTCFullYear()?6:0);
   return data;
+}
+function erFetchAreaYear(area,year,tech){
+  return area===ER_EU_ID ? erFetchEuropeYear(year,tech) : erFetchCountryYear(area,year,tech);
 }
 function erMonthlyTWh(data,tech,year){
   const cfg=ER_TECH[tech]||ER_TECH.hydro;
@@ -21854,173 +21848,169 @@ function erMonthlyTWh(data,tech,year){
     return found?+(sum/1000).toFixed(3):null; // GWh -> TWh
   });
 }
-function erCapacityGW(data,tech){
+function erAreaHasTech(area,tech){
+  return area === ER_EU_ID || !!ER_COUNTRIES.find(c=>c.id===area && (c.techs||[]).includes(tech));
+}
+function erMissingTechBundle(area,year,tech){
   const cfg=ER_TECH[tech]||ER_TECH.hydro;
-  let sum=0,found=false;
-  cfg.psr.forEach(psr=>{
-    const v=data?.psr?.[psr];
-    if(v!=null&&isFinite(v)){ sum+=+v; found=true; }
-  });
-  return found?+(sum/1000).toFixed(3):null; // MW -> GW
+  const areaInfo=erAreaForSelection(area,tech);
+  return {
+    year,
+    skipped:true,
+    error:new Error(`${areaInfo.name} is not mapped for ${cfg.label} in this dashboard`),
+  };
 }
 function erFmt(v,d=2){ return v!=null&&isFinite(v)?Number(v).toFixed(d):'--'; }
 function renderEuroRenewables(){
   const pane=document.getElementById('ga-euren-pane'); if(!pane)return;
   const p=erPrefs();
-  const cfg=ER_TECH[p.tech]||ER_TECH.hydro;
+  const area=erDashboardArea(p.country);
   const curY=new Date().getFullYear();
   const years=Array.from(new Set([curY,curY-1,curY-2,curY-3,curY-4]));
-  const countries=erCountriesForTech(p.tech);
-  const cOpts=countries.map(c=>`<option value="${c.id}" ${c.id===p.country?'selected':''}>${c.name}</option>`).join('');
+  const cOpts=`<option value="${ER_EU_ID}" ${p.country===ER_EU_ID?'selected':''}>Europe Aggregate</option>`+
+    ER_COUNTRIES.map(c=>`<option value="${c.id}" ${c.id===p.country?'selected':''}>${c.name}</option>`).join('');
   const yrBtns=years.map(y=>`<button class="f-btn sm${p.years.includes(y)?' on':''}" style="padding:2px 8px;font-size:9px" onclick="erToggleYear(${y})">${y}</button>`).join('');
   pane.innerHTML=`
-    <div class="ga-subtabs" id="ga-euren-subtabs">
-      ${Object.entries(ER_TECH).map(([id,t])=>`<button class="ga-stab ${p.tech===id?'active':''}" onclick="erSetTech('${id}')">${t.label.toUpperCase()}</button>`).join('')}
-    </div>
-    <div class="ga-card" style="margin-top:12px;margin-bottom:12px">
+    <div class="ga-card" style="margin-bottom:12px">
       <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-        <div><div class="ga-lbl">COUNTRY</div><select class="gsel" onchange="erSetCountry(this.value)">${cOpts}</select></div>
+        <div><div class="ga-lbl">AREA</div><select class="gsel" onchange="erSetArea(this.value)">${cOpts}</select></div>
         <div><div class="ga-lbl">YEARS</div><div style="display:flex;gap:4px;flex-wrap:wrap">${yrBtns}</div></div>
         <div style="margin-left:auto;font-size:9px;color:#6b7a99;line-height:1.6;max-width:520px">
-          Source: ENTSO-E Transparency Platform, Actual Generation per Type (A75 / A16) + Installed Capacity (A68 / A33). ${cfg.note}. Country selector is filtered to mapped ${cfg.label.toLowerCase()} markets; Missing API/key/data stays blank.
+          Source: ENTSO-E Transparency Platform API via /api/entsoe, Actual Generation per Type (A75 / A16). Europe Aggregate sums mapped ENTSO-E areas separately for hydro, wind and solar. Missing API/key/data stays blank; missing countries or PSR codes are flagged and are not treated as zero.
         </div>
       </div>
     </div>
-    <div id="er-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px">
-      <div class="ga-kpi"><div class="ga-kpi-lbl">LATEST MONTH</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">loading</div></div>
-      <div class="ga-kpi"><div class="ga-kpi-lbl">YTD GENERATION</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">${cfg.unit}</div></div>
-      <div class="ga-kpi"><div class="ga-kpi-lbl">GENERATION YoY</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">same month</div></div>
-      <div class="ga-kpi"><div class="ga-kpi-lbl">INSTALLED CAPACITY</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">GW</div></div>
-      <div class="ga-kpi"><div class="ga-kpi-lbl">CAPACITY YoY</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">GW added</div></div>
-      <div class="ga-kpi"><div class="ga-kpi-lbl">STATUS</div><div class="ga-kpi-val" style="font-size:13px">LOADING</div><div class="ga-kpi-note">ENTSO-E</div></div>
+    <div id="er-kpis" style="display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:8px;margin-bottom:12px">
+      ${Object.values(ER_TECH).map(t=>`<div class="ga-kpi"><div class="ga-kpi-lbl">${t.label.toUpperCase()}</div><div class="ga-kpi-val">--</div><div class="ga-kpi-note">loading ENTSO-E</div></div>`).join('')}
     </div>
-    <div class="ga-card">
-      <div class="ga-sec">${cfg.label.toUpperCase()} GENERATION — SEASONAL <span class="ga-tag">ENTSO-E</span></div>
-      <div class="ga-ch-wrap" style="height:330px"><canvas id="er-seasonal-chart"></canvas></div>
-      <div class="ga-source" id="er-source">Loading ENTSO-E data...</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px">
+      ${Object.entries(ER_TECH).map(([tech,cfg])=>`<div class="ga-card">
+        <div class="ga-sec">${area.aggregate?'EUROPE ':''}${cfg.label.toUpperCase()} — SEASONAL YoY <span class="ga-tag">ENTSO-E API</span></div>
+        <div class="ga-ch-wrap" style="height:300px"><canvas id="er-seasonal-${tech}"></canvas></div>
+        <div class="ga-source" id="er-source-${tech}">Loading ${cfg.label.toLowerCase()} from ENTSO-E...</div>
+      </div>`).join('')}
     </div>
     <div class="ga-card" style="margin-top:12px">
-      <div class="ga-sec">${cfg.label.toUpperCase()} INSTALLED CAPACITY <span class="ga-tag">ENTSO-E A68</span></div>
-      <div class="ga-ch-wrap" style="height:260px"><canvas id="er-capacity-chart"></canvas></div>
-      <div class="ga-source" id="er-cap-source">Annual installed capacity in GW; bars show YoY capacity additions.</div>
-    </div>
-    <div class="ga-card" style="margin-top:12px">
-      <div class="ga-sec">MONTHLY TABLE — ${cfg.label.toUpperCase()} <span class="ga-tag">TWh + GW</span></div>
+      <div class="ga-sec">MONTHLY TABLE — HYDRO / WIND / SOLAR <span class="ga-tag">${area.name.toUpperCase()}</span></div>
       <div id="er-table" style="overflow-x:auto"></div>
     </div>`;
-  erLoadAndDraw();
+  erLoadDashboard();
 }
-async function erLoadAndDraw(){
+function erCoverageText(rows){
+  const agg=rows.find(r=>r.data?._meta?.aggregate)?.data?._meta;
+  if(!agg) return '';
+  const ok=agg.memberOk?.length || 0;
+  const total=agg.memberCount || 0;
+  const miss=agg.memberMissing?.length || 0;
+  return `${ok}/${total} mapped markets${miss?`; ${miss} missing/skipped`:''}`;
+}
+async function erLoadDashboard(){
   const token=++ER_TOKEN;
   const p=erPrefs();
-  const cfg=ER_TECH[p.tech]||ER_TECH.hydro;
-  const country=ER_COUNTRIES.find(c=>c.id===p.country)||ER_COUNTRIES[0];
   const years=p.years.slice().sort((a,b)=>b-a);
-  const src=document.getElementById('er-source');
-  if(src) src.textContent=`Loading ${country.name} ${cfg.label.toLowerCase()} generation from ENTSO-E...`;
-  const [results,capResults]=await Promise.all([
-    Promise.all(years.map(y=>erFetchCountryYear(p.country,y,p.tech).then(data=>({year:y,data})).catch(error=>({year:y,error})))),
-    Promise.all(years.map(y=>erFetchCapacityCountryYear(p.country,y,p.tech).then(data=>({year:y,data})).catch(error=>({year:y,error})))),
-  ]);
+  const area=erDashboardArea(p.country);
+  const byTech={};
+  Object.keys(ER_TECH).forEach(tech=>{ byTech[tech]=years.map(y=>({year:y,loading:true})); });
+  erRenderDashboardKpis(byTech,area);
+  erRenderDashboardTable(years,byTech);
+  await Promise.all(Object.keys(ER_TECH).map(async tech=>{
+    const rows=await Promise.all(years.map(y=>{
+      if(!erAreaHasTech(p.country,tech)) return Promise.resolve(erMissingTechBundle(p.country,y,tech));
+      return erFetchAreaYear(p.country,y,tech).then(data=>({year:y,data})).catch(error=>({year:y,error}));
+    }));
+    if(token!==ER_TOKEN) return;
+    byTech[tech]=rows;
+    erDrawTechSeasonal(tech,rows,p.country);
+    erRenderDashboardKpis(byTech,area);
+    erRenderDashboardTable(years,byTech);
+  }));
   if(token!==ER_TOKEN) return;
+  erRenderDashboardKpis(byTech,area);
+  erRenderDashboardTable(years,byTech);
+}
+function erDrawTechSeasonal(tech,results,areaId){
+  const cfg=ER_TECH[tech]||ER_TECH.hydro;
   const ok=results.filter(r=>r.data);
   const errs=results.filter(r=>r.error);
-  const capOk=capResults.filter(r=>r.data);
-  const capErrs=capResults.filter(r=>r.error);
-  const datasets=years.map((y,i)=>{
-    const r=ok.find(x=>x.year===y);
-    return {label:String(y),data:r?erMonthlyTWh(r.data,p.tech,y):Array(12).fill(null),borderColor:GA_COLS[i%GA_COLS.length],backgroundColor:'transparent',borderWidth:i===0?2.4:1.6,borderDash:i===0?[]:[5,4],tension:.25,pointRadius:2};
+  const datasets=results.map((r,i)=>({
+    label:String(r.year),
+    data:r.data?erMonthlyTWh(r.data,tech,r.year):Array(12).fill(null),
+    borderColor:GA_COLS[i%GA_COLS.length],
+    backgroundColor:'transparent',
+    borderWidth:i===0?2.4:1.6,
+    borderDash:i===0?[]:[5,4],
+    tension:.25,
+    pointRadius:2,
+    spanGaps:false,
+  }));
+  gaMakeChart(`er-seasonal-${tech}`,'line',{labels:GA_MO,datasets},{
+    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'TWh/month',color:'#3d5070',font:{size:9}}}},
   });
-  gaMakeChart('er-seasonal-chart','line',{labels:GA_MO,datasets},{
-    scales:{x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false,maxTicksLimit:12}},y:{...GCD.scales.y,title:{display:true,text:'TWh/month',color:'#3d5070',font:{size:9}}}}
-  });
-  erRenderCapacityChart(years,capOk,p.tech);
-  erRenderKpis(ok,errs,capOk,capErrs,p.tech,country,cfg);
-  erRenderTable(years,ok,capOk,p.tech);
+  const src=document.getElementById(`er-source-${tech}`);
   if(src){
-    const errTxt=errs.length?` · ${errs.length} year(s) missing: ${errs.map(e=>`${e.year} ${e.error.message}`).join(' | ')}`:'';
+    const area=erAreaForSelection(areaId,tech);
+    const cov=erCoverageText(ok);
     const upd=erFormatEntsoeUpdate(ok.find(r=>r.data?._meta?.createdDateTime)?.data._meta.createdDateTime);
-    src.textContent=`Source: ENTSO-E Transparency Platform Actual Generation per Type · ${country.name} (${country.domain})${upd?` · Last ENTSO-E update: ${upd}`:''} · ${cfg.note}${errTxt}`;
-  }
-  const capSrc=document.getElementById('er-cap-source');
-  if(capSrc){
-    const errTxt=capErrs.length?` · ${capErrs.length} capacity year(s) missing: ${capErrs.map(e=>`${e.year} ${e.error.message}`).join(' | ')}`:'';
-    const upd=erFormatEntsoeUpdate(capOk.find(r=>r.data?._meta?.createdDateTime)?.data._meta.createdDateTime);
-    capSrc.textContent=`Source: ENTSO-E Installed Generation Capacity Aggregated (A68/A33) · ${country.name} (${country.domain})${upd?` · Last ENTSO-E update: ${upd}`:''} · annual GW capacity and YoY additions${errTxt}`;
+    const errTxt=errs.length?` · Missing/skipped: ${errs.map(e=>`${e.year} ${e.error.message}`).join(' | ')}`:'';
+    src.textContent=`Source: ENTSO-E Transparency Platform Actual Generation per Type API · ${area.name} (${area.domain})${upd?` · Last ENTSO-E update: ${upd}`:''}${cov?` · Coverage: ${cov}`:''} · ${cfg.note}${errTxt}`;
   }
 }
-function erRenderCapacityChart(years,capOk,tech){
-  const asc=years.slice().sort((a,b)=>a-b);
-  const cap=asc.map(y=>{
-    const r=capOk.find(x=>x.year===y);
-    return r?erCapacityGW(r.data,tech):null;
-  });
-  const adds=cap.map((v,i)=>v!=null&&i>0&&cap[i-1]!=null?+(v-cap[i-1]).toFixed(3):null);
-  gaMakeChart('er-capacity-chart','bar',{labels:asc.map(String),datasets:[
-    {type:'bar',label:'YoY capacity add',data:adds,backgroundColor:'rgba(251,191,36,.45)',borderColor:'#fbbf24',borderWidth:1,yAxisID:'y'},
-    {type:'line',label:'Installed capacity',data:cap,borderColor:'#4fc3f7',backgroundColor:'transparent',borderWidth:2.2,pointRadius:3,tension:.2,yAxisID:'y1'},
-  ]},{
-    scales:{
-      x:{...GCD.scales.x,ticks:{...GCD.scales.x.ticks,maxRotation:0,autoSkip:false}},
-      y:{...GCD.scales.y,title:{display:true,text:'GW added YoY',color:'#3d5070',font:{size:9}}},
-      y1:{position:'right',grid:{drawOnChartArea:false,color:'#0d1a2e'},ticks:{color:'#546e7a',font:{size:9,family:'IBM Plex Mono'}},title:{display:true,text:'Installed GW',color:'#3d5070',font:{size:9}}},
-    }
-  });
-}
-function erRenderKpis(ok,errs,capOk,capErrs,tech,country,cfg){
-  const box=document.getElementById('er-kpis'); if(!box)return;
-  const sorted=ok.slice().sort((a,b)=>b.year-a.year);
+function erLatestStats(results,tech){
+  const ok=results.filter(r=>r.data).sort((a,b)=>b.year-a.year);
   let latest=null;
-  for(const r of sorted){
+  for(const r of ok){
     const arr=erMonthlyTWh(r.data,tech,r.year);
     for(let i=11;i>=0;i--){ if(arr[i]!=null){ latest={year:r.year,month:i,value:arr[i],arr}; break; } }
     if(latest) break;
   }
-  let ytd=null,yoy=null;
-  if(latest){
-    ytd=latest.arr.slice(0,latest.month+1).reduce((a,v)=>a+(v||0),0);
-    const prev=ok.find(r=>r.year===latest.year-1);
-    if(prev){
-      const prevVal=erMonthlyTWh(prev.data,tech,latest.year-1)[latest.month];
-      if(prevVal!=null&&prevVal!==0) yoy=(latest.value/prevVal-1)*100;
-    }
+  if(!latest) return null;
+  const ytd=latest.arr.slice(0,latest.month+1).reduce((a,v)=>a+(v||0),0);
+  const prev=ok.find(r=>r.year===latest.year-1);
+  let yoy=null;
+  if(prev){
+    const prevVal=erMonthlyTWh(prev.data,tech,latest.year-1)[latest.month];
+    if(prevVal!=null&&prevVal!==0) yoy=(latest.value/prevVal-1)*100;
   }
-  const capSorted=capOk.slice().sort((a,b)=>b.year-a.year);
-  const latestCapYear=capSorted.find(r=>erCapacityGW(r.data,tech)!=null)?.year;
-  const latestCap=latestCapYear?erCapacityGW(capOk.find(r=>r.year===latestCapYear)?.data,tech):null;
-  const prevCap=latestCapYear?erCapacityGW(capOk.find(r=>r.year===latestCapYear-1)?.data,tech):null;
-  const capAdd=latestCap!=null&&prevCap!=null?latestCap-prevCap:null;
-  const capPct=capAdd!=null&&prevCap!==0?capAdd/prevCap*100:null;
-  const live=ok.length>0&&errs.length===0&&capOk.length>0&&capErrs.length===0;
-  const partial=(ok.length>0||capOk.length>0)&&!live;
-  const stat=live?'LIVE':partial?'PARTIAL':'MISSING';
-  const statCol=live?'#34d399':partial?'#fbbf24':'#f87171';
-  box.innerHTML=`
-    <div class="ga-kpi"><div class="ga-kpi-lbl">LATEST MONTH</div><div class="ga-kpi-val">${latest?erFmt(latest.value):'--'}</div><div class="ga-kpi-note">${latest?`${GA_MO[latest.month]} ${latest.year} · TWh`:'no data'}</div></div>
-    <div class="ga-kpi"><div class="ga-kpi-lbl">YTD GENERATION</div><div class="ga-kpi-val">${ytd!=null?erFmt(ytd):'--'}</div><div class="ga-kpi-note">${latest?`${country.name} · through ${GA_MO[latest.month]}`:cfg.unit}</div></div>
-    <div class="ga-kpi"><div class="ga-kpi-lbl">GENERATION YoY</div><div class="ga-kpi-val" style="color:${yoy==null?'#c8d6e5':yoy>=0?'#34d399':'#f87171'}">${yoy==null?'--':`${yoy>=0?'+':''}${yoy.toFixed(1)}%`}</div><div class="ga-kpi-note">same month vs prior year</div></div>
-    <div class="ga-kpi"><div class="ga-kpi-lbl">INSTALLED CAPACITY</div><div class="ga-kpi-val">${latestCap!=null?erFmt(latestCap):'--'}</div><div class="ga-kpi-note">${latestCapYear||'--'} · GW</div></div>
-    <div class="ga-kpi"><div class="ga-kpi-lbl">CAPACITY YoY</div><div class="ga-kpi-val" style="color:${capAdd==null?'#c8d6e5':capAdd>=0?'#34d399':'#f87171'}">${capAdd==null?'--':`${capAdd>=0?'+':''}${capAdd.toFixed(2)}`}</div><div class="ga-kpi-note">${capPct==null?'GW added':`${capPct>=0?'+':''}${capPct.toFixed(1)}% · vs ${latestCapYear-1}`}</div></div>
-    <div class="ga-kpi"><div class="ga-kpi-lbl">STATUS</div><div class="ga-kpi-val" style="font-size:13px;color:${statCol}">${stat}</div><div class="ga-kpi-note">ENTSO-E proxy / API key</div></div>`;
+  return {latest,ytd,yoy};
 }
-function erRenderTable(years,ok,capOk,tech){
-  const el=document.getElementById('er-table'); if(!el)return;
-  const rows=years.map(y=>{
-    const r=ok.find(x=>x.year===y);
-    const arr=r?erMonthlyTWh(r.data,tech,y):Array(12).fill(null);
-    const total=arr.reduce((a,v)=>a+(v||0),0);
-    const cap=erCapacityGW(capOk.find(x=>x.year===y)?.data,tech);
-    const prevCap=erCapacityGW(capOk.find(x=>x.year===y-1)?.data,tech);
-    const add=cap!=null&&prevCap!=null?cap-prevCap:null;
-    return `<tr><td style="color:#c8d6e5;font-weight:600">${y}</td>${arr.map(v=>`<td style="text-align:right">${v==null?'--':erFmt(v)}</td>`).join('')}<td style="text-align:right;color:#c8d6e5;font-weight:600">${total?erFmt(total):'--'}</td><td style="text-align:right;color:#93c5fd;font-weight:600">${cap==null?'--':erFmt(cap)}</td><td style="text-align:right;color:${add==null?'#8a9bb5':add>=0?'#34d399':'#f87171'}">${add==null?'--':`${add>=0?'+':''}${add.toFixed(2)}`}</td></tr>`;
+function erRenderDashboardKpis(byTech,area){
+  const box=document.getElementById('er-kpis'); if(!box)return;
+  box.innerHTML=Object.entries(ER_TECH).map(([tech,cfg])=>{
+    const rows=byTech[tech]||[];
+    const ok=rows.filter(r=>r.data);
+    const errs=rows.filter(r=>r.error);
+    const loading=rows.some(r=>r.loading);
+    const stats=erLatestStats(rows,tech);
+    const stat=loading?'LOADING':ok.length&&errs.length?'PARTIAL':ok.length?'LIVE':'MISSING';
+    const statCol=stat==='LIVE'?'#34d399':stat==='PARTIAL'||stat==='LOADING'?'#fbbf24':'#f87171';
+    const yoy=stats?.yoy;
+    return `<div class="ga-kpi">
+      <div class="ga-kpi-lbl">${cfg.label.toUpperCase()} · ${stat}</div>
+      <div class="ga-kpi-val" style="color:${statCol}">${stats?erFmt(stats.latest.value):'--'}</div>
+      <div class="ga-kpi-note">${stats?`${GA_MO[stats.latest.month]} ${stats.latest.year} · TWh · YTD ${erFmt(stats.ytd)}`:loading?`${area.name} · loading ENTSO-E`:`${area.name} · no sourced rows`}</div>
+      <div style="font-size:9px;color:${yoy==null?'#546e7a':yoy>=0?'#34d399':'#f87171'};margin-top:4px">${yoy==null?'YoY --':`YoY ${yoy>=0?'+':''}${yoy.toFixed(1)}%`}</div>
+    </div>`;
   }).join('');
-  el.innerHTML=`<table class="ga-tbl" style="width:100%;font-size:10px">
-    <thead><tr><th style="text-align:left">Year</th>${GA_MO.map(m=>`<th style="text-align:right">${m}</th>`).join('')}<th style="text-align:right">YTD / Total</th><th style="text-align:right">Capacity GW</th><th style="text-align:right">YoY add GW</th></tr></thead>
-    <tbody>${rows}</tbody>
+}
+function erRenderDashboardTable(years,byTech){
+  const el=document.getElementById('er-table'); if(!el)return;
+  const rows=[];
+  Object.entries(ER_TECH).forEach(([tech,cfg])=>{
+    years.forEach(y=>{
+      const r=(byTech[tech]||[]).find(x=>x.year===y);
+      const arr=r?.data?erMonthlyTWh(r.data,tech,y):Array(12).fill(null);
+      const total=arr.reduce((a,v)=>a+(v||0),0);
+      const status=r?.loading?'loading':r?.data?'parsed':(r?.error?.message||'missing');
+      const statusCol=r?.loading?'#fbbf24':r?.data?'#34d399':'#f87171';
+      rows.push(`<tr><td style="color:#c8d6e5;font-weight:600">${cfg.label}</td><td>${y}</td>${arr.map(v=>`<td style="text-align:right">${v==null?'--':erFmt(v)}</td>`).join('')}<td style="text-align:right;color:#c8d6e5;font-weight:600">${total?erFmt(total):'--'}</td><td style="color:${statusCol}">${status}</td></tr>`);
+    });
+  });
+  el.innerHTML=`<table class="ga-tbl" style="width:100%;font-size:10px;min-width:980px">
+    <thead><tr><th style="text-align:left">Source</th><th>Year</th>${GA_MO.map(m=>`<th style="text-align:right">${m}</th>`).join('')}<th style="text-align:right">YTD / Total</th><th style="text-align:left">Status</th></tr></thead>
+    <tbody>${rows.join('')}</tbody>
   </table>`;
 }
-window.erSetTech = erSetTech;
-window.erSetCountry = erSetCountry;
+window.erSetArea = erSetArea;
 window.erToggleYear = erToggleYear;
 
 // ══════════════════════════════════════════════════════════════════════════

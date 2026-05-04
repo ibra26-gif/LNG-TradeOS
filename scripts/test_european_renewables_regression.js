@@ -35,7 +35,13 @@ assert(
     js.includes('function renderEuroRenewables()') &&
     js.includes('euren_prefs_v1') &&
     js.includes('function erCountriesForTech') &&
-    js.includes('function erDefaultCountryForTech'),
+    js.includes("const ER_EU_ID = 'europe'") &&
+    js.includes('function erDashboardArea') &&
+    js.includes('function erFetchAreaYear') &&
+    js.includes('function erLoadDashboard') &&
+    js.includes('Europe Aggregate') &&
+    js.includes('onchange="erSetArea(this.value)"') &&
+    js.includes('window.erSetArea'),
   'European Renewable tab must be routed, renderable, and persist preferences'
 );
 
@@ -54,18 +60,28 @@ assert(
     !js.includes('securityToken=') &&
     js.includes("documentType:'A75'") &&
     js.includes("processType:'A16'") &&
-    js.includes("documentType:'A68'") &&
-    js.includes("processType:'A33'") &&
     js.includes('ENTSO-E Transparency Platform Actual Generation per Type'),
-  'European Renewable must use the existing ENTSO-E proxy and cite generation plus installed capacity'
+  'European Renewable must use the existing ENTSO-E proxy and cite actual generation'
 );
 
 assert(
   js.includes('psrType:psr') &&
     js.includes('euren_${countryId}_${tech}_${year}') &&
-    js.includes('euren_cap_${countryId}_${tech}_${year}') &&
-    js.includes('erMergeEntsoeBundle'),
-  'European Renewable ENTSO-E calls must fetch selected PSR codes and merge them, not request whole-country all-tech years'
+    js.includes('erMergeEntsoeBundle') &&
+    js.includes('missingPsr') &&
+    js.includes('erFetchEntsoeXml'),
+  'European Renewable ENTSO-E calls must fetch selected generation PSR codes and merge them, not request whole-country all-tech years'
+);
+
+assert(
+  js.includes('function erFetchEuropeYear') &&
+    js.includes("euren_${ER_EU_ID}_${tech}_${year}_tracked_v1") &&
+    js.includes('memberOk') &&
+    js.includes('memberMissing') &&
+    js.includes('Coverage: ${cov}') &&
+    js.includes('Europe Aggregate sums mapped ENTSO-E areas separately for hydro, wind and solar') &&
+    js.includes('not treated as zero'),
+  'European Renewable must support a Europe aggregate seasonal YoY dashboard with coverage disclosure'
 );
 
 assert(
@@ -76,26 +92,26 @@ assert(
 );
 
 assert(
-    js.includes('function erFetchCapacityCountryYear') &&
-    js.includes('function erParseCapacityXml') &&
-    js.includes('function erCapacityGW') &&
-    js.includes('function erFormatEntsoeUpdate') &&
-    js.includes('Last ENTSO-E update:') &&
-    js.includes('INSTALLED CAPACITY') &&
-    js.includes('CAPACITY YoY') &&
-    js.includes('er-capacity-chart') &&
-    js.includes('Capacity GW') &&
-    js.includes('YoY add GW'),
-  'European Renewable must show installed capacity and YoY capacity increase'
+  js.includes('Object.entries(ER_TECH).map(([tech,cfg])') &&
+    js.includes('canvas id="er-seasonal-${tech}"') &&
+    js.includes('gaMakeChart(`er-seasonal-${tech}`') &&
+    js.includes('function erDrawTechSeasonal') &&
+    js.includes('function erRenderDashboardKpis') &&
+    js.includes('function erRenderDashboardTable') &&
+    js.includes('MONTHLY TABLE — HYDRO / WIND / SOLAR') &&
+    js.includes('ER_COUNTRIES.map(c=>`<option value="${c.id}"'),
+  'European Renewable must render hydro, wind, and solar seasonal charts together with dashboard KPIs and table'
 );
 
 assert(
   js.includes('Missing API/key/data stays blank') &&
     js.includes('ENTSO-E proxy is available on deployed / localhost app, not file preview') &&
     js.includes("techs:['wind','solar']") &&
-    js.includes('Country selector is filtered to mapped ${cfg.label.toLowerCase()} markets') &&
+    js.includes('function erAreaHasTech') &&
+    js.includes('function erMissingTechBundle') &&
+    js.includes('missing countries or PSR codes are flagged and are not treated as zero') &&
     !js.slice(js.indexOf('const ER_PREF_KEY'), js.indexOf('// ══════════════════════════════════════════════════════════════════════════\n// LNG VALUE CHAIN')).includes('Math.random()'),
-  'European Renewable must filter countries by mapped technology and not fabricate fallback renewable data'
+  'European Renewable must show all mapped countries while flagging unavailable technologies and not fabricate fallback renewable data'
 );
 
 if (!process.exitCode) console.log('European Renewable regression checks passed');
