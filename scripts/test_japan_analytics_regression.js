@@ -24,15 +24,15 @@ assert(
 );
 assert(
   js.includes('JAPAN GAS BALANCE SOURCE STACK') &&
-    js.includes('JAPAN LNG IMPORT SUPPLY') &&
+    js.includes('JAPAN LNG IMPORTS vs CITY-GAS DEMAND') &&
     js.includes('MONTHLY JAPAN GAS BALANCE') &&
     js.includes('Japan Customs HS 271111000') &&
     js.includes('METI Gas Business') &&
     js.includes('METI Electric Power') &&
     js.includes('JOGMEC') &&
     js.includes('Missing source row = gap, not modelled value') &&
-    js.includes('partial imports chart wired; demand/storage pending'),
-  'Japan Gas Balance must render sourced Customs imports while keeping missing demand/storage as explicit gaps'
+    js.includes('partial Customs + METI city-gas chart wired; power/storage pending'),
+  'Japan Gas Balance must render sourced Customs imports and METI city-gas rows while keeping missing power/storage as explicit gaps'
 );
 assert(
   js.includes('JAPAN NUCLEAR UTILIZATION') &&
@@ -64,12 +64,14 @@ assert(latestGas?.month === data.gasBalance.lngImports?.latestMonth, 'Japan gas 
 assert(latestGas?.lngImportsMillionTonnes > 0, 'Japan Customs LNG import row must include positive Mt/month');
 assert(latestGas?.lngImportsValueJpyBillion > 0 && latestGas.lngImportsValueJpyBillion < 1000, 'Japan Customs LNG import value must be expressed in JPY bn, not raw JPY000');
 assert(latestGas?.coverage?.customsLngImports === true, 'Japan latest row must mark Customs import coverage');
-assert(latestGas?.coverage?.metiGasBusiness === false && latestGas?.cityGasDemand === null, 'Japan city gas must remain an explicit gap until METI Gas Business is parsed');
+const latestCityGas = [...data.gasBalance.monthlyRows].reverse().find(r => r.cityGasDemandPJ != null);
+assert(data.gasBalance.cityGas?.status === 'parsed' && data.gasBalance.cityGas?.latestMonth === latestCityGas?.month, 'Japan city-gas feed must be parsed from METI overview pages');
+assert(latestCityGas?.coverage?.metiGasBusiness === true && latestCityGas.cityGasDemandPJ > 0 && latestCityGas.cityGasLngConsumptionMt > 0, 'Japan city gas row must include sourced demand PJ and LNG feedstock Mt');
 assert(latestGas?.coverage?.metiPowerFuel === false && latestGas?.powerLngBurn === null, 'Japan power LNG burn must remain an explicit gap until METI power fuel is parsed');
 assert(
   Array.isArray(data.gasBalance.sourceMap) &&
     data.gasBalance.sourceMap.some(s => s.source?.includes('Japan Customs') && s.status === 'wired' && s.pull?.includes('HS 271111000')) &&
-    data.gasBalance.sourceMap.some(s => s.source?.includes('Gas Business Production Dynamic Statistics')) &&
+    data.gasBalance.sourceMap.some(s => s.source?.includes('Gas Business Production Dynamic Statistics') && s.status === 'wired' && s.wiring === 'official_text_parser_wired') &&
     data.gasBalance.sourceMap.some(s => s.source?.includes('Electric Power Survey Statistics')) &&
     data.gasBalance.sourceMap.some(s => s.source?.includes('JOGMEC')),
   'Japan gas balance source map must preserve Customs, METI gas, METI power, and JOGMEC sources'
@@ -93,11 +95,14 @@ assert(
     scraper.includes('"restartAdjustedGw": 14.609') &&
     scraper.includes('JAPAN_GAS_BALANCE_SOURCE_MAP') &&
     scraper.includes('load_customs_lng_imports') &&
+    scraper.includes('load_meti_city_gas_overviews') &&
+    scraper.includes('parse_meti_city_gas_overview') &&
+    scraper.includes('JINA_READER_PREFIX') &&
     scraper.includes('CUSTOMS_HS_LNG = "271111000"') &&
     scraper.includes('monthlyRows') &&
     scraper.includes('OPEN_METEO_URL') &&
     scraper.includes('"weeklyLngStorage": None'),
-  'Japan scraper must fetch real nuclear/weather data, parse Customs LNG imports, and keep unparsed Japan balance legs as gaps'
+  'Japan scraper must fetch real nuclear/weather data, parse Customs LNG imports, parse METI city-gas rows, and keep unparsed power/storage legs as gaps'
 );
 
 assert(

@@ -16,7 +16,7 @@ function assert(cond, msg) {
   }
 }
 
-assert(app.includes('20260504-india-ppac'), 'India PPAC change must bump the app JS cache bust');
+assert(/lngtradeos\.js&v=20260505-/.test(app), 'India PPAC change must bump the app JS cache bust');
 assert(balance.schema === 'india_gas_balance_v1', 'India gas balance schema missing');
 assert(balance.status === 'parsed', 'India gas balance must parse PPAC files');
 assert(Array.isArray(balance.rows) && balance.rows.length >= 150, 'India balance should include multi-year PPAC monthly rows');
@@ -42,6 +42,8 @@ assert(js.includes('Missing PPAC row = blank, not modelled'), 'India UI must dis
 assert(!js.includes('Object.values(IND_APM).pop'), 'India APM must not roll stale values forward');
 assert(!js.includes('const IND_APM'), 'India APM hardcoded table should be removed');
 assert(!js.includes('const IND_DEEPWATER'), 'India deepwater hardcoded table should be removed');
+assert(!js.includes('IND_CIL_LOW') && !js.includes('$${IND_CIL_LOW}') && js.includes('IND_CIL_SOURCE_GAP'), 'India CIL coal equivalent must not use an unsourced hardcoded price range');
+assert(js.includes('CIL coal equivalent is blank until an official Coal India/PPAC source'), 'India UI must disclose the CIL coal source gap');
 assert(js.includes('supply=indNum(d.total_supply)') && !js.includes('(d.prod||0)+(d.rlng||0)-(d.total_demand||0)'), 'India gap chart must not zero-fill missing inputs');
 assert(!js.includes("'lng_shpgx_v1','lng_china_gb_v1','lng_india_gb_v1'"), 'Public state should not resync stale browser-only India balance');
 

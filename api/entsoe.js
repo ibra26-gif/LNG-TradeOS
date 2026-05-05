@@ -27,14 +27,19 @@ export default async function handler(req, res) {
   params.set('securityToken', apiKey);
 
   const url = `https://web-api.tp.entsoe.eu/api?${params.toString()}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
 
   try {
     const response = await fetch(url, {
       headers: { 'Accept': 'application/xml, text/xml, */*' },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errText = await response.text();
+      res.setHeader('Cache-Control', 'no-store');
       return res.status(response.status).send(errText);
     }
 
@@ -42,11 +47,16 @@ export default async function handler(req, res) {
 
     // Return raw XML — the browser-side code parses it with regex
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    // Cache: 1 hour (nuclear availability doesn't change by the minute)
-    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
+    res.setHeader('X-LNGTradeOS-Proxy', 'entsoe-configured');
+    // Vercel CDN cache: ENTSO-E actual generation is source-published, not tick data.
+    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+    res.setHeader('CDN-Cache-Control', 'public, max-age=3600');
+    res.setHeader('Vercel-CDN-Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     return res.status(200).send(xml);
 
   } catch (err) {
+    clearTimeout(timeout);
+    res.setHeader('Cache-Control', 'no-store');
     return res.status(502).json({ error: 'ENTSO-E upstream error: ' + err.message });
   }
 }

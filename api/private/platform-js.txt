@@ -22084,7 +22084,30 @@ const ER_TECH = {
   solar: {label:'Solar', unit:'TWh/month', psr:['B16'],             note:'B16 solar'},
 };
 const ER_EU_ID = 'europe';
+const ER_ENTSOE_MAX_CONCURRENCY = 4;
+const ER_ENTSOE_RETRIES = 2;
 let ER_TOKEN = 0;
+let ER_ENTSOE_ACTIVE = 0;
+const ER_ENTSOE_QUEUE = [];
+
+function erSleep(ms){ return new Promise(resolve=>setTimeout(resolve,ms)); }
+function erWithEntsoeSlot(task){
+  return new Promise((resolve,reject)=>{
+    const run=()=>{
+      ER_ENTSOE_ACTIVE++;
+      Promise.resolve()
+        .then(task)
+        .then(resolve,reject)
+        .finally(()=>{
+          ER_ENTSOE_ACTIVE=Math.max(0,ER_ENTSOE_ACTIVE-1);
+          const next=ER_ENTSOE_QUEUE.shift();
+          if(next) next();
+        });
+    };
+    if(ER_ENTSOE_ACTIVE<ER_ENTSOE_MAX_CONCURRENCY) run();
+    else ER_ENTSOE_QUEUE.push(run);
+  });
+}
 
 function erDefaultYears(){
   const y = new Date().getFullYear();
@@ -22208,15 +22231,30 @@ function erMergeEntsoeBundle(base,next){
   return base;
 }
 async function erFetchEntsoeXml(params,psr,parser){
-  const r=await fetch(`/api/entsoe?${params.toString()}`,{cache:'no-store'});
-  const txt=await r.text();
-  if(!r.ok) throw new Error(`${psr}: ${txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180)||`HTTP ${r.status}`}`);
-  if(txt.trim().startsWith('{')){
-    let msg='ENTSO-E proxy error';
-    try{ msg=JSON.parse(txt).error||msg; }catch{}
-    throw new Error(`${psr}: ${msg}`);
+  let lastErr=null;
+  for(let attempt=0;attempt<=ER_ENTSOE_RETRIES;attempt++){
+    try{
+      const r=await erWithEntsoeSlot(()=>fetch(`/api/entsoe?${params.toString()}`));
+      const txt=await r.text();
+      if(!r.ok){
+        const msg=txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180)||`HTTP ${r.status}`;
+        const retryable=[408,425,429,500,502,503,504].includes(r.status);
+        lastErr=new Error(`${psr}: ${msg}`);
+        if(retryable&&attempt<ER_ENTSOE_RETRIES){ await erSleep(650*(attempt+1)); continue; }
+        throw lastErr;
+      }
+      if(txt.trim().startsWith('{')){
+        let msg='ENTSO-E proxy error';
+        try{ msg=JSON.parse(txt).error||msg; }catch{}
+        throw new Error(`${psr}: ${msg}`);
+      }
+      return parser(txt);
+    }catch(error){
+      lastErr=error;
+      if(attempt<ER_ENTSOE_RETRIES){ await erSleep(650*(attempt+1)); continue; }
+    }
   }
-  return parser(txt);
+  throw lastErr||new Error(`${psr}: ENTSO-E fetch failed`);
 }
 async function erFetchCountryYear(countryId,year,tech){
   const c=ER_COUNTRIES.find(x=>x.id===countryId)||ER_COUNTRIES[0];
@@ -24916,8 +24954,7 @@ const IND_SECTORS = ['Power','CGD','Fertilizer','Refinery','Petrochem','LPGShrin
 const IND_SECTOR_COLS = ['#7F77DD','#1D9E75','#EF9F27','#E24B4A','#378ADD','#f48fb1','#81c784','#ffb74d','#546e7a'];
 const IND_SECTOR_LBLS = {Power:'Power',CGD:'CGD',Fertilizer:'Fertilizer',Refinery:'Refinery',Petrochem:'Petrochem',LPGShrink:'LPG Shrink',SteelDRI:'Steel/DRI',PipelineIC:'Pipeline I/C',Other:'Other'};
 
-const IND_CIL_LOW=7.5, IND_CIL_HIGH=8.5; // $/MMBtu effective, update annually
-const IND_CIL_NOTE='G10 coal reference · latest notified/representative price · not live gas price';
+const IND_CIL_SOURCE_GAP='Source gap: no official CIL/PPAC coal-equivalent price and conversion basis wired yet.';
 let _indPpacBalance=null,_indPpacPrices=null,_indPpacLoadStarted=false,_indPpacBalanceErr=null,_indPpacPricesErr=null;
 
 function indConv(v){ // mmscm → selected unit
@@ -25484,9 +25521,9 @@ function renderIndPrices(el){
 	      dwRec?`PPAC notification · GCV basis · source ${dwRec.source_file||''}`:`No PPAC ceiling valid for ${curMo}${latestDw?` · latest ${periodLbl(latestDw)}`:''}`
 	    )}
 	    ${box('#81c784',
-	      `CIL coal effective · power sector`,
-	      `$${IND_CIL_LOW}–${IND_CIL_HIGH}`,
-	      IND_CIL_NOTE
+	      `CIL coal equivalent · power sector`,
+	      `—`,
+	      IND_CIL_SOURCE_GAP
 	    )}
 	    ${box('#4fc3f7',
 	      `APM gas · ${curMo}`,
@@ -25495,7 +25532,7 @@ function renderIndPrices(el){
 	    )}
 
 	    <div style="font-size:10px;color:#3d5070;line-height:1.6;border-top:0.5px solid rgba(77,158,245,.1);padding-top:10px;margin-top:4px">
-	      APM and deepwater: PPAC notifications parsed from source PDFs. JKM DES and Brent: EOD files via Financial Trading section. CIL coal: reference assumption, not a live gas price.
+	      APM and deepwater: PPAC notifications parsed from source PDFs. JKM DES and Brent: EOD files via Financial Trading section. CIL coal equivalent is blank until an official Coal India/PPAC source and conversion basis are wired.
 	    </div>
 	  </div>`;
 }
@@ -25705,6 +25742,11 @@ function jpnLatestGasRow(){
   return rows.length ? rows[rows.length-1] : null;
 }
 
+function jpnLatestCityGasRow(){
+  const rows = jpnGasRows().filter(r=>r.cityGasDemandPJ!=null || r.cityGasLngConsumptionMt!=null);
+  return rows.length ? rows[rows.length-1] : null;
+}
+
 function jpnSupplierText(row, n=3){
   const suppliers = row?.topSuppliers || row?.customsCountries || [];
   return suppliers.slice(0,n).map(s=>`${jpnEsc(s.country || s.code)} ${jpnFmt((s.tonnes||0)/1000000,2)} Mt`).join(' · ') || '--';
@@ -25731,9 +25773,20 @@ function jpnDrawGasBalance(){
           yAxisID: 'y',
         },
         {
-          label: 'CIF value · JPY bn',
+          label: 'City-gas LNG feed · Mt/month',
           type: 'line',
-          data: rows.map(r=>r.lngImportsValueJpyBillion ?? null),
+          data: rows.map(r=>r.cityGasLngConsumptionMt ?? null),
+          borderColor: '#34d399',
+          backgroundColor: 'rgba(52,211,153,.10)',
+          borderWidth: 1.8,
+          pointRadius: 2,
+          tension: .25,
+          yAxisID: 'y',
+        },
+        {
+          label: 'City-gas sales · PJ',
+          type: 'line',
+          data: rows.map(r=>r.cityGasDemandPJ ?? null),
           borderColor: '#fbbf24',
           backgroundColor: 'rgba(251,191,36,.10)',
           borderWidth: 1.8,
@@ -25755,7 +25808,10 @@ function jpnDrawGasBalance(){
           callbacks: {
             afterBody: items => {
               const row = rows[items?.[0]?.dataIndex || 0];
-              return row ? `Top suppliers: ${jpnSupplierText(row,3).replaceAll('&amp;','&')}` : '';
+              if(!row) return '';
+              const parts = [`Top suppliers: ${jpnSupplierText(row,3).replaceAll('&amp;','&')}`];
+              if(row.cityGasUpdateDate) parts.push(`METI city-gas update: ${row.cityGasUpdateDate}`);
+              return parts;
             },
           },
         },
@@ -25771,7 +25827,7 @@ function jpnDrawGasBalance(){
         },
         y1: {
           position:'right',
-          title:{ display:true, text:'JPY bn', color:'#3d5070', font:{ size:9 } },
+          title:{ display:true, text:'PJ/month', color:'#3d5070', font:{ size:9 } },
           ticks:{ color:'#3d5070', font:{ size:9, family:'IBM Plex Mono' } },
           grid:{ drawOnChartArea:false },
           beginAtZero:true,
@@ -25787,8 +25843,10 @@ function jpnRenderGas(el){
   const sources = gb.sourceMap || [];
   const rows = jpnGasRows();
   const latest = jpnLatestGasRow();
+  const latestCity = jpnLatestCityGasRow();
   const gaps = gb.sourceGaps || [];
   const customs = gb.lngImports || {};
+  const cityGas = gb.cityGas || {};
   const link = (url,label='Open source') => url ? `<a href="${jpnEsc(url)}" target="_blank" style="display:inline-block;margin-top:7px;font-size:9px;color:#93c5fd">${label}</a>` : '';
   const sourceCard = s => {
     const status = String(s.status || 'source_gap').replaceAll('_',' ');
@@ -25806,9 +25864,10 @@ function jpnRenderGas(el){
   const balanceRows = rows.slice(-15).reverse().map(r=>`<tr>
     <td>${jpnEsc(r.month)}</td>
     <td style="text-align:right;color:#c8d6e5">${jpnFmt(r.lngImportsMillionTonnes,3)}</td>
+    <td style="text-align:right;color:#fbbf24">${jpnFmt(r.cityGasDemandPJ,1)}</td>
+    <td style="text-align:right;color:#34d399">${jpnFmt(r.cityGasLngConsumptionMt,3)}</td>
     <td style="text-align:right;color:#fbbf24">${jpnFmt(r.lngImportsValueJpyBillion,1)}</td>
     <td style="color:#8a9bb5">${jpnSupplierText(r,3)}</td>
-    <td style="text-align:center">${r.coverage?.metiGasBusiness ? 'parsed' : gapCell('source gap')}</td>
     <td style="text-align:center">${r.coverage?.metiPowerFuel ? 'parsed' : gapCell('source gap')}</td>
     <td style="text-align:center">${r.coverage?.jogmecInventory ? 'parsed' : gapCell('monthly cross-check only')}</td>
   </tr>`).join('');
@@ -25816,31 +25875,31 @@ function jpnRenderGas(el){
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
       ${jpnStatusCard({label:'Monthly import rows',value:rows.length?String(rows.length):'--',note:customs.latestMonth?`Customs latest ${customs.latestMonth}`:'Customs parser pending',color:rows.length?'#34d399':'#fbbf24'})}
       ${jpnStatusCard({label:`LNG imports · ${latest?.month || '--'}`,value:latest?.lngImportsMillionTonnes!=null?jpnFmt(latest.lngImportsMillionTonnes,3):'--',note:'Mt/month · Japan Customs HS 271111000',color:'#34d399'})}
-      ${jpnStatusCard({label:'CIF value',value:latest?.lngImportsValueJpyBillion!=null?jpnFmt(latest.lngImportsValueJpyBillion,1):'--',note:'JPY bn · Customs value unit JPY1000',color:'#fbbf24'})}
-      ${jpnStatusCard({label:'Balance coverage',value:rows.length?'PARTIAL':'SOURCE GAP',note:'imports parsed; demand/storage not estimated',color:rows.length?'#93c5fd':'#fbbf24'})}
+      ${jpnStatusCard({label:`City-gas sales · ${latestCity?.month || '--'}`,value:latestCity?.cityGasDemandPJ!=null?jpnFmt(latestCity.cityGasDemandPJ,1):'--',note:'PJ/month · METI Gas Business overview',color:latestCity?'#fbbf24':'#8a9bb5'})}
+      ${jpnStatusCard({label:'Balance coverage',value:rows.length?'PARTIAL':'SOURCE GAP',note:latestCity?'Customs + METI city gas; power/inventory gaps':'imports parsed; city gas/power/storage gaps',color:rows.length?'#93c5fd':'#fbbf24'})}
     </div>
     ${rows.length ? `<div class="ga-card" style="margin-bottom:12px">
-      <div class="ga-sec">JAPAN LNG IMPORT SUPPLY <span class="ga-tag">CUSTOMS HS 271111000</span></div>
+      <div class="ga-sec">JAPAN LNG IMPORTS vs CITY-GAS DEMAND <span class="ga-tag">CUSTOMS + METI</span></div>
       <div style="font-size:9px;color:#6b7a99;line-height:1.6;margin-bottom:8px">
-        This is the import side of the Japan gas balance only. City-gas demand, power LNG burn and inventories stay blank until the METI/JOGMEC rows are parsed from official files.
+        Customs LNG imports are parsed in Mt/month. METI city-gas sales are parsed in PJ/month and LNG feedstock consumption in Mt/month. Power LNG burn and inventories remain explicit gaps.
       </div>
       <div class="ga-ch-wrap" style="height:285px"><canvas id="jpn-gas-imports-chart"></canvas></div>
-      <div class="ga-source">Source: ${jpnEsc(customs.source || 'Japan Customs / Ministry of Finance Trade Statistics via e-Stat')} · quantity unit: metric tonnes · value unit: JPY1000. Latest Customs file update: ${jpnEsc(customs.latestUpdateDate || '--')}.</div>
+      <div class="ga-source">Sources: ${jpnEsc(customs.source || 'Japan Customs / Ministry of Finance Trade Statistics via e-Stat')} · ${jpnEsc(cityGas.source || 'METI / ANRE Gas Business Production Dynamic Statistics overview')}. Latest Customs update: ${jpnEsc(customs.latestUpdateDate || '--')} · latest METI city-gas update: ${jpnEsc(cityGas.latestUpdateDate || '--')}.</div>
     </div>
     <div class="ga-card" style="margin-bottom:12px">
       <div class="ga-sec">MONTHLY JAPAN GAS BALANCE <span class="ga-tag">PARTIAL · NO ESTIMATES</span></div>
       <div style="overflow:auto">
-        <table class="ga-tbl" style="width:100%;font-size:10px;min-width:900px">
-          <thead><tr><th style="text-align:left">Month</th><th style="text-align:right">LNG imports Mt</th><th style="text-align:right">CIF JPY bn</th><th style="text-align:left">Top suppliers</th><th style="text-align:center">City gas</th><th style="text-align:center">Power LNG</th><th style="text-align:center">Inventory</th></tr></thead>
+        <table class="ga-tbl" style="width:100%;font-size:10px;min-width:1040px">
+          <thead><tr><th style="text-align:left">Month</th><th style="text-align:right">LNG imports Mt</th><th style="text-align:right">City-gas sales PJ</th><th style="text-align:right">City LNG feed Mt</th><th style="text-align:right">CIF JPY bn</th><th style="text-align:left">Top suppliers</th><th style="text-align:center">Power LNG</th><th style="text-align:center">Inventory</th></tr></thead>
           <tbody>${balanceRows}</tbody>
         </table>
       </div>
-      <div class="ga-source">Only Customs import supply is plotted. Missing METI/JOGMEC rows are displayed as gaps and are not backfilled.</div>
+      <div class="ga-source">City-gas demand/feedstock comes from METI overview pages when available. Missing METI power/JOGMEC rows are displayed as gaps and are not backfilled.</div>
     </div>` : ''}
     <div class="ga-card" style="margin-bottom:12px">
       <div class="ga-sec">JAPAN GAS BALANCE SOURCE STACK <span class="ga-tag">NO INVENTED DATA</span></div>
       <div style="font-size:9px;color:#6b7a99;line-height:1.6;margin-bottom:10px">
-        LNG import supply is now parsed from Japan Customs HS 271111000. The remaining balance legs are intentionally still blank: city gas demand/stocks from METI Gas Business; power LNG burn/stocks from METI Electric Power; JOGMEC inventory as a monthly cross-check.
+        LNG import supply is parsed from Japan Customs HS 271111000. City-gas sales and LNG feedstock are parsed from METI Gas Business overview pages. Power LNG burn/stocks from METI Electric Power Survey and inventory cross-checks remain blank until official rows are wired.
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px">
         ${sources.length ? sources.map(sourceCard).join('') : gaps.map(g=>`<div style="border:1px solid rgba(77,158,245,.16);background:#0d1320;padding:10px">
@@ -25850,7 +25909,7 @@ function jpnRenderGas(el){
           ${g.sourceUrl?`<a href="${g.sourceUrl}" target="_blank" style="display:inline-block;margin-top:7px;font-size:9px;color:#93c5fd">Open source</a>`:''}
         </div>`).join('')}
       </div>
-      <div class="ga-source">Missing source row = gap, not modelled value. Partial balance means only the official Customs import leg is wired.</div>
+      <div class="ga-source">Missing source row = gap, not modelled value. Partial balance means the official Customs import leg and METI city-gas leg are wired; power and inventory are not.</div>
     </div>
     <div class="ga-card">
       <div class="ga-sec">PARSER QUEUE <span class="ga-tag">MONTHLY FIRST</span></div>
@@ -25862,7 +25921,7 @@ function jpnRenderGas(el){
             <td>${jpnEsc(s.source || s.item)}</td>
             <td style="color:${s.status==='wired'?'#34d399':s.status==='source_identified'?'#93c5fd':s.status==='cross_check_only'?'#a78bfa':'#fbbf24'}">${jpnEsc(s.wiring || s.status || 'pending').replaceAll('_',' ')}</td>
           </tr>`).join('')}
-          <tr><td>Balance chart</td><td>All official rows above</td><td style="color:${rows.length?'#fbbf24':'#8a9bb5'}">${rows.length?'partial imports chart wired; demand/storage pending':'waiting for parsed monthlyRows'}</td></tr>
+          <tr><td>Balance chart</td><td>All official rows above</td><td style="color:${rows.length?'#fbbf24':'#8a9bb5'}">${rows.length?'partial Customs + METI city-gas chart wired; power/storage pending':'waiting for parsed monthlyRows'}</td></tr>
         </tbody>
       </table>
     </div>`;

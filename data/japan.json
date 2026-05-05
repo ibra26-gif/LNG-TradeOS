@@ -1,10 +1,394 @@
 {
   "schema": "japan_analytics_v1",
   "country": "Japan",
-  "cachedAt": "2026-05-03T19:15:39+00:00",
+  "cachedAt": "2026-05-05T21:49:04+00:00",
   "gasBalance": {
     "status": "partial_balance",
     "monthlyRows": [
+      {
+        "month": "2024-01",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_01.html",
+        "cityGasUpdateDate": "2024-03-29",
+        "cityGasProductionPurchasesPJ": 230.28,
+        "cityGasVaporizedLngPJ": 204.361,
+        "cityGasNaturalGasPJ": 16.347,
+        "cityGasPetroleumGasPJ": 9.568,
+        "cityGasDemandPJ": 168.912,
+        "cityGasWholesaleSupplyPJ": 60.876,
+        "cityGasLngOverseasReceiptsMt": 2.482,
+        "cityGasLngDomesticReceiptsMt": 0.306,
+        "cityGasLngConsumptionMt": 2.624,
+        "cityGasLngLiquidSalesMt": 0.527,
+        "cityGasResidentialDemandPJ": 54.793,
+        "cityGasCommercialDemandPJ": 17.039,
+        "cityGasIndustrialDemandPJ": 83.023,
+        "cityGasOtherDemandPJ": 14.058,
+        "cityGasDemand": 168.912
+      },
+      {
+        "month": "2024-02",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_02.html",
+        "cityGasUpdateDate": "2024-04-30",
+        "cityGasProductionPurchasesPJ": 219.052,
+        "cityGasVaporizedLngPJ": 195.796,
+        "cityGasNaturalGasPJ": 15.487,
+        "cityGasPetroleumGasPJ": 7.766,
+        "cityGasDemandPJ": 159.269,
+        "cityGasWholesaleSupplyPJ": 59.678,
+        "cityGasLngOverseasReceiptsMt": 2.625,
+        "cityGasLngDomesticReceiptsMt": 0.232,
+        "cityGasLngConsumptionMt": 2.497,
+        "cityGasLngLiquidSalesMt": 0.516,
+        "cityGasResidentialDemandPJ": 48.976,
+        "cityGasCommercialDemandPJ": 15.288,
+        "cityGasIndustrialDemandPJ": 81.447,
+        "cityGasOtherDemandPJ": 13.558,
+        "cityGasDemand": 159.269
+      },
+      {
+        "month": "2024-03",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_03.html",
+        "cityGasUpdateDate": "2024-05-31",
+        "cityGasProductionPurchasesPJ": 210.24,
+        "cityGasVaporizedLngPJ": 188.812,
+        "cityGasNaturalGasPJ": 15.003,
+        "cityGasPetroleumGasPJ": 6.421,
+        "cityGasDemandPJ": 154.101,
+        "cityGasWholesaleSupplyPJ": 53.246,
+        "cityGasLngOverseasReceiptsMt": 2.499,
+        "cityGasLngDomesticReceiptsMt": 0.303,
+        "cityGasLngConsumptionMt": 2.462,
+        "cityGasLngLiquidSalesMt": 0.317,
+        "cityGasResidentialDemandPJ": 49.058,
+        "cityGasCommercialDemandPJ": 15.051,
+        "cityGasIndustrialDemandPJ": 77.348,
+        "cityGasOtherDemandPJ": 12.644,
+        "cityGasDemand": 154.101
+      },
+      {
+        "month": "2024-04",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_04.html",
+        "cityGasUpdateDate": "2024-06-28",
+        "cityGasProductionPurchasesPJ": 158.885,
+        "cityGasVaporizedLngPJ": 140.79,
+        "cityGasNaturalGasPJ": 12.186,
+        "cityGasPetroleumGasPJ": 5.905,
+        "cityGasDemandPJ": 130.971,
+        "cityGasWholesaleSupplyPJ": 40.106,
+        "cityGasLngOverseasReceiptsMt": 1.729,
+        "cityGasLngDomesticReceiptsMt": 0.275,
+        "cityGasLngConsumptionMt": 1.762,
+        "cityGasLngLiquidSalesMt": 0.366,
+        "cityGasResidentialDemandPJ": 40.886,
+        "cityGasCommercialDemandPJ": 12.666,
+        "cityGasIndustrialDemandPJ": 67.86,
+        "cityGasOtherDemandPJ": 9.56,
+        "cityGasDemand": 130.971
+      },
+      {
+        "month": "2024-05",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_05.html",
+        "cityGasUpdateDate": "2024-07-30",
+        "cityGasProductionPurchasesPJ": 149.939,
+        "cityGasVaporizedLngPJ": 132.999,
+        "cityGasNaturalGasPJ": 11.815,
+        "cityGasPetroleumGasPJ": 5.122,
+        "cityGasDemandPJ": 114.474,
+        "cityGasWholesaleSupplyPJ": 38.047,
+        "cityGasLngOverseasReceiptsMt": 2.144,
+        "cityGasLngDomesticReceiptsMt": 0.186,
+        "cityGasLngConsumptionMt": 1.644,
+        "cityGasLngLiquidSalesMt": 0.342,
+        "cityGasResidentialDemandPJ": 30.77,
+        "cityGasCommercialDemandPJ": 10.889,
+        "cityGasIndustrialDemandPJ": 65.74,
+        "cityGasOtherDemandPJ": 7.075,
+        "cityGasDemand": 114.474
+      },
+      {
+        "month": "2024-06",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_06.html",
+        "cityGasUpdateDate": "2024-08-29",
+        "cityGasProductionPurchasesPJ": 151.61,
+        "cityGasVaporizedLngPJ": 135.21,
+        "cityGasNaturalGasPJ": 11.538,
+        "cityGasPetroleumGasPJ": 4.857,
+        "cityGasDemandPJ": 111.177,
+        "cityGasWholesaleSupplyPJ": 37.244,
+        "cityGasLngOverseasReceiptsMt": 2.017,
+        "cityGasLngDomesticReceiptsMt": 0.192,
+        "cityGasLngConsumptionMt": 1.68,
+        "cityGasLngLiquidSalesMt": 0.376,
+        "cityGasResidentialDemandPJ": 22.512,
+        "cityGasCommercialDemandPJ": 11.069,
+        "cityGasIndustrialDemandPJ": 69.555,
+        "cityGasOtherDemandPJ": 8.04,
+        "cityGasDemand": 111.177
+      },
+      {
+        "month": "2024-07",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_07.html",
+        "cityGasUpdateDate": "2024-09-27",
+        "cityGasProductionPurchasesPJ": 177.512,
+        "cityGasVaporizedLngPJ": 160.356,
+        "cityGasNaturalGasPJ": 11.982,
+        "cityGasPetroleumGasPJ": 5.168,
+        "cityGasDemandPJ": 130.263,
+        "cityGasWholesaleSupplyPJ": 42.433,
+        "cityGasLngOverseasReceiptsMt": 2.052,
+        "cityGasLngDomesticReceiptsMt": 0.201,
+        "cityGasLngConsumptionMt": 2.008,
+        "cityGasLngLiquidSalesMt": 0.442,
+        "cityGasResidentialDemandPJ": 18.211,
+        "cityGasCommercialDemandPJ": 14.152,
+        "cityGasIndustrialDemandPJ": 85.116,
+        "cityGasOtherDemandPJ": 12.784,
+        "cityGasDemand": 130.263
+      },
+      {
+        "month": "2024-08",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_08.html",
+        "cityGasUpdateDate": "2024-10-31",
+        "cityGasProductionPurchasesPJ": 165.184,
+        "cityGasVaporizedLngPJ": 148.56,
+        "cityGasNaturalGasPJ": 11.527,
+        "cityGasPetroleumGasPJ": 5.093,
+        "cityGasDemandPJ": 122.382,
+        "cityGasWholesaleSupplyPJ": 40.21,
+        "cityGasLngOverseasReceiptsMt": 2.011,
+        "cityGasLngDomesticReceiptsMt": 0.123,
+        "cityGasLngConsumptionMt": 1.843,
+        "cityGasLngLiquidSalesMt": 0.428,
+        "cityGasResidentialDemandPJ": 14.251,
+        "cityGasCommercialDemandPJ": 16.12,
+        "cityGasIndustrialDemandPJ": 77.389,
+        "cityGasOtherDemandPJ": 14.622,
+        "cityGasDemand": 122.382
+      },
+      {
+        "month": "2024-09",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_09.html",
+        "cityGasUpdateDate": "2024-11-28",
+        "cityGasProductionPurchasesPJ": 164.198,
+        "cityGasVaporizedLngPJ": 148.016,
+        "cityGasNaturalGasPJ": 11.108,
+        "cityGasPetroleumGasPJ": 5.069,
+        "cityGasDemandPJ": 121.722,
+        "cityGasWholesaleSupplyPJ": 40.115,
+        "cityGasLngOverseasReceiptsMt": 2.124,
+        "cityGasLngDomesticReceiptsMt": 0.193,
+        "cityGasLngConsumptionMt": 1.839,
+        "cityGasLngLiquidSalesMt": 0.435,
+        "cityGasResidentialDemandPJ": 13.385,
+        "cityGasCommercialDemandPJ": 15.043,
+        "cityGasIndustrialDemandPJ": 79.435,
+        "cityGasOtherDemandPJ": 13.86,
+        "cityGasDemand": 121.722
+      },
+      {
+        "month": "2024-10",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_10.html",
+        "cityGasUpdateDate": "2024-12-26",
+        "cityGasProductionPurchasesPJ": 153.635,
+        "cityGasVaporizedLngPJ": 135.856,
+        "cityGasNaturalGasPJ": 11.389,
+        "cityGasPetroleumGasPJ": 6.386,
+        "cityGasDemandPJ": 112.427,
+        "cityGasWholesaleSupplyPJ": 38.451,
+        "cityGasLngOverseasReceiptsMt": 2.061,
+        "cityGasLngDomesticReceiptsMt": 0.192,
+        "cityGasLngConsumptionMt": 1.672,
+        "cityGasLngLiquidSalesMt": 0.332,
+        "cityGasResidentialDemandPJ": 16.999,
+        "cityGasCommercialDemandPJ": 12.063,
+        "cityGasIndustrialDemandPJ": 72.292,
+        "cityGasOtherDemandPJ": 11.073,
+        "cityGasDemand": 112.427
+      },
+      {
+        "month": "2024-11",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_11.html",
+        "cityGasUpdateDate": "2025-01-30",
+        "cityGasProductionPurchasesPJ": 171.395,
+        "cityGasVaporizedLngPJ": 151.423,
+        "cityGasNaturalGasPJ": 12.488,
+        "cityGasPetroleumGasPJ": 7.479,
+        "cityGasDemandPJ": 118.747,
+        "cityGasWholesaleSupplyPJ": 45.224,
+        "cityGasLngOverseasReceiptsMt": 2.118,
+        "cityGasLngDomesticReceiptsMt": 0.264,
+        "cityGasLngConsumptionMt": 1.917,
+        "cityGasLngLiquidSalesMt": 0.259,
+        "cityGasResidentialDemandPJ": 25.997,
+        "cityGasCommercialDemandPJ": 10.91,
+        "cityGasIndustrialDemandPJ": 73.606,
+        "cityGasOtherDemandPJ": 8.234,
+        "cityGasDemand": 118.747
+      },
+      {
+        "month": "2024-12",
+        "lngImportsTonnes": null,
+        "lngImportsMillionTonnes": null,
+        "lngImportsValueJpyBillion": null,
+        "customsCountries": [],
+        "topSuppliers": [],
+        "coverage": {
+          "customsLngImports": false,
+          "metiGasBusiness": true,
+          "metiPowerFuel": false,
+          "jogmecInventory": false
+        },
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_12.html",
+        "cityGasUpdateDate": "2025-02-27",
+        "cityGasProductionPurchasesPJ": 218.822,
+        "cityGasVaporizedLngPJ": 194.9,
+        "cityGasNaturalGasPJ": 14.935,
+        "cityGasPetroleumGasPJ": 8.983,
+        "cityGasDemandPJ": 142.55,
+        "cityGasWholesaleSupplyPJ": 56.968,
+        "cityGasLngOverseasReceiptsMt": 2.363,
+        "cityGasLngDomesticReceiptsMt": 0.242,
+        "cityGasLngConsumptionMt": 2.492,
+        "cityGasLngLiquidSalesMt": 0.46,
+        "cityGasResidentialDemandPJ": 37.294,
+        "cityGasCommercialDemandPJ": 13.052,
+        "cityGasIndustrialDemandPJ": 81.305,
+        "cityGasOtherDemandPJ": 10.899,
+        "cityGasDemand": 142.55
+      },
       {
         "month": "2025-01",
         "lngImportsTonnes": 6640932.0,
@@ -114,13 +498,30 @@
         "lngImportsValueJpyBillion": 666.4,
         "coverage": {
           "customsLngImports": true,
-          "metiGasBusiness": false,
+          "metiGasBusiness": true,
           "metiPowerFuel": false,
           "jogmecInventory": false
         },
-        "cityGasDemand": null,
+        "cityGasDemand": 177.842,
         "powerLngBurn": null,
-        "lngInventory": null
+        "lngInventory": null,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_01.html",
+        "cityGasUpdateDate": "2025-03-28",
+        "cityGasProductionPurchasesPJ": 233.921,
+        "cityGasVaporizedLngPJ": 208.689,
+        "cityGasNaturalGasPJ": 16.183,
+        "cityGasPetroleumGasPJ": 9.045,
+        "cityGasDemandPJ": 177.842,
+        "cityGasWholesaleSupplyPJ": 60.776,
+        "cityGasLngOverseasReceiptsMt": 2.655,
+        "cityGasLngDomesticReceiptsMt": 0.349,
+        "cityGasLngConsumptionMt": 2.694,
+        "cityGasLngLiquidSalesMt": 0.31,
+        "cityGasResidentialDemandPJ": 58.598,
+        "cityGasCommercialDemandPJ": 17.83,
+        "cityGasIndustrialDemandPJ": 86.144,
+        "cityGasOtherDemandPJ": 15.269
       },
       {
         "month": "2025-02",
@@ -243,13 +644,30 @@
         "lngImportsValueJpyBillion": 554.0,
         "coverage": {
           "customsLngImports": true,
-          "metiGasBusiness": false,
+          "metiGasBusiness": true,
           "metiPowerFuel": false,
           "jogmecInventory": false
         },
-        "cityGasDemand": null,
+        "cityGasDemand": 163.274,
         "powerLngBurn": null,
-        "lngInventory": null
+        "lngInventory": null,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_02.html",
+        "cityGasUpdateDate": "2025-04-28",
+        "cityGasProductionPurchasesPJ": 221.99,
+        "cityGasVaporizedLngPJ": 198.152,
+        "cityGasNaturalGasPJ": 15.507,
+        "cityGasPetroleumGasPJ": 8.33,
+        "cityGasDemandPJ": 163.274,
+        "cityGasWholesaleSupplyPJ": 57.221,
+        "cityGasLngOverseasReceiptsMt": 2.705,
+        "cityGasLngDomesticReceiptsMt": 0.306,
+        "cityGasLngConsumptionMt": 2.567,
+        "cityGasLngLiquidSalesMt": 0.294,
+        "cityGasResidentialDemandPJ": 50.158,
+        "cityGasCommercialDemandPJ": 16.161,
+        "cityGasIndustrialDemandPJ": 82.25,
+        "cityGasOtherDemandPJ": 14.705
       },
       {
         "month": "2025-03",
@@ -360,13 +778,30 @@
         "lngImportsValueJpyBillion": 467.3,
         "coverage": {
           "customsLngImports": true,
-          "metiGasBusiness": false,
+          "metiGasBusiness": true,
           "metiPowerFuel": false,
           "jogmecInventory": false
         },
-        "cityGasDemand": null,
+        "cityGasDemand": 154.041,
         "powerLngBurn": null,
-        "lngInventory": null
+        "lngInventory": null,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_03.html",
+        "cityGasUpdateDate": "2025-05-29",
+        "cityGasProductionPurchasesPJ": 203.878,
+        "cityGasVaporizedLngPJ": 180.862,
+        "cityGasNaturalGasPJ": 15.52,
+        "cityGasPetroleumGasPJ": 7.493,
+        "cityGasDemandPJ": 154.041,
+        "cityGasWholesaleSupplyPJ": 52.616,
+        "cityGasLngOverseasReceiptsMt": 2.136,
+        "cityGasLngDomesticReceiptsMt": 0.252,
+        "cityGasLngConsumptionMt": 2.304,
+        "cityGasLngLiquidSalesMt": 0.276,
+        "cityGasResidentialDemandPJ": 49.521,
+        "cityGasCommercialDemandPJ": 14.999,
+        "cityGasIndustrialDemandPJ": 76.43,
+        "cityGasOtherDemandPJ": 13.091
       },
       {
         "month": "2025-04",
@@ -495,13 +930,30 @@
         "lngImportsValueJpyBillion": 475.4,
         "coverage": {
           "customsLngImports": true,
-          "metiGasBusiness": false,
+          "metiGasBusiness": true,
           "metiPowerFuel": false,
           "jogmecInventory": false
         },
-        "cityGasDemand": null,
+        "cityGasDemand": 130.224,
         "powerLngBurn": null,
-        "lngInventory": null
+        "lngInventory": null,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_04.html",
+        "cityGasUpdateDate": "2025-06-27",
+        "cityGasProductionPurchasesPJ": 164.231,
+        "cityGasVaporizedLngPJ": 145.559,
+        "cityGasNaturalGasPJ": 11.989,
+        "cityGasPetroleumGasPJ": 6.679,
+        "cityGasDemandPJ": 130.224,
+        "cityGasWholesaleSupplyPJ": 41.169,
+        "cityGasLngOverseasReceiptsMt": 2.246,
+        "cityGasLngDomesticReceiptsMt": 0.252,
+        "cityGasLngConsumptionMt": 1.817,
+        "cityGasLngLiquidSalesMt": 0.246,
+        "cityGasResidentialDemandPJ": 40.7,
+        "cityGasCommercialDemandPJ": 12.404,
+        "cityGasIndustrialDemandPJ": 67.756,
+        "cityGasOtherDemandPJ": 9.365
       },
       {
         "month": "2025-05",
@@ -624,13 +1076,30 @@
         "lngImportsValueJpyBillion": 403.9,
         "coverage": {
           "customsLngImports": true,
-          "metiGasBusiness": false,
+          "metiGasBusiness": true,
           "metiPowerFuel": false,
           "jogmecInventory": false
         },
-        "cityGasDemand": null,
+        "cityGasDemand": 114.269,
         "powerLngBurn": null,
-        "lngInventory": null
+        "lngInventory": null,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_05.html",
+        "cityGasUpdateDate": "2025-07-30",
+        "cityGasProductionPurchasesPJ": 149.652,
+        "cityGasVaporizedLngPJ": 131.759,
+        "cityGasNaturalGasPJ": 10.842,
+        "cityGasPetroleumGasPJ": 7.047,
+        "cityGasDemandPJ": 114.269,
+        "cityGasWholesaleSupplyPJ": 37.338,
+        "cityGasLngOverseasReceiptsMt": 2.003,
+        "cityGasLngDomesticReceiptsMt": 0.26,
+        "cityGasLngConsumptionMt": 1.62,
+        "cityGasLngLiquidSalesMt": 0.237,
+        "cityGasResidentialDemandPJ": 31.862,
+        "cityGasCommercialDemandPJ": 10.804,
+        "cityGasIndustrialDemandPJ": 64.391,
+        "cityGasOtherDemandPJ": 7.213
       },
       {
         "month": "2025-06",
@@ -747,13 +1216,30 @@
         "lngImportsValueJpyBillion": 378.8,
         "coverage": {
           "customsLngImports": true,
-          "metiGasBusiness": false,
+          "metiGasBusiness": true,
           "metiPowerFuel": false,
           "jogmecInventory": false
         },
-        "cityGasDemand": null,
+        "cityGasDemand": 118.564,
         "powerLngBurn": null,
-        "lngInventory": null
+        "lngInventory": null,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_06.html",
+        "cityGasUpdateDate": "2025-08-28",
+        "cityGasProductionPurchasesPJ": 160.165,
+        "cityGasVaporizedLngPJ": 143.027,
+        "cityGasNaturalGasPJ": 10.73,
+        "cityGasPetroleumGasPJ": 6.405,
+        "cityGasDemandPJ": 118.564,
+        "cityGasWholesaleSupplyPJ": 39.281,
+        "cityGasLngOverseasReceiptsMt": 1.871,
+        "cityGasLngDomesticReceiptsMt": 0.206,
+        "cityGasLngConsumptionMt": 1.759,
+        "cityGasLngLiquidSalesMt": 0.248,
+        "cityGasResidentialDemandPJ": 23.265,
+        "cityGasCommercialDemandPJ": 11.644,
+        "cityGasIndustrialDemandPJ": 74.764,
+        "cityGasOtherDemandPJ": 8.891
       },
       {
         "month": "2025-07",
@@ -882,13 +1368,30 @@
         "lngImportsValueJpyBillion": 447.3,
         "coverage": {
           "customsLngImports": true,
-          "metiGasBusiness": false,
+          "metiGasBusiness": true,
           "metiPowerFuel": false,
           "jogmecInventory": false
         },
-        "cityGasDemand": null,
+        "cityGasDemand": 127.495,
         "powerLngBurn": null,
-        "lngInventory": null
+        "lngInventory": null,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_07.html",
+        "cityGasUpdateDate": "2025-09-29",
+        "cityGasProductionPurchasesPJ": 174.509,
+        "cityGasVaporizedLngPJ": 157.659,
+        "cityGasNaturalGasPJ": 11.198,
+        "cityGasPetroleumGasPJ": 5.647,
+        "cityGasDemandPJ": 127.495,
+        "cityGasWholesaleSupplyPJ": 42.756,
+        "cityGasLngOverseasReceiptsMt": 1.938,
+        "cityGasLngDomesticReceiptsMt": 0.137,
+        "cityGasLngConsumptionMt": 1.944,
+        "cityGasLngLiquidSalesMt": 0.24,
+        "cityGasResidentialDemandPJ": 16.924,
+        "cityGasCommercialDemandPJ": 14.492,
+        "cityGasIndustrialDemandPJ": 82.531,
+        "cityGasOtherDemandPJ": 13.548
       },
       {
         "month": "2025-08",
@@ -999,13 +1502,30 @@
         "lngImportsValueJpyBillion": 453.4,
         "coverage": {
           "customsLngImports": true,
-          "metiGasBusiness": false,
+          "metiGasBusiness": true,
           "metiPowerFuel": false,
           "jogmecInventory": false
         },
-        "cityGasDemand": null,
+        "cityGasDemand": 118.737,
         "powerLngBurn": null,
-        "lngInventory": null
+        "lngInventory": null,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_08.html",
+        "cityGasUpdateDate": "2025-10-30",
+        "cityGasProductionPurchasesPJ": 161.998,
+        "cityGasVaporizedLngPJ": 146.236,
+        "cityGasNaturalGasPJ": 10.388,
+        "cityGasPetroleumGasPJ": 5.369,
+        "cityGasDemandPJ": 118.737,
+        "cityGasWholesaleSupplyPJ": 39.975,
+        "cityGasLngOverseasReceiptsMt": 1.726,
+        "cityGasLngDomesticReceiptsMt": 0.185,
+        "cityGasLngConsumptionMt": 1.789,
+        "cityGasLngLiquidSalesMt": 0.198,
+        "cityGasResidentialDemandPJ": 13.801,
+        "cityGasCommercialDemandPJ": 15.822,
+        "cityGasIndustrialDemandPJ": 75.007,
+        "cityGasOtherDemandPJ": 14.107
       },
       {
         "month": "2025-09",
@@ -1515,13 +2035,30 @@
         "lngImportsValueJpyBillion": 561.1,
         "coverage": {
           "customsLngImports": true,
-          "metiGasBusiness": false,
+          "metiGasBusiness": true,
           "metiPowerFuel": false,
           "jogmecInventory": false
         },
-        "cityGasDemand": null,
+        "cityGasDemand": 139.985,
         "powerLngBurn": null,
-        "lngInventory": null
+        "lngInventory": null,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_12.html",
+        "cityGasUpdateDate": "2026-02-27",
+        "cityGasProductionPurchasesPJ": 213.407,
+        "cityGasVaporizedLngPJ": 191.361,
+        "cityGasNaturalGasPJ": 14.047,
+        "cityGasPetroleumGasPJ": 7.994,
+        "cityGasDemandPJ": 139.985,
+        "cityGasWholesaleSupplyPJ": 57.232,
+        "cityGasLngOverseasReceiptsMt": 2.415,
+        "cityGasLngDomesticReceiptsMt": 0.325,
+        "cityGasLngConsumptionMt": 2.422,
+        "cityGasLngLiquidSalesMt": 0.295,
+        "cityGasResidentialDemandPJ": 38.022,
+        "cityGasCommercialDemandPJ": 12.6,
+        "cityGasIndustrialDemandPJ": 78.799,
+        "cityGasOtherDemandPJ": 10.563
       },
       {
         "month": "2026-01",
@@ -1644,13 +2181,30 @@
         "lngImportsValueJpyBillion": 546.2,
         "coverage": {
           "customsLngImports": true,
-          "metiGasBusiness": false,
+          "metiGasBusiness": true,
           "metiPowerFuel": false,
           "jogmecInventory": false
         },
-        "cityGasDemand": null,
+        "cityGasDemand": 174.449,
         "powerLngBurn": null,
-        "lngInventory": null
+        "lngInventory": null,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2026/2026_01.html",
+        "cityGasUpdateDate": "2026-03-31",
+        "cityGasProductionPurchasesPJ": 237.055,
+        "cityGasVaporizedLngPJ": 214.946,
+        "cityGasNaturalGasPJ": 14.844,
+        "cityGasPetroleumGasPJ": 7.261,
+        "cityGasDemandPJ": 174.449,
+        "cityGasWholesaleSupplyPJ": 63.021,
+        "cityGasLngOverseasReceiptsMt": 2.712,
+        "cityGasLngDomesticReceiptsMt": 0.257,
+        "cityGasLngConsumptionMt": 2.745,
+        "cityGasLngLiquidSalesMt": 0.357,
+        "cityGasResidentialDemandPJ": 57.226,
+        "cityGasCommercialDemandPJ": 17.913,
+        "cityGasIndustrialDemandPJ": 84.268,
+        "cityGasOtherDemandPJ": 15.042
       },
       {
         "month": "2026-02",
@@ -1785,13 +2339,30 @@
         "lngImportsValueJpyBillion": 496.9,
         "coverage": {
           "customsLngImports": true,
-          "metiGasBusiness": false,
+          "metiGasBusiness": true,
           "metiPowerFuel": false,
           "jogmecInventory": false
         },
-        "cityGasDemand": null,
+        "cityGasDemand": 159.167,
         "powerLngBurn": null,
-        "lngInventory": null
+        "lngInventory": null,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2026/2026_02.html",
+        "cityGasUpdateDate": "2026-04-30",
+        "cityGasProductionPurchasesPJ": 210.639,
+        "cityGasVaporizedLngPJ": 190.485,
+        "cityGasNaturalGasPJ": 13.672,
+        "cityGasPetroleumGasPJ": 6.48,
+        "cityGasDemandPJ": 159.167,
+        "cityGasWholesaleSupplyPJ": 56.859,
+        "cityGasLngOverseasReceiptsMt": 2.424,
+        "cityGasLngDomesticReceiptsMt": 0.369,
+        "cityGasLngConsumptionMt": 2.411,
+        "cityGasLngLiquidSalesMt": 0.294,
+        "cityGasResidentialDemandPJ": 51.282,
+        "cityGasCommercialDemandPJ": 15.949,
+        "cityGasIndustrialDemandPJ": 77.616,
+        "cityGasOtherDemandPJ": 14.321
       },
       {
         "month": "2026-03",
@@ -2078,7 +2649,7 @@
           "lngImportsValueJpyBillion": 666.4,
           "coverage": {
             "customsLngImports": true,
-            "metiGasBusiness": false,
+            "metiGasBusiness": true,
             "metiPowerFuel": false,
             "jogmecInventory": false
           },
@@ -2207,7 +2778,7 @@
           "lngImportsValueJpyBillion": 554.0,
           "coverage": {
             "customsLngImports": true,
-            "metiGasBusiness": false,
+            "metiGasBusiness": true,
             "metiPowerFuel": false,
             "jogmecInventory": false
           },
@@ -2324,7 +2895,7 @@
           "lngImportsValueJpyBillion": 467.3,
           "coverage": {
             "customsLngImports": true,
-            "metiGasBusiness": false,
+            "metiGasBusiness": true,
             "metiPowerFuel": false,
             "jogmecInventory": false
           },
@@ -2459,7 +3030,7 @@
           "lngImportsValueJpyBillion": 475.4,
           "coverage": {
             "customsLngImports": true,
-            "metiGasBusiness": false,
+            "metiGasBusiness": true,
             "metiPowerFuel": false,
             "jogmecInventory": false
           },
@@ -2588,7 +3159,7 @@
           "lngImportsValueJpyBillion": 403.9,
           "coverage": {
             "customsLngImports": true,
-            "metiGasBusiness": false,
+            "metiGasBusiness": true,
             "metiPowerFuel": false,
             "jogmecInventory": false
           },
@@ -2711,7 +3282,7 @@
           "lngImportsValueJpyBillion": 378.8,
           "coverage": {
             "customsLngImports": true,
-            "metiGasBusiness": false,
+            "metiGasBusiness": true,
             "metiPowerFuel": false,
             "jogmecInventory": false
           },
@@ -2846,7 +3417,7 @@
           "lngImportsValueJpyBillion": 447.3,
           "coverage": {
             "customsLngImports": true,
-            "metiGasBusiness": false,
+            "metiGasBusiness": true,
             "metiPowerFuel": false,
             "jogmecInventory": false
           },
@@ -2963,7 +3534,7 @@
           "lngImportsValueJpyBillion": 453.4,
           "coverage": {
             "customsLngImports": true,
-            "metiGasBusiness": false,
+            "metiGasBusiness": true,
             "metiPowerFuel": false,
             "jogmecInventory": false
           },
@@ -3479,7 +4050,7 @@
           "lngImportsValueJpyBillion": 561.1,
           "coverage": {
             "customsLngImports": true,
-            "metiGasBusiness": false,
+            "metiGasBusiness": true,
             "metiPowerFuel": false,
             "jogmecInventory": false
           },
@@ -3608,7 +4179,7 @@
           "lngImportsValueJpyBillion": 546.2,
           "coverage": {
             "customsLngImports": true,
-            "metiGasBusiness": false,
+            "metiGasBusiness": true,
             "metiPowerFuel": false,
             "jogmecInventory": false
           },
@@ -3749,7 +4320,7 @@
           "lngImportsValueJpyBillion": 496.9,
           "coverage": {
             "customsLngImports": true,
-            "metiGasBusiness": false,
+            "metiGasBusiness": true,
             "metiPowerFuel": false,
             "jogmecInventory": false
           },
@@ -3894,6 +4465,498 @@
         }
       ]
     },
+    "cityGas": {
+      "source": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+      "sourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/results.html",
+      "status": "parsed",
+      "latestMonth": "2026-02",
+      "latestUpdateDate": "2026-04-30",
+      "unit": "PJ/month for city-gas energy; Mt/month for LNG feedstock",
+      "rows": [
+        {
+          "month": "2024-01",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_01.html",
+          "cityGasUpdateDate": "2024-03-29",
+          "cityGasProductionPurchasesPJ": 230.28,
+          "cityGasVaporizedLngPJ": 204.361,
+          "cityGasNaturalGasPJ": 16.347,
+          "cityGasPetroleumGasPJ": 9.568,
+          "cityGasDemandPJ": 168.912,
+          "cityGasWholesaleSupplyPJ": 60.876,
+          "cityGasLngOverseasReceiptsMt": 2.482,
+          "cityGasLngDomesticReceiptsMt": 0.306,
+          "cityGasLngConsumptionMt": 2.624,
+          "cityGasLngLiquidSalesMt": 0.527,
+          "cityGasResidentialDemandPJ": 54.793,
+          "cityGasCommercialDemandPJ": 17.039,
+          "cityGasIndustrialDemandPJ": 83.023,
+          "cityGasOtherDemandPJ": 14.058
+        },
+        {
+          "month": "2024-02",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_02.html",
+          "cityGasUpdateDate": "2024-04-30",
+          "cityGasProductionPurchasesPJ": 219.052,
+          "cityGasVaporizedLngPJ": 195.796,
+          "cityGasNaturalGasPJ": 15.487,
+          "cityGasPetroleumGasPJ": 7.766,
+          "cityGasDemandPJ": 159.269,
+          "cityGasWholesaleSupplyPJ": 59.678,
+          "cityGasLngOverseasReceiptsMt": 2.625,
+          "cityGasLngDomesticReceiptsMt": 0.232,
+          "cityGasLngConsumptionMt": 2.497,
+          "cityGasLngLiquidSalesMt": 0.516,
+          "cityGasResidentialDemandPJ": 48.976,
+          "cityGasCommercialDemandPJ": 15.288,
+          "cityGasIndustrialDemandPJ": 81.447,
+          "cityGasOtherDemandPJ": 13.558
+        },
+        {
+          "month": "2024-03",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_03.html",
+          "cityGasUpdateDate": "2024-05-31",
+          "cityGasProductionPurchasesPJ": 210.24,
+          "cityGasVaporizedLngPJ": 188.812,
+          "cityGasNaturalGasPJ": 15.003,
+          "cityGasPetroleumGasPJ": 6.421,
+          "cityGasDemandPJ": 154.101,
+          "cityGasWholesaleSupplyPJ": 53.246,
+          "cityGasLngOverseasReceiptsMt": 2.499,
+          "cityGasLngDomesticReceiptsMt": 0.303,
+          "cityGasLngConsumptionMt": 2.462,
+          "cityGasLngLiquidSalesMt": 0.317,
+          "cityGasResidentialDemandPJ": 49.058,
+          "cityGasCommercialDemandPJ": 15.051,
+          "cityGasIndustrialDemandPJ": 77.348,
+          "cityGasOtherDemandPJ": 12.644
+        },
+        {
+          "month": "2024-04",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_04.html",
+          "cityGasUpdateDate": "2024-06-28",
+          "cityGasProductionPurchasesPJ": 158.885,
+          "cityGasVaporizedLngPJ": 140.79,
+          "cityGasNaturalGasPJ": 12.186,
+          "cityGasPetroleumGasPJ": 5.905,
+          "cityGasDemandPJ": 130.971,
+          "cityGasWholesaleSupplyPJ": 40.106,
+          "cityGasLngOverseasReceiptsMt": 1.729,
+          "cityGasLngDomesticReceiptsMt": 0.275,
+          "cityGasLngConsumptionMt": 1.762,
+          "cityGasLngLiquidSalesMt": 0.366,
+          "cityGasResidentialDemandPJ": 40.886,
+          "cityGasCommercialDemandPJ": 12.666,
+          "cityGasIndustrialDemandPJ": 67.86,
+          "cityGasOtherDemandPJ": 9.56
+        },
+        {
+          "month": "2024-05",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_05.html",
+          "cityGasUpdateDate": "2024-07-30",
+          "cityGasProductionPurchasesPJ": 149.939,
+          "cityGasVaporizedLngPJ": 132.999,
+          "cityGasNaturalGasPJ": 11.815,
+          "cityGasPetroleumGasPJ": 5.122,
+          "cityGasDemandPJ": 114.474,
+          "cityGasWholesaleSupplyPJ": 38.047,
+          "cityGasLngOverseasReceiptsMt": 2.144,
+          "cityGasLngDomesticReceiptsMt": 0.186,
+          "cityGasLngConsumptionMt": 1.644,
+          "cityGasLngLiquidSalesMt": 0.342,
+          "cityGasResidentialDemandPJ": 30.77,
+          "cityGasCommercialDemandPJ": 10.889,
+          "cityGasIndustrialDemandPJ": 65.74,
+          "cityGasOtherDemandPJ": 7.075
+        },
+        {
+          "month": "2024-06",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_06.html",
+          "cityGasUpdateDate": "2024-08-29",
+          "cityGasProductionPurchasesPJ": 151.61,
+          "cityGasVaporizedLngPJ": 135.21,
+          "cityGasNaturalGasPJ": 11.538,
+          "cityGasPetroleumGasPJ": 4.857,
+          "cityGasDemandPJ": 111.177,
+          "cityGasWholesaleSupplyPJ": 37.244,
+          "cityGasLngOverseasReceiptsMt": 2.017,
+          "cityGasLngDomesticReceiptsMt": 0.192,
+          "cityGasLngConsumptionMt": 1.68,
+          "cityGasLngLiquidSalesMt": 0.376,
+          "cityGasResidentialDemandPJ": 22.512,
+          "cityGasCommercialDemandPJ": 11.069,
+          "cityGasIndustrialDemandPJ": 69.555,
+          "cityGasOtherDemandPJ": 8.04
+        },
+        {
+          "month": "2024-07",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_07.html",
+          "cityGasUpdateDate": "2024-09-27",
+          "cityGasProductionPurchasesPJ": 177.512,
+          "cityGasVaporizedLngPJ": 160.356,
+          "cityGasNaturalGasPJ": 11.982,
+          "cityGasPetroleumGasPJ": 5.168,
+          "cityGasDemandPJ": 130.263,
+          "cityGasWholesaleSupplyPJ": 42.433,
+          "cityGasLngOverseasReceiptsMt": 2.052,
+          "cityGasLngDomesticReceiptsMt": 0.201,
+          "cityGasLngConsumptionMt": 2.008,
+          "cityGasLngLiquidSalesMt": 0.442,
+          "cityGasResidentialDemandPJ": 18.211,
+          "cityGasCommercialDemandPJ": 14.152,
+          "cityGasIndustrialDemandPJ": 85.116,
+          "cityGasOtherDemandPJ": 12.784
+        },
+        {
+          "month": "2024-08",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_08.html",
+          "cityGasUpdateDate": "2024-10-31",
+          "cityGasProductionPurchasesPJ": 165.184,
+          "cityGasVaporizedLngPJ": 148.56,
+          "cityGasNaturalGasPJ": 11.527,
+          "cityGasPetroleumGasPJ": 5.093,
+          "cityGasDemandPJ": 122.382,
+          "cityGasWholesaleSupplyPJ": 40.21,
+          "cityGasLngOverseasReceiptsMt": 2.011,
+          "cityGasLngDomesticReceiptsMt": 0.123,
+          "cityGasLngConsumptionMt": 1.843,
+          "cityGasLngLiquidSalesMt": 0.428,
+          "cityGasResidentialDemandPJ": 14.251,
+          "cityGasCommercialDemandPJ": 16.12,
+          "cityGasIndustrialDemandPJ": 77.389,
+          "cityGasOtherDemandPJ": 14.622
+        },
+        {
+          "month": "2024-09",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_09.html",
+          "cityGasUpdateDate": "2024-11-28",
+          "cityGasProductionPurchasesPJ": 164.198,
+          "cityGasVaporizedLngPJ": 148.016,
+          "cityGasNaturalGasPJ": 11.108,
+          "cityGasPetroleumGasPJ": 5.069,
+          "cityGasDemandPJ": 121.722,
+          "cityGasWholesaleSupplyPJ": 40.115,
+          "cityGasLngOverseasReceiptsMt": 2.124,
+          "cityGasLngDomesticReceiptsMt": 0.193,
+          "cityGasLngConsumptionMt": 1.839,
+          "cityGasLngLiquidSalesMt": 0.435,
+          "cityGasResidentialDemandPJ": 13.385,
+          "cityGasCommercialDemandPJ": 15.043,
+          "cityGasIndustrialDemandPJ": 79.435,
+          "cityGasOtherDemandPJ": 13.86
+        },
+        {
+          "month": "2024-10",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_10.html",
+          "cityGasUpdateDate": "2024-12-26",
+          "cityGasProductionPurchasesPJ": 153.635,
+          "cityGasVaporizedLngPJ": 135.856,
+          "cityGasNaturalGasPJ": 11.389,
+          "cityGasPetroleumGasPJ": 6.386,
+          "cityGasDemandPJ": 112.427,
+          "cityGasWholesaleSupplyPJ": 38.451,
+          "cityGasLngOverseasReceiptsMt": 2.061,
+          "cityGasLngDomesticReceiptsMt": 0.192,
+          "cityGasLngConsumptionMt": 1.672,
+          "cityGasLngLiquidSalesMt": 0.332,
+          "cityGasResidentialDemandPJ": 16.999,
+          "cityGasCommercialDemandPJ": 12.063,
+          "cityGasIndustrialDemandPJ": 72.292,
+          "cityGasOtherDemandPJ": 11.073
+        },
+        {
+          "month": "2024-11",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_11.html",
+          "cityGasUpdateDate": "2025-01-30",
+          "cityGasProductionPurchasesPJ": 171.395,
+          "cityGasVaporizedLngPJ": 151.423,
+          "cityGasNaturalGasPJ": 12.488,
+          "cityGasPetroleumGasPJ": 7.479,
+          "cityGasDemandPJ": 118.747,
+          "cityGasWholesaleSupplyPJ": 45.224,
+          "cityGasLngOverseasReceiptsMt": 2.118,
+          "cityGasLngDomesticReceiptsMt": 0.264,
+          "cityGasLngConsumptionMt": 1.917,
+          "cityGasLngLiquidSalesMt": 0.259,
+          "cityGasResidentialDemandPJ": 25.997,
+          "cityGasCommercialDemandPJ": 10.91,
+          "cityGasIndustrialDemandPJ": 73.606,
+          "cityGasOtherDemandPJ": 8.234
+        },
+        {
+          "month": "2024-12",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2024/2024_12.html",
+          "cityGasUpdateDate": "2025-02-27",
+          "cityGasProductionPurchasesPJ": 218.822,
+          "cityGasVaporizedLngPJ": 194.9,
+          "cityGasNaturalGasPJ": 14.935,
+          "cityGasPetroleumGasPJ": 8.983,
+          "cityGasDemandPJ": 142.55,
+          "cityGasWholesaleSupplyPJ": 56.968,
+          "cityGasLngOverseasReceiptsMt": 2.363,
+          "cityGasLngDomesticReceiptsMt": 0.242,
+          "cityGasLngConsumptionMt": 2.492,
+          "cityGasLngLiquidSalesMt": 0.46,
+          "cityGasResidentialDemandPJ": 37.294,
+          "cityGasCommercialDemandPJ": 13.052,
+          "cityGasIndustrialDemandPJ": 81.305,
+          "cityGasOtherDemandPJ": 10.899
+        },
+        {
+          "month": "2025-01",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_01.html",
+          "cityGasUpdateDate": "2025-03-28",
+          "cityGasProductionPurchasesPJ": 233.921,
+          "cityGasVaporizedLngPJ": 208.689,
+          "cityGasNaturalGasPJ": 16.183,
+          "cityGasPetroleumGasPJ": 9.045,
+          "cityGasDemandPJ": 177.842,
+          "cityGasWholesaleSupplyPJ": 60.776,
+          "cityGasLngOverseasReceiptsMt": 2.655,
+          "cityGasLngDomesticReceiptsMt": 0.349,
+          "cityGasLngConsumptionMt": 2.694,
+          "cityGasLngLiquidSalesMt": 0.31,
+          "cityGasResidentialDemandPJ": 58.598,
+          "cityGasCommercialDemandPJ": 17.83,
+          "cityGasIndustrialDemandPJ": 86.144,
+          "cityGasOtherDemandPJ": 15.269
+        },
+        {
+          "month": "2025-02",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_02.html",
+          "cityGasUpdateDate": "2025-04-28",
+          "cityGasProductionPurchasesPJ": 221.99,
+          "cityGasVaporizedLngPJ": 198.152,
+          "cityGasNaturalGasPJ": 15.507,
+          "cityGasPetroleumGasPJ": 8.33,
+          "cityGasDemandPJ": 163.274,
+          "cityGasWholesaleSupplyPJ": 57.221,
+          "cityGasLngOverseasReceiptsMt": 2.705,
+          "cityGasLngDomesticReceiptsMt": 0.306,
+          "cityGasLngConsumptionMt": 2.567,
+          "cityGasLngLiquidSalesMt": 0.294,
+          "cityGasResidentialDemandPJ": 50.158,
+          "cityGasCommercialDemandPJ": 16.161,
+          "cityGasIndustrialDemandPJ": 82.25,
+          "cityGasOtherDemandPJ": 14.705
+        },
+        {
+          "month": "2025-03",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_03.html",
+          "cityGasUpdateDate": "2025-05-29",
+          "cityGasProductionPurchasesPJ": 203.878,
+          "cityGasVaporizedLngPJ": 180.862,
+          "cityGasNaturalGasPJ": 15.52,
+          "cityGasPetroleumGasPJ": 7.493,
+          "cityGasDemandPJ": 154.041,
+          "cityGasWholesaleSupplyPJ": 52.616,
+          "cityGasLngOverseasReceiptsMt": 2.136,
+          "cityGasLngDomesticReceiptsMt": 0.252,
+          "cityGasLngConsumptionMt": 2.304,
+          "cityGasLngLiquidSalesMt": 0.276,
+          "cityGasResidentialDemandPJ": 49.521,
+          "cityGasCommercialDemandPJ": 14.999,
+          "cityGasIndustrialDemandPJ": 76.43,
+          "cityGasOtherDemandPJ": 13.091
+        },
+        {
+          "month": "2025-04",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_04.html",
+          "cityGasUpdateDate": "2025-06-27",
+          "cityGasProductionPurchasesPJ": 164.231,
+          "cityGasVaporizedLngPJ": 145.559,
+          "cityGasNaturalGasPJ": 11.989,
+          "cityGasPetroleumGasPJ": 6.679,
+          "cityGasDemandPJ": 130.224,
+          "cityGasWholesaleSupplyPJ": 41.169,
+          "cityGasLngOverseasReceiptsMt": 2.246,
+          "cityGasLngDomesticReceiptsMt": 0.252,
+          "cityGasLngConsumptionMt": 1.817,
+          "cityGasLngLiquidSalesMt": 0.246,
+          "cityGasResidentialDemandPJ": 40.7,
+          "cityGasCommercialDemandPJ": 12.404,
+          "cityGasIndustrialDemandPJ": 67.756,
+          "cityGasOtherDemandPJ": 9.365
+        },
+        {
+          "month": "2025-05",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_05.html",
+          "cityGasUpdateDate": "2025-07-30",
+          "cityGasProductionPurchasesPJ": 149.652,
+          "cityGasVaporizedLngPJ": 131.759,
+          "cityGasNaturalGasPJ": 10.842,
+          "cityGasPetroleumGasPJ": 7.047,
+          "cityGasDemandPJ": 114.269,
+          "cityGasWholesaleSupplyPJ": 37.338,
+          "cityGasLngOverseasReceiptsMt": 2.003,
+          "cityGasLngDomesticReceiptsMt": 0.26,
+          "cityGasLngConsumptionMt": 1.62,
+          "cityGasLngLiquidSalesMt": 0.237,
+          "cityGasResidentialDemandPJ": 31.862,
+          "cityGasCommercialDemandPJ": 10.804,
+          "cityGasIndustrialDemandPJ": 64.391,
+          "cityGasOtherDemandPJ": 7.213
+        },
+        {
+          "month": "2025-06",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_06.html",
+          "cityGasUpdateDate": "2025-08-28",
+          "cityGasProductionPurchasesPJ": 160.165,
+          "cityGasVaporizedLngPJ": 143.027,
+          "cityGasNaturalGasPJ": 10.73,
+          "cityGasPetroleumGasPJ": 6.405,
+          "cityGasDemandPJ": 118.564,
+          "cityGasWholesaleSupplyPJ": 39.281,
+          "cityGasLngOverseasReceiptsMt": 1.871,
+          "cityGasLngDomesticReceiptsMt": 0.206,
+          "cityGasLngConsumptionMt": 1.759,
+          "cityGasLngLiquidSalesMt": 0.248,
+          "cityGasResidentialDemandPJ": 23.265,
+          "cityGasCommercialDemandPJ": 11.644,
+          "cityGasIndustrialDemandPJ": 74.764,
+          "cityGasOtherDemandPJ": 8.891
+        },
+        {
+          "month": "2025-07",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_07.html",
+          "cityGasUpdateDate": "2025-09-29",
+          "cityGasProductionPurchasesPJ": 174.509,
+          "cityGasVaporizedLngPJ": 157.659,
+          "cityGasNaturalGasPJ": 11.198,
+          "cityGasPetroleumGasPJ": 5.647,
+          "cityGasDemandPJ": 127.495,
+          "cityGasWholesaleSupplyPJ": 42.756,
+          "cityGasLngOverseasReceiptsMt": 1.938,
+          "cityGasLngDomesticReceiptsMt": 0.137,
+          "cityGasLngConsumptionMt": 1.944,
+          "cityGasLngLiquidSalesMt": 0.24,
+          "cityGasResidentialDemandPJ": 16.924,
+          "cityGasCommercialDemandPJ": 14.492,
+          "cityGasIndustrialDemandPJ": 82.531,
+          "cityGasOtherDemandPJ": 13.548
+        },
+        {
+          "month": "2025-08",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_08.html",
+          "cityGasUpdateDate": "2025-10-30",
+          "cityGasProductionPurchasesPJ": 161.998,
+          "cityGasVaporizedLngPJ": 146.236,
+          "cityGasNaturalGasPJ": 10.388,
+          "cityGasPetroleumGasPJ": 5.369,
+          "cityGasDemandPJ": 118.737,
+          "cityGasWholesaleSupplyPJ": 39.975,
+          "cityGasLngOverseasReceiptsMt": 1.726,
+          "cityGasLngDomesticReceiptsMt": 0.185,
+          "cityGasLngConsumptionMt": 1.789,
+          "cityGasLngLiquidSalesMt": 0.198,
+          "cityGasResidentialDemandPJ": 13.801,
+          "cityGasCommercialDemandPJ": 15.822,
+          "cityGasIndustrialDemandPJ": 75.007,
+          "cityGasOtherDemandPJ": 14.107
+        },
+        {
+          "month": "2025-12",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_12.html",
+          "cityGasUpdateDate": "2026-02-27",
+          "cityGasProductionPurchasesPJ": 213.407,
+          "cityGasVaporizedLngPJ": 191.361,
+          "cityGasNaturalGasPJ": 14.047,
+          "cityGasPetroleumGasPJ": 7.994,
+          "cityGasDemandPJ": 139.985,
+          "cityGasWholesaleSupplyPJ": 57.232,
+          "cityGasLngOverseasReceiptsMt": 2.415,
+          "cityGasLngDomesticReceiptsMt": 0.325,
+          "cityGasLngConsumptionMt": 2.422,
+          "cityGasLngLiquidSalesMt": 0.295,
+          "cityGasResidentialDemandPJ": 38.022,
+          "cityGasCommercialDemandPJ": 12.6,
+          "cityGasIndustrialDemandPJ": 78.799,
+          "cityGasOtherDemandPJ": 10.563
+        },
+        {
+          "month": "2026-01",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2026/2026_01.html",
+          "cityGasUpdateDate": "2026-03-31",
+          "cityGasProductionPurchasesPJ": 237.055,
+          "cityGasVaporizedLngPJ": 214.946,
+          "cityGasNaturalGasPJ": 14.844,
+          "cityGasPetroleumGasPJ": 7.261,
+          "cityGasDemandPJ": 174.449,
+          "cityGasWholesaleSupplyPJ": 63.021,
+          "cityGasLngOverseasReceiptsMt": 2.712,
+          "cityGasLngDomesticReceiptsMt": 0.257,
+          "cityGasLngConsumptionMt": 2.745,
+          "cityGasLngLiquidSalesMt": 0.357,
+          "cityGasResidentialDemandPJ": 57.226,
+          "cityGasCommercialDemandPJ": 17.913,
+          "cityGasIndustrialDemandPJ": 84.268,
+          "cityGasOtherDemandPJ": 15.042
+        },
+        {
+          "month": "2026-02",
+          "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+          "cityGasSourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2026/2026_02.html",
+          "cityGasUpdateDate": "2026-04-30",
+          "cityGasProductionPurchasesPJ": 210.639,
+          "cityGasVaporizedLngPJ": 190.485,
+          "cityGasNaturalGasPJ": 13.672,
+          "cityGasPetroleumGasPJ": 6.48,
+          "cityGasDemandPJ": 159.167,
+          "cityGasWholesaleSupplyPJ": 56.859,
+          "cityGasLngOverseasReceiptsMt": 2.424,
+          "cityGasLngDomesticReceiptsMt": 0.369,
+          "cityGasLngConsumptionMt": 2.411,
+          "cityGasLngLiquidSalesMt": 0.294,
+          "cityGasResidentialDemandPJ": 51.282,
+          "cityGasCommercialDemandPJ": 15.949,
+          "cityGasIndustrialDemandPJ": 77.616,
+          "cityGasOtherDemandPJ": 14.321
+        }
+      ],
+      "sourceGaps": [
+        {
+          "month": "2025-09",
+          "url": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_09.html",
+          "error": "The read operation timed out"
+        },
+        {
+          "month": "2025-10",
+          "url": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_10.html",
+          "error": "The read operation timed out"
+        },
+        {
+          "month": "2025-11",
+          "url": "https://www.enecho.meti.go.jp/statistics/gas/ga001/2025/2025_11.html",
+          "error": "The read operation timed out"
+        }
+      ],
+      "notes": [
+        "METI overview pages are parsed as published text; no missing month is estimated.",
+        "City-gas demand is total gas sales in megajoules, converted to PJ.",
+        "LNG feedstock receipts/consumption are METI thousand tonnes, converted to Mt."
+      ]
+    },
     "gasForPower": null,
     "sourceMap": [
       {
@@ -3919,7 +4982,7 @@
         "balanceUse": "City-gas demand, LNG receipts/production and city-gas stock cross-check",
         "source": "METI / ANRE Gas Business Production Dynamic Statistics",
         "sourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/results.html",
-        "pull": "Monthly Excel files from the statistics table list.",
+        "pull": "Monthly METI overview text; total gas sales in MJ, LNG feedstock receipts/consumption in thousand tonnes. Missing pages remain blank.",
         "fields": [
           "month",
           "vaporized_lng",
@@ -3927,8 +4990,8 @@
           "sales_by_sector",
           "inventory"
         ],
-        "status": "source_identified",
-        "wiring": "excel_parser_pending"
+        "status": "wired",
+        "wiring": "official_text_parser_wired"
       },
       {
         "item": "Power-sector LNG receipts, burn and stocks",
@@ -3964,10 +5027,10 @@
     ],
     "sourceGaps": [
       {
-        "item": "City-gas demand and inventories",
+        "item": "City-gas inventories",
         "status": "source_identified_not_wired",
         "sourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/results.html",
-        "note": "METI Gas Business monthly Excel source is identified, but the Excel parser is not wired yet. Values stay blank until parsed from the official workbook."
+        "note": "City-gas demand and LNG feedstock are parsed from METI overview pages; inventory rows still need the detailed Excel workbook parser."
       },
       {
         "item": "Power-sector LNG burn, receipts and stocks",
@@ -4490,88 +5553,88 @@
         "weight": 0.34,
         "forecast": [
           {
-            "date": "2026-05-04",
-            "tempMeanC": 21.4,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-05",
-            "tempMeanC": 16.1,
-            "hdd18": 1.9,
-            "cdd24": 0.0
-          },
-          {
             "date": "2026-05-06",
-            "tempMeanC": 16.9,
-            "hdd18": 1.1,
+            "tempMeanC": 16.4,
+            "hdd18": 1.6,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-07",
-            "tempMeanC": 18.9,
+            "tempMeanC": 19.1,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-08",
-            "tempMeanC": 18.7,
+            "tempMeanC": 18.1,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-09",
-            "tempMeanC": 17.4,
-            "hdd18": 0.6,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-10",
-            "tempMeanC": 17.0,
-            "hdd18": 1.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-11",
-            "tempMeanC": 18.8,
+            "tempMeanC": 18.4,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
-            "date": "2026-05-12",
+            "date": "2026-05-10",
+            "tempMeanC": 18.0,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-11",
             "tempMeanC": 19.6,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
+            "date": "2026-05-12",
+            "tempMeanC": 18.8,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
             "date": "2026-05-13",
-            "tempMeanC": 18.9,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-14",
-            "tempMeanC": 19.4,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-15",
             "tempMeanC": 21.6,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
+            "date": "2026-05-14",
+            "tempMeanC": 22.4,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-15",
+            "tempMeanC": 22.3,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
             "date": "2026-05-16",
-            "tempMeanC": 22.7,
+            "tempMeanC": 21.8,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-17",
-            "tempMeanC": 22.2,
+            "tempMeanC": 21.4,
             "hdd18": 0.0,
             "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-18",
+            "tempMeanC": 22.8,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-19",
+            "tempMeanC": 25.0,
+            "hdd18": 0.0,
+            "cdd24": 1.0
           }
         ]
       },
@@ -4583,39 +5646,27 @@
         "weight": 0.22,
         "forecast": [
           {
-            "date": "2026-05-04",
-            "tempMeanC": 17.8,
-            "hdd18": 0.2,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-05",
-            "tempMeanC": 15.9,
-            "hdd18": 2.1,
-            "cdd24": 0.0
-          },
-          {
             "date": "2026-05-06",
-            "tempMeanC": 17.2,
-            "hdd18": 0.8,
+            "tempMeanC": 17.1,
+            "hdd18": 0.9,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-07",
-            "tempMeanC": 18.5,
+            "tempMeanC": 19.4,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-08",
-            "tempMeanC": 18.3,
+            "tempMeanC": 18.5,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-09",
-            "tempMeanC": 16.8,
-            "hdd18": 1.2,
+            "tempMeanC": 16.0,
+            "hdd18": 2.0,
             "cdd24": 0.0
           },
           {
@@ -4632,19 +5683,19 @@
           },
           {
             "date": "2026-05-12",
-            "tempMeanC": 18.9,
+            "tempMeanC": 18.7,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-13",
-            "tempMeanC": 19.8,
+            "tempMeanC": 19.0,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-14",
-            "tempMeanC": 20.3,
+            "tempMeanC": 20.8,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
@@ -4656,13 +5707,25 @@
           },
           {
             "date": "2026-05-16",
-            "tempMeanC": 22.4,
+            "tempMeanC": 23.3,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-17",
-            "tempMeanC": 23.1,
+            "tempMeanC": 22.9,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-18",
+            "tempMeanC": 23.9,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-19",
+            "tempMeanC": 24.0,
             "hdd18": 0.0,
             "cdd24": 0.0
           }
@@ -4676,161 +5739,56 @@
         "weight": 0.16,
         "forecast": [
           {
-            "date": "2026-05-04",
-            "tempMeanC": 18.2,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-05",
-            "tempMeanC": 15.3,
-            "hdd18": 2.7,
-            "cdd24": 0.0
-          },
-          {
             "date": "2026-05-06",
-            "tempMeanC": 17.1,
-            "hdd18": 0.9,
+            "tempMeanC": 16.8,
+            "hdd18": 1.2,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-07",
-            "tempMeanC": 18.5,
+            "tempMeanC": 20.1,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-08",
-            "tempMeanC": 17.2,
-            "hdd18": 0.8,
+            "tempMeanC": 19.4,
+            "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-09",
-            "tempMeanC": 16.2,
-            "hdd18": 1.8,
+            "tempMeanC": 15.6,
+            "hdd18": 2.4,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-10",
-            "tempMeanC": 15.9,
-            "hdd18": 2.1,
+            "tempMeanC": 15.6,
+            "hdd18": 2.4,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-11",
-            "tempMeanC": 18.1,
-            "hdd18": 0.0,
+            "tempMeanC": 16.8,
+            "hdd18": 1.2,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-12",
-            "tempMeanC": 18.2,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-13",
-            "tempMeanC": 20.4,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-14",
-            "tempMeanC": 20.9,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-15",
-            "tempMeanC": 22.0,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-16",
-            "tempMeanC": 22.6,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-17",
-            "tempMeanC": 22.1,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          }
-        ]
-      },
-      {
-        "id": "fukuoka",
-        "name": "Fukuoka",
-        "lat": 33.5902,
-        "lon": 130.4017,
-        "weight": 0.14,
-        "forecast": [
-          {
-            "date": "2026-05-04",
-            "tempMeanC": 16.3,
-            "hdd18": 1.7,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-05",
-            "tempMeanC": 16.1,
-            "hdd18": 1.9,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-06",
             "tempMeanC": 17.6,
             "hdd18": 0.4,
             "cdd24": 0.0
           },
           {
-            "date": "2026-05-07",
-            "tempMeanC": 18.7,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-08",
-            "tempMeanC": 17.4,
-            "hdd18": 0.6,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-09",
-            "tempMeanC": 16.2,
-            "hdd18": 1.8,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-10",
-            "tempMeanC": 17.2,
-            "hdd18": 0.8,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-11",
-            "tempMeanC": 18.1,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-12",
-            "tempMeanC": 20.7,
-            "hdd18": 0.0,
-            "cdd24": 0.0
-          },
-          {
             "date": "2026-05-13",
-            "tempMeanC": 22.6,
+            "tempMeanC": 19.4,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-14",
-            "tempMeanC": 20.6,
+            "tempMeanC": 21.0,
             "hdd18": 0.0,
             "cdd24": 0.0
           },
@@ -4842,13 +5800,118 @@
           },
           {
             "date": "2026-05-16",
-            "tempMeanC": 24.4,
+            "tempMeanC": 21.1,
             "hdd18": 0.0,
-            "cdd24": 0.4
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-17",
+            "tempMeanC": 23.3,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-18",
+            "tempMeanC": 24.6,
+            "hdd18": 0.0,
+            "cdd24": 0.6
+          },
+          {
+            "date": "2026-05-19",
+            "tempMeanC": 25.5,
+            "hdd18": 0.0,
+            "cdd24": 1.5
+          }
+        ]
+      },
+      {
+        "id": "fukuoka",
+        "name": "Fukuoka",
+        "lat": 33.5902,
+        "lon": 130.4017,
+        "weight": 0.14,
+        "forecast": [
+          {
+            "date": "2026-05-06",
+            "tempMeanC": 17.3,
+            "hdd18": 0.7,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-07",
+            "tempMeanC": 18.8,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-08",
+            "tempMeanC": 17.6,
+            "hdd18": 0.4,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-09",
+            "tempMeanC": 16.4,
+            "hdd18": 1.6,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-10",
+            "tempMeanC": 17.3,
+            "hdd18": 0.7,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-11",
+            "tempMeanC": 17.8,
+            "hdd18": 0.2,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-12",
+            "tempMeanC": 18.6,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-13",
+            "tempMeanC": 20.2,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-14",
+            "tempMeanC": 21.6,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-15",
+            "tempMeanC": 23.7,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-16",
+            "tempMeanC": 24.1,
+            "hdd18": 0.0,
+            "cdd24": 0.1
           },
           {
             "date": "2026-05-17",
             "tempMeanC": 22.4,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-18",
+            "tempMeanC": 22.3,
+            "hdd18": 0.0,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-19",
+            "tempMeanC": 22.9,
             "hdd18": 0.0,
             "cdd24": 0.0
           }
@@ -4862,39 +5925,27 @@
         "weight": 0.14,
         "forecast": [
           {
-            "date": "2026-05-04",
-            "tempMeanC": 9.2,
-            "hdd18": 8.8,
-            "cdd24": 0.0
-          },
-          {
-            "date": "2026-05-05",
-            "tempMeanC": 11.0,
-            "hdd18": 7.0,
-            "cdd24": 0.0
-          },
-          {
             "date": "2026-05-06",
-            "tempMeanC": 15.2,
-            "hdd18": 2.8,
+            "tempMeanC": 15.7,
+            "hdd18": 2.3,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-07",
-            "tempMeanC": 15.3,
-            "hdd18": 2.7,
+            "tempMeanC": 14.7,
+            "hdd18": 3.3,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-08",
-            "tempMeanC": 14.0,
-            "hdd18": 4.0,
+            "tempMeanC": 12.3,
+            "hdd18": 5.7,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-09",
-            "tempMeanC": 9.4,
-            "hdd18": 8.6,
+            "tempMeanC": 9.8,
+            "hdd18": 8.2,
             "cdd24": 0.0
           },
           {
@@ -4905,44 +5956,56 @@
           },
           {
             "date": "2026-05-11",
-            "tempMeanC": 15.2,
-            "hdd18": 2.8,
+            "tempMeanC": 15.0,
+            "hdd18": 3.0,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-12",
-            "tempMeanC": 15.1,
-            "hdd18": 2.9,
+            "tempMeanC": 15.7,
+            "hdd18": 2.3,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-13",
-            "tempMeanC": 15.5,
-            "hdd18": 2.5,
+            "tempMeanC": 14.5,
+            "hdd18": 3.5,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-14",
-            "tempMeanC": 14.3,
-            "hdd18": 3.7,
+            "tempMeanC": 13.6,
+            "hdd18": 4.4,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-15",
-            "tempMeanC": 15.7,
-            "hdd18": 2.3,
+            "tempMeanC": 16.4,
+            "hdd18": 1.6,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-16",
-            "tempMeanC": 15.7,
-            "hdd18": 2.3,
+            "tempMeanC": 17.3,
+            "hdd18": 0.7,
             "cdd24": 0.0
           },
           {
             "date": "2026-05-17",
-            "tempMeanC": 13.0,
-            "hdd18": 5.0,
+            "tempMeanC": 16.5,
+            "hdd18": 1.5,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-18",
+            "tempMeanC": 15.8,
+            "hdd18": 2.2,
+            "cdd24": 0.0
+          },
+          {
+            "date": "2026-05-19",
+            "tempMeanC": 15.2,
+            "hdd18": 2.8,
             "cdd24": 0.0
           }
         ]
@@ -4950,88 +6013,88 @@
     ],
     "national": [
       {
-        "date": "2026-05-04",
-        "tempMeanC": 17.7,
-        "hdd18": 1.5,
-        "cdd24": 0.0
-      },
-      {
-        "date": "2026-05-05",
-        "tempMeanC": 15.2,
-        "hdd18": 2.8,
-        "cdd24": 0.0
-      },
-      {
         "date": "2026-05-06",
-        "tempMeanC": 16.9,
-        "hdd18": 1.1,
+        "tempMeanC": 16.6,
+        "hdd18": 1.4,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-07",
-        "tempMeanC": 18.2,
-        "hdd18": 0.4,
+        "tempMeanC": 18.7,
+        "hdd18": 0.5,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-08",
         "tempMeanC": 17.5,
-        "hdd18": 0.8,
+        "hdd18": 0.9,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-09",
-        "tempMeanC": 15.8,
+        "tempMeanC": 15.9,
         "hdd18": 2.2,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-10",
-        "tempMeanC": 16.1,
-        "hdd18": 1.9,
+        "tempMeanC": 16.4,
+        "hdd18": 1.6,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-11",
         "tempMeanC": 17.8,
-        "hdd18": 0.5,
+        "hdd18": 0.7,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-12",
-        "tempMeanC": 18.7,
+        "tempMeanC": 18.1,
         "hdd18": 0.4,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-13",
-        "tempMeanC": 19.4,
-        "hdd18": 0.4,
-        "cdd24": 0.0
-      },
-      {
-        "date": "2026-05-14",
-        "tempMeanC": 19.3,
+        "tempMeanC": 19.5,
         "hdd18": 0.5,
         "cdd24": 0.0
       },
       {
+        "date": "2026-05-14",
+        "tempMeanC": 20.5,
+        "hdd18": 0.6,
+        "cdd24": 0.0
+      },
+      {
         "date": "2026-05-15",
-        "tempMeanC": 20.8,
-        "hdd18": 0.3,
+        "tempMeanC": 21.3,
+        "hdd18": 0.2,
         "cdd24": 0.0
       },
       {
         "date": "2026-05-16",
-        "tempMeanC": 21.9,
+        "tempMeanC": 21.7,
+        "hdd18": 0.1,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-17",
+        "tempMeanC": 21.5,
+        "hdd18": 0.2,
+        "cdd24": 0.0
+      },
+      {
+        "date": "2026-05-18",
+        "tempMeanC": 22.3,
         "hdd18": 0.3,
         "cdd24": 0.1
       },
       {
-        "date": "2026-05-17",
-        "tempMeanC": 21.1,
-        "hdd18": 0.7,
-        "cdd24": 0.0
+        "date": "2026-05-19",
+        "tempMeanC": 23.2,
+        "hdd18": 0.4,
+        "cdd24": 0.6
       }
     ]
   }

@@ -35,6 +35,8 @@ CUSTOMS_IMPORT_LIST_URL = (
 )
 CUSTOMS_VALUE_UNIT_SOURCE_URL = "https://www.customs.go.jp/toukei/suii/html/time_e.htm"
 CUSTOMS_HS_LNG = "271111000"
+METI_GAS_OVERVIEW_URL = "https://www.enecho.meti.go.jp/statistics/gas/ga001/{year}/{year}_{month:02d}.html"
+JINA_READER_PREFIX = "https://r.jina.ai/http://"
 
 CUSTOMS_COUNTRY_NAMES = {
     "105": "China",
@@ -145,6 +147,31 @@ def safe_float(value: str | None) -> float:
         return float(value)
     except ValueError:
         return 0.0
+
+
+def clean_float(value: str | None) -> float | None:
+    if value is None:
+        return None
+    text = str(value).strip().replace(",", "")
+    if not text or text in {"-", "—"}:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def fetch_official_text(url: str, timeout: int = 20) -> str:
+    """Fetch an official page directly, then via text proxy when local DNS stalls."""
+    if "enecho.meti.go.jp/statistics/gas/ga001/" in url:
+        try:
+            return fetch_text(JINA_READER_PREFIX + url, timeout=45)
+        except Exception:
+            return fetch_text(url, timeout=timeout)
+    try:
+        return fetch_text(url, timeout=timeout)
+    except Exception:
+        return fetch_text(JINA_READER_PREFIX + url, timeout=45)
 
 
 def customs_abs(url: str) -> str:
@@ -298,6 +325,153 @@ def load_customs_lng_imports() -> dict:
     }
 
 
+def parse_jp_energy_pj(fragment: str | None) -> float | None:
+    """Convert Japanese energy text like 1,591億67百万メガジュール to PJ."""
+    if not fragment:
+        return None
+    m = re.search(r"(?P<oku>[\d,]+)億(?:(?P<million>[\d,]+)百万)?メガジュール", fragment)
+    if not m:
+        return None
+    oku = clean_float(m.group("oku")) or 0.0
+    million = clean_float(m.group("million")) or 0.0
+    mj = oku * 100_000_000 + million * 1_000_000
+    return round(mj / 1_000_000_000, 3)
+
+
+def parse_jp_thousand_tonnes(value: str | None) -> float | None:
+    n = clean_float(value)
+    return round(n / 1000, 3) if n is not None else None
+
+
+def parse_meti_city_gas_overview(text: str, month: str, source_url: str) -> dict | None:
+    compact = re.sub(r"\s+", "", text)
+    if "ガス事業生産動態統計の概況" not in compact or "ガスの総販売量" not in compact:
+        return None
+
+    def energy(pattern: str) -> float | None:
+        m = re.search(pattern, compact)
+        return parse_jp_energy_pj(m.group(1)) if m else None
+
+    sector = re.search(
+        r"販売量を用途別に見ると、家庭用は([^、]+メガジュール).*?商業用は([^、]+メガジュール).*?工業用は([^、]+メガジュール).*?その他用は([^、]+メガジュール)",
+        compact,
+    )
+    receipts = re.search(
+        r"ガスの原材料の受入を見ると、液化天然ガスの海外購入量は([\d,]+)千トン.*?国内購入量は([\d,]+)千トン",
+        compact,
+    )
+    consumption = re.search(r"原材料の消費量を見ると、液化天然ガスは([\d,]+)千トン", compact)
+    liquid_sales = re.search(r"原材料の液売りを見ると、液化天然ガスは([\d,]+)千トン", compact)
+    update = re.search(r"最終更新日：?(\d{4})年(\d{1,2})月(\d{1,2})日", compact)
+
+    row = {
+        "month": month,
+        "cityGasSource": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "cityGasSourceUrl": source_url,
+        "cityGasUpdateDate": f"{int(update.group(1)):04d}-{int(update.group(2)):02d}-{int(update.group(3)):02d}" if update else None,
+        "cityGasProductionPurchasesPJ": energy(r"ガスの生産量（購入量を含む）は、([^、]+メガジュール)"),
+        "cityGasVaporizedLngPJ": energy(r"気化後液化天然ガスは([^、]+メガジュール)"),
+        "cityGasNaturalGasPJ": energy(r"、天然ガスは([^、]+メガジュール)"),
+        "cityGasPetroleumGasPJ": energy(r"、石油系ガスは([^、]+メガジュール)"),
+        "cityGasDemandPJ": energy(r"ガスの総販売量は([^、]+メガジュール)"),
+        "cityGasWholesaleSupplyPJ": energy(r"卸供給の動向を見ると、供給量は([^、]+メガジュール)"),
+        "cityGasLngOverseasReceiptsMt": parse_jp_thousand_tonnes(receipts.group(1)) if receipts else None,
+        "cityGasLngDomesticReceiptsMt": parse_jp_thousand_tonnes(receipts.group(2)) if receipts else None,
+        "cityGasLngConsumptionMt": parse_jp_thousand_tonnes(consumption.group(1)) if consumption else None,
+        "cityGasLngLiquidSalesMt": parse_jp_thousand_tonnes(liquid_sales.group(1)) if liquid_sales else None,
+    }
+    if sector:
+        row.update(
+            {
+                "cityGasResidentialDemandPJ": parse_jp_energy_pj(sector.group(1)),
+                "cityGasCommercialDemandPJ": parse_jp_energy_pj(sector.group(2)),
+                "cityGasIndustrialDemandPJ": parse_jp_energy_pj(sector.group(3)),
+                "cityGasOtherDemandPJ": parse_jp_energy_pj(sector.group(4)),
+            }
+        )
+
+    if row["cityGasDemandPJ"] is None and row["cityGasLngConsumptionMt"] is None:
+        return None
+    return row
+
+
+def recent_months(count: int = 24) -> list[str]:
+    today = datetime.now(timezone.utc)
+    year, month = today.year, today.month
+    out = []
+    for back in range(count + 4, -1, -1):
+        total = year * 12 + month - 1 - back
+        y = total // 12
+        m = total % 12 + 1
+        out.append(f"{y:04d}-{m:02d}")
+    return out
+
+
+def load_meti_city_gas_overviews() -> dict:
+    rows: list[dict] = []
+    gaps: list[dict] = []
+    for month in recent_months(24):
+        year = int(month[:4])
+        mon = int(month[5:7])
+        url = METI_GAS_OVERVIEW_URL.format(year=year, month=mon)
+        try:
+            text = fetch_official_text(url, timeout=12)
+            row = parse_meti_city_gas_overview(text, month, url)
+            if row:
+                rows.append(row)
+        except Exception as exc:
+            gaps.append({"month": month, "url": url, "error": str(exc)[:180]})
+
+    latest = rows[-1] if rows else None
+    return {
+        "source": "METI / ANRE Gas Business Production Dynamic Statistics overview",
+        "sourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/results.html",
+        "status": "parsed" if rows else "source_gap",
+        "latestMonth": latest["month"] if latest else None,
+        "latestUpdateDate": latest.get("cityGasUpdateDate") if latest else None,
+        "unit": "PJ/month for city-gas energy; Mt/month for LNG feedstock",
+        "rows": rows,
+        "sourceGaps": gaps[-5:],
+        "notes": [
+            "METI overview pages are parsed as published text; no missing month is estimated.",
+            "City-gas demand is total gas sales in megajoules, converted to PJ.",
+            "LNG feedstock receipts/consumption are METI thousand tonnes, converted to Mt.",
+        ],
+    }
+
+
+def merge_japan_monthly_rows(customs_rows: list[dict], city_rows: list[dict]) -> list[dict]:
+    by_month: dict[str, dict] = {}
+    for row in customs_rows:
+        merged = dict(row)
+        merged.setdefault(
+            "coverage",
+            {"customsLngImports": False, "metiGasBusiness": False, "metiPowerFuel": False, "jogmecInventory": False},
+        )
+        by_month[merged["month"]] = merged
+    for row in city_rows:
+        merged = by_month.setdefault(
+            row["month"],
+            {
+                "month": row["month"],
+                "lngImportsTonnes": None,
+                "lngImportsMillionTonnes": None,
+                "lngImportsValueJpyBillion": None,
+                "customsCountries": [],
+                "topSuppliers": [],
+                "coverage": {"customsLngImports": False, "metiGasBusiness": False, "metiPowerFuel": False, "jogmecInventory": False},
+            },
+        )
+        merged.update({k: v for k, v in row.items() if k != "month"})
+        merged["cityGasDemand"] = row.get("cityGasDemandPJ")
+        merged.setdefault("coverage", {})
+        merged["coverage"]["metiGasBusiness"] = True
+        merged["coverage"].setdefault("customsLngImports", bool(merged.get("lngImportsMillionTonnes")))
+        merged["coverage"].setdefault("metiPowerFuel", False)
+        merged["coverage"].setdefault("jogmecInventory", False)
+    return sorted(by_month.values(), key=lambda r: r["month"])
+
+
 def load_ember_japan_nuclear() -> dict:
     text = fetch_text(EMBER_URL, timeout=90)
     rows = []
@@ -424,7 +598,49 @@ def load_weather_forecast() -> dict:
 
 def main() -> None:
     customs_lng = load_customs_lng_imports()
-    monthly_rows = customs_lng.get("rows", [])
+    city_gas = load_meti_city_gas_overviews()
+    monthly_rows = merge_japan_monthly_rows(customs_lng.get("rows", []), city_gas.get("rows", []))
+    source_map = [dict(item) for item in JAPAN_GAS_BALANCE_SOURCE_MAP]
+    if city_gas.get("status") == "parsed":
+        source_map[1]["status"] = "wired"
+        source_map[1]["wiring"] = "official_text_parser_wired"
+        source_map[1]["pull"] = "Monthly METI overview text; total gas sales in MJ, LNG feedstock receipts/consumption in thousand tonnes. Missing pages remain blank."
+
+    source_gaps = []
+    if city_gas.get("status") == "parsed":
+        source_gaps.append(
+            {
+                "item": "City-gas inventories",
+                "status": "source_identified_not_wired",
+                "sourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/results.html",
+                "note": "City-gas demand and LNG feedstock are parsed from METI overview pages; inventory rows still need the detailed Excel workbook parser.",
+            }
+        )
+    else:
+        source_gaps.append(
+            {
+                "item": "City-gas demand and inventories",
+                "status": "source_identified_not_wired",
+                "sourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/results.html",
+                "note": "METI Gas Business monthly source is identified, but current fetch produced no parsed rows. Values stay blank until parsed from official pages.",
+            }
+        )
+    source_gaps.extend(
+        [
+            {
+                "item": "Power-sector LNG burn, receipts and stocks",
+                "status": "source_identified_not_wired",
+                "sourceUrl": "https://www.enecho.meti.go.jp/statistics/electric_power/ep002/results.html",
+                "note": "METI Electric Power Survey fuel statistics source is identified, but not parsed yet. No gas-for-power or power inventory values are estimated.",
+            },
+            {
+                "item": "Weekly LNG storage",
+                "status": "cross_check_available_monthly",
+                "sourceUrl": "https://journal.jogmec.go.jp/oilgas/nglng-en/previous-articles/202412.html",
+                "note": "JOGMEC publishes inventory commentary compiled from METI Gas Business and Thermal Power Generation Statistics. Use as cross-check, not invented weekly stock.",
+            },
+        ]
+    )
     out = {
         "schema": "japan_analytics_v1",
         "country": "Japan",
@@ -434,28 +650,10 @@ def main() -> None:
             "monthlyRows": monthly_rows,
             "weeklyLngStorage": None,
             "lngImports": customs_lng,
+            "cityGas": city_gas,
             "gasForPower": None,
-            "sourceMap": JAPAN_GAS_BALANCE_SOURCE_MAP,
-            "sourceGaps": [
-                {
-                    "item": "City-gas demand and inventories",
-                    "status": "source_identified_not_wired",
-                    "sourceUrl": "https://www.enecho.meti.go.jp/statistics/gas/ga001/results.html",
-                    "note": "METI Gas Business monthly Excel source is identified, but the Excel parser is not wired yet. Values stay blank until parsed from the official workbook.",
-                },
-                {
-                    "item": "Power-sector LNG burn, receipts and stocks",
-                    "status": "source_identified_not_wired",
-                    "sourceUrl": "https://www.enecho.meti.go.jp/statistics/electric_power/ep002/results.html",
-                    "note": "METI Electric Power Survey fuel statistics source is identified, but not parsed yet. No gas-for-power or power inventory values are estimated.",
-                },
-                {
-                    "item": "Weekly LNG storage",
-                    "status": "cross_check_available_monthly",
-                    "sourceUrl": "https://journal.jogmec.go.jp/oilgas/nglng-en/previous-articles/202412.html",
-                    "note": "JOGMEC publishes inventory commentary compiled from METI Gas Business and Thermal Power Generation Statistics. Use as cross-check, not invented weekly stock.",
-                },
-            ],
+            "sourceMap": source_map,
+            "sourceGaps": source_gaps,
         },
         "nuclear": load_ember_japan_nuclear(),
         "weather": load_weather_forecast(),

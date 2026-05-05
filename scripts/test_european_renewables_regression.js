@@ -65,6 +65,16 @@ assert(
 );
 
 assert(
+  js.includes('const ER_ENTSOE_MAX_CONCURRENCY = 4') &&
+    js.includes('const ER_ENTSOE_RETRIES = 2') &&
+    js.includes('function erWithEntsoeSlot') &&
+    js.includes('ER_ENTSOE_QUEUE') &&
+    js.includes('retryable&&attempt<ER_ENTSOE_RETRIES') &&
+    js.includes('erWithEntsoeSlot(()=>fetch(`/api/entsoe?${params.toString()}`))'),
+  'European Renewable ENTSO-E requests must be throttled, retried, and allowed to use the Vercel proxy cache'
+);
+
+assert(
   js.includes('psrType:psr') &&
     js.includes('euren_${countryId}_${tech}_${year}') &&
     js.includes('erMergeEntsoeBundle') &&
@@ -87,8 +97,11 @@ assert(
 assert(
   proxy.includes('process.env.ENTSOE_API_KEY || process.env.ENTSOE_SECURITY_TOKEN') &&
     proxy.includes("params.delete('securityToken')") &&
-    proxy.includes("params.set('securityToken', apiKey)"),
-  'ENTSO-E proxy must keep the security token server-side and ignore browser-supplied tokens'
+    proxy.includes("params.set('securityToken', apiKey)") &&
+    proxy.includes('AbortController') &&
+    proxy.includes("X-LNGTradeOS-Proxy', 'entsoe-configured") &&
+    proxy.includes('Vercel-CDN-Cache-Control'),
+  'ENTSO-E proxy must keep the security token server-side, timeout upstream calls, and expose Vercel CDN cache headers'
 );
 
 assert(
