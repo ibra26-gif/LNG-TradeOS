@@ -1,0 +1,61 @@
+name: India PPAC weekly refresh
+
+on:
+  schedule:
+    # Sunday 10:00 Europe/London during BST. GitHub cron is UTC.
+    - cron: "0 9 * * 0"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: india-ppac-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install parser dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils tesseract-ocr
+          pip install pandas openpyxl xlrd pypdf
+
+      - name: Refresh India PPAC data
+        run: python3 scripts/fetch_india_ppac.py
+
+      - name: Run India regression
+        run: node scripts/test_india_ppac_regression.js
+
+      - name: Commit updated India PPAC data
+        run: |
+          set -e
+          git config user.name "lngtradeos-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/india_gas_balance.json data/india_gas_prices.json
+          if git diff --cached --quiet; then
+            echo "No India PPAC changes"
+            exit 0
+          fi
+          LATEST=$(python3 -c "import json;print(json.load(open('data/india_gas_balance.json'))['latest_month'] or 'source-gap')")
+          git commit -m "data: refresh india ppac ${LATEST}"
+          for attempt in 1 2 3 4 5; do
+            if git pull --rebase origin main && git push; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "::error::Failed to push India PPAC update"
+          exit 1

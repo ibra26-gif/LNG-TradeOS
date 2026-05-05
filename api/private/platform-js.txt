@@ -1038,23 +1038,26 @@ window.csPricesUpdate=csPricesUpdate;
               const lines = text.trim().split('\n');
               const headers = lines[0].split(',').map(h=>h.trim());
               const indRows = {};
+              const num=v=>{ if(v==null||v==='') return null; const n=parseFloat(String(v).replace(/,/g,'')); return Number.isFinite(n)?n:null; };
               for(let i=1;i<lines.length;i++){
                 const cells = lines[i].split(',').map(v=>v.trim());
                 const row={};
                 headers.forEach((h,j)=>row[h]=cells[j]);
                 if(row.month&&row.month.match(/\d{4}-\d{2}/)){
                   indRows[row.month]={
-                    prod:parseFloat(row.prod_mmscm)||null,
-                    rlng:parseFloat(row.rlng_mmscm)||null,
-                    Power:parseFloat(row.Power)||null,
-                    CGD:parseFloat(row.CGD)||null,
-                    Fertilizer:parseFloat(row.Fertilizer)||null,
-                    Refinery:parseFloat(row.Refinery)||null,
-                    Petrochem:parseFloat(row.Petrochem)||null,
-                    LPGShrink:parseFloat(row.LPGShrink)||null,
-                    SteelDRI:parseFloat(row.SteelDRI)||null,
-                    PipelineIC:parseFloat(row.PipelineIC)||null,
-                    Other:parseFloat(row.Other)||null,
+                    prod:num(row.prod_mmscm??row.prod),
+                    rlng:num(row.rlng_mmscm??row.rlng),
+                    Power:num(row.Power),
+                    CGD:num(row.CGD),
+                    Fertilizer:num(row.Fertilizer),
+                    Refinery:num(row.Refinery),
+                    Petrochem:num(row.Petrochem),
+                    LPGShrink:num(row.LPGShrink),
+                    SteelDRI:num(row.SteelDRI),
+                    PipelineIC:num(row.PipelineIC),
+                    Other:num(row.Other),
+                    total_demand:num(row.total_demand??row.totalDemandMmscm),
+                    total_supply:num(row.total_supply??row.totalSupplyMmscm),
                   };
                 }
               }
@@ -13374,7 +13377,7 @@ const PUBLIC_STATE_KEYS=[
   // public_state.json would clobber the freshly-parsed EEX data.
   'lngTradeOS_v5',
   // Scraped / uploaded sheets
-  'lng_shpgx_v1','lng_china_gb_v1','lng_india_gb_v1',
+  'lng_shpgx_v1','lng_china_gb_v1',
   // Freight + physical + prices
   'cp_freight','cp_freight_snap','cp_freight_ver',
   'cp_phys','cp_phys_snap','cp_phys_ov',
@@ -24745,26 +24748,9 @@ const IND_SECTORS = ['Power','CGD','Fertilizer','Refinery','Petrochem','LPGShrin
 const IND_SECTOR_COLS = ['#7F77DD','#1D9E75','#EF9F27','#E24B4A','#378ADD','#f48fb1','#81c784','#ffb74d','#546e7a'];
 const IND_SECTOR_LBLS = {Power:'Power',CGD:'CGD',Fertilizer:'Fertilizer',Refinery:'Refinery',Petrochem:'Petrochem',LPGShrink:'LPG Shrink',SteelDRI:'Steel/DRI',PipelineIC:'Pipeline I/C',Other:'Other'};
 
-// PPAC data hardcoded
-const IND_APM = {
-  '2025-01':6.50,'2025-02':6.50,'2025-03':6.50,
-  '2025-04':6.75,'2025-05':6.75,'2025-06':6.41,
-  '2025-07':6.75,'2025-08':6.75,'2025-09':6.75,
-  '2025-10':6.75,'2025-11':6.55,'2025-12':6.48,
-  '2026-01':6.25,'2026-02':6.21,'2026-03':6.21,'2026-04':7.00,
-};
-const IND_DEEPWATER = [
-  {from:'2025-04',to:'2025-09',price:10.04},
-  {from:'2025-10',to:'2026-03',price:9.72},
-  {from:'2026-04',to:'2026-09',price:8.90},
-];
 const IND_CIL_LOW=7.5, IND_CIL_HIGH=8.5; // $/MMBtu effective, update annually
-const IND_CIL_NOTE='G10 ₹2,900/t · 4,400 kcal/kg · 35% eff · update annually from coalindia.in';
-
-function indDWPrice(mo){
-  for(const b of IND_DEEPWATER) if(mo>=b.from&&mo<=b.to) return b.price;
-  return null;
-}
+const IND_CIL_NOTE='G10 coal reference · latest notified/representative price · not live gas price';
+let _indPpacBalance=null,_indPpacPrices=null,_indPpacLoadStarted=false,_indPpacBalanceErr=null,_indPpacPricesErr=null;
 
 function indConv(v){ // mmscm → selected unit
   if(v==null||isNaN(v)) return null;
@@ -24773,9 +24759,79 @@ function indConv(v){ // mmscm → selected unit
 }
 function indULbl(){ return _indUnit==='mt'?'mt/month':'mmscm'; }
 
+function indNum(v){
+  if(v==null||v==='') return null;
+  const n=Number(v);
+  return Number.isFinite(n)?n:null;
+}
+function indLatestMonthFromMap(data){
+  const keys=Object.keys(data||{}).sort();
+  return keys[keys.length-1]||null;
+}
+function indRowsToLegacy(rows){
+  const data={};
+  (rows||[]).forEach(r=>{
+    if(!r||!r.month) return;
+    data[r.month]={
+      prod:indNum(r.prod??r.domesticProductionMmscm),
+      rlng:indNum(r.rlng??r.rlngImportsMmscm),
+      Power:indNum(r.Power),
+      CGD:indNum(r.CGD),
+      Fertilizer:indNum(r.Fertilizer),
+      Refinery:indNum(r.Refinery),
+      Petrochem:indNum(r.Petrochem),
+      LPGShrink:indNum(r.LPGShrink),
+      SteelDRI:indNum(r.SteelDRI),
+      PipelineIC:indNum(r.PipelineIC),
+      Other:indNum(r.Other),
+      total_demand:indNum(r.total_demand??r.totalDemandMmscm),
+      total_supply:indNum(r.total_supply??r.totalSupplyMmscm),
+      provisional:!!r.provisional,
+      note:r.note||''
+    };
+  });
+  return data;
+}
 function indGetData(){
-  try{const s=localStorage.getItem('lng_india_gb_v1');return s?JSON.parse(s):null;}
-  catch{return null;}
+  let repo=null,local=null;
+  if(_indPpacBalance&&Array.isArray(_indPpacBalance.rows)){
+    const data=indRowsToLegacy(_indPpacBalance.rows);
+    repo={ts:Date.parse(_indPpacBalance.cachedAt||'')||0,data,meta:_indPpacBalance,source:'PPAC repo JSON'};
+  }
+  try{const s=localStorage.getItem('lng_india_gb_v1');local=s?JSON.parse(s):null;}
+  catch{local=null;}
+  if(local&&local.data){
+    const localLatest=indLatestMonthFromMap(local.data);
+    const repoLatest=indLatestMonthFromMap(repo?.data);
+    // Browser uploads are respected only when they are ahead of the committed PPAC feed.
+    if(!repo||!repoLatest||localLatest>repoLatest) return {...local,source:'Browser CSV override'};
+  }
+  return repo||local||null;
+}
+function indLoadPpacData(){
+  if(_indPpacLoadStarted) return;
+  _indPpacLoadStarted=true;
+  Promise.all([
+    fetch('/data/india_gas_balance.json?v='+Date.now(),{cache:'no-store'})
+      .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(j=>{_indPpacBalance=j;})
+      .catch(e=>{_indPpacBalanceErr=e.message||String(e);}),
+    fetch('/data/india_gas_prices.json?v='+Date.now(),{cache:'no-store'})
+      .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(j=>{_indPpacPrices=j;})
+      .catch(e=>{_indPpacPricesErr=e.message||String(e);})
+  ]).finally(()=>{
+    const body=document.getElementById('ind-tab-body');
+    if(body) indShowTab(_indTab);
+  });
+}
+function indPriceFor(kind,mo){
+  const rows=(_indPpacPrices&&Array.isArray(_indPpacPrices.records))?_indPpacPrices.records:[];
+  return rows.filter(r=>r.kind===kind&&r.valid_from<=mo&&r.valid_to>=mo).sort((a,b)=>String(a.valid_from).localeCompare(String(b.valid_from))).pop()||null;
+}
+function indLatestPrice(kind){
+  const rows=(_indPpacPrices&&Array.isArray(_indPpacPrices.records))?_indPpacPrices.records:[];
+  return rows.filter(r=>r.kind===kind).sort((a,b)=>String(a.valid_to).localeCompare(String(b.valid_to))).pop()||null;
 }
 
 function lngbalCountry(cty,btn){
@@ -24823,6 +24879,7 @@ function indInit(){
   const container=document.getElementById('ind-container');
   if(!container)return;
   if(!container.innerHTML.trim()) container.innerHTML=indBuildShell();
+  indLoadPpacData();
   indShowTab(_indTab);
 }
 
@@ -24891,6 +24948,7 @@ function indLoadCsv(input){
       const lines=e.target.result.trim().split('\n');
       const headers=lines[0].split(',').map(h=>h.trim());
       const newRows={};
+      const num=v=>{ if(v==null||v==='') return null; const n=parseFloat(String(v).replace(/,/g,'')); return Number.isFinite(n)?n:null; };
       for(let i=1;i<lines.length;i++){
         const cells=lines[i].split(',').map(v=>v.trim());
         const row={};
@@ -24898,19 +24956,19 @@ function indLoadCsv(input){
         const mo=row.month||row.Month||'';
         if(!mo.match(/\d{4}-\d{2}/))continue;
         newRows[mo]={
-          prod:parseFloat(row.prod_mmscm)||null,
-          rlng:parseFloat(row.rlng_mmscm)||null,
-          Power:parseFloat(row.Power)||null,
-          CGD:parseFloat(row.CGD)||null,
-          Fertilizer:parseFloat(row.Fertilizer)||null,
-          Refinery:parseFloat(row.Refinery)||null,
-          Petrochem:parseFloat(row.Petrochem)||null,
-          LPGShrink:parseFloat(row.LPGShrink)||null,
-          SteelDRI:parseFloat(row.SteelDRI)||null,
-          PipelineIC:parseFloat(row.PipelineIC)||null,
-          Other:parseFloat(row.Other)||null,
-          total_demand:parseFloat(row.total_demand)||null,
-          total_supply:parseFloat(row.total_supply)||null,
+          prod:num(row.prod_mmscm??row.prod),
+          rlng:num(row.rlng_mmscm??row.rlng),
+          Power:num(row.Power),
+          CGD:num(row.CGD),
+          Fertilizer:num(row.Fertilizer),
+          Refinery:num(row.Refinery),
+          Petrochem:num(row.Petrochem),
+          LPGShrink:num(row.LPGShrink),
+          SteelDRI:num(row.SteelDRI),
+          PipelineIC:num(row.PipelineIC),
+          Other:num(row.Other),
+          total_demand:num(row.total_demand??row.totalDemandMmscm),
+          total_supply:num(row.total_supply??row.totalSupplyMmscm),
         };
       }
       const cnt=Object.keys(newRows).length;
@@ -24956,7 +25014,8 @@ window.indLoadCsv=indLoadCsv;
 function renderIndBalance(el){
   const raw=indGetData();
   if(!raw||!raw.data||Object.keys(raw.data).length===0){
-    el.innerHTML=`<div style="padding:24px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">No data loaded yet. Upload a CSV using the button above.</div>`;
+    const msg=_indPpacLoadStarted&&!_indPpacBalanceErr?'Loading PPAC India gas balance…':'No data loaded yet. Upload a CSV using the button above.';
+    el.innerHTML=`<div style="padding:24px;text-align:center;color:#3d5070;font-size:9px;border:1px dashed #1e3a5f">${msg}${_indPpacBalanceErr?`<br>PPAC source gap: ${_indPpacBalanceErr}`:''}</div>`;
     return;
   }
   const allMos=Object.keys(raw.data).sort();
@@ -24986,12 +25045,19 @@ function renderIndBalance(el){
   const latD=raw.data[latMo]||{};
   const lyD=raw.data[lyMo]||{};
 
-  function pctYoY(a,b){if(!a||!b) return'';const d=+(((a-b)/b)*100).toFixed(1);return`<span style="font-size:9px;color:${d>0?'#4ade80':'#f87171'}">${d>0?'+':''}${d}% YoY</span>`;}
-  const latProd=latD.prod||null, latRlng=latD.rlng||null, latDem=latD.total_demand||null;
-  const latGap=latProd!=null&&latRlng!=null&&latDem!=null?(latProd+latRlng-latDem):null;
-  const topSectors=IND_SECTORS.map(s=>({s,v:parseFloat(latD[s])||0})).sort((a,b)=>b.v-a.v).slice(0,3);
+  function pctYoY(a,b){if(a==null||b==null||b===0) return'';const d=+(((a-b)/b)*100).toFixed(1);return`<span style="font-size:9px;color:${d>0?'#4ade80':'#f87171'}">${d>0?'+':''}${d}% YoY</span>`;}
+  const latProd=indNum(latD.prod), latRlng=indNum(latD.rlng), latDem=indNum(latD.total_demand);
+  const latSupply=indNum(latD.total_supply);
+  const latGap=latSupply!=null&&latDem!=null?(latSupply-latDem):(latProd!=null&&latRlng!=null&&latDem!=null?(latProd+latRlng-latDem):null);
+  const topSectors=IND_SECTORS.map(s=>({s,v:indNum(latD[s])})).filter(x=>x.v!=null).sort((a,b)=>b.v-a.v).slice(0,3);
   const topNote=latDem?topSectors.map(({s,v})=>`${IND_SECTOR_LBLS[s]} ${(v/latDem*100).toFixed(0)}%`).join(' · '):'';
   const u=uLbl();
+  const latestDate=new Date(latMo+'-01T00:00:00Z');
+  const nowMo=new Date();
+  const ageMonths=(nowMo.getUTCFullYear()-latestDate.getUTCFullYear())*12+(nowMo.getUTCMonth()-latestDate.getUTCMonth());
+  const stale=ageMonths>2;
+  const statusColor=stale?'#fbbf24':'#4ade80';
+  const srcLabel=(raw.source==='PPAC repo JSON'||raw.meta?.sourceUrls)?'PPAC official files':(raw.source||'Browser CSV');
 
   el.innerHTML=`
   <!-- Controls -->
@@ -25001,6 +25067,12 @@ function renderIndBalance(el){
     <span style="font-size:9px;color:#546e7a;margin-left:8px">UNIT</span>
     ${[['mmscm','mmscm'],['mcmd','mcm/d'],['mtpm','mt/month']].map(([k,l])=>`<button class="f-btn sm${_indUnit===k?' on':''}" onclick="_indUnit='${k}';renderIndBalance(document.getElementById('ind-tab-body'))">${l}</button>`).join('')}
     <span style="font-size:9px;color:#3d5070;margin-left:auto">${mos.length} months · ${allMos[0]} → ${allMos[allMos.length-1]}</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+    <div class="ga-kpi"><div class="ga-kpi-lbl">PPAC balance status</div><div class="ga-kpi-val" style="font-size:18px;color:${statusColor}">${stale?'STALE':'CURRENT'}</div><div class="ga-kpi-note">Latest source month: ${latMo}${latD.provisional?' · provisional/prorated':''}</div></div>
+    <div class="ga-kpi"><div class="ga-kpi-lbl">Source</div><div class="ga-kpi-val" style="font-size:16px;color:#c8d6e5">${srcLabel}</div><div class="ga-kpi-note">Missing PPAC row = blank, not modelled</div></div>
+    <div class="ga-kpi"><div class="ga-kpi-lbl">Refresh</div><div class="ga-kpi-val" style="font-size:16px;color:#4d9ef5">Weekly</div><div class="ga-kpi-note">Sunday 10:00 London · PPAC monthly lag</div></div>
   </div>
 
   <!-- KPIs -->
@@ -25062,12 +25134,15 @@ function renderIndBalance(el){
   // ── Draw charts ────────────────────────────────────────────────────────────
   setTimeout(()=>{
     const labels=mos.map(m=>{const[y,mn]=m.split('-');return GA_MO[+mn-1]+(mn==='01'?`'${y.slice(2)}`:'');});
-    const prodVals=mos.map(m=>conv(raw.data[m]?.prod||null,m));
-    const rlngVals=mos.map(m=>conv(raw.data[m]?.rlng||null,m));
-    const demVals=mos.map(m=>conv(raw.data[m]?.total_demand||null,m));
+    const prodVals=mos.map(m=>conv(indNum(raw.data[m]?.prod),m));
+    const rlngVals=mos.map(m=>conv(indNum(raw.data[m]?.rlng),m));
+    const demVals=mos.map(m=>conv(indNum(raw.data[m]?.total_demand),m));
     const gapVals=mos.map(m=>{
       const d=raw.data[m]; if(!d) return null;
-      const g=(d.prod||0)+(d.rlng||0)-(d.total_demand||0);
+      const supply=indNum(d.total_supply);
+      const dem=indNum(d.total_demand);
+      const prod=indNum(d.prod), rlng=indNum(d.rlng);
+      const g=supply!=null&&dem!=null?supply-dem:(prod!=null&&rlng!=null&&dem!=null?prod+rlng-dem:null);
       return conv(g,m);
     });
 
@@ -25092,10 +25167,10 @@ function renderIndBalance(el){
         plugins:{legend:{display:false}}});
 
     // Chart 2: demand by sector with % tooltip
-    const totalByMo=mos.map(m=>raw.data[m]?.total_demand||null);
+    const totalByMo=mos.map(m=>indNum(raw.data[m]?.total_demand));
     const sectDs=IND_SECTORS.map((s,i)=>({
       label:IND_SECTOR_LBLS[s],
-      data:mos.map(m=>conv(raw.data[m]?.[s]||null,m)),
+      data:mos.map(m=>conv(indNum(raw.data[m]?.[s]),m)),
       backgroundColor:IND_SECTOR_COLS[i]+'99',borderColor:IND_SECTOR_COLS[i],borderWidth:0.5,stack:'d',
     }));
     gaMakeChart('ind-sector-chart','bar',{labels,datasets:sectDs},{
@@ -25106,11 +25181,11 @@ function renderIndBalance(el){
           label:()=>'',
           afterBody(items){
             const mo=mos[items[0].dataIndex];
-            const tot=raw.data[mo]?.total_demand;
+            const tot=indNum(raw.data[mo]?.total_demand);
             if(!tot) return[];
             const lines=IND_SECTORS.map(s=>{
-              const v=raw.data[mo]?.[s]||0;
-              return`${IND_SECTOR_LBLS[s]}: ${conv(v,mo)?.toLocaleString()||'—'} ${u}  (${(v/tot*100).toFixed(1)}%)`;
+              const v=indNum(raw.data[mo]?.[s]);
+              return`${IND_SECTOR_LBLS[s]}: ${v!=null?conv(v,mo)?.toLocaleString():'—'} ${u}${v!=null?`  (${(v/tot*100).toFixed(1)}%)`:''}`;
             });
             lines.push('');
             lines.push(`Total demand: ${conv(tot,mo)?.toLocaleString()} ${u}`);
@@ -25121,8 +25196,8 @@ function renderIndBalance(el){
     });
 
     // Chart 3: 100% stacked RLNG/Domestic
-    const rlngPct=mos.map(m=>{const d=raw.data[m];if(!d) return null;const tot=(d.prod||0)+(d.rlng||0);return tot?+((d.rlng||0)/tot*100).toFixed(1):null;});
-    const domPct=mos.map(m=>{const d=raw.data[m];if(!d) return null;const tot=(d.prod||0)+(d.rlng||0);return tot?+((d.prod||0)/tot*100).toFixed(1):null;});
+    const rlngPct=mos.map(m=>{const d=raw.data[m];if(!d) return null;const prod=indNum(d.prod),rlng=indNum(d.rlng);if(prod==null||rlng==null)return null;const tot=prod+rlng;return tot?+(rlng/tot*100).toFixed(1):null;});
+    const domPct=mos.map(m=>{const d=raw.data[m];if(!d) return null;const prod=indNum(d.prod),rlng=indNum(d.rlng);if(prod==null||rlng==null)return null;const tot=prod+rlng;return tot?+(prod/tot*100).toFixed(1):null;});
     gaMakeChart('ind-rlng-chart','bar',{labels,datasets:[
       {label:'RLNG %',data:rlngPct,backgroundColor:'rgba(29,158,117,0.7)',borderColor:'#1D9E75',borderWidth:0.5,stack:'p'},
       {label:'Domestic %',data:domPct,backgroundColor:'rgba(79,195,247,0.45)',borderColor:'#4fc3f7',borderWidth:0.5,stack:'p'},
@@ -25135,10 +25210,13 @@ function renderIndBalance(el){
     function seasVal(yr,m,s){
       const mo=`${yr}-${String(m+1).padStart(2,'0')}`;
       const d=raw.data[mo];if(!d)return null;
-      if(s==='supply')return conv((d.prod||0)+(d.rlng||0),mo);
-      if(s==='rlng')return conv(d.rlng||null,mo);
-      if(s==='prod')return conv(d.prod||null,mo);
-      return conv(d[s]||null,mo);
+      if(s==='supply'){
+        const supply=indNum(d.total_supply),prod=indNum(d.prod),rlng=indNum(d.rlng);
+        return conv(supply!=null?supply:(prod!=null&&rlng!=null?prod+rlng:null),mo);
+      }
+      if(s==='rlng')return conv(indNum(d.rlng),mo);
+      if(s==='prod')return conv(indNum(d.prod),mo);
+      return conv(indNum(d[s]),mo);
     }
     const seasDs=seasYrs.map((yr,i)=>({
       label:String(yr),
@@ -25199,9 +25277,11 @@ function renderIndPrices(el){
   })();
   const ltFloor=brentLatest!=null?+(brentLatest*0.11).toFixed(2):null;
   const ltCeil=brentLatest!=null?+(brentLatest*0.14).toFixed(2):null;
-  const apmNow=IND_APM[curMo]||Object.values(IND_APM).pop();
-  const dwNow=indDWPrice(curMo);
-  const dwPeriod=(()=>{for(const b of IND_DEEPWATER)if(curMo>=b.from&&curMo<=b.to)return`${GA_MO[+b.from.slice(5,7)-1]}-${b.from.slice(2,4)} – ${GA_MO[+b.to.slice(5,7)-1]}-${b.to.slice(2,4)}`;return'';})();
+  const apmRec=indPriceFor('apm',curMo);
+  const latestApm=indLatestPrice('apm');
+  const dwRec=indPriceFor('ceiling',curMo);
+  const latestDw=indLatestPrice('ceiling');
+  const periodLbl=r=>r?`${GA_MO[+r.valid_from.slice(5,7)-1]}-${r.valid_from.slice(2,4)}${r.valid_to!==r.valid_from?` – ${GA_MO[+r.valid_to.slice(5,7)-1]}-${r.valid_to.slice(2,4)}`:''}`:'';
 
   const box=(color,label,value,note)=>`
     <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;margin-bottom:10px">
@@ -25213,9 +25293,12 @@ function renderIndPrices(el){
       </div>
     </div>`;
 
-  el.innerHTML=`
-  <div style="max-width:860px">
-    <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--t);margin-bottom:16px">INDIA GAS SUPPLY STACK — $/MMBTU (GCV) · highest → lowest</div>
+	  el.innerHTML=`
+	  <div style="max-width:860px">
+	    <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--t);margin-bottom:16px">INDIA GAS SUPPLY STACK — $/MMBTU (GCV) · highest → lowest</div>
+	    <div style="font-size:10px;color:#546e7a;line-height:1.6;border:1px solid rgba(77,158,245,.16);background:rgba(77,158,245,.04);padding:10px 12px;margin-bottom:12px">
+	      PPAC gas prices load from <code>data/india_gas_prices.json</code>. Validity windows are enforced; expired records are not rolled forward. ${_indPpacPricesErr?`PPAC price source gap: ${_indPpacPricesErr}`:`Latest APM: ${_indPpacPrices?.latest_apm_month||'—'} · Latest ceiling: ${_indPpacPrices?.latest_ceiling_period||'—'}`}
+	    </div>
 
     ${box('#c8d6e5',
       `JKM flat Price M+1`,
@@ -25227,26 +25310,26 @@ function renderIndPrices(el){
       ltFloor&&ltCeil?`$${ltFloor} – $${ltCeil}`:'— load EOD',
       `11% × Brent (floor) to 14% × Brent (ceiling)${brentLatest?` · Brent $${brentLatest.toFixed(2)}/bbl`:''}`
     )}
-    ${box('#ffb74d',
-      `Deepwater / HPHT ceiling · ${dwPeriod}`,
-      `$${dwNow?.toFixed(2)||'—'}`,
-      `PPAC notification · GCV basis · biannual revision`
-    )}
-    ${box('#81c784',
-      `CIL coal effective · power sector`,
-      `$${IND_CIL_LOW}–${IND_CIL_HIGH}`,
-      `G10 ₹2,900/t · 4,400 kcal/kg · 35% plant efficiency · update annually from coalindia.in`
-    )}
-    ${box('#4fc3f7',
-      `APM gas · ${curMo}`,
-      `$${apmNow?.toFixed(2)||'—'}`,
-      `ONGC/OIL nomination fields · GCV basis · PPAC notification`
-    )}
+	    ${box('#ffb74d',
+	      `Deepwater / HPHT ceiling · ${dwRec?periodLbl(dwRec):curMo}`,
+	      dwRec?`$${Number(dwRec.price_usd_mmbtu).toFixed(2)}`:'—',
+	      dwRec?`PPAC notification · GCV basis · source ${dwRec.source_file||''}`:`No PPAC ceiling valid for ${curMo}${latestDw?` · latest ${periodLbl(latestDw)}`:''}`
+	    )}
+	    ${box('#81c784',
+	      `CIL coal effective · power sector`,
+	      `$${IND_CIL_LOW}–${IND_CIL_HIGH}`,
+	      IND_CIL_NOTE
+	    )}
+	    ${box('#4fc3f7',
+	      `APM gas · ${curMo}`,
+	      apmRec?`$${Number(apmRec.price_usd_mmbtu).toFixed(2)}`:'—',
+	      apmRec?`ONGC/OIL nomination fields · PPAC ${periodLbl(apmRec)} · ${apmRec.source_file||''}`:`No PPAC APM notice valid for ${curMo}${latestApm?` · latest ${periodLbl(latestApm)}`:''}`
+	    )}
 
-    <div style="font-size:10px;color:#3d5070;line-height:1.6;border-top:0.5px solid rgba(77,158,245,.1);padding-top:10px;margin-top:4px">
-      APM and deepwater: PPAC notifications (hardcoded, updated per notification). JKM DES and Brent: EOD files via Financial Trading section. CIL coal: hardcoded, update annually from coalindia.in.
-    </div>
-  </div>`;
+	    <div style="font-size:10px;color:#3d5070;line-height:1.6;border-top:0.5px solid rgba(77,158,245,.1);padding-top:10px;margin-top:4px">
+	      APM and deepwater: PPAC notifications parsed from source PDFs. JKM DES and Brent: EOD files via Financial Trading section. CIL coal: reference assumption, not a live gas price.
+	    </div>
+	  </div>`;
 }
 
 // Legacy renderBalance alias

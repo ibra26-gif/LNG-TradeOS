@@ -1,0 +1,309 @@
+{
+  "schema": "india_gas_prices_v1",
+  "country": "India",
+  "status": "parsed",
+  "cachedAt": "2026-05-05T08:49:11+00:00",
+  "latest_apm_month": "2026-05",
+  "latest_ceiling_period": "2026-04 to 2026-09",
+  "unit": "$/MMBtu",
+  "basis": "GCV",
+  "sourceUrl": "https://ppac.gov.in/natural-gas/gas-price",
+  "records": [
+    {
+      "kind": "apm",
+      "valid_from": "2024-03",
+      "valid_to": "2024-03",
+      "price_usd_mmbtu": 8.17,
+      "basis": "GCV",
+      "source_file": "1709185084_domestic-gas-price-march-2024.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1709185084_domestic-gas-price-march-2024.pdf",
+      "published_date": "2024-02-29"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2024-04",
+      "valid_to": "2024-04",
+      "price_usd_mmbtu": 8.38,
+      "basis": "GCV",
+      "source_file": "1711857270_gas-price.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1711857270_gas-price.pdf",
+      "published_date": "2024-03-31"
+    },
+    {
+      "kind": "ceiling",
+      "valid_from": "2024-04",
+      "valid_to": "2024-09",
+      "price_usd_mmbtu": 9.87,
+      "basis": "GCV",
+      "source_file": "1711944348_gas-ceiling.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1711944348_gas-ceiling.pdf",
+      "published_date": "2024-03-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2024-05",
+      "valid_to": "2024-05",
+      "price_usd_mmbtu": 8.9,
+      "basis": "GCV",
+      "source_file": "1714461103_gas-price.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1714461103_gas-price.pdf",
+      "published_date": "2024-04-30"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2024-06",
+      "valid_to": "2024-06",
+      "price_usd_mmbtu": 8.44,
+      "basis": "GCV",
+      "source_file": "1717139558_Dom_gas_price_June_2024.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1717139558_Dom_gas_price_June_2024.pdf",
+      "published_date": "2024-05-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2024-07",
+      "valid_to": "2024-07",
+      "price_usd_mmbtu": 8.24,
+      "basis": "GCV",
+      "source_file": "1719722869_Dom_Gas_Price_July_2024.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1719722869_Dom_Gas_Price_July_2024.pdf",
+      "published_date": "2024-06-30"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2024-08",
+      "valid_to": "2024-08",
+      "price_usd_mmbtu": 8.51,
+      "basis": "GCV",
+      "source_file": "1722410001_domestic-gas-price-august-2024.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1722410001_domestic-gas-price-august-2024.pdf",
+      "published_date": "2024-07-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2024-09",
+      "valid_to": "2024-09",
+      "price_usd_mmbtu": 7.85,
+      "basis": "GCV",
+      "source_file": "1725080128_Domestic_Gas_Price_Sep_2024.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1725080128_Domestic_Gas_Price_Sep_2024.pdf",
+      "published_date": "2024-08-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2024-10",
+      "valid_to": "2024-10",
+      "price_usd_mmbtu": 7.48,
+      "basis": "GCV",
+      "source_file": "1727681031_Domestic-Gas-Price-Notification-30-Sep-2024.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1727681031_Domestic-Gas-Price-Notification-30-Sep-2024.pdf",
+      "published_date": null
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2024-11",
+      "valid_to": "2024-11",
+      "price_usd_mmbtu": 7.53,
+      "basis": "GCV",
+      "source_file": "1730372127_Domestic-Gas-Price-Nov-2024.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1730372127_Domestic-Gas-Price-Nov-2024.pdf",
+      "published_date": "2024-10-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-01",
+      "valid_to": "2025-01",
+      "price_usd_mmbtu": 7.3,
+      "basis": "GCV",
+      "source_file": "1735704067_Dom_Gas_price_notification_Jan_2025.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1735704067_Dom_Gas_price_notification_Jan_2025.pdf",
+      "published_date": "2024-12-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-02",
+      "valid_to": "2028-02",
+      "price_usd_mmbtu": 7.94,
+      "basis": "GCV",
+      "source_file": "1738321821_Domestic-Natural-Gas-Price-Notification-Feb-2025.pdf",
+      "source_url": null,
+      "published_date": "2025-01-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-02",
+      "valid_to": "2025-02",
+      "price_usd_mmbtu": 7.94,
+      "basis": "GCV",
+      "source_file": "1738321821_Domestic-Natural-Gas-Price-Notification-Feb-2025.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1738321821_Domestic-Natural-Gas-Price-Notification-Feb-2025.pdf",
+      "published_date": "2025-01-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-03",
+      "valid_to": "2025-03",
+      "price_usd_mmbtu": 7.8,
+      "basis": "GCV",
+      "source_file": "1740742690_Domestic_Natural_Gas_price_March_2025.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1740742690_Domestic_Natural_Gas_price_March_2025.pdf",
+      "published_date": "2025-02-28"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-04",
+      "valid_to": "2025-04",
+      "price_usd_mmbtu": 7.26,
+      "basis": "GCV",
+      "source_file": "1743422614_Domestic_Gas_Price_For_April_2025.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1743422614_Domestic_Gas_Price_For_April_2025.pdf",
+      "published_date": "2025-03-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-05",
+      "valid_to": "2025-05",
+      "price_usd_mmbtu": 6.93,
+      "basis": "GCV",
+      "source_file": "1746014383_Domestic_Natural_Gas_Price_May_2025.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1746014383_Domestic_Natural_Gas_Price_May_2025.pdf",
+      "published_date": "2025-04-30"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-06",
+      "valid_to": "2025-06",
+      "price_usd_mmbtu": 6.41,
+      "basis": "GCV",
+      "source_file": "1748691541_gas-price-june.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1748691541_gas-price-june.pdf",
+      "published_date": "2025-05-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-07",
+      "valid_to": "2025-07",
+      "price_usd_mmbtu": 6.89,
+      "basis": "GCV",
+      "source_file": "1751283214_Domestic_gas_price_July_2025.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1751283214_Domestic_gas_price_July_2025.pdf",
+      "published_date": "2025-06-30"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-08",
+      "valid_to": "2025-08",
+      "price_usd_mmbtu": 7.02,
+      "basis": "GCV",
+      "source_file": "1753964695_Dom_Natural_Gas_Price_for_Aug_2025.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1753964695_Dom_Natural_Gas_Price_for_Aug_2025.pdf",
+      "published_date": "2025-07-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-09",
+      "valid_to": "2025-09",
+      "price_usd_mmbtu": 6.99,
+      "basis": "GCV",
+      "source_file": "1756642584_Domestic_Natural_Gas_price_Sep_2025-2.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1756642584_Domestic_Natural_Gas_price_Sep_2025-2.pdf",
+      "published_date": "2025-08-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-10",
+      "valid_to": "2025-10",
+      "price_usd_mmbtu": 6.96,
+      "basis": "GCV",
+      "source_file": "1759234037_Domestic_gas_price_for_Oct_2025.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1759234037_Domestic_gas_price_for_Oct_2025.pdf",
+      "published_date": "2025-09-30"
+    },
+    {
+      "kind": "ceiling",
+      "valid_from": "2025-10",
+      "valid_to": "2026-03",
+      "price_usd_mmbtu": 9.72,
+      "basis": "GCV",
+      "source_file": "1759234342_Gas_Price_Ceiling_for_Octobe_2025_Marc_2026.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1759234342_Gas_Price_Ceiling_for_Octobe_2025_Marc_2026.pdf",
+      "published_date": "2025-09-30"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-11",
+      "valid_to": "2025-11",
+      "price_usd_mmbtu": 6.55,
+      "basis": "GCV",
+      "source_file": "1761912924_Domestic_gas_price_for_Nov_2025.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1761912924_Domestic_gas_price_for_Nov_2025.pdf",
+      "published_date": "2025-10-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2025-12",
+      "valid_to": "2025-12",
+      "price_usd_mmbtu": 6.48,
+      "basis": "GCV",
+      "source_file": "1764501108_Dom_Gas_Price_for_Dec_2025.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1764501108_Dom_Gas_Price_for_Dec_2025.pdf",
+      "published_date": "2025-11-30"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2026-01",
+      "valid_to": "2026-01",
+      "price_usd_mmbtu": 6.28,
+      "basis": "GCV",
+      "source_file": "1767181562_Dom%20Gas%20Price%20for%20Jan-2026.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1767181562_Dom%20Gas%20Price%20for%20Jan-2026.pdf",
+      "published_date": null
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2026-02",
+      "valid_to": "2026-02",
+      "price_usd_mmbtu": 6.21,
+      "basis": "GCV",
+      "source_file": "1769861782_Dom_Gas_Price_for_Feb_2026.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=gasprice/1769861782_Dom_Gas_Price_for_Feb_2026.pdf",
+      "published_date": "2026-01-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2026-04",
+      "valid_to": "2026-04",
+      "price_usd_mmbtu": 10.76,
+      "basis": "GCV",
+      "source_file": "1774957706_Dom_gas_price_for_April_2026.pdf",
+      "source_url": null,
+      "published_date": null
+    },
+    {
+      "kind": "ceiling",
+      "valid_from": "2026-04",
+      "valid_to": "2026-09",
+      "price_usd_mmbtu": 8.9,
+      "basis": "GCV",
+      "source_file": "1774973522_Gas_Price%20_Ceiling_Apr_Sep_2026.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=menu/1774973522_Gas_Price%20_Ceiling_Apr_Sep_2026.pdf",
+      "published_date": "2026-03-31"
+    },
+    {
+      "kind": "apm",
+      "valid_from": "2026-05",
+      "valid_to": "2026-05",
+      "price_usd_mmbtu": 7.0,
+      "basis": "GCV",
+      "source_file": "1777549050_Dom_Gas_Price_May_2026.pdf",
+      "source_url": "https://ppac.gov.in/download.php?file=menu/1777549050_Dom_Gas_Price_May_2026.pdf",
+      "published_date": "2026-04-30"
+    }
+  ],
+  "sourceGaps": [],
+  "notes": [
+    "Domestic/APM gas price and gas price ceiling are valid only inside the PPAC notification period.",
+    "Expired price records are not rolled forward as current values.",
+    "Scanned PPAC PDFs require OCR when text extraction is blank."
+  ]
+}
