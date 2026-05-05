@@ -19,5 +19,10 @@ assert(scraper.includes('"ZTP": "Belgian ZTP Natural Gas Futures"'), 'EEX refres
 assert(scraper.includes('load_existing()') && scraper.includes('merge_rows(data, scraped)'), 'EEX refresh must merge into existing workbook instead of replacing history');
 assert(!scraper.includes('playwright install') && !workflow.includes('playwright install'), 'EEX refresh should not depend on brittle browser automation');
 assert(workflow.includes('scripts/fetch_eex_gas_curves.py') && workflow.includes('data/EEX_Gas_Curves.xlsx'), 'EEX workflow must refresh and commit the workbook');
+assert(
+  workflow.includes("          LATEST=$(python3 - <<'PY'\n          from scripts.fetch_eex_gas_curves import load_existing\n          d=load_existing()\n") &&
+    workflow.includes('\n          PY\n          )\n'),
+  'EEX workflow inline Python heredoc must stay inside the YAML run block'
+);
 
 console.log('EEX gas curves regression ok');

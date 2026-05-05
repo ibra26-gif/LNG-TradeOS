@@ -49,12 +49,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/EEX_Gas_Curves.xlsx
           LATEST=$(python3 - <<'PY'
-from scripts.fetch_eex_gas_curves import load_existing
-d=load_existing()
-dates=sorted({ds for hub in d.values() for ds in hub})
-print(dates[-1] if dates else "source-gap")
-PY
-)
+          from scripts.fetch_eex_gas_curves import load_existing
+          d=load_existing()
+          dates=sorted({ds for hub in d.values() for ds in hub})
+          print(dates[-1] if dates else "source-gap")
+          PY
+          )
           git commit -m "data: refresh eex gas curves ($LATEST)"
           for attempt in 1 2 3 4 5; do
             if git pull --rebase origin main && git push; then
