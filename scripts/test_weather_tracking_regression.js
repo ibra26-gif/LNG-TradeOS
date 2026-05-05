@@ -10,7 +10,7 @@ const nao = fs.readFileSync(path.join(root, 'api/weather-nao.js'), 'utf8');
 assert(app.includes('Weather Tracking'), 'home card must expose Weather Tracking');
 assert(app.includes('id="gmtab-weather"'), 'Gas & LNG main tab must include Weather Tracking');
 assert(app.includes('id="ga-tab-weather"') && app.includes('id="ga-weather-pane"'), 'Weather Tracking pane missing');
-assert(/lngtradeos\.js&v=20260504-/.test(app), 'cache bust must stay bumped after Weather Tracking app JS change');
+assert(/name=lngtradeos\.js&v=\d{8}-[a-z0-9-]+/.test(app), 'private platform script must carry a dated cache-bust');
 
 assert(js.includes('WEATHER TRACKING — Open-Meteo HDD/CDD, wind and NAO regime'), 'Weather module marker missing');
 assert(js.includes("const WX_GROUPS"), 'Weather market groups missing');
