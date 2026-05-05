@@ -1,20 +1,20 @@
 {
   "gasday": "2026-05-05",
   "by_terminal": {
-    "Sum Exit Nominations NCS": 284.2,
-    "Fields Delivering into SEGAL": 12.6,
+    "Sum Exit Nominations NCS": 282.4,
+    "Fields Delivering into SEGAL": 12.1,
     "Other Exit Nominations": 0.5,
     "St.Fergus": 0.0,
-    "Dornum": 55.5,
-    "Emden": 78.5,
-    "Nybro": 17.8,
-    "Dunkerque": 47.4,
-    "Zeebrugge": 44.0,
-    "Easington": 27.9
+    "Dornum": 54.9,
+    "Emden": 78.6,
+    "Nybro": 18.4,
+    "Dunkerque": 47.1,
+    "Zeebrugge": 43.4,
+    "Easington": 27.4
   },
-  "today_total_mcm": 284.2,
+  "today_total_mcm": 282.4,
   "_meta": {
-    "updated": "2026-05-05T03:01:55Z",
+    "updated": "2026-05-05T05:56:15Z",
     "source": "gassco homepage scrape"
   }
 }
