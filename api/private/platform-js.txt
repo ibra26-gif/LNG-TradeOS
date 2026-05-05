@@ -14852,6 +14852,24 @@ function dash2RenderCards(){
   dash2RenderForwardCurveTables();
 }
 
+function finForcedLatestTickSpec(labels,maxTicks=12){
+  const n=Array.isArray(labels)?labels.length:0;
+  const step=Math.max(1,Math.ceil(n/Math.max(1,maxTicks)));
+  const show=idx=>idx===0||idx===n-1||idx%step===0;
+  return {
+    show,
+    ticks:{...CD.scales.x.ticks,autoSkip:false,maxTicksLimit:Math.max(n,1),callback:function(value,index){
+      const idx=Number.isInteger(value)?value:index;
+      return show(idx)?(labels[idx]||this.getLabelForValue?.(value)||''):'';
+    }},
+    grid:{...CD.scales.x.grid,color:ctx=>show(ctx.index)?'#0f1824':'rgba(15,24,36,0)'}
+  };
+}
+
+function finLatestPointRadius(ctx,lastIndex,size=3.6){
+  return ctx.dataIndex===lastIndex&&ctx.raw!=null?size:0;
+}
+
 function buildGasSnapshot(){
   const canvas=$id('gas-snapshot-chart'); if(!canvas||!sDates.length) return;
   // Filter from Jan 1 2026
@@ -14861,12 +14879,8 @@ function buildGasSnapshot(){
   const lbls=src.map(ds=>aD[ds].date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}));
   const latestLoaded=sDates[sDates.length-1];
   const latestPlotted=src[src.length-1];
+  const latestTick=finForcedLatestTickSpec(lbls,12);
   const gasStatus=$id('gas-snapshot-status');
-  if(gasStatus){
-    gasStatus.textContent=`LNG EOD ${src.length} dates · last ${fmtD(latestPlotted)}${latestLoaded!==latestPlotted?` · cache ${fmtD(latestLoaded)}`:''}`;
-    gasStatus.style.color='#6f86ad';
-    gasStatus.title='Source: LNG EOD curve cache. Last point is marked on the chart because dense ticks may skip the final date label.';
-  }
 
   // Build diagonal hatch pattern for oil range band
   function oilHatch(){
@@ -14889,6 +14903,16 @@ function buildGasSnapshot(){
       fill:{target:'+1',above:hatch,below:hatch}},   // ← fill toward 11% Oil
     {label:'11% Oil',color:'#ce93d8',fn:row=>row.Brent!=null?+(row.Brent*0.11).toFixed(4):null}
   ];
+  const latestEnt=aD[latestPlotted];
+  const latestM1=latestEnt?rollPkFromRows(latestEnt.rows,latestEnt.date,1):null;
+  const latestRow=latestEnt?.rows?.find(r=>r.pk===latestM1);
+  const latestGaps=latestRow?serDefs.filter(s=>s.fn(latestRow)==null).map(s=>s.label):serDefs.map(s=>s.label);
+  if(gasStatus){
+    const gapTxt=latestGaps.length?` · latest gaps: ${latestGaps.join(', ')}`:'';
+    gasStatus.textContent=`LNG EOD ${src.length} dates · last ${fmtD(latestPlotted)} · M+1 ${pkL(latestM1)}${latestLoaded!==latestPlotted?` · cache ${fmtD(latestLoaded)}`:''}${gapTxt}`;
+    gasStatus.style.color=latestLoaded!==latestPlotted||latestGaps.length?'#fbbf24':'#6f86ad';
+    gasStatus.title='Source: LNG EOD curve cache. The final x-axis tick is always visible. Missing latest source values are disclosed instead of filled.';
+  }
   const datasets=serDefs.map(s=>({
     label:s.label,
     data:src.map(ds=>{const{date,rows}=aD[ds];const m1=rollPkFromRows(rows,date,1);const row=rows.find(r=>r.pk===m1);return row?s.fn(row):null;}),
@@ -14896,8 +14920,9 @@ function buildGasSnapshot(){
     backgroundColor:s.fill?undefined:'transparent',
     fill:s.fill||false,
     borderWidth:1.8,
-    pointRadius:ctx=>ctx.dataIndex===src.length-1?2.4:0,
-    pointHoverRadius:4,
+    pointRadius:ctx=>finLatestPointRadius(ctx,src.length-1,3.6),
+    pointHoverRadius:5,
+    pointHitRadius:8,
     pointBackgroundColor:s.color,
     pointBorderColor:'#0b1220',
     pointBorderWidth:1,
@@ -14905,7 +14930,7 @@ function buildGasSnapshot(){
   }));
   if(gasChart)gasChart.destroy();
   gasChart=new Chart(canvas,{type:'line',data:{labels:lbls,datasets},options:{...CD,scales:{
-    x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:20}},
+    x:{...CD.scales.x,ticks:latestTick.ticks,grid:latestTick.grid},
     y:{title:{display:true,text:'$/MMBtu',color:'#3d5070',font:{size:9}},ticks:{color:'#3d5070',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#0f1824'}}
   }}});
 }

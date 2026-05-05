@@ -21,8 +21,13 @@ assert(
 
 assert(
   js.includes('LNG EOD ${src.length} dates · last ${fmtD(latestPlotted)}') &&
-    js.includes('pointRadius:ctx=>ctx.dataIndex===src.length-1?2.4:0'),
-  'global gas snapshot must label and mark the latest plotted LNG EOD point'
+    js.includes('function finForcedLatestTickSpec(labels,maxTicks=12)') &&
+    js.includes('idx===0||idx===n-1||idx%step===0') &&
+    js.includes('autoSkip:false,maxTicksLimit:Math.max(n,1)') &&
+    js.includes('function finLatestPointRadius(ctx,lastIndex,size=3.6)') &&
+    js.includes('latest gaps: ${latestGaps.join') &&
+    js.includes('pointRadius:ctx=>finLatestPointRadius(ctx,src.length-1,3.6)'),
+  'global gas snapshot must label, tick, and mark the latest plotted LNG EOD point'
 );
 
 assert(
