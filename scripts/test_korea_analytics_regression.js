@@ -5,6 +5,7 @@ const root = path.resolve(__dirname, '..');
 const js = fs.readFileSync(path.join(root, 'api/private/platform-js.txt'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'api/private/platform-app.txt'), 'utf8');
 const scraper = fs.readFileSync(path.join(root, 'scripts/fetch_korea.py'), 'utf8');
+const workflow = fs.readFileSync(path.join(root, '.github/workflows/korea-daily.yml'), 'utf8');
 const korea = JSON.parse(fs.readFileSync(path.join(root, 'data/korea.json'), 'utf8'));
 
 function assert(cond, msg) {
@@ -66,6 +67,13 @@ assert(
     scraper.includes("out['kogasTariff'] = kt") &&
     scraper.includes('kogas_current_power_tariff.json'),
   'Korea scraper must fetch/cache the official KOGAS current power tariff'
+);
+
+assert(
+  workflow.includes('cron: "17 * * * *"') &&
+    workflow.includes('cancel-in-progress: false') &&
+    workflow.includes('not acquired by Runner'),
+  'Korea hourly workflow must stay off :00 and must not cancel in-progress scrapes'
 );
 
 assert(

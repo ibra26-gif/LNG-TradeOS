@@ -13,7 +13,9 @@ name: Korea hourly data scrape
 
 on:
   schedule:
-    - cron: "0 * * * *"   # every hour at :00
+    # Avoid :00, where GitHub-hosted runners are often saturated and jobs can
+    # be cancelled before any step starts ("not acquired by Runner").
+    - cron: "17 * * * *"  # hourly at :17
   workflow_dispatch: {}
 
 permissions:
