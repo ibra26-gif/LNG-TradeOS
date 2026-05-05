@@ -9703,8 +9703,76 @@ function cpSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 function fv(v,d=3){return v!=null&&!isNaN(v)?v.toFixed(d):'-';}
 function fvi(v,d=3){return v!=null&&!isNaN(v)?v.toFixed(d):'0.000';}
 function posCol(v){return v>0.05?'#4caf50':v<-0.05?'#ef4444':'#c8d6e5';}
+function cpMonthPkFromLabel(lbl){
+  const m=String(lbl||'').match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{2})$/);
+  if(!m)return null;
+  const mm={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'}[m[1]];
+  return '20'+m[2]+'-'+mm;
+}
+function cpAddMonthsToPk(pk,offset){
+  const m=String(pk||'').match(/^(\d{4})-(\d{2})$/);
+  if(!m)return null;
+  const d=new Date(+m[1],+m[2]-1+(offset||0),1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function cpHorizonPk(i){
+  const first=cpMonthPkFromLabel(ML[0]);
+  return first?cpAddMonthsToPk(first,i):cpMonthPkFromLabel(ML[i]);
+}
+function cpLatestEodKey(){
+  return (typeof sDates!=='undefined'&&Array.isArray(sDates)&&sDates.length)?sDates[sDates.length-1]:null;
+}
+function cpBuildFpFromEod(ds){
+  if(!ds||typeof aD==='undefined'||!aD?.[ds]?.rows)return null;
+  const entry=aD[ds],rows=entry.rows||[];
+  const out={HH:Array(24).fill(null),TTF:Array(24).fill(null),JKM:Array(24).fill(null),SP_JT:Array(24).fill(null)};
+  let count=0;
+  ML.slice(0,24).forEach((lbl,i)=>{
+    const pk=cpHorizonPk(i)||cpMonthPkFromLabel(lbl)||(entry.date?rPK(entry.date,i+1):null);
+    const row=rows.find(r=>r.pk===pk);
+    if(!row)return;
+    ['HH','TTF','JKM'].forEach(k=>{
+      const v=row[k];
+      if(v!=null&&v!==''&&isFinite(+v)){out[k][i]=+v;count++;}
+    });
+    const sp=row.SP_JT!=null&&row.SP_JT!==''&&isFinite(+row.SP_JT)
+      ?+row.SP_JT
+      :(out.JKM[i]!=null&&out.TTF[i]!=null?+(out.JKM[i]-out.TTF[i]).toFixed(4):null);
+    if(sp!=null){out.SP_JT[i]=sp;count++;}
+  });
+  const eodDate=entry.date instanceof Date?entry.date:new Date(entry.date||ds+'T12:00:00');
+  return {
+    fp:out,
+    count,
+    ds,
+    eod_date:eodDate&&!isNaN(eodDate.getTime())?eodDate.toISOString().slice(0,10):ds,
+  };
+}
+function cpPriceMeta(){
+  return cpGet('cp_fp_meta',null)||{};
+}
+function cpFpMatches(a,b){
+  if(!a||!b)return false;
+  return ['HH','TTF','JKM','SP_JT'].every(k=>Array.isArray(a[k])&&Array.isArray(b[k])&&b[k].every((v,i)=>{
+    const av=a[k][i];
+    if(v==null)return av==null;
+    return av!=null&&isFinite(+av)&&Math.abs(+av-v)<1e-6;
+  }));
+}
+function cpAutoSyncPricesFromLatestEod(force=false){
+  const ds=cpLatestEodKey();
+  const built=cpBuildFpFromEod(ds);
+  if(!built||!built.count)return {updated:false,reason:'source-gap'};
+  const meta=cpPriceMeta();
+  if(!force&&meta.eod_date===built.eod_date&&cpFpMatches(CP.fp,built.fp))return {updated:false,eod_date:built.eod_date,count:built.count};
+  CP.fp=built.fp;
+  cpSet('cp_fp',built.fp);
+  cpSet('cp_fp_meta',{eod_date:built.eod_date,source_key:built.ds,syncedAt:new Date().toISOString(),source:'Financial Trading EOD',count:built.count});
+  return {updated:true,eod_date:built.eod_date,count:built.count};
+}
 
 function cpDerived(){
+  cpAutoSyncPricesFromLatestEod(false);
   const{fp,phys}=CP;
   const sl=CP.hhSlope||1.15;
   // ── Bulletproof freight: per-element fallback to seed, every render ─────────
@@ -10073,6 +10141,7 @@ function initCargo(){
   CP.fobHistView      = cpGet('cp_fob_hist_view',       'curve');
   CP.fobHistWindow    = cpGet('cp_fob_hist_window',     'ALL');
   CP.usgcArbObsDate   = cpGet('cp_usgc_arb_obs_date',   'latest');
+  CP.usgcArbObsDates  = cpGet('cp_usgc_arb_obs_dates',  null);
   // Physical differential history — same observation-date/tenor pattern as FOB and freight.
   CP.physHistView     = cpGet('cp_phys_hist_view',      'curve');
   CP.physHistDest     = cpGet('cp_phys_hist_dest',      'nwe');
@@ -10084,6 +10153,7 @@ function initCargo(){
 }
 function renderCargo(){
   const wrap=document.getElementById('cargo-wrap');if(!wrap)return;
+  cpAutoSyncPricesFromLatestEod(false);
   // Per-section seed status. Green ✓ = cache matches seed (click to confirm).
   // Amber ⚠ N = seed has N cell updates pending (click to apply).
   const prD=cpPricesSeedDiff(),frD=cpFreightSeedDiff(),phD=cpPhysSeedDiff();
@@ -10138,16 +10208,10 @@ function renderCargoTab(){const b=document.getElementById('cp-body');if(!b)retur
 // ── Sync functions ─────────────────────────────────────────────────────────
 function cpSyncPrices(){
   if(!sDates||!sDates.length){alert('No price data loaded. Load via Financial Trading first.');return;}
-  const latest=sDates[sDates.length-1];const row=aD[latest];if(!row){alert('No data for '+latest);return;}
-  const mapIdx=pk=>{const found=ML.findIndex(m=>{const ms={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};const p=m.split('-');return '20'+p[1]+'-'+ms[p[0]]===pk;});return found;};
-  const keys=['HH','TTF','JKM','SP_JT'];
-  const newFp={HH:[...CP.fp.HH],TTF:[...CP.fp.TTF],JKM:[...CP.fp.JKM],SP_JT:[...(CP.fp.SP_JT||new Array(24).fill(null))]};
-  let count=0;
-  if(aD&&sDates.length){
-    sDates.forEach(date=>{const r=aD[date];if(!r||!r.rows)return;r.rows.forEach(row=>{const idx=mapIdx(row.pk);if(idx<0||idx>=24)return;keys.forEach(k=>{if(row[k]!=null){newFp[k][idx]=row[k];count++;}});});});
-  }
-  CP.fp=newFp;cpSet('cp_fp',newFp);renderCargoTab();
-  alert('✓ Prices synced from Financial Trading ('+count+' data points updated).');
+  const res=cpAutoSyncPricesFromLatestEod(true);
+  if(!res.updated&&res.reason==='source-gap'){alert('No usable latest EOD curve rows found. Financial Trading cache may be empty or malformed.');return;}
+  renderCargoTab();
+  alert('✓ Prices synced from Financial Trading EOD '+(res.eod_date||'latest')+' ('+(res.count||0)+' sourced data points). Missing tenors stay blank.');
 }
 function cpSyncFreight(){
   if(!F.validatedMatrix){alert('No validated freight matrix. Go to Freight Calculator → ② Update The Curves → MATRIX → Validate & Freeze first.');return;}
@@ -12667,7 +12731,7 @@ function _fobRenderHistoricalCharts(d){
 // Two graphs, one per route (COGH vs Panama Canal):
 //   X = forward delivery months (M+1 → M+24)
 //   Y = NE-Asia FOB-netback minus NW-Europe FOB-netback ($/MMBtu)
-//   Dropdown = selected FOB Snapshot or today's live curve
+//   Observation chips = saved FOB Snapshots and/or today's live curve
 // Above 0 → arb pointing to Asia · Below 0 → arb pointing to Europe.
 // ════════════════════════════════════════════════════════════════════════════
 const PC_NM_RATIO = 9264 / 15379;  // matches cpDerived sabine_tokyo_pc derivation
@@ -12712,12 +12776,48 @@ function _usgcArbComputeFromInputs(gas, freight, phys, liqFee){
   return { arbCogh, arbPc };
 }
 
+function _usgcSnapshotPks(s){
+  if(Array.isArray(s?.pks)&&s.pks.length)return s.pks.slice();
+  const labels=Array.isArray(s?.months)?s.months:[];
+  return labels.map(cpMonthPkFromLabel);
+}
+function _usgcAlignSnapshotArray(s, arr, n=25){
+  const pks=_usgcSnapshotPks(s);
+  const out=[];
+  for(let i=0;i<n;i++){
+    const pk=cpHorizonPk(i);
+    const idx=pk?pks.indexOf(pk):-1;
+    const v=idx>=0?arr?.[idx]:null;
+    out.push(v!=null&&!isNaN(v)?+v:null);
+  }
+  return out;
+}
+function _usgcAlignedSnapshotInputs(s){
+  return {
+    gas:{
+      HH:_usgcAlignSnapshotArray(s,s?.gas?.HH),
+      TTF:_usgcAlignSnapshotArray(s,s?.gas?.TTF),
+      JKM:_usgcAlignSnapshotArray(s,s?.gas?.JKM),
+    },
+    freight:{
+      sabine_rotterdam:_usgcAlignSnapshotArray(s,s?.freight?.sabine_rotterdam),
+      sabine_tokyo:_usgcAlignSnapshotArray(s,s?.freight?.sabine_tokyo),
+    },
+    phys:{
+      nwe:_usgcAlignSnapshotArray(s,s?.phys?.nwe),
+      jktc:_usgcAlignSnapshotArray(s,s?.phys?.jktc),
+    },
+    liqFee:_usgcAlignSnapshotArray(s,s?.liqFee),
+  };
+}
+
 function _usgcArbCurves(){
   const out = { snapshotCurves: [], today: null };
   // Snapshot lines
   const snaps = (typeof _fobLoadSnapshots === 'function' ? _fobLoadSnapshots() : []);
   for (const s of snaps) {
-    const c = _usgcArbComputeFromInputs(s.gas, s.freight, s.phys, s.liqFee);
+    const aligned=_usgcAlignedSnapshotInputs(s);
+    const c = _usgcArbComputeFromInputs(aligned.gas, aligned.freight, aligned.phys, aligned.liqFee);
     out.snapshotCurves.push({
       ts: s.ts, eod_date: s.eod_date,
       label: `${s.eod_date}`,
@@ -12725,50 +12825,90 @@ function _usgcArbCurves(){
     });
   }
   // Today's live curve (from current EOD + CP.freight + CP.phys + CP.liqFee)
-  if (sDates && sDates.length) {
-    const eodDs = sDates[sDates.length - 1];
-    const eodDate = aD[eodDs].date;
-    const eodIso  = eodDate.toISOString().slice(0,10);
-    const tenors  = 24;
-    const synGas = { HH:[], JKM:[], TTF:[] };
-    for (let n = 1; n <= tenors; n++) {
-      const pk = rPK(eodDate, n);
-      const row = (aD[eodDs].rows || []).find(r => r.pk === pk);
-      ['HH','JKM','TTF'].forEach(k => synGas[k].push(row?.[k] ?? null));
-    }
+  const latestBuilt = cpBuildFpFromEod(cpLatestEodKey());
+  if (latestBuilt?.count) {
+    const synGas = { HH:latestBuilt.fp.HH, JKM:latestBuilt.fp.JKM, TTF:latestBuilt.fp.TTF };
     const c = _usgcArbComputeFromInputs(synGas, CP.freight, CP.phys,
                                         CP.liqFee || []);
-    out.today = { eod_date: eodIso, label: `Latest (${eodIso})`, ...c };
+    out.today = { eod_date: latestBuilt.eod_date, label: `Latest (${latestBuilt.eod_date})`, ...c };
   }
   return out;
 }
 
-function _usgcArbSelectedCurve(data){
-  const curves = [
-    ...(data.today ? [{...data.today, obsKey:'latest'}] : []),
-    ...data.snapshotCurves.slice().reverse().map(s => ({...s, obsKey:s.eod_date || s.ts || ''})),
-  ].filter(c => c && (c.arbCogh || c.arbPc));
-  const latestKey = curves[0]?.obsKey || 'latest';
-  if (!CP.usgcArbObsDate || !curves.some(c => c.obsKey === CP.usgcArbObsDate)) {
-    CP.usgcArbObsDate = latestKey;
-    try { cpSet('cp_usgc_arb_obs_date', CP.usgcArbObsDate); } catch(e) {}
-  }
-  return curves.find(c => c.obsKey === CP.usgcArbObsDate) || curves[0] || null;
+function _usgcArbOptions(data){
+  return [
+    ...(data.today ? [{key:'latest', label:data.today.label || `Latest (${data.today.eod_date || 'live'})`, curve:{...data.today, obsKey:'latest'}}] : []),
+    ...data.snapshotCurves.slice().reverse().map(s => {
+      const key=s.eod_date || s.ts || '';
+      return {key, label:s.eod_date ? `Snapshot (${s.eod_date})` : 'Snapshot', curve:{...s, obsKey:key}};
+    }),
+  ].filter(o => o.key && o.curve && (o.curve.arbCogh || o.curve.arbPc));
 }
+function _usgcArbSelectedKeys(data){
+  const options=_usgcArbOptions(data);
+  if(!options.length)return[];
+  const valid=new Set(options.map(o=>o.key));
+  let keys=Array.isArray(CP.usgcArbObsDates)?CP.usgcArbObsDates.slice():[];
+  if(!keys.length&&CP.usgcArbObsDate)keys=[CP.usgcArbObsDate];
+  keys=keys.filter(k=>valid.has(k));
+  if(!keys.length)keys=[options[0].key];
+  CP.usgcArbObsDates=keys;
+  CP.usgcArbObsDate=keys[0];
+  try{cpSet('cp_usgc_arb_obs_dates',keys);cpSet('cp_usgc_arb_obs_date',keys[0]);}catch(e){}
+  return keys;
+}
+function _usgcArbSelectedCurves(data){
+  const options=_usgcArbOptions(data);
+  const keys=_usgcArbSelectedKeys(data);
+  return keys.map(k=>options.find(o=>o.key===k)?.curve).filter(Boolean);
+}
+function _usgcArbSetObsKeys(keys){
+  const data=_usgcArbCurves();
+  const valid=new Set(_usgcArbOptions(data).map(o=>o.key));
+  const clean=(keys||[]).filter(k=>valid.has(k));
+  const fallback=[...valid][0];
+  CP.usgcArbObsDates=clean.length?clean:(fallback?[fallback]:[]);
+  _usgcArbSelectedKeys(data);
+  _usgcArbRenderCharts();
+}
+function _usgcArbToggleObs(key,on){
+  const data=_usgcArbCurves();
+  const keys=_usgcArbSelectedKeys(data).filter(k=>k!==key);
+  if(on)keys.push(key);
+  _usgcArbSetObsKeys(keys);
+}
+function _usgcArbSetObsPreset(mode){
+  const data=_usgcArbCurves();
+  const opts=_usgcArbOptions(data);
+  if(!opts.length)return;
+  if(mode==='latest')_usgcArbSetObsKeys([opts[0].key]);
+  else if(mode==='last3')_usgcArbSetObsKeys(opts.slice(0,3).map(o=>o.key));
+  else if(mode==='last5')_usgcArbSetObsKeys(opts.slice(0,5).map(o=>o.key));
+  else if(mode==='all')_usgcArbSetObsKeys(opts.map(o=>o.key));
+}
+window._usgcArbToggleObs=_usgcArbToggleObs;
+window._usgcArbSetObsPreset=_usgcArbSetObsPreset;
 
 function _usgcArbObsSelector(data){
-  const options = [
-    ...(data.today ? [{key:'latest', label:data.today.label || `Latest (${data.today.eod_date || 'live'})`}] : []),
-    ...data.snapshotCurves.slice().reverse().map(s => ({key:s.eod_date || s.ts || '', label:s.eod_date ? `Snapshot (${s.eod_date})` : 'Snapshot'})),
-  ].filter(o => o.key);
-  if (!options.length) return '';
-  const selected = options.some(o => o.key === CP.usgcArbObsDate) ? CP.usgcArbObsDate : options[0].key;
+  const options=_usgcArbOptions(data);
+  if(!options.length)return'';
+  const selected=new Set(_usgcArbSelectedKeys(data));
   return `
-    <div style="padding:0 14px 10px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-      <div style="color:#8aa0bd;font-size:9px;letter-spacing:.08em">OBSERVATION DATE</div>
-      <select class="f-sel" style="min-width:230px" onchange="CP.usgcArbObsDate=this.value;cpSet('cp_usgc_arb_obs_date',CP.usgcArbObsDate);_usgcArbRenderCharts()">
-        ${options.map(o=>`<option value="${o.key}" ${o.key===selected?'selected':''}>${o.label}</option>`).join('')}
-      </select>
+    <div style="padding:0 14px 10px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div style="color:#8aa0bd;font-size:9px;letter-spacing:.08em">OBSERVATION DATES</div>
+        <button class="f-btn sm" onclick="_usgcArbSetObsPreset('latest')">Latest</button>
+        <button class="f-btn sm" onclick="_usgcArbSetObsPreset('last3')">Last 3</button>
+        <button class="f-btn sm" onclick="_usgcArbSetObsPreset('last5')">Last 5</button>
+        <button class="f-btn sm" onclick="_usgcArbSetObsPreset('all')">All</button>
+        <span style="color:#546e7a;font-size:9px">${selected.size} selected · overlayed on both graphs</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;max-height:92px;overflow:auto;border:1px solid rgba(77,158,245,.16);background:#07101e;padding:7px 8px">
+        ${options.map(o=>`<label style="display:flex;align-items:center;gap:5px;color:${selected.has(o.key)?'#c8d6e5':'#6f86a5'};font-size:9px;border:1px solid ${selected.has(o.key)?'rgba(77,158,245,.45)':'rgba(77,158,245,.12)'};padding:4px 7px;background:${selected.has(o.key)?'rgba(77,158,245,.08)':'transparent'};cursor:pointer">
+          <input type="checkbox" ${selected.has(o.key)?'checked':''} onchange="_usgcArbToggleObs('${o.key}',this.checked)" style="accent-color:#4d9ef5;width:12px;height:12px">
+          ${o.label}
+        </label>`).join('')}
+      </div>
     </div>
   `;
 }
@@ -12823,9 +12963,10 @@ function _usgcIndicatorsTable(d){
   const spreadCogh = months.map((_,i)=>sub(jkmCogh[i], ttf[i]));
   const diffPc = months.map((_,i)=>sub(profPc[i], profEurope[i]));
   const diffCogh = months.map((_,i)=>sub(profCogh[i], profEurope[i]));
-  const eod = (typeof sDates !== 'undefined' && sDates.length && typeof aD !== 'undefined' && aD?.[sDates[sDates.length - 1]]?.date)
+  const priceMeta=cpPriceMeta();
+  const eod = priceMeta.eod_date || ((typeof sDates !== 'undefined' && sDates.length && typeof aD !== 'undefined' && aD?.[sDates[sDates.length - 1]]?.date)
     ? aD[sDates[sDates.length - 1]].date.toISOString().slice(0,10)
-    : '—';
+    : '—');
   let physTs = '—';
   try {
     const rawTs = localStorage.getItem('phys_last_ts');
@@ -12912,7 +13053,7 @@ function _usgcIndicatorsTable(d){
           </tbody>
         </table>
       </div>
-      <div class="usgc-ind-note">Refreshes when you use SYNC PRICES, SYNC FREIGHT, or edit PHYS DIFFERENTIALS. Uses financial curves, model freight, liquefaction fee, and the PHYS DIFFERENTIALS tab. Missing source inputs stay blank as —.</div>
+      <div class="usgc-ind-note">Not hardcoded: rows are calculated from latest Financial Trading EOD curves, model freight, liquefaction fee, and the PHYS DIFFERENTIALS tab. Missing source inputs stay blank as —.</div>
     </div>
   `;
 }
@@ -12930,7 +13071,7 @@ function cpUsgcArbViz(d){
       Full curve below remains M+1 → M+24 for context.<br/>
       <span style="color:#34d399">Above 0</span> → arb pointing to Asia (Sabine cargoes net higher to Tokyo).
       <span style="color:#fca5a5">Below 0</span> → arb pointing to Europe.<br/>
-      Dropdown = selected <a onclick="CP.tab=8;cpTab(8)" style="color:#a78bfa;cursor:pointer;text-decoration:underline">FOB Snapshot</a> or today's live curve; charts show one observation date at a time.
+      Observation chips = today's live curve plus saved <a onclick="CP.tab=8;cpTab(8)" style="color:#a78bfa;cursor:pointer;text-decoration:underline">FOB Snapshots</a>; select several to see how the arb evolved.
     </div>
 
     ${_usgcIndicatorsTable(d)}
@@ -12959,13 +13100,13 @@ function cpUsgcArbViz(d){
 
 function _usgcArbRenderCharts(){
   const data = _usgcArbCurves();
-  const selected = _usgcArbSelectedCurve(data);
+  const selectedCurves = _usgcArbSelectedCurves(data);
 
   function renderChart(canvasId, key){
     const c = document.getElementById(canvasId); if (!c) return;
     if (window['_'+canvasId]) window['_'+canvasId].destroy();
-    const curve = selected?.[key] || [];
-    if (!curve.some(v => v != null)) {
+    const usable = selectedCurves.filter(s => (s?.[key] || []).some(v => v != null));
+    if (!usable.length) {
       const ctx = c.getContext('2d');
       ctx.clearRect(0,0,c.width,c.height);
       ctx.fillStyle = '#546e7a';
@@ -12976,38 +13117,40 @@ function _usgcArbRenderCharts(){
     }
     const isCogh = key === 'arbCogh';
     const labels = isCogh ? ML.slice(0, 24).map((m,i)=>`${m} -> ${ML[i+1]||'—'}`) : ML.slice(0, 24);
-    const pos = curve.filter(v => v != null && v >= 0).length;
-    const neg = curve.filter(v => v != null && v < 0).length;
-    const lineColor = pos >= neg ? '#34d399' : '#f87171';
-    const pointBg = curve.map(v => v == null ? '#64748b' : v >= 0 ? '#34d399' : '#f87171');
+    const colors=['#34d399','#60a5fa','#fbbf24','#a78bfa','#fb7185','#2dd4bf','#f97316','#c084fc','#94a3b8'];
     window['_'+canvasId] = new Chart(c.getContext('2d'), {
       type: 'line',
       data: {
         labels,
-        datasets: [{
-          label: selected?.label || 'Selected observation',
-          data: curve,
-          borderColor: lineColor,
-          backgroundColor: (ctx) => {
-            const chart = ctx.chart;
-            const area = chart.chartArea;
-            if (!area) return 'rgba(52,211,153,.10)';
-            const g = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
-            g.addColorStop(0, 'rgba(52,211,153,.22)');
-            g.addColorStop(.52, 'rgba(77,158,245,.05)');
-            g.addColorStop(1, 'rgba(248,113,113,.18)');
-            return g;
-          },
-          borderWidth: 2.4,
-          pointRadius: 3.2,
-          pointHoverRadius: 5,
-          pointBackgroundColor: pointBg,
-          pointBorderColor: '#07101e',
-          pointBorderWidth: 1,
-          tension: 0.32,
-          fill: true,
-          spanGaps: true,
-        }]
+        datasets: usable.map((s,idx)=>{
+          const curve=s[key]||[];
+          const col=colors[idx%colors.length];
+          const latest=s.obsKey==='latest';
+          return {
+            label:s.label || s.eod_date || 'Observation',
+            data:curve,
+            borderColor:col,
+            backgroundColor:latest&&usable.length===1?(ctx)=>{
+              const chart=ctx.chart,area=chart.chartArea;
+              if(!area)return'rgba(52,211,153,.10)';
+              const g=chart.ctx.createLinearGradient(0,area.top,0,area.bottom);
+              g.addColorStop(0,'rgba(52,211,153,.22)');
+              g.addColorStop(.52,'rgba(77,158,245,.05)');
+              g.addColorStop(1,'rgba(248,113,113,.18)');
+              return g;
+            }:'transparent',
+            borderWidth:latest?2.8:2,
+            borderDash:latest?undefined:[5,4],
+            pointRadius:latest?3.2:2.4,
+            pointHoverRadius:5,
+            pointBackgroundColor:curve.map(v=>v==null?'#64748b':v>=0?'#34d399':'#f87171'),
+            pointBorderColor:'#07101e',
+            pointBorderWidth:1,
+            tension:0.32,
+            fill:latest&&usable.length===1,
+            spanGaps:true,
+          };
+        })
       },
       options: {
         ...CD,
@@ -13016,7 +13159,7 @@ function _usgcArbRenderCharts(){
         maintainAspectRatio: false,
         plugins: {
           ...CD.plugins,
-          legend: { display:false },
+          legend: { display:true, position:'top', labels:{color:'#8aa0bd',font:{size:9,family:'IBM Plex Mono'},boxWidth:12} },
           tooltip: { ...CD.plugins.tooltip, callbacks: {
             title: (items) => items?.[0]?.label || '',
             label: (ctx) => {
@@ -13893,7 +14036,7 @@ async function handleFiles(files,addMode){const xl=[...files].filter(f=>f.name.m
   if(eexAdded>0){buildEuHubChart();buildDash();const st=document.getElementById('eex-status');if(st)st.textContent=`${eexDates.length} dates · last ${eexDates[eexDates.length-1]||'—'}`;}
   if(!lngFiles.length){if(eexAdded>0)return;alert('No LNG curve files found (EEX files processed separately).');return;}
   if(!addMode){Object.keys(aD).forEach(k=>delete aD[k]);const pw=$id('progwrap');if(pw)pw.style.display='block';}let done=0,added=0,sk=0;for(const file of lngFiles){if(file.size<5000){done++;sk++;continue;}const date=pDFN(file.name);if(!date){done++;sk++;continue;}const key=toStr(date);if(addMode&&aD[key]){done++;continue;}try{const buf=await toAB(file);if(buf.byteLength<5000){done++;sk++;continue;}const h=new Uint8Array(buf.slice(0,4));if(!(h[0]===0x50&&h[1]===0x4B)){done++;sk++;continue;}const rows=pExcel(buf);if(rows.length>0){aD[key]={date,rows};added++;}else sk++;}catch(e){sk++;}done++;if(!addMode){const pf=$id('progfill2');if(pf)pf.style.width=Math.round(done/lngFiles.length*100)+'%';const pt=$id('progtxt2');if(pt)pt.textContent=`${done}/${lngFiles.length} — ${added} loaded`;}}sDates=Object.keys(aD).sort();sCache();if(added>0){try{_fobMarkFresh('eod');setTimeout(()=>{try{fobCaptureSnapshot();}catch(e){}},1500);}catch(e){}}if(!addMode){if(!sDates.length){plog('No valid data.',true);return;}setTimeout(()=>{showAnalyticsUI();initUI();if(_pendingFinSub){showSec(_pendingFinSub);_pendingFinSub=null;}},1000);}else rAdd();}
-function rAdd(){sDates=Object.keys(aD).sort();updStatus();bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();buildEuHubChart();updHist();if(typeof crxInvalidateCache==='function')crxInvalidateCache();cInit();updSpread();updFC();updSea();}
+function rAdd(){sDates=Object.keys(aD).sort();try{if(typeof cpAutoSyncPricesFromLatestEod==='function'&&CP?.fp)cpAutoSyncPricesFromLatestEod(false);}catch(e){}updStatus();bTS($id('h-t1'),true);bTS($id('h-t2'),true);bDS($id('fc-d1'));bDS($id('fc-d2'),true);bIS($id('sp-i1'));$id('sp-i1').value='JKM';bIS($id('sp-i2'));$id('sp-i2').value='TTF';bTS($id('sp-t1'),true);bTS($id('sp-t2'),true);buildDash();buildEuHubChart();updHist();if(typeof crxInvalidateCache==='function')crxInvalidateCache();cInit();updSpread();updFC();updSea();}
 function rPK(d,t){const r=new Date(d.getFullYear(),d.getMonth()+parseInt(t),1);return`${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}`;}
 function pkKey(pk){const m=String(pk||'').match(/^(\d{4})-(\d{2})$/);return m?(+m[1])*12+(+m[2]):null;}
 function rowHasInst(row,inst){return inst?rowInstValue(row,inst)!=null:Object.keys(row||{}).some(k=>k!=='pk'&&row[k]!=null);}
